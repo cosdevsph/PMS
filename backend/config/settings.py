@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'apps.clinical_templates',
     'apps.inventory',
     'apps.messages',
+    'apps.subscriptions',
 ]
 
 # ── Django Channels ───────────────────────────────────────────────────────────
@@ -93,6 +94,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'apps.subscriptions.middleware.SubscriptionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -139,6 +141,8 @@ CRONJOBS = [
     ('0 10 * * *', 'config.cron.send_rebook_followups_cron'),
     # Every Monday at 9:00 AM — send inactive patient wellness check-ins
     ('0 9 * * 1', 'config.cron.send_inactive_checkins_cron'),
+    # Every hour — expire subscriptions that passed end_date
+    ('0 * * * *', 'config.cron.expire_subscriptions'),
 ]
 
 
@@ -260,13 +264,13 @@ SIMPLE_JWT = {
 }
 
 # Email Settings
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'MES PMS <noreply@mespms.com>')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Malasakit EMR Solutions <noreply@malasakit.ph>')
 
 # ── Twilio SMS Settings ───────────────────────────────────────────────────────
 TWILIO_ACCOUNT_SID      = os.getenv('TWILIO_ACCOUNT_SID', '')

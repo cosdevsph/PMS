@@ -1,4 +1,5 @@
 from django.core.management import call_command
+from django.utils import timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -73,4 +74,26 @@ def send_inactive_checkins_cron():
         logger.info("Cron: send_inactive_checkins_cron completed")
     except Exception as e:
         logger.error("Cron: send_inactive_checkins_cron failed — %s", str(e))
+        raise
+
+
+def expire_subscriptions():
+    """
+    Called every hour by django-crontab.
+    Expires active subscriptions that have already passed end_date.
+    """
+    logger.info("Cron: expire_subscriptions started")
+    try:
+        from apps.subscriptions.models import Subscription
+
+        stale_subs = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            end_date__lt=timezone.now(),
+        )
+        expired_count = stale_subs.count()
+        for sub in stale_subs:
+            sub.expire()
+        logger.info("Cron: expire_subscriptions completed (%s expired)", expired_count)
+    except Exception as e:
+        logger.error("Cron: expire_subscriptions failed — %s", str(e))
         raise

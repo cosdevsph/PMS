@@ -489,6 +489,9 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                     <label className="block text-xs font-medium text-gray-600 mb-2">
                       Select Users <span className="text-red-500">*</span>
                     </label>
+                    <div className="mb-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
+                      You are auto-included as the event creator.
+                    </div>
                     <UserSelector
                       users={filteredUsers}
                       selectedUserIds={formData.visible_to_user_ids}

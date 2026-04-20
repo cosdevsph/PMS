@@ -99,6 +99,7 @@ export const AppointmentConfirmationModal: React.FC<AppointmentConfirmationModal
       setLoading(false);
     }
   };
+  
 
   const handleGoToClient = () => {
     if (createdPatient) {

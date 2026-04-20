@@ -401,6 +401,8 @@ export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({
                 </div>
               )}
 
+              
+
               {/* ── Notification Preferences (main branch only) ── */}
               {isMainBranch && (
                 <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">

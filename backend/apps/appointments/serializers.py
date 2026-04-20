@@ -395,18 +395,27 @@ class BlockAppointmentCreateSerializer(serializers.ModelSerializer):
         """Create block appointment and properly set visible_to_users M2M field"""
         visible_to_users = validated_data.pop('visible_to_users', [])
         visibility_type = validated_data.get('visibility_type', 'ALL')
+        request = self.context.get('request')
+        creator = getattr(request, 'user', None)
         
         instance = BlockAppointment.objects.create(**validated_data)
         
         # Handle visibility based on type
         if visibility_type == 'SELF':
-            # Myself Only — creator is identified via created_by FK in the queryset.
-            # visible_to_users is irrelevant for SELF events; keep it empty.
-            instance.visible_to_users.clear()
+            # Myself Only — store only the creator.
+            if creator and creator.is_authenticated:
+                instance.visible_to_users.set([creator])
+            else:
+                instance.visible_to_users.clear()
         elif visibility_type == 'SELECTED':
-            # Selected Users - assign provided users
-            if visible_to_users:
-                instance.visible_to_users.set(visible_to_users)
+            # Selected Users — always include creator plus selected users.
+            users_to_set = list(visible_to_users) if visible_to_users else []
+            if creator and creator.is_authenticated:
+                users_to_set.append(creator)
+
+            # Deduplicate by user id before persisting.
+            unique_users = {user.id: user for user in users_to_set if getattr(user, 'id', None)}
+            instance.visible_to_users.set(unique_users.values())
         else:
             # ALL — visible to everyone; no need to track individual users.
             instance.visible_to_users.clear()
@@ -417,6 +426,9 @@ class BlockAppointmentCreateSerializer(serializers.ModelSerializer):
         """Update block appointment and properly set visible_to_users M2M field"""
         visible_to_users = validated_data.pop('visible_to_users', None)
         visibility_type = validated_data.get('visibility_type', instance.visibility_type)
+        request = self.context.get('request')
+        request_user = getattr(request, 'user', None)
+        creator = instance.created_by or request_user
 
         # Update all other fields
         for attr, value in validated_data.items():
@@ -426,13 +438,20 @@ class BlockAppointmentCreateSerializer(serializers.ModelSerializer):
 
         # Handle visibility based on type
         if visibility_type == 'SELF':
-            # Myself Only — creator is identified via created_by FK in the queryset.
-            # visible_to_users is irrelevant for SELF events; keep it empty.
-            instance.visible_to_users.clear()
+            # Myself Only — keep only the creator.
+            if creator and getattr(creator, 'is_authenticated', False):
+                instance.visible_to_users.set([creator])
+            else:
+                instance.visible_to_users.clear()
         elif visibility_type == 'SELECTED':
-            # Selected Users — sync the M2M to exactly what was submitted.
-            if visible_to_users is not None:
-                instance.visible_to_users.set(visible_to_users)
+            # Selected Users — enforce creator inclusion and keep user edits.
+            users_to_set = list(visible_to_users) if visible_to_users is not None else list(instance.visible_to_users.all())
+            if creator and getattr(creator, 'is_authenticated', False):
+                users_to_set.append(creator)
+
+            # Deduplicate by user id before persisting.
+            unique_users = {user.id: user for user in users_to_set if getattr(user, 'id', None)}
+            instance.visible_to_users.set(unique_users.values())
         else:
             # ALL — visible to everyone; no need to track individual users.
             instance.visible_to_users.clear()

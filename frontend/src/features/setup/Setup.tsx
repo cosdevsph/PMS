@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout';
 import { ArrowLeft, Building2, Package, Users, CreditCard, Bell } from 'lucide-react';
 import { SetupCard as SetupCardComponent } from './components/SetupCard';
@@ -96,8 +97,32 @@ export const Setup: React.FC = () => {
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const { user } = useAuthStore();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const isPractitioner = user?.role === 'PRACTITIONER';
+
+  React.useEffect(() => {
+    if (selectedCard || selectedOption) return;
+
+    const params = new URLSearchParams(location.search);
+    const card = params.get('card');
+    const option = params.get('option');
+
+    if (!card || !option) return;
+
+    const targetCard = SETUP_CARDS.find((c) => c.id === card);
+    const targetOption = targetCard?.options.find((opt) => opt.id === option);
+    if (!targetCard || !targetOption) return;
+
+    if (isPractitioner && PRACTITIONER_RESTRICTED_OPTIONS.includes(option)) {
+      return;
+    }
+
+    setSelectedCard(card);
+    setSelectedOption(option);
+    navigate('/setup', { replace: true });
+  }, [location.search, isPractitioner, selectedCard, selectedOption, navigate]);
 
   const handleOptionClick = (cardId: string, optionId: string) => {
     // Block practitioners from accessing restricted options
@@ -111,6 +136,9 @@ export const Setup: React.FC = () => {
   const handleBackToCards = () => {
     setSelectedCard(null);
     setSelectedOption(null);
+    if (location.search) {
+      navigate('/setup', { replace: true });
+    }
   };
 
   // Find the active component
@@ -128,12 +156,12 @@ export const Setup: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="h-full flex flex-col overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="h-full flex flex-col overflow-hidden bg-linear-to-br from-gray-50 to-gray-100">
 
         {/* ── Subpage View ── */}
         {isRestrictedAccess ? (
           <div className="h-full flex flex-col overflow-hidden">
-            <div className="flex-shrink-0 border-b border-gray-200 bg-white/80 backdrop-blur-sm px-6 py-4">
+            <div className="shrink-0 border-b border-gray-200 bg-white/80 backdrop-blur-sm px-6 py-4">
               <button
                 onClick={handleBackToCards}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -147,7 +175,7 @@ export const Setup: React.FC = () => {
         ) : ActiveComponent ? (
           <div className="h-full flex flex-col overflow-hidden">
             {/* Back button header */}
-            <div className="flex-shrink-0 border-b border-gray-200 bg-white/80 backdrop-blur-sm px-6 py-4">
+            <div className="shrink-0 border-b border-gray-200 bg-white/80 backdrop-blur-sm px-6 py-4">
               <button
                 onClick={handleBackToCards}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -166,7 +194,7 @@ export const Setup: React.FC = () => {
         ) : (
           <>
             {/* ── Page Header ── */}
-            <div className="flex-shrink-0 border-b border-gray-200 bg-white/80 backdrop-blur-sm px-8 py-6">
+            <div className="shrink-0 border-b border-gray-200 bg-white/80 backdrop-blur-sm px-8 py-6">
               <h1 className="text-2xl font-bold text-gray-900">Setup</h1>
               <p className="text-sm text-gray-500 mt-0.5">
                 Configure your practice settings and preferences

@@ -59,14 +59,6 @@ const UserAvatar: React.FC<{ user: ClinicUser; size?: 'sm' | 'md' }> = ({ user, 
   );
 };
 
-interface UserSelectorProps {
-  users: ClinicUser[];
-  selectedUserIds: number[];
-  onSelectionChange: (userIds: number[]) => void;
-  disabled?: boolean;
-  error?: string;
-}
-
 export const UserSelector: React.FC<UserSelectorProps> = ({
   users,
   selectedUserIds,
@@ -132,6 +124,8 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     inputRef.current?.focus();
   };
 
+  const showDropdown = isFocused || !!searchQuery.trim();
+
   return (
     <div className="relative" ref={containerRef}>
       {/* Search Input */}
@@ -165,6 +159,90 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
           >
             <X className="w-4 h-4" />
           </button>
+        )}
+
+        {/* Floating User List - overlays without changing modal height */}
+        {showDropdown && (
+          <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden flex flex-col">
+            {/* Header with actions */}
+            <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+              <span className="text-xs font-medium text-gray-600">
+                {filteredUsers.length} user{filteredUsers.length === 1 ? '' : 's'} found
+              </span>
+              <button
+                type="button"
+                onClick={selectAll}
+                className="text-xs text-sky-600 hover:text-sky-700 font-medium"
+                disabled={filteredUsers.length === 0}
+              >
+                Select All
+              </button>
+            </div>
+
+            {/* User List - Scrollable with max 3-4 users visible */}
+            <div className="overflow-y-auto max-h-64">
+              {filteredUsers.length === 0 ? (
+                <div className="px-3 py-8 text-center">
+                  <div className="flex justify-center mb-3">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                      <User className="w-6 h-6 text-gray-400" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-gray-700">No users found</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Try searching by name or role (Admin, Practitioner, Staff)
+                  </p>
+                </div>
+              ) : (
+                filteredUsers.map((user) => {
+                  const isSelected = selectedUserIds.includes(user.id);
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => toggleUser(user.id)}
+                      className={`
+                        w-full px-3 py-3 text-left hover:bg-gray-50 transition-colors
+                        flex items-center gap-3 border-b border-gray-100 last:border-b-0
+                        ${isSelected ? 'bg-sky-50' : ''}
+                      `}
+                    >
+                      {/* Avatar */}
+                      <UserAvatar user={user} size="md" />
+
+                      {/* User Info */}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {user.name}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-gray-500 truncate">{user.email}</span>
+                          <span className={`
+                            text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0
+                            ${user.role === 'ADMIN'
+                              ? 'bg-rose-100 text-rose-700'
+                              : user.role === 'PRACTITIONER'
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-blue-100 text-blue-700'
+                            }
+                          `}>
+                            {user.role}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Checkmark */}
+                      {isSelected && (
+                        <div className="shrink-0 w-6 h-6 rounded-full bg-sky-600 flex items-center justify-center">
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
         )}
       </div>
 
@@ -210,89 +288,6 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         </div>
       )}
 
-      {/* User List - Show when focused or has search query */}
-      {(isFocused || searchQuery) && (
-        <div className="mt-2 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden flex flex-col">
-          {/* Header with actions */}
-          <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-            <span className="text-xs font-medium text-gray-600">
-              {filteredUsers.length} user{filteredUsers.length === 1 ? '' : 's'} found
-            </span>
-            <button
-              type="button"
-              onClick={selectAll}
-              className="text-xs text-sky-600 hover:text-sky-700 font-medium"
-              disabled={filteredUsers.length === 0}
-            >
-              Select All
-            </button>
-          </div>
-
-          {/* User List - Scrollable with max 3-4 users visible */}
-          <div className="overflow-y-auto max-h-64">
-            {filteredUsers.length === 0 ? (
-              <div className="px-3 py-8 text-center">
-                <div className="flex justify-center mb-3">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                    <User className="w-6 h-6 text-gray-400" />
-                  </div>
-                </div>
-                <p className="text-sm font-medium text-gray-700">No users found</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Try searching by name or role (Admin, Practitioner, Staff)
-                </p>
-              </div>
-            ) : (
-              filteredUsers.map((user) => {
-                const isSelected = selectedUserIds.includes(user.id);
-                return (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => toggleUser(user.id)}
-                    className={`
-                      w-full px-3 py-3 text-left hover:bg-gray-50 transition-colors
-                      flex items-center gap-3 border-b border-gray-100 last:border-b-0
-                      ${isSelected ? 'bg-sky-50' : ''}
-                    `}
-                  >
-                    {/* Avatar */}
-                    <UserAvatar user={user} size="md" />
-                    
-                    {/* User Info */}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {user.name}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-gray-500 truncate">{user.email}</span>
-                        <span className={`
-                          text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0
-                          ${user.role === 'ADMIN'
-                            ? 'bg-rose-100 text-rose-700'
-                            : user.role === 'PRACTITIONER'
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-blue-100 text-blue-700'
-                          }
-                        `}>
-                          {user.role}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Checkmark */}
-                    {isSelected && (
-                      <div className="shrink-0 w-6 h-6 rounded-full bg-sky-600 flex items-center justify-center">
-                        <Check className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

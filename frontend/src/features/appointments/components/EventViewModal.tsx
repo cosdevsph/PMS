@@ -26,6 +26,32 @@ interface FormData {
   visible_to_user_ids: number[];
 }
 
+const formatTime12Hour = (time: string): string => {
+  if (!time) return '';
+  const [hours, minutes] = time.split(':').map(Number);
+  const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  return `${h12}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
+const normalizeTimeValue = (time: string | null | undefined): string => {
+  if (!time) return '00:00';
+  const match = time.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return '00:00';
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+};
+
+const TIME_OPTIONS: Array<{ value: string; label: string }> = (() => {
+  const options: Array<{ value: string; label: string }> = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      options.push({ value, label: formatTime12Hour(value) });
+    }
+  }
+  return options;
+})();
+
 export const EventViewModal: React.FC<EventViewModalProps> = ({
   isOpen,
   onClose,
@@ -40,6 +66,8 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
   const filteredUsers = useMemo(() => {
     return users.filter(user => user.id !== currentUser?.id);
   }, [users, currentUser?.id]);
+
+  const timeOptions = useMemo(() => TIME_OPTIONS, []);
   
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -61,8 +89,8 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
     return {
       event_name: event.event_name,
       date: event.date,
-      start_time: event.start_time,
-      end_time: event.end_time,
+      start_time: normalizeTimeValue(event.start_time),
+      end_time: normalizeTimeValue(event.end_time),
       notes: event.notes || '',
       visibility_type: event.visibility_type || 'ALL',
       visible_to_user_ids: event.visible_to_user_ids || [],
@@ -77,8 +105,8 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
       setFormData({
         event_name: event.event_name,
         date: event.date,
-        start_time: event.start_time,
-        end_time: event.end_time,
+        start_time: normalizeTimeValue(event.start_time),
+        end_time: normalizeTimeValue(event.end_time),
         notes: event.notes || '',
         visibility_type: event.visibility_type || 'ALL',
         visible_to_user_ids: event.visible_to_user_ids || [],
@@ -180,15 +208,6 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
 
   if (!isOpen || !event) return null;
 
-  // Helper to format time in 12-hour format
-  const formatTime12Hour = (time: string): string => {
-    if (!time) return '';
-    const [hours, minutes] = time.split(':').map(Number);
-    const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-    const period = hours >= 12 ? 'PM' : 'AM';
-    return `${h12}:${minutes.toString().padStart(2, '0')} ${period}`;
-  };
-
   // Format date and time for display
   const formattedDate = (() => {
     try {
@@ -209,7 +228,11 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-xl shadow-2xl mx-4 overflow-hidden w-full max-w-3xl">
+      <div
+        className={`relative bg-white rounded-xl shadow-2xl mx-4 w-full ${
+          isEditing ? 'max-w-5xl overflow-visible' : 'max-w-3xl overflow-hidden'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -323,8 +346,7 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                       <Clock className="w-4 h-4 inline mr-1" />
                       Start Time <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="time"
+                    <select
                       value={formData.start_time}
                       onChange={(e) => handleChange('start_time', e.target.value)}
                       className={`
@@ -335,7 +357,13 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                           : 'border-gray-300 focus:border-sky-500 focus:ring-sky-200'
                         }
                       `}
-                    />
+                    >
+                      {timeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                     {errors.start_time && (
                       <p className="mt-1 text-xs text-red-500">{errors.start_time}</p>
                     )}
@@ -347,8 +375,7 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                       <Clock className="w-4 h-4 inline mr-1" />
                       End Time <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="time"
+                    <select
                       value={formData.end_time}
                       onChange={(e) => handleChange('end_time', e.target.value)}
                       className={`
@@ -359,7 +386,13 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                           : 'border-gray-300 focus:border-sky-500 focus:ring-sky-200'
                         }
                       `}
-                    />
+                    >
+                      {timeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                     {errors.end_time && (
                       <p className="mt-1 text-xs text-red-500">{errors.end_time}</p>
                     )}
@@ -480,6 +513,9 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                       <label className="block text-xs font-medium text-gray-600 mb-2">
                         Select Users <span className="text-red-500">*</span>
                       </label>
+                      <div className="mb-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
+                        You are auto-included as the event creator.
+                      </div>
                       <UserSelector
                         users={filteredUsers}
                         selectedUserIds={formData.visible_to_user_ids}
