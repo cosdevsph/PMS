@@ -131,41 +131,6 @@ export const EditClinicalNoteModal: React.FC<EditClinicalNoteModalProps> = ({
     }
   };
 
-  // Placeholder for template change (not used in edit mode)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _handleTemplateSelect = (template: ClinicalTemplate) => {
-    setSelectedTemplate(template);
-    // Initialize content with default values from template structure (only for new fields)
-    const newContent = { ...content };
-    if (template.structure?.sections) {
-      (template.structure.sections as TemplateSection[]).forEach((section: TemplateSection) => {
-        if (section.fields) {
-          (section.fields as TemplateField[]).forEach((field: TemplateField) => {
-            if (!(field.id in newContent)) {
-              // Skip non-input field types
-              if (field.type === 'section_header' || field.type === 'heading') return;
-              
-              if (field.type === 'checkbox') {
-                newContent[field.id] = false;
-              } else if (field.type === 'checkbox_group') {
-                newContent[field.id] = [];
-              } else if (field.type === 'tags') {
-                newContent[field.id] = [];
-              } else if (field.type === 'scale' || field.type === 'number') {
-                newContent[field.id] = field.defaultValue ?? '';
-              } else if (field.type === 'chart') {
-                newContent[field.id] = null;
-              } else {
-                newContent[field.id] = '';
-              }
-            }
-          });
-        }
-      });
-    }
-    setContent(newContent);
-  };
-
   const handleSave = async () => {
     if (!selectedTemplate) {
       toast.error('Please select a template');

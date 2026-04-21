@@ -20,24 +20,6 @@ interface TemplateListProps {
   onCreateVersion: (template: ClinicalTemplate) => void;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  INITIAL: 'bg-purple-100 text-purple-700',
-  FOLLOW_UP: 'bg-blue-100 text-blue-700',
-  PROGRESS: 'bg-teal-100 text-teal-700',
-  DISCHARGE: 'bg-orange-100 text-orange-700',
-  SOAP: 'bg-sky-100 text-sky-700',
-  CUSTOM: 'bg-gray-100 text-gray-700',
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  INITIAL: 'Initial',
-  FOLLOW_UP: 'Follow-up',
-  PROGRESS: 'Progress',
-  DISCHARGE: 'Discharge',
-  SOAP: 'SOAP',
-  CUSTOM: 'Custom',
-};
-
 export const TemplateList: React.FC<TemplateListProps> = ({
   templates,
   loading,
@@ -121,7 +103,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
             <FileText className="w-12 h-12 text-gray-200 mb-3" />
             <p className="text-sm font-medium text-gray-500">No templates found</p>
             <p className="text-xs text-gray-400 mt-1">
-              {search || categoryFilter ? 'Try adjusting your filters' : 'Create your first template to get started'}
+              {search || disciplineFilter ? 'Try adjusting your filters' : 'Create your first template to get started'}
             </p>
           </div>
         )}
