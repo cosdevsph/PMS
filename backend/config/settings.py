@@ -122,7 +122,7 @@ CORS_ALLOWED_ORIGINS = [
 # Add production frontend URL dynamically
 if not DEBUG:
     CORS_ALLOWED_ORIGINS += [
-        os.getenv('FRONTEND_URL', 'https://mespms.com'),
+        os.getenv('FRONTEND_URL', 'https://malasakit-web.vercel.app'),
         'https://www.mespms.com',
     ]
 
