@@ -5,7 +5,7 @@ import type { AppointmentEditPayload } from '../appointment.api';
 import { useAppointmentServices } from '../hooks/useAppointmentServices';
 
 interface Practitioner {
-  id:             number;
+  id:             number | string;
   name:           string;
   specialization: string | null;
 }

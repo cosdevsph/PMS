@@ -445,7 +445,7 @@ export const AddDragEventModal: React.FC<AddDragEventModalProps> = ({
                     name="visibility_type"
                     value="ALL"
                     checked={formData.visibility_type === 'ALL'}
-                    onChange={(e) => {
+                    onChange={() => {
                       setFormData(prev => ({ ...prev, visibility_type: 'ALL' as const }));
                       if (errors.visible_to_user_ids) {
                         setErrors(prev => ({ ...prev, visible_to_user_ids: '' }));
@@ -470,7 +470,7 @@ export const AddDragEventModal: React.FC<AddDragEventModalProps> = ({
                     name="visibility_type"
                     value="SELECTED"
                     checked={formData.visibility_type === 'SELECTED'}
-                    onChange={(e) => {
+                    onChange={() => {
                       setFormData(prev => ({ ...prev, visibility_type: 'SELECTED' as const }));
                     }}
                     className="mt-0.5 w-4 h-4 text-amber-600 border-gray-300 focus:ring-amber-500"
@@ -492,7 +492,7 @@ export const AddDragEventModal: React.FC<AddDragEventModalProps> = ({
                     name="visibility_type"
                     value="SELF"
                     checked={formData.visibility_type === 'SELF'}
-                    onChange={(e) => {
+                    onChange={() => {
                       setFormData(prev => ({ 
                         ...prev, 
                         visibility_type: 'SELF' as const,

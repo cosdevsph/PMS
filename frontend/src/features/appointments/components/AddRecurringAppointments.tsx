@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, User, Repeat, Save, CheckCircle, AlertCircle, RefreshCw, Building2, MapPin, ChevronUp, ChevronDown, Stethoscope } from 'lucide-react';
+import { X, Calendar, Clock, User, Repeat, Save, CheckCircle, AlertCircle, RefreshCw, Building2, ChevronUp, ChevronDown, Stethoscope } from 'lucide-react';
 import { format, addWeeks, addMonths, addYears, eachDayOfInterval, addDays } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { billingApi, type ClinicService } from '@/features/billing/billing.api';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, AlertTriangle, XCircle, RefreshCw,
-  Mail, Calendar, Clock, User, Users,
+  Mail, Calendar, Clock, User,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Appointment } from '@/types';
