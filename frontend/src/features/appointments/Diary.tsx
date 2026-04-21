@@ -264,12 +264,12 @@ export const Diary: React.FC = () => {
     setShowEventViewModal(true);
   };
 
-  const handleEventUpdated = (updatedEvent: BlockAppointment) => {
+  const handleEventUpdated = () => {
     // Increment the refresh key to trigger Calendar to refetch block appointments
     setEventRefreshKey(prev => prev + 1);
   };
 
-  const handleEventDeleted = (eventId: number) => {
+  const handleEventDeleted = () => {
     // Increment the refresh key to trigger Calendar to refetch block appointments
     setEventRefreshKey(prev => prev + 1);
   };

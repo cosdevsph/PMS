@@ -36,57 +36,6 @@ const timeToMinutes = (time: string): number => {
   return h * 60 + m;
 };
 
-const isWithinRange = (time: string, start: string, end: string): boolean => {
-  const t = timeToMinutes(time);
-  return t >= timeToMinutes(start) && t < timeToMinutes(end);
-};
-
-const isSlotAvailable = (
-  hour: number,
-  minutes: number,
-  availability: PractitionerAvailability | undefined,
-  selectedDate: Date,
-): { available: boolean; reason: 'outside_duty_hours' | 'lunch' | 'unavailable_day' | null } => {
-  const slotTime = `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-  const slotMins = hour * 60 + minutes;
-
-  if (!availability) return { available: true, reason: null };
-
-  const dayOfWeek = DAY_MAP[selectedDate.getDay()];
-  if (!availability.duty_days.includes(dayOfWeek)) {
-    return { available: false, reason: 'unavailable_day' };
-  }
-
-  const dutyStart = timeToMinutes(availability.duty_start_time);
-  const dutyEnd = timeToMinutes(availability.duty_end_time);
-  if (slotMins < dutyStart || slotMins >= dutyEnd) {
-    return { available: false, reason: 'outside_duty_hours' };
-  }
-
-  const lunchStart = timeToMinutes(availability.lunch_start_time);
-  const lunchEnd = timeToMinutes(availability.lunch_end_time);
-  if (slotMins >= lunchStart && slotMins < lunchEnd) {
-    return { available: false, reason: 'lunch' };
-  }
-
-  return { available: true, reason: null };
-};
-
-const isLunchSlot = (
-  hour: number,
-  minutes: number,
-  availability: PractitionerAvailability | undefined,
-): boolean => {
-  if (!availability) {
-    const slotMins = hour * 60 + minutes;
-    return slotMins >= 720 && slotMins < 780;
-  }
-  const slotMins = hour * 60 + minutes;
-  const lunchStart = timeToMinutes(availability.lunch_start_time);
-  const lunchEnd = timeToMinutes(availability.lunch_end_time);
-  return slotMins >= lunchStart && slotMins < lunchEnd;
-};
-
 const formatTime12Hour = (time: string): string => {
   if (!time) return '';
   const [hours, minutes] = time.split(':').map(Number);
@@ -389,11 +338,6 @@ export const Calendar: React.FC<CalendarProps> = ({
     return slotMins >= 720 && slotMins < 780;
   }, [practitionerAvailability, hasAvailabilityMap]);
 
-  // Combined check: is the slot available (duty day + duty hour + not lunch)
-  const isSlotFullyAvailable = useCallback((date: Date, hour: number, minutes: number): boolean => {
-    return isDutyDay(date) && isDutyHour(hour, minutes, date) && !isLunchBreak(hour, minutes);
-  }, [isDutyDay, isDutyHour, isLunchBreak]);
-
   const { isOpen, selectedSlot, openModal, closeModal } = useAppointmentModal();
 
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
@@ -511,9 +455,7 @@ export const Calendar: React.FC<CalendarProps> = ({
   // Fetch ALL block appointments regardless of selected branch so they're visible to all branches
   const {
     blockAppointments,
-    addBlockAppointmentToState,
     updateBlockAppointmentInState,
-    removeBlockAppointmentFromState,
     refetch: refetchBlockAppointments,
   } = useBlockAppointments({
     startDate,
@@ -765,20 +707,14 @@ export const Calendar: React.FC<CalendarProps> = ({
   const generateTimeSlots = useCallback((availability?: PractitionerAvailability) => {
     const slots = [];
 
-    // Extract availability parameters or use defaults
-    const dutyStartHour = availability ? parseInt(availability.duty_start_time.split(':')[0]) : 6;
-    const dutyEndHour = availability ? parseInt(availability.duty_end_time.split(':')[0]) : 20;
-    const lunchStartHour = availability ? parseInt(availability.lunch_start_time.split(':')[0]) : 12;
-    const lunchEndHour = availability ? parseInt(availability.lunch_end_time.split(':')[0]) : 13;
-
     // Helper to calculate total minutes and check if it's lunch time
     const slotMins = (h: number, q: number) => h * 60 + q * 15;
     const lunchStart = availability 
       ? timeToMinutes(availability.lunch_start_time) 
-      : lunchStartHour * 60;
+      : 12 * 60;
     const lunchEnd = availability 
       ? timeToMinutes(availability.lunch_end_time) 
-      : lunchEndHour * 60;
+      : 13 * 60;
 
     // Generate slots from 6 AM to 8 PM
     for (let hour = 6; hour <= 20; hour++) {
@@ -1405,7 +1341,7 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   // ── Shared time-slot renderer (drop target) ───────────────────────────────
   // ── Nookal-style time slot renderer with 15-min intervals ───────────────────
-  const renderTimeSlot = (slot: typeof timeSlots[0], date: Date, i: number, forWeekView = false) => {    const isSelected   = isSlotSelected(slot);
+  const renderTimeSlot = (slot: typeof timeSlots[0], date: Date, i: number) => {    const isSelected   = isSlotSelected(slot);
     const isDropTarget = dragState.isDragging;
     const isLunch      = isLunchBreak(slot.hour, slot.minutes);
     
