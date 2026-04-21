@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
+from django.http import JsonResponse
 
 from apps.accounts.views import AuthViewSet, UserViewSet, RoleViewSet, PermissionViewSet
 from apps.clinics.views import ClinicViewSet, PractitionerViewSet, LocationViewSet
@@ -18,6 +19,15 @@ from apps.integrations.views import PhilHealthClaimViewSet, HMOClaimViewSet
 from apps.contacts.views import ContactViewSet
 from apps.clinics.services.views import ServiceViewSet as ClinicServiceViewSet
 from apps.notifications.views_webhook import SMSReplyWebhookView
+
+
+def api_root(request):
+    """Root endpoint - API health check"""
+    return JsonResponse({
+        'status': 'online',
+        'message': 'Malasakit EMR API',
+        'version': '1.0'
+    })
 
 
 router = DefaultRouter()
@@ -65,6 +75,7 @@ router.register(r'hmo-claims',        HMOClaimViewSet,        basename='hmo-clai
 
 
 urlpatterns = [
+    path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
 
