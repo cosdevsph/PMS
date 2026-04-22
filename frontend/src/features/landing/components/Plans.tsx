@@ -19,7 +19,7 @@ interface Plan {
 const PLAN: Readonly<Plan> = {
   id: 'standard',
   name: 'Standard Plan',
-  price: 199,
+  price: 299,
   currency: '₱',
   billing: 'per month',
   description: 'Complete patient management solution for Philippine clinics',

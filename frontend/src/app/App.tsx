@@ -16,6 +16,24 @@ import { ForgotPassword }         from '@/features/auth/ForgotPassword';
 import { PortalHome }             from '@/features/patient-portal/pages/PortalHome';
 import { BookAppointmentSuccess } from '@/features/patient-portal/pages/BookAppointmentSuccess';
 
+// Footer Pages - Product
+import { Features }  from '@/features/landing/components/footer-pages/Product/Features';
+import { Pricing }   from '@/features/landing/components/footer-pages/Product/Pricing';
+import { Roadmap }   from '@/features/landing/components/footer-pages/Product/Roadmap';
+import { Security }  from '@/features/landing/components/footer-pages/Product/Security';
+
+// Footer Pages - Company
+import { About }     from '@/features/landing/components/footer-pages/Company/About';
+import { Blog }      from '@/features/landing/components/footer-pages/Company/Blog';
+import { Careers }   from '@/features/landing/components/footer-pages/Company/Careers';
+import { Contact }   from '@/features/landing/components/footer-pages/Company/Contact';
+
+// Footer Pages - Legal
+import { PrivacyPolicy }       from '@/features/landing/components/footer-pages/Legal/PrivacyPolicy';
+import { TermsOfServices }     from '@/features/landing/components/footer-pages/Legal/TermsOfServices';
+import { OWASPCompliance }     from '@/features/landing/components/footer-pages/Legal/OWASPCompliance';
+import { CookiePolicy }        from '@/features/landing/components/footer-pages/Legal/CookiePolicy';
+
 // Protected Pages
 import { Dashboard }      from '@/features/dashboard/Dashboard';
 import { Diary }          from '@/features/appointments/Diary';
@@ -123,6 +141,24 @@ function App() {
           <Route path="/register"         element={<PublicRoute><AdminRegister /></PublicRoute>} />
           <Route path="/register/success" element={<PublicRoute><RegisterSuccess /></PublicRoute>} />
           <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+
+          {/* ── Footer Pages - Product ──────────────────────────────── */}
+          <Route path="/features"  element={<PublicRoute><Features /></PublicRoute>} />
+          <Route path="/pricing"   element={<PublicRoute><Pricing /></PublicRoute>} />
+          <Route path="/roadmap"   element={<PublicRoute><Roadmap /></PublicRoute>} />
+          <Route path="/security"  element={<PublicRoute><Security /></PublicRoute>} />
+
+          {/* ── Footer Pages - Company ──────────────────────────────── */}
+          <Route path="/about"     element={<PublicRoute><About /></PublicRoute>} />
+          <Route path="/blog"      element={<PublicRoute><Blog /></PublicRoute>} />
+          <Route path="/careers"   element={<PublicRoute><Careers /></PublicRoute>} />
+          <Route path="/contact"   element={<PublicRoute><Contact /></PublicRoute>} />
+
+          {/* ── Footer Pages - Legal ────────────────────────────────── */}
+          <Route path="/privacy-policy"    element={<PublicRoute><PrivacyPolicy /></PublicRoute>} />
+          <Route path="/terms-of-service"  element={<PublicRoute><TermsOfServices /></PublicRoute>} />
+          <Route path="/owasp-compliance"  element={<PublicRoute><OWASPCompliance /></PublicRoute>} />
+          <Route path="/cookie-policy"     element={<PublicRoute><CookiePolicy /></PublicRoute>} />
 
           {/* ── Patient Portal ──────────────────────────────────────── */}
           <Route path="/portal/:token"         element={<PortalHome />} />

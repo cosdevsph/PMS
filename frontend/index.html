@@ -3,17 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/src/assets/Malasakit-Logo-Relicon.webp" />
-    <link rel="apple-touch-icon" href="/src/assets/Malasakit-Logo-Relicon.webp" />
+    <link rel="icon" type="image/svg+xml" href="/PMS/frontend/src/assets/malasakit/malasakit-relicon.svg" />
+    <link rel="apple-touch-icon" href="/PMS/frontend/src/assets/malasakit/malasakit-relicon.svg" />
     
-    <!-- Viewport and Mobile Optimization -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     
-    <!-- Primary Meta Tags -->
     <title>MES - Malasakit EMR Solutions | Patient Management System</title>
     <meta name="title" content="MES - Malasakit EMR Solutions | Patient Management System" />
     <meta name="description" content="Cloud-based patient management system for physiotherapy and allied health clinics in the Philippines. Streamline appointments, records, billing, and PhilHealth integration." />
@@ -21,32 +18,25 @@
     <meta name="author" content="Malasakit EMR Solutions" />
     <meta name="theme-color" content="#0575E6" />
     
-    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://mes-pms.com/" />
+    <meta property="og:url" content="https://malasakit-web.vercel.app/" />
     <meta property="og:title" content="MES - Malasakit EMR Solutions | Patient Management System" />
     <meta property="og:description" content="Cloud-based patient management system for physiotherapy and allied health clinics in the Philippines. Streamline appointments, records, billing, and PhilHealth integration." />
-    <meta property="og:image" content="/src/assets/Malasakit-Logo.webp" />
+    <meta property="og:image" content="https://malasakit-web.vercel.app/PMS/frontend/src/assets/malasakit/malasakit-thumbnail.jpg" />
     
-    <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://mes-pms.com/" />
+    <meta property="twitter:url" content="https://malasakit-web.vercel.app/" />
     <meta property="twitter:title" content="MES - Malasakit EMR Solutions | Patient Management System" />
     <meta property="twitter:description" content="Cloud-based patient management system for physiotherapy and allied health clinics in the Philippines. Streamline appointments, records, billing, and PhilHealth integration." />
-    <meta property="twitter:image" content="/src/assets/Malasakit-Logo.webp" />
+    <meta property="twitter:image" content="https://malasakit-web.vercel.app/PMS/frontend/src/assets/malasakit/malasakit-thumbnail.jpg" />
     
-    <!-- Security Headers -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
     
-    <!-- Performance Optimization -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@100;300;400;500;700;800;900&family=Nunito:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;0,1000;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900;1,1000&display=swap" rel="stylesheet" />
     
-    <!-- Fonts loaded via @fontsource packages -->
-    
-    <!-- Structured Data for SEO -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -68,7 +58,6 @@
     }
     </script>
     
-    <!-- Loading Styles -->
     <style>
       /* Loading Screen */
       #loading-screen {
@@ -127,19 +116,15 @@
     </style>
   </head>
   <body>
-    <!-- Loading Screen -->
     <div id="loading-screen">
       <div class="loader"></div>
       <div class="loading-text">Loading MES...</div>
     </div>
     
-    <!-- Main Application Root -->
     <div id="root"></div>
     
-    <!-- Main Application Script -->
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Remove Loading Screen on Load -->
     <script>
       window.addEventListener('load', function() {
         const loadingScreen = document.getElementById('loading-screen');
@@ -160,7 +145,6 @@
       }, 5000);
     </script>
     
-    <!-- No JavaScript Fallback -->
     <noscript>
       <style>
         #loading-screen { display: none; }

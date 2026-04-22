@@ -8,22 +8,22 @@ export const Footer: React.FC = () => {
 
   const footerLinks = {
     product: [
-      { label: 'Features', href: '#features' },
-      { label: 'Pricing', href: '#plans' },
-      { label: 'Security', href: '#' },
-      { label: 'Roadmap', href: '#' }
+      { label: 'Features', href: '/features' },
+      { label: 'Pricing', href: '/pricing' },
+      { label: 'Security', href: '/security' },
+      { label: 'Roadmap', href: '/roadmap' }
     ],
     company: [
-      { label: 'About', href: '#about' },
-      { label: 'Blog', href: '#' },
-      { label: 'Careers', href: '#' },
-      { label: 'Contact', href: '#' }
+      { label: 'About', href: '/about' },
+      { label: 'Blog', href: '/blog' },
+      { label: 'Careers', href: '/careers' },
+      { label: 'Contact', href: '/contact' }
     ],
     legal: [
-      { label: 'Privacy Policy', href: '#' },
-      { label: 'Terms of Service', href: '#' },
-      { label: 'OWASP Compliance', href: '#' },
-      { label: 'Cookie Policy', href: '#' }
+      { label: 'Privacy Policy', href: '/privacy-policy' },
+      { label: 'Terms of Service', href: '/terms-of-service' },
+      { label: 'OWASP Compliance', href: '/owasp-compliance' },
+      { label: 'Cookie Policy', href: '/cookie-policy' }
     ]
   };
 
@@ -66,9 +66,9 @@ export const Footer: React.FC = () => {
 
             {/* Contact Info */}
             <div className="mt-8 space-y-4">
-              <a href="mailto:support@mespms.com" className="flex items-center text-base text-white/70 hover:text-white transition-colors font-body">
+              <a href="mailto:malasakitsolutions@gmail.com" className="flex items-center text-base text-white/70 hover:text-white transition-colors font-body">
                 <Mail className="w-5 h-5 mr-3 text-healing-mint" />
-                support@mespms.com
+                malasakitsolutions@gmail.com
               </a>
               <a href="tel:+639457123456" className="flex items-center text-base text-white/70 hover:text-white transition-colors font-body">
                 <Phone className="w-5 h-5 mr-3 text-healing-mint" />
@@ -76,7 +76,7 @@ export const Footer: React.FC = () => {
               </a>
               <div className="flex items-start text-base">
                 <MapPin className="w-5 h-5 mr-3 mt-0.5 shrink-0 text-healing-mint" />
-                <span className="text-white/70 font-body">Lacson Street, Bacolod City, Philippines</span>
+                <span className="text-white/70 font-body">Bacolod City, Negros Occidental, Philippines, 6100</span>
               </div>
             </div>
 
@@ -100,9 +100,9 @@ export const Footer: React.FC = () => {
             <ul className="space-y-4">
               {footerLinks.product.map((link) => (
                 <li key={link.label}>
-                  <a href={link.href} className="text-base text-white/70 hover:text-white transition-colors font-body">
+                  <Link to={link.href} className="text-base text-white/70 hover:text-white transition-colors font-body">
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -113,9 +113,9 @@ export const Footer: React.FC = () => {
             <ul className="space-y-4">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
-                  <a href={link.href} className="text-base text-white/70 hover:text-white transition-colors font-body">
+                  <Link to={link.href} className="text-base text-white/70 hover:text-white transition-colors font-body">
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -126,9 +126,9 @@ export const Footer: React.FC = () => {
             <ul className="space-y-4">
               {footerLinks.legal.map((link) => (
                 <li key={link.label}>
-                  <a href={link.href} className="text-base text-white/70 hover:text-white transition-colors font-body">
+                  <Link to={link.href} className="text-base text-white/70 hover:text-white transition-colors font-body">
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
