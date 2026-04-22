@@ -559,29 +559,54 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     def send_email(self, request, pk=None):
         """POST /api/invoices/{id}/send-email/ — Send invoice PDF via email."""
         from django.core.mail import EmailMessage
+        from django.core.exceptions import ValidationError
+        from django.core.validators import validate_email
         from django.conf import settings
         from io import BytesIO
+        import re
 
         invoice = self.get_object()
 
         # Handle both JSON and multipart/form-data requests
         if request.content_type and 'multipart/form-data' in request.content_type:
             # Multipart request - use request.POST for text fields
-            to_email = request.POST.get('to_email')
+            raw_to_email = request.POST.get('to_email')
             subject = request.POST.get('subject', f'Invoice #{invoice.invoice_number}')
             body = request.POST.get('body', f'Please find attached invoice #{invoice.invoice_number}.')
             html_content = request.POST.get('html_content')
         else:
             # JSON request
-            to_email = request.data.get('to_email')
+            raw_to_email = request.data.get('to_email')
             subject = request.data.get('subject', f'Invoice #{invoice.invoice_number}')
             body = request.data.get('body', f'Please find attached invoice #{invoice.invoice_number}.')
             html_content = None
 
-        if not to_email:
+        if isinstance(raw_to_email, (list, tuple)):
+            recipients = [str(v).strip() for v in raw_to_email if str(v).strip()]
+        else:
+            raw_text = str(raw_to_email or '').strip()
+            recipients = [addr.strip() for addr in re.split(r'[,;\n]+', raw_text) if addr.strip()]
+
+        if not recipients:
             return Response(
                 {'detail': 'to_email is required'},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+        invalid_recipients = []
+        for recipient in recipients:
+            try:
+                validate_email(recipient)
+            except ValidationError:
+                invalid_recipients.append(recipient)
+
+        if invalid_recipients:
+            return Response(
+                {
+                    'detail': 'One or more email addresses are invalid.',
+                    'invalid_recipients': invalid_recipients,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
@@ -684,14 +709,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             # Create email
             from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None)
             
-            # Parse comma-separated emails into a list
-            email_list = [e.strip() for e in to_email.split(',') if e.strip()]
-            
             email = EmailMessage(
                 subject=subject,
                 body=body,
                 from_email=from_email,
-                to=email_list,
+                to=recipients,
             )
             
             # Attach PDF if available and valid
@@ -726,11 +748,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             
             email.send(fail_silently=False)
 
-            logger.info(f"Invoice #{invoice.invoice_number} sent to {to_email}")
+            logger.info(f"Invoice #{invoice.invoice_number} sent to {', '.join(recipients)}")
 
             return Response({
                 'detail': 'Invoice sent successfully',
-                'sent_to': to_email,
+                'sent_to': recipients,
                 'has_attachment': pdf_content is not None and len(pdf_content) > 0
             }, status=status.HTTP_200_OK)
 
