@@ -24,7 +24,8 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
   noteId,
   patientName,
 }) => {
-  const [toEmail, setToEmail] = useState('');
+  const [emails, setEmails] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState('');
   const [subject, setSubject] = useState(`Clinical Note – ${patientName}`);
   const [body, setBody] = useState(
     `Dear ${patientName},\n\nPlease find attached your clinical note from your recent appointment.\n\nBest regards,\nClinic Team`
@@ -44,6 +45,8 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    setEmails([]);
+    setEmailInput('');
     setErrorMessage('');
     setSuccessMessage('');
     setAttachment(null);
@@ -97,7 +100,7 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
     getPrintNote(noteId)
       .then(async (data) => {
         if (cancelled) return;
-        if (data.patient_email) setToEmail(data.patient_email);
+        if (data.patient_email) setEmails([data.patient_email]);
         const dateStr = data.date
           ? new Date(data.date + 'T00:00:00').toLocaleDateString('en-US', {
               month: 'short',
@@ -171,41 +174,55 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
     };
   }, [isOpen, noteId]);
 
-  const validateEmails = (raw: string): string[] => {
-    return raw
-      .split(',')
-      .map((e) => e.trim())
-      .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+  const isValidEmail = (value: string): boolean => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  };
+
+  const addEmail = (value: string) => {
+    const candidate = value.trim();
+    if (!candidate) return;
+    if (!isValidEmail(candidate)) return;
+    if (emails.includes(candidate)) return;
+    setEmails((prev) => [...prev, candidate]);
   };
 
   const handleEmailInput = (value: string) => {
-    setToEmail(value);
-    
-    // Get the last email in the input (for comma-separated emails)
-    const emails = value.split(',').map(e => e.trim());
-    const currentInput = emails[emails.length - 1];
-    
-    if (currentInput.length > 0) {
+    setEmailInput(value);
+
+    if (/[\s,;]$/.test(value)) {
+      const emailToAdd = value.trim().replace(/[;,]$/, '').trim();
+      if (emailToAdd) {
+        addEmail(emailToAdd);
+      }
+      setEmailInput('');
+      setShowSuggestions(false);
+      setFilteredSuggestions([]);
+      return;
+    }
+
+    if (value.length > 0) {
       const filtered = allSuggestions.filter(s =>
-        s.email.toLowerCase().includes(currentInput.toLowerCase()) ||
-        s.name.toLowerCase().includes(currentInput.toLowerCase())
+        s.email.toLowerCase().includes(value.toLowerCase()) ||
+        s.name.toLowerCase().includes(value.toLowerCase())
       );
       setFilteredSuggestions(filtered);
       setShowSuggestions(true);
     } else {
-      setFilteredSuggestions([]);
-      setShowSuggestions(false);
+      setFilteredSuggestions(allSuggestions);
+      setShowSuggestions(allSuggestions.length > 0);
     }
   };
 
   const handleSuggestionSelect = (suggestion: EmailSuggestion) => {
-    const emails = toEmail.split(',').map(e => e.trim());
-    emails[emails.length - 1] = suggestion.email;
-    const newEmail = emails.filter(e => e).join(', ') + ', ';
-    setToEmail(newEmail);
+    addEmail(suggestion.email);
+    setEmailInput('');
     setShowSuggestions(false);
     setFilteredSuggestions([]);
     emailInputRef.current?.focus();
+  };
+
+  const removeEmail = (emailToRemove: string) => {
+    setEmails((prev) => prev.filter((email) => email !== emailToRemove));
   };
 
   // Close suggestions when clicking outside
@@ -223,7 +240,21 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
 
   const handleSend = async () => {
     setErrorMessage('');
-    const recipients = validateEmails(toEmail);
+
+    const trimmedInput = emailInput.trim();
+    let recipients = emails;
+    if (trimmedInput) {
+      if (!isValidEmail(trimmedInput)) {
+        setErrorMessage('Please enter a valid email address before sending.');
+        return;
+      }
+      if (!emails.includes(trimmedInput)) {
+        recipients = [...emails, trimmedInput];
+        setEmails(recipients);
+      }
+      setEmailInput('');
+    }
+
     if (recipients.length === 0) {
       setErrorMessage('Please enter at least one valid email address.');
       return;
@@ -307,15 +338,33 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
                 To <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <input
-                  ref={emailInputRef}
-                  type="text"
-                  value={toEmail}
-                  onChange={(e) => handleEmailInput(e.target.value)}
-                  onFocus={() => toEmail.length > 0 && setShowSuggestions(true)}
-                  placeholder="email@example.com, another@example.com"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-                />
+                <div className="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus-within:outline-none focus-within:ring-2 focus-within:ring-sky-500 focus-within:border-transparent bg-white flex flex-wrap gap-2 items-center">
+                  {emails.map((email, idx) => (
+                    <div
+                      key={`${email}-${idx}`}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-sky-100 text-sky-700 rounded-lg text-xs font-medium"
+                    >
+                      <span className="truncate">{email}</span>
+                      <button
+                        onClick={() => removeEmail(email)}
+                        className="ml-0.5 hover:bg-sky-200 rounded p-0.5 transition-colors"
+                        type="button"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <input
+                    ref={emailInputRef}
+                    type="text"
+                    value={emailInput}
+                    onChange={(e) => handleEmailInput(e.target.value)}
+                    onFocus={() => emailInput.length > 0 && setShowSuggestions(true)}
+                    placeholder={emails.length === 0 ? 'email@example.com' : 'Add more emails...'}
+                    className="flex-1 min-w-37.5 outline-none bg-transparent text-sm"
+                  />
+                </div>
                 
                 {/* Dropdown Suggestions */}
                 {showSuggestions && filteredSuggestions.length > 0 && (
@@ -341,7 +390,7 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-1">Separate multiple recipients with commas</p>
+              <p className="text-xs text-gray-400 mt-1">Type an email then press space/comma/semicolon, or pick from suggestions.</p>
             </div>
 
             {/* Subject */}

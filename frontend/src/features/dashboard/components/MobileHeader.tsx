@@ -2,7 +2,7 @@ import React from 'react';
 import { Menu } from 'lucide-react';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useAuth } from '@/hooks/useAuth';
-import MESLogo from '@/assets/MESLogo.svg';
+import MESLogo from '@/assets/malasakit/malasakit-relicon.svg';
 
 export const MobileHeader: React.FC = () => {
   const { toggleMobileSidebar } = useSidebar();
