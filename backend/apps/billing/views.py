@@ -684,11 +684,14 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             # Create email
             from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None)
             
+            # Parse comma-separated emails into a list
+            email_list = [e.strip() for e in to_email.split(',') if e.strip()]
+            
             email = EmailMessage(
                 subject=subject,
                 body=body,
                 from_email=from_email,
-                to=[to_email],
+                to=email_list,
             )
             
             # Attach PDF if available and valid

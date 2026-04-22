@@ -1,7 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Mail, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { getPrintNote, sendClinicalNoteEmail } from '../clinical-templates.api';
+import { getPractitioners } from '@/features/clinics/clinic.api';
+import axiosInstance from '@/lib/axios';
 import { ClinicalNoteTemplate } from './ClinicalNoteTemplate';
+
+interface EmailSuggestion {
+  name: string;
+  email: string;
+  role: string;
+}
 
 interface SendClinicalNoteModalProps {
   isOpen: boolean;
@@ -26,6 +34,13 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // Email suggestions state
+  const [allSuggestions, setAllSuggestions] = useState<EmailSuggestion[]>([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<EmailSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -35,6 +50,49 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
     setIsGeneratingPdf(true);
 
     let cancelled = false;
+
+    // Fetch email suggestions
+    const fetchEmailSuggestions = async () => {
+      try {
+        // Fetch practitioners
+        const practitionersData = await getPractitioners();
+        const practitionerSuggestions = practitionersData.practitioners.map(p => ({
+          name: p.name,
+          email: p.email,
+          role: p.role || 'PRACTITIONER',
+        }));
+
+        // Fetch staff/admin users
+        interface User {
+          email: string;
+          first_name: string;
+          last_name: string;
+          role: string;
+        }
+        const usersResponse = await axiosInstance.get('/users/');
+        const users = usersResponse.data.results || usersResponse.data;
+        const userSuggestions = (users as User[])
+          .filter((u: User) => u.email && (u.role === 'STAFF' || u.role === 'ADMIN'))
+          .map((u: User) => ({
+            name: `${u.first_name} ${u.last_name}`,
+            email: u.email,
+            role: u.role,
+          }));
+
+        // Combine and deduplicate
+        const combined = [...practitionerSuggestions, ...userSuggestions];
+        const uniqueSuggestions = Array.from(
+          new Map(combined.map(s => [s.email, s])).values()
+        );
+
+        if (!cancelled) setAllSuggestions(uniqueSuggestions);
+      } catch (err) {
+        // Silently fail - suggestions are optional
+        if (!cancelled) console.error('Failed to fetch email suggestions:', err);
+      }
+    };
+
+    fetchEmailSuggestions();
 
     getPrintNote(noteId)
       .then(async (data) => {
@@ -120,6 +178,49 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
       .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
   };
 
+  const handleEmailInput = (value: string) => {
+    setToEmail(value);
+    
+    // Get the last email in the input (for comma-separated emails)
+    const emails = value.split(',').map(e => e.trim());
+    const currentInput = emails[emails.length - 1];
+    
+    if (currentInput.length > 0) {
+      const filtered = allSuggestions.filter(s =>
+        s.email.toLowerCase().includes(currentInput.toLowerCase()) ||
+        s.name.toLowerCase().includes(currentInput.toLowerCase())
+      );
+      setFilteredSuggestions(filtered);
+      setShowSuggestions(true);
+    } else {
+      setFilteredSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionSelect = (suggestion: EmailSuggestion) => {
+    const emails = toEmail.split(',').map(e => e.trim());
+    emails[emails.length - 1] = suggestion.email;
+    const newEmail = emails.filter(e => e).join(', ') + ', ';
+    setToEmail(newEmail);
+    setShowSuggestions(false);
+    setFilteredSuggestions([]);
+    emailInputRef.current?.focus();
+  };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
+          emailInputRef.current && !emailInputRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleSend = async () => {
     setErrorMessage('');
     const recipients = validateEmails(toEmail);
@@ -201,17 +302,45 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
             )}
 
             {/* To */}
-            <div>
+            <div className="relative">
               <label className="block text-xs font-semibold text-gray-600 mb-1">
                 To <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={toEmail}
-                onChange={(e) => setToEmail(e.target.value)}
-                placeholder="email@example.com, another@example.com"
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-              />
+              <div className="relative">
+                <input
+                  ref={emailInputRef}
+                  type="text"
+                  value={toEmail}
+                  onChange={(e) => handleEmailInput(e.target.value)}
+                  onFocus={() => toEmail.length > 0 && setShowSuggestions(true)}
+                  placeholder="email@example.com, another@example.com"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                />
+                
+                {/* Dropdown Suggestions */}
+                {showSuggestions && filteredSuggestions.length > 0 && (
+                  <div
+                    ref={suggestionsRef}
+                    className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"
+                  >
+                    {filteredSuggestions.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSuggestionSelect(suggestion)}
+                        className="w-full flex items-start gap-2 px-3 py-2 hover:bg-sky-50 transition-colors text-left border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{suggestion.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{suggestion.email}</p>
+                        </div>
+                        <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded whitespace-nowrap ml-2">
+                          {suggestion.role}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-gray-400 mt-1">Separate multiple recipients with commas</p>
             </div>
 

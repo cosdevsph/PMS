@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Mail, Loader2, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import html2canvas from 'html2canvas-pro';
@@ -7,6 +7,14 @@ import { PMSInvoiceTemplate } from '@/components/invoices/PMSInvoiceTemplate';
 import type { InvoiceClinicInfo, NextAppointmentInfo } from '@/components/invoices/PMSInvoiceTemplate';
 import type { Invoice } from '@/types/billing';
 import { useClinicSettings } from '@/hooks/useClinicSettings';
+import { getPractitioners } from '@/features/clinics/clinic.api';
+import axiosInstance from '@/lib/axios';
+
+interface EmailSuggestion {
+  name: string;
+  email: string;
+  role: string;
+}
 
 interface SendInvoiceEmailModalProps {
   isOpen: boolean;
@@ -35,7 +43,8 @@ export const SendInvoiceEmailModal: React.FC<SendInvoiceEmailModalProps> = ({
   clinic,
   nextAppointment,
 }) => {
-  const [toEmail, setToEmail] = useState(patientEmail);
+  const [emails, setEmails] = useState<string[]>([patientEmail]);
+  const [emailInput, setEmailInput] = useState('');
   const [subject, setSubject] = useState(`Invoice #${invoiceNumber} - Appointment Invoice`);
   const [body, setBody] = useState(
     `Dear ${patientName},\n\n` +
@@ -51,6 +60,13 @@ export const SendInvoiceEmailModal: React.FC<SendInvoiceEmailModalProps> = ({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const { emailEnabled } = useClinicSettings();
+
+  // Email suggestions state
+  const [allSuggestions, setAllSuggestions] = useState<EmailSuggestion[]>([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<EmailSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Auto-generate PDF from PMSInvoiceTemplate on mount
   const generatePdf = useCallback(async () => {
@@ -96,10 +112,10 @@ export const SendInvoiceEmailModal: React.FC<SendInvoiceEmailModalProps> = ({
         templateEl.style.width = '100%';
       }
 
-      // Capture to canvas at exact A4 width
+      // Capture to canvas at exact A4 width with optimized scale
       const captureHeight = Math.max(container.scrollHeight, A4_HEIGHT_PX);
       const canvas = await html2canvas(container, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
@@ -108,8 +124,8 @@ export const SendInvoiceEmailModal: React.FC<SendInvoiceEmailModalProps> = ({
         windowWidth: A4_WIDTH_PX,
       });
 
-      // Convert to PDF — always fill full A4 width
-      const imgData = canvas.toDataURL('image/png');
+      // Convert to PDF with JPEG compression for smaller file size
+      const imgData = canvas.toDataURL('image/jpeg', 0.85);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = 210;
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -118,9 +134,9 @@ export const SendInvoiceEmailModal: React.FC<SendInvoiceEmailModalProps> = ({
       const maxHeight = 297;
       if (pdfHeight > maxHeight) {
         // Scale to fit height, but always stretch to full width
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, maxHeight);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, maxHeight);
       } else {
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       }
 
       // Convert to File
@@ -148,9 +164,119 @@ export const SendInvoiceEmailModal: React.FC<SendInvoiceEmailModalProps> = ({
     }
   }, [isOpen, invoice, generatePdf]);
 
+  // Fetch email suggestions on modal open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let cancelled = false;
+
+    const fetchEmailSuggestions = async () => {
+      try {
+        // Fetch practitioners
+        const practitionersData = await getPractitioners();
+        const practitionerSuggestions = practitionersData.practitioners.map(p => ({
+          name: p.name,
+          email: p.email,
+          role: p.role || 'PRACTITIONER',
+        }));
+
+        // Fetch staff/admin users
+        interface User {
+          email: string;
+          first_name: string;
+          last_name: string;
+          role: string;
+        }
+        const usersResponse = await axiosInstance.get('/users/');
+        const users = usersResponse.data.results || usersResponse.data;
+        const userSuggestions = (users as User[])
+          .filter((u: User) => u.email && (u.role === 'STAFF' || u.role === 'ADMIN'))
+          .map((u: User) => ({
+            name: `${u.first_name} ${u.last_name}`,
+            email: u.email,
+            role: u.role,
+          }));
+
+        // Combine and deduplicate
+        const combined = [...practitionerSuggestions, ...userSuggestions];
+        const uniqueSuggestions = Array.from(
+          new Map(combined.map(s => [s.email, s])).values()
+        );
+
+        if (!cancelled) setAllSuggestions(uniqueSuggestions);
+      } catch (err) {
+        // Silently fail - suggestions are optional
+        if (!cancelled) console.error('Failed to fetch email suggestions:', err);
+      }
+    };
+
+    fetchEmailSuggestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
+          emailInputRef.current && !emailInputRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleEmailInput = (value: string) => {
+    setEmailInput(value);
+    
+    // Check if user pressed space to add email
+    if (value.endsWith(' ')) {
+      const emailToAdd = value.trim();
+      if (emailToAdd && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToAdd) && !emails.includes(emailToAdd)) {
+        setEmails([...emails, emailToAdd]);
+        setEmailInput('');
+        setShowSuggestions(false);
+      } else if (!emailToAdd) {
+        setEmailInput('');
+      }
+      return;
+    }
+    
+    // Filter suggestions as user types
+    if (value.length > 0) {
+      const filtered = allSuggestions.filter(s =>
+        s.email.toLowerCase().includes(value.toLowerCase()) ||
+        s.name.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredSuggestions(filtered);
+      setShowSuggestions(true);
+    } else {
+      setFilteredSuggestions(allSuggestions);
+      setShowSuggestions(allSuggestions.length > 0);
+    }
+  };
+
+  const handleSuggestionSelect = (suggestion: EmailSuggestion) => {
+    if (!emails.includes(suggestion.email)) {
+      setEmails([...emails, suggestion.email]);
+    }
+    setEmailInput('');
+    setShowSuggestions(false);
+    setFilteredSuggestions([]);
+    emailInputRef.current?.focus();
+  };
+
+  const removeEmail = (emailToRemove: string) => {
+    setEmails(emails.filter(e => e !== emailToRemove));
+  };
+
   const handleSend = async () => {
-    if (!toEmail.trim()) {
-      setErrorMessage('Please enter a recipient email address');
+    if (emails.length === 0) {
+      setErrorMessage('Please enter at least one recipient email address');
       return;
     }
 
@@ -161,8 +287,11 @@ export const SendInvoiceEmailModal: React.FC<SendInvoiceEmailModalProps> = ({
     try {
       const token = localStorage.getItem('access_token');
       
+      // Join emails with comma (no spaces) for backend
+      const emailsToSend = emails.join(',');
+      
       const formData = new FormData();
-      formData.append('to_email', toEmail);
+      formData.append('to_email', emailsToSend);
       formData.append('subject', subject);
       formData.append('body', body);
 
@@ -258,17 +387,66 @@ export const SendInvoiceEmailModal: React.FC<SendInvoiceEmailModalProps> = ({
             )}
 
             {/* To Email */}
-            <div>
+            <div className="relative">
               <label className="block text-xs font-semibold text-gray-600 mb-1">
                 To <span className="text-red-500">*</span>
               </label>
-              <input
-                type="email"
-                value={toEmail}
-                onChange={(e) => setToEmail(e.target.value)}
-                placeholder="patient@example.com"
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-              />
+              <div className="relative">
+                <div className="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus-within:outline-none focus-within:ring-2 focus-within:ring-sky-500 focus-within:border-transparent bg-white flex flex-wrap gap-2 items-center">
+                  {/* Email Chips */}
+                  {emails.map((email, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-sky-100 text-sky-700 rounded-lg text-xs font-medium"
+                    >
+                      <span className="truncate">{email}</span>
+                      <button
+                        onClick={() => removeEmail(email)}
+                        className="ml-0.5 hover:bg-sky-200 rounded p-0.5 transition-colors"
+                        type="button"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  
+                  {/* Input for new email */}
+                  <input
+                    ref={emailInputRef}
+                    type="text"
+                    value={emailInput}
+                    onChange={(e) => handleEmailInput(e.target.value)}
+                    onFocus={() => emailInput.length > 0 && setShowSuggestions(true)}
+                    placeholder={emails.length === 0 ? "patient@example.com" : "Add more emails..."}
+                    className="flex-1 min-w-[150px] outline-none bg-transparent text-sm"
+                  />
+                </div>
+                
+                {/* Dropdown Suggestions */}
+                {showSuggestions && filteredSuggestions.length > 0 && (
+                  <div
+                    ref={suggestionsRef}
+                    className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"
+                  >
+                    {filteredSuggestions.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSuggestionSelect(suggestion)}
+                        className="w-full flex items-start gap-2 px-3 py-2 hover:bg-sky-50 transition-colors text-left border-b border-gray-100 last:border-b-0"
+                        type="button"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{suggestion.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{suggestion.email}</p>
+                        </div>
+                        <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded whitespace-nowrap ml-2">
+                          {suggestion.role}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Subject */}

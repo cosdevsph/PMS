@@ -19,7 +19,6 @@ import type { Invoice } from '@/types/billing';
 import { AppointmentEditForm }    from './AppointmentEditForm';
 import { CancelAppointmentModal } from './CancelAppointmentModal';
 import { AddRecurringAppointments } from './AddRecurringAppointments';
-import { ClinicalNotesTab } from './ClinicalNotesTab';
 import { createRecurringAppointments } from '../appointment.api';
 import toast from 'react-hot-toast';
 import { useAppointmentEdit }     from '../hooks/useAppointmentEdit';
@@ -743,6 +742,10 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
                   onClick={() => {
                     if (tab.isDropdown) {
                       setShowAppointmentDropdown(!showAppointmentDropdown);
+                    } else if (tab.key === 'clinical_notes') {
+                      // Redirect to PatientCasesNotesPage
+                      onClose();
+                      navigate(`/patients/${appointment.patient}/cases`);
                     } else {
                       setActiveTab(tab.key);
                       if (isEditing) cancelEdit();
@@ -1189,7 +1192,9 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
 
             {/* ── Clinical Notes Tab ── */}
             {activeTab === 'clinical_notes' && (
-              <ClinicalNotesTab appointmentId={appointment.id} />
+              <div className="flex items-center justify-center py-8">
+                <p className="text-sm text-gray-500">Redirecting to Clinical Notes...</p>
+              </div>
             )}
           </div>
         </div>
