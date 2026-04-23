@@ -116,7 +116,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://malasakit-web.vercel.app",
+    "https://malasakit.cosedevs.com",
     "https://malasakit.com",
 ]
 
@@ -137,7 +137,7 @@ CLOUDINARY_STORAGE = {
 # Add production frontend URL dynamically
 if not DEBUG:
     CORS_ALLOWED_ORIGINS += [
-        os.getenv('FRONTEND_URL', 'https://malasakit-web.vercel.app'),
+        os.getenv('FRONTEND_URL', 'https://malasakit.cosedevs.com'),
         'https://www.mespms.com',
     ]
 
