@@ -47,9 +47,14 @@ class UserSerializer(serializers.ModelSerializer):
     def get_avatar_url(self, obj) -> str | None:
         """Return the full URL for the avatar image."""
         request = self.context.get('request')
-        if obj.avatar and request:
-            return request.build_absolute_uri(obj.avatar.url)
-        return None
+        if not obj.avatar:
+            return None
+
+        # Cloudinary already returns an absolute URL; local storage returns /media/...
+        avatar_url = obj.avatar.url
+        if request:
+            return request.build_absolute_uri(avatar_url)
+        return avatar_url
 
     def get_clinic_branch_name(self, obj) -> str | None:
         if obj.clinic_branch:

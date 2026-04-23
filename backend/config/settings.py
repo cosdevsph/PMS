@@ -126,6 +126,12 @@ cloudinary.config(
     api_secret=os.getenv("CLOUDINARY_API_SECRET"),
 )
 
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME', ''),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY', ''),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET', ''),
+}
+
 
 
 # Add production frontend URL dynamically
@@ -290,17 +296,31 @@ SMS_REMINDERS_ENABLED   = os.getenv('SMS_REMINDERS_ENABLED', 'False') == 'True'
 # Cloudinary Settings
 CLOUDINARY_URL = os.getenv('CLOUDINARY_URL')
 
-# Use Cloudinary in production, local storage in development
+# Django 5+ storage configuration
 if DEBUG:
-    # Development: use local file storage
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 else:
-    # Production: use Cloudinary
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
 
 # Cloudinary static files (optional, for delivering static assets via Cloudinary)
-# STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
+# STORAGES['staticfiles'] = {
+#     'BACKEND': 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
+# }
 
 # Static files
 STATIC_URL = '/static/'
