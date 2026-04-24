@@ -5,16 +5,24 @@ import {
   Receipt, Plus, Printer, AlertCircle,
   RefreshCw, ChevronDown, Building2, Edit3, Trash2,
   Save, XCircle, Search, UserCircle, ClipboardList,
-  ExternalLink, Repeat, List,
+  ExternalLink, Repeat, List, Stethoscope,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Appointment } from '@/types';
 import { getPatient } from '@/features/patients/patient.api';
+import { getNotes } from '@/features/clinical-template/clinical-templates.api';
+import type { ClinicalNote } from '@/types/clinicalTemplate';
 import { APPOINTMENT_STATUS_COLORS, APPOINTMENT_TYPE_LABELS } from '@/types';
 import { billingApi } from '@/features/billing/billing.api';
 import type { ClinicService } from '@/features/billing/billing.api';
 import type { Invoice } from '@/types/billing';
+import {
+  getCaseNoteCount,
+  getCaseNotes,
+  listPatientCases,
+  type PatientCase,
+} from '@/features/patients/patientCases.storage';
 
 import { AppointmentEditForm }    from './AppointmentEditForm';
 import { CancelAppointmentModal } from './CancelAppointmentModal';
@@ -626,6 +634,13 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
     enabled: !!appointment?.patient,
   });
 
+  const { data: patientNotes = [] } = useQuery<ClinicalNote[]>({
+    queryKey: ['appointment-patient-notes', appointment?.patient],
+    queryFn: () => getNotes({ patient: appointment!.patient }),
+    enabled: !!appointment?.patient,
+    staleTime: 60 * 1000,
+  });
+
   const handleViewFullProfile = () => {
     if (patient) {
       onClose();
@@ -657,6 +672,25 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
   const isCancelled   = appointment.status === 'CANCELLED';
   const isCompleted   = appointment.status === 'COMPLETED';
   const isTerminal    = isCancelled || isCompleted;
+
+  const patientCases = listPatientCases(appointment.patient);
+
+  const caseMetrics: Record<string, { noteCount: number; lastUpdated: string }> = {};
+  patientCases.forEach((caseItem: PatientCase) => {
+    const notes = getCaseNotes(appointment.patient, caseItem.id, patientNotes);
+    const noteCount = getCaseNoteCount(appointment.patient, caseItem.id, patientNotes);
+    const latestNoteDate = notes
+      .map((note) => note.updated_at || note.date)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+
+    caseMetrics[caseItem.id] = {
+      noteCount,
+      lastUpdated: latestNoteDate || caseItem.createdAt,
+    };
+  });
+
+  const primaryCase: PatientCase | null = patientCases[0] ?? null;
+  const primaryCaseMetrics = primaryCase ? caseMetrics[primaryCase.id] : null;
 
   const formatDuration = (minutes: number): string => {
     if (minutes < 60) return `${minutes} min`;
@@ -695,7 +729,7 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
 
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl pointer-events-auto max-h-[90vh] overflow-hidden flex flex-col"
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl pointer-events-auto max-h-[90vh] overflow-hidden flex flex-col"
           onClick={e => e.stopPropagation()}
         >
           {/* ── Header ── */}
@@ -830,97 +864,260 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
           {/* ── Content ── */}
           <div className="flex-1 overflow-y-auto px-6 py-5">
             {activeTab === 'client' && (
-              <div className="space-y-4">
-                {loadingPatient ? (
-                  <div className="flex items-center justify-center py-8">
-                    <RefreshCw className="w-5 h-5 text-sky-500 animate-spin mr-2" />
-                    <span className="text-sm text-gray-500">Loading patient information...</span>
-                  </div>
-                ) : patient ? (
-                  <>
-                    <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
-                      <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide mb-3">
-                        Client Personal Information
-                      </p>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-sky-500 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs text-gray-500">Patient Name</p>
-                            <p className="font-semibold text-gray-800">{patient.full_name}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Tag className="w-4 h-4 text-sky-500 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs text-gray-500">Patient ID</p>
-                            <p className="font-semibold text-gray-800 font-mono">{patient.patient_number}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-sky-500 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs text-gray-500">Date of Birth</p>
-                            <p className="font-semibold text-gray-800">
-                              {patient.date_of_birth ? (
-                                <>
-                                  {format(new Date(patient.date_of_birth), 'MMM d, yyyy')} ({patient.age} yrs)
-                                </>
-                              ) : '—'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-sky-500 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs text-gray-500">Address</p>
-                            <p className="font-semibold text-gray-800">
-                              {patient.address ? `${patient.address}, ${patient.city}, ${patient.province}` : '—'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-sky-500 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs text-gray-500">Phone</p>
-                            <p className="font-semibold text-gray-800">{patient.phone || '—'}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-sky-500 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs text-gray-500">Email</p>
-                            <p className="font-semibold text-gray-800">{patient.email || '—'}</p>
-                          </div>
-                        </div>
+              <div className="space-y-5">
+                {/* 3-Column Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  {/* ── Column 1: Client Information ── */}
+                  <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 mb-4">
+                      <User className="w-4 h-4 text-sky-600 shrink-0" />
+                      <h3 className="text-lg font-semibold text-gray-900">Client Information</h3>
+                    </div>
+
+                    {loadingPatient ? (
+                      <div className="flex items-center gap-2 text-xs text-gray-500 py-5">
+                        <div className="w-4 h-4 border-2 border-sky-300 border-t-sky-600 rounded-full animate-spin" />
+                        Loading...
                       </div>
-                    </div>
-                    <div className="text-center py-4">
-                      <button
-                        onClick={handleViewFullProfile}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-lg hover:bg-sky-100 transition-colors"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        View Full Profile
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
-                    <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide mb-3">
-                      Client Personal Information
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-sky-500 flex-shrink-0" />
+                    ) : patient ? (
+                      <div className="space-y-2.5">
+                        {/* Full Name */}
                         <div>
-                          <p className="text-xs text-gray-500">Patient Name</p>
-                          <p className="font-semibold text-gray-800">{appointment.patient_name}</p>
+                          <p className="text-xs text-gray-500 mb-0.5">Full Name</p>
+                          <p className="text-sm font-medium text-gray-900">{patient.full_name}</p>
                         </div>
+
+                        <div className="pt-1 border-t border-gray-100">
+                          <p className="text-xs text-gray-500 mb-0.5">Patient ID</p>
+                          <p className="text-sm font-medium text-gray-900 font-mono">{patient.patient_number}</p>
+                        </div>
+
+                        {/* Email */}
+                        {patient.email && (
+                          <div className="pt-1 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-0.5">Email</p>
+                            <p className="text-sm font-medium text-gray-900 truncate">{patient.email}</p>
+                          </div>
+                        )}
+
+                        {/* Phone */}
+                        {patient.phone && (
+                          <div className="pt-1 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-0.5">Phone</p>
+                            <p className="text-sm font-medium text-gray-900">{patient.phone}</p>
+                          </div>
+                        )}
+
+                        {/* Gender */}
+                        {patient.gender && (
+                          <div className="pt-1 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-0.5">Gender</p>
+                            <p className="text-sm font-medium text-gray-900">{patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}</p>
+                          </div>
+                        )}
+
+                        {/* Date of Birth */}
+                        {patient.date_of_birth && (
+                          <div className="pt-1 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-0.5">Date of Birth</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {format(new Date(patient.date_of_birth), 'MMM d, yyyy')} ({patient.age} yrs)
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Address */}
+                        {patient.address && (
+                          <div className="pt-1 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-0.5">Address</p>
+                            <p className="text-sm font-medium text-gray-900 line-clamp-2">
+                              {patient.city && patient.province
+                                ? `${patient.address}, ${patient.city}, ${patient.province}`
+                                : patient.address}
+                            </p>
+                          </div>
+                        )}
+
+                        {patient.philhealth_number && (
+                          <div className="pt-1 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-0.5">PhilHealth</p>
+                            <p className="text-sm font-medium text-gray-900">{patient.philhealth_number}</p>
+                          </div>
+                        )}
+
+                        {patient.medical_conditions && (
+                          <div className="pt-1 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-0.5">Medical Conditions</p>
+                            <p className="text-sm font-medium text-gray-900 line-clamp-3">{patient.medical_conditions}</p>
+                          </div>
+                        )}
+
+                        {patient.allergies && (
+                          <div className="pt-1 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-0.5">Allergies</p>
+                            <p className="text-sm font-medium text-gray-900 line-clamp-3">{patient.allergies}</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Fallback to appointment.patient_name */}
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Patient Name</p>
+                          <p className="text-sm font-medium text-gray-900">{appointment.patient_name}</p>
+                        </div>
+                        <div className="pt-4 text-xs text-gray-400 italic">
+                          Additional details unavailable
+                        </div>
+                      </div>
+                    )}
+
+                    {patient && (
+                      <div className="pt-4 mt-4 border-t border-gray-100">
+                        <button
+                          onClick={handleViewFullProfile}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-lg hover:bg-sky-100 transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          View Full Profile
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Column 2: Appointment Details ── */}
+                  <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Calendar className="w-4 h-4 text-sky-600 shrink-0" />
+                      <h3 className="text-lg font-semibold text-gray-900">Appointment Details</h3>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {/* Date */}
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Date</p>
+                        <p className="text-sm font-medium text-gray-900">{format(new Date(appointment.date), 'MMM d, yyyy')}</p>
+                      </div>
+
+                      {/* Time */}
+                      <div className="pt-1 border-t border-gray-100">
+                        <p className="text-xs text-gray-500 mb-0.5">Time</p>
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          <p className="text-sm font-medium text-gray-900">{fmt12(appointment.start_time)} – {fmt12(appointment.end_time)}</p>
+                        </div>
+                      </div>
+
+                      {/* Duration */}
+                      <div className="pt-1 border-t border-gray-100">
+                        <p className="text-xs text-gray-500 mb-0.5">Duration</p>
+                        <p className="text-sm font-medium text-gray-900">{formatDuration(appointment.duration_minutes)}</p>
+                      </div>
+
+                      {/* Service / Type */}
+                      <div className="pt-1 border-t border-gray-100">
+                        <p className="text-xs text-gray-500 mb-0.5">Service</p>
+                        {appointment.service_color ? (
+                          <span
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white"
+                            style={{ backgroundColor: appointment.service_color }}
+                          >
+                            {typeLabel}
+                          </span>
+                        ) : (
+                          <p className="text-sm font-medium text-gray-900">{typeLabel}</p>
+                        )}
+                      </div>
+
+                      {/* Practitioner */}
+                      <div className="pt-1 border-t border-gray-100">
+                        <p className="text-xs text-gray-500 mb-0.5">Practitioner</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {appointment.practitioner_name || <span className="text-gray-400 font-normal italic">Unassigned</span>}
+                        </p>
+                      </div>
+
+                      {/* Location / Clinic */}
+                      {appointment.location_name && (
+                        <div className="pt-1 border-t border-gray-100">
+                          <p className="text-xs text-gray-500 mb-0.5">Location</p>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            <p className="text-sm font-medium text-gray-900">{appointment.location_name}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="pt-1 border-t border-gray-100">
+                        <p className="text-xs text-gray-500 mb-0.5">Arrival Status</p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                          appointment.arrival_status === 'ARRIVED'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : appointment.arrival_status === 'DNA'
+                              ? 'bg-red-50 text-red-700 border-red-200'
+                              : 'bg-gray-50 text-gray-700 border-gray-200'
+                        }`}>
+                          {appointment.arrival_status === 'ARRIVED'
+                            ? 'Arrived'
+                            : appointment.arrival_status === 'DNA'
+                              ? 'Did Not Arrive'
+                              : 'No Status'}
+                        </span>
                       </div>
                     </div>
                   </div>
-                )}
+
+                  {/* ── Column 3: Case Details ── */}
+                  <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Stethoscope className="w-4 h-4 text-sky-600 shrink-0" />
+                      <h3 className="text-lg font-semibold text-gray-900">Case Details</h3>
+                    </div>
+
+                    {primaryCase ? (
+                      <div className="space-y-2.5">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Case Name</p>
+                          <p className="text-sm font-medium text-gray-900">{primaryCase.title}</p>
+                        </div>
+
+                        <div className="pt-1 border-t border-gray-100">
+                          <p className="text-xs text-gray-500 mb-0.5">Case Description</p>
+                          <p className="text-sm font-medium text-gray-900 line-clamp-3">
+                            {primaryCase.description || 'No description'}
+                          </p>
+                        </div>
+
+                        <div className="pt-1 border-t border-gray-100">
+                          <p className="text-xs text-gray-500 mb-0.5">Linked Clinical Notes</p>
+                          <p className="text-sm font-medium text-gray-900">{primaryCaseMetrics?.noteCount ?? 0}</p>
+                        </div>
+
+                        <div className="pt-1 border-t border-gray-100">
+                          <p className="text-xs text-gray-500 mb-0.5">Latest Clinical Note</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {primaryCaseMetrics?.lastUpdated
+                              ? format(new Date(primaryCaseMetrics.lastUpdated), 'MMM d, yyyy')
+                              : '—'}
+                          </p>
+                        </div>
+
+                        <div className="pt-1 border-t border-gray-100">
+                          <p className="text-xs text-gray-500 mb-0.5">Status</p>
+                          <p className="text-sm font-medium text-gray-900">{primaryCase.status}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="w-11 h-11 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
+                          <FileText className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <p className="text-sm font-medium text-gray-600 mb-1">No case assigned</p>
+                        <p className="text-xs text-gray-400">No case found in patient case records.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
