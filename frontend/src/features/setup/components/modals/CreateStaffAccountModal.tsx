@@ -4,7 +4,7 @@ import type { CreateStaffData, StaffFormErrors, StaffMember } from '../../types/
 import type { DutySchedule, DutyDay } from '@/features/clinics/clinic.api';
 import { TITLE_OPTIONS, DISCIPLINE_OPTIONS, GENDER_OPTIONS } from '../../types/staff.types';
 import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';
-import { formatPHPhone, isValidPHPhone } from '@/utils/phoneFormatter';
+import { formatPHPhone, isValidPHPhone, normalizePHPhone } from '@/utils/phoneFormatter';
 
 const DUTY_DAY_OPTIONS: { value: DutyDay; label: string }[] = [
   { value: 'Mon', label: 'Mon' },
@@ -201,8 +201,9 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     setLoading(true);
     setErrors({});
     try {
-      console.log('[CreateStaffModal] Calling onSubmit with:', formData);
-      await onSubmit(formData);
+      const payload: CreateStaffData = { ...formData, phone: normalizePHPhone(formData.phone) };
+      console.log('[CreateStaffModal] Calling onSubmit with:', payload);
+      await onSubmit(payload);
       console.log('[CreateStaffModal] onSubmit completed successfully');
       handleClose();
     } catch (err: any) {
