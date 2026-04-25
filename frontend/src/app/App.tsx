@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth.store';
@@ -88,8 +88,67 @@ const NotificationBellGuard = () => {
 const GlobalLogoutModal = () => {
   const { isOpen, close } = useLogoutConfirm();
   const { logout }        = useAuthStore();
-  const handleConfirm = () => { close(); logout(); };
-  return <LogoutConfirmModal isOpen={isOpen} onConfirm={handleConfirm} onCancel={close} />;
+  const [showSuccess, setShowSuccess] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleConfirm = () => {
+    close();
+    logout();
+    setShowSuccess(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setShowSuccess(false), 4000);
+  };
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  return (
+    <>
+      <LogoutConfirmModal isOpen={isOpen} onConfirm={handleConfirm} onCancel={close} />
+
+      {/* ── Logout success notification ── */}
+      <div
+        className={`fixed top-5 right-5 z-99999 transition-all duration-500 ${
+          showSuccess ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3 pointer-events-none'
+        }`}
+      >
+        <div className="flex items-start gap-3 bg-white rounded-2xl shadow-2xl border border-gray-100 px-5 py-4 min-w-70 max-w-sm">
+          {/* Indicator lights */}
+          <div className="flex flex-col items-center gap-1.5 pt-0.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-300" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-100" />
+          </div>
+
+          {/* Message */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 leading-snug">Logged out successfully</p>
+            <p className="text-xs text-gray-500 mt-0.5">You have been securely signed out of Malasakit.</p>
+          </div>
+
+          {/* Close */}
+          <button
+            onClick={() => setShowSuccess(false)}
+            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
+            aria-label="Dismiss"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Auto-dismiss progress bar */}
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full overflow-hidden">
+          <div
+            className={`h-full bg-emerald-400 origin-left ${
+              showSuccess ? 'animate-[shrink_4s_linear_forwards]' : ''
+            }`}
+            style={showSuccess ? { animation: 'shrink 4s linear forwards' } : {}}
+          />
+        </div>
+      </div>
+    </>
+  );
 };
 
 const Unauthorized = () => (

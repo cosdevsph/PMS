@@ -186,13 +186,29 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
     # Production (Render PostgreSQL)
+    # IMPORTANT: CONN_MAX_AGE must be 0 for ASGI servers (Daphne / uvicorn).
+    # Persistent connections (CONN_MAX_AGE > 0) are designed for WSGI's
+    # thread-per-request model.  Under ASGI each async task/coroutine can open
+    # its own connection and Django never reliably closes them, so the pool
+    # fills up and you get "remaining connection slots are reserved for
+    # roles with the SUPERUSER attribute".
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=True
+            conn_max_age=0,       # Close connections after every request (ASGI-safe)
+            ssl_require=True,
         )
     }
+    # Verify a stored connection is still alive before reusing it.
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+    # TCP keepalive / connect timeout so stale connections are detected fast.
+    DATABASES["default"].setdefault("OPTIONS", {}).update({
+        "connect_timeout": 10,       # Fail fast instead of hanging
+        "keepalives": 1,
+        "keepalives_idle": 30,       # Send first probe after 30 s of inactivity
+        "keepalives_interval": 10,   # Retry every 10 s
+        "keepalives_count": 5,       # Give up after 5 failed probes
+    })
 else:
     # Local development
     DATABASES = {
@@ -203,6 +219,8 @@ else:
             'PASSWORD': os.getenv('DB_PASSWORD', ''),
             'HOST': os.getenv('DB_HOST', 'localhost'),
             'PORT': os.getenv('DB_PORT', '5432'),
+            'CONN_MAX_AGE': 0,       # Keep consistent with production behaviour
+            'CONN_HEALTH_CHECKS': True,
         }
     }
 

@@ -87,6 +87,12 @@ p, span, li, div,
 .animate-notif-enter { animation: notif-enter 0.25s ease-out forwards; }
 .animate-notif-exit  { animation: notif-exit  0.25s ease-in  forwards; }
 
+/* Logout success progress bar */
+@keyframes shrink {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
 /* Component Primitives */
 @layer components {  .card-base {
     @apply rounded-3xl bg-white shadow-sm border border-gray-100;
