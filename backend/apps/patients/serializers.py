@@ -4,6 +4,7 @@ from .models import (
     Patient, IntakeForm,
     ServiceCategory, PortalService,
     PortalLink, PortalBooking, PatientConsent,
+    ClientFormRequest,
 )
 
 
@@ -427,6 +428,7 @@ class PortalBookingResponseSerializer(serializers.ModelSerializer):
 
 class PatientConsentSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source='patient.get_full_name', read_only=True)
+    clinic_name  = serializers.SerializerMethodField()
 
     class Meta:
         model = PatientConsent
@@ -434,14 +436,34 @@ class PatientConsentSerializer(serializers.ModelSerializer):
             'id',
             'patient',
             'patient_name',
+            'clinic_name',
             'portal_link',
+            'type',
             'full_name',
             'email',
             'consent_text',
             'signature',
             'created_at',
         ]
-        read_only_fields = ['id', 'created_at', 'patient_name']
+        read_only_fields = ['id', 'created_at', 'patient_name', 'clinic_name']
+
+    def get_clinic_name(self, obj) -> str | None:
+        if obj.patient and obj.patient.clinic:
+            return obj.patient.clinic.name
+        return None
+
+
+class PatientConsentCreateSerializer(serializers.ModelSerializer):
+    """Used by authenticated clinic staff to create/update a patient consent."""
+
+    class Meta:
+        model = PatientConsent
+        fields = ['full_name', 'email', 'consent_text', 'signature', 'type']
+
+    def validate_signature(self, value: str):
+        if not value or not value.strip():
+            raise serializers.ValidationError('Signature is required.')
+        return value
 
 
 class PublicPatientConsentCreateSerializer(serializers.ModelSerializer):
@@ -454,3 +476,68 @@ class PublicPatientConsentCreateSerializer(serializers.ModelSerializer):
         if not value or not value.strip():
             raise serializers.ValidationError('Signature is required.')
         return value
+
+
+# ─── Client Form Request serializers ─────────────────────────────────────────
+
+class ClientFormRequestSerializer(serializers.ModelSerializer):
+    patient_name   = serializers.CharField(source='patient.get_full_name', read_only=True)
+    patient_email  = serializers.EmailField(source='patient.email', read_only=True)
+    sent_by_name   = serializers.SerializerMethodField()
+    is_expired     = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model  = ClientFormRequest
+        fields = [
+            'id', 'patient', 'patient_name', 'patient_email',
+            'token', 'expires_at', 'is_completed', 'completed_at',
+            'sent_by', 'sent_by_name', 'is_expired', 'created_at',
+            'accepted_terms', 'accepted_privacy', 'accepted_at',
+        ]
+        read_only_fields = ['id', 'token', 'completed_at', 'created_at', 'accepted_at']
+
+    def get_sent_by_name(self, obj):
+        if obj.sent_by:
+            return obj.sent_by.get_full_name()
+        return None
+
+
+class PublicClientFormVerifySerializer(serializers.Serializer):
+    """Validates that the submitted email matches the token's patient."""
+    email = serializers.EmailField()
+
+
+class PublicClientFormSubmitSerializer(serializers.Serializer):
+    """Patient-submitted profile data from the public form."""
+
+    # ── Personal info ─────────────────────────────────────────────────────
+    first_name      = serializers.CharField(max_length=100)
+    last_name       = serializers.CharField(max_length=100)
+    date_of_birth   = serializers.DateField()
+    gender          = serializers.ChoiceField(choices=['M', 'F', 'O'])
+    address         = serializers.CharField(max_length=500)
+    province        = serializers.CharField(max_length=100)
+    city            = serializers.CharField(max_length=100)
+    postal_code     = serializers.CharField(max_length=10, required=False, allow_blank=True)
+
+    # ── Emergency contact ─────────────────────────────────────────────────
+    emergency_contact_name         = serializers.CharField(max_length=200)
+    emergency_contact_phone        = serializers.CharField(max_length=15)
+    emergency_contact_relationship = serializers.CharField(max_length=100)
+
+    # ── Medical information ───────────────────────────────────────────────
+    philhealth_number  = serializers.CharField(max_length=50,   required=False, allow_blank=True)
+    medical_conditions = serializers.CharField(max_length=2000, required=False, allow_blank=True)
+    allergies          = serializers.CharField(max_length=2000, required=False, allow_blank=True)
+    medications        = serializers.CharField(max_length=2000, required=False, allow_blank=True)
+
+    # ── Consent ───────────────────────────────────────────────────────────
+    accepted_terms   = serializers.BooleanField()
+    accepted_privacy = serializers.BooleanField()
+
+    def validate(self, attrs):
+        if not attrs.get('accepted_terms') or not attrs.get('accepted_privacy'):
+            raise serializers.ValidationError(
+                'You must accept the Terms & Conditions and Data Privacy Policy.'
+            )
+        return attrs

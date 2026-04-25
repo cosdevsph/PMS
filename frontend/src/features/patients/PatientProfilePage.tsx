@@ -3,13 +3,11 @@ import type { ReactNode } from 'react';
 import {
   Archive,
   ArchiveRestore,
-  CheckCircle,
   Edit,
   Heart,
   Loader2,
   MapPin,
   Phone,
-  Settings,
   User,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -42,27 +40,6 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
 }
-
-interface PatientSettingsDraft {
-  send_email_notifications: boolean;
-  sms_notifications_enabled: boolean;
-  allow_push_notifications: boolean;
-  data_sharing_preferences: Record<string, unknown>;
-}
-
-const buildSettingsDraft = (patient?: {
-  send_email_notifications?: boolean;
-  sms_notifications_enabled?: boolean;
-  allow_push_notifications?: boolean;
-  data_sharing_preferences?: Record<string, unknown>;
-}): PatientSettingsDraft => {
-  return {
-    send_email_notifications: patient?.send_email_notifications ?? true,
-    sms_notifications_enabled: patient?.sms_notifications_enabled ?? false,
-    allow_push_notifications: patient?.allow_push_notifications ?? false,
-    data_sharing_preferences: patient?.data_sharing_preferences ?? {},
-  };
-};
 
 const InfoRow = ({ label, value }: InfoRowProps) => (
   <div>
@@ -127,18 +104,6 @@ export const PatientProfilePage = () => {
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [archiveLoading, setArchiveLoading] = useState(false);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-
-  const [settings, setSettings] = useState<PatientSettingsDraft>(() => buildSettingsDraft());
-  const [originalSettings, setOriginalSettings] = useState<PatientSettingsDraft>(() => buildSettingsDraft());
-
-  useEffect(() => {
-    if (!patient) return;
-
-    const next = buildSettingsDraft(patient);
-    setSettings(next);
-    setOriginalSettings(next);
-  }, [patient]);
 
   const appointmentIdsWithNotes = useMemo(() => getAppointmentIdsWithNotes(clinicalNotes), [clinicalNotes]);
 
@@ -151,8 +116,6 @@ export const PatientProfilePage = () => {
     if (!patient) return 0;
     return listPatientCases(patient.id).length;
   }, [patient]);
-
-  const hasSettingsChanged = JSON.stringify(settings) !== JSON.stringify(originalSettings);
 
   const cards = [
     {
@@ -204,29 +167,6 @@ export const PatientProfilePage = () => {
       const err = error as { response?: { data?: { detail?: string } } };
       toast.error(err.response?.data?.detail || 'Failed to update client');
       throw error;
-    }
-  };
-
-  const handleSaveSettings = async () => {
-    if (!patient) return;
-
-    setIsSavingSettings(true);
-    try {
-      await updatePatient(patient.id, {
-        send_email_notifications: settings.send_email_notifications,
-        sms_notifications_enabled: settings.sms_notifications_enabled,
-        allow_push_notifications: settings.allow_push_notifications,
-        data_sharing_preferences: settings.data_sharing_preferences,
-      } as Partial<CreatePatientData>);
-
-      toast.success('Settings saved successfully');
-      setOriginalSettings(settings);
-      await refreshPatient();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } };
-      toast.error(err.response?.data?.detail || 'Failed to save settings');
-    } finally {
-      setIsSavingSettings(false);
     }
   };
 
@@ -394,78 +334,6 @@ export const PatientProfilePage = () => {
               <InfoRow label="Medical Conditions" value={patient.medical_conditions || 'None reported'} />
               <InfoRow label="Allergies" value={patient.allergies || 'None reported'} />
               <InfoRow label="Current Medications" value={patient.medications || 'None reported'} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Settings className="w-4 h-4 text-sky-600" />
-            <h3 className="text-sm font-semibold text-gray-700">Notification Settings</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-900">Send email notifications automatically?</p>
-                <p className="text-xs text-gray-500 mt-0.5">Enable automatic email reminders for appointments.</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.send_email_notifications}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, send_email_notifications: e.target.checked }))}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-sky-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:bg-white after:border after:border-gray-300 after:rounded-full after:transition-all" />
-              </label>
-            </div>
-
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-900">SMS notifications</p>
-                <p className="text-xs text-gray-500 mt-0.5">Receive appointment reminders via text message.</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.sms_notifications_enabled}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, sms_notifications_enabled: e.target.checked }))}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-sky-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:bg-white after:border after:border-gray-300 after:rounded-full after:transition-all" />
-              </label>
-            </div>
-
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-900">Allow push notifications</p>
-                <p className="text-xs text-gray-500 mt-0.5">Coming soon.</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-not-allowed opacity-60">
-                <input
-                  type="checkbox"
-                  checked={settings.allow_push_notifications}
-                  disabled
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:bg-white after:border after:border-gray-300 after:rounded-full after:transition-all" />
-              </label>
-            </div>
-
-            <div className="pt-2 border-t border-gray-100">
-              <button
-                onClick={handleSaveSettings}
-                disabled={isSavingSettings || !hasSettingsChanged}
-                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  hasSettingsChanged
-                    ? 'text-white bg-sky-600 hover:bg-sky-700'
-                    : 'text-gray-500 bg-gray-100 cursor-not-allowed'
-                } ${isSavingSettings ? 'opacity-60' : ''}`}
-              >
-                {isSavingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                Save Changes
-              </button>
             </div>
           </div>
         </div>

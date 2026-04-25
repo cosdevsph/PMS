@@ -18,6 +18,7 @@ import { RegisterSuccess }        from '@/features/auth/RegisterSuccess';
 import { ForgotPassword }         from '@/features/auth/ForgotPassword';
 import { PortalHome }             from '@/features/patient-portal/pages/PortalHome';
 import { BookAppointmentSuccess } from '@/features/patient-portal/pages/BookAppointmentSuccess';
+import { ClientFormPublicPage }   from '@/features/patients/pages/ClientFormPublicPage';
 
 // Footer Pages - Product
 import { Features }  from '@/features/landing/components/footer-pages/Product/Features';
@@ -52,6 +53,7 @@ import PatientAppointmentsPage from '@/features/patients/PatientAppointmentsPage
 import PatientCasesNotesPage from '@/features/patients/PatientCasesNotesPage';
 import PatientUnassignedNotesPage from '@/features/patients/PatientUnassignedNotesPage';
 import PatientDocumentsPage from '@/features/patients/PatientDocumentsPage';
+import ClientSettings from '@/features/patients/ClientSettings';
 import { PatientProfile } from '@/features/patients/PatientProfile';
 import { ClinicMessages } from '@/features/clinic-messages/ClinicMessages';
 import { NoteEditor }     from '@/features/clinical-template/pages/NoteEditor';
@@ -166,7 +168,8 @@ function App() {
           {/* ── Patient Portal ──────────────────────────────────────── */}
           <Route path="/portal/:token"         element={<PortalHome />} />
           <Route path="/portal/:token/success" element={<BookAppointmentSuccess />} />
-
+          {/* ── Public Client Form ──────────────────────────────────── */}
+          <Route path="/client-form/:token" element={<ClientFormPublicPage />} />
           {/* ── Clinic Setup (first-login admin only) ───────────────── */}
           <Route
             path="/clinic-setup"
@@ -199,6 +202,7 @@ function App() {
             <Route path="unassigned-notes" element={<PatientUnassignedNotesPage />} />
             <Route path="notes" element={<Navigate to="../cases" replace />} />
             <Route path="documents" element={<PatientDocumentsPage />} />
+            <Route path="settings"  element={<ClientSettings />} />
           </Route>
 
           <Route path="/clients/:id"         element={<ProtectedRoute><PatientProfile /></ProtectedRoute>} />

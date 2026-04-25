@@ -356,7 +356,12 @@ class PortalBooking(TimeStampedModel):
 
 
 class PatientConsent(TimeStampedModel):
-    """Stores legally required privacy consent with e-signature for portal bookings."""
+    """Stores legally required privacy consent with e-signature."""
+
+    CONSENT_FORM = 'CONSENT_FORM'
+    TYPE_CHOICES = [
+        (CONSENT_FORM, 'Data Privacy Consent Form'),
+    ]
 
     patient = models.ForeignKey(
         Patient,
@@ -367,13 +372,20 @@ class PatientConsent(TimeStampedModel):
     )
     portal_link = models.ForeignKey(
         PortalLink,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='consents',
+        null=True,
+        blank=True,
+    )
+    type = models.CharField(
+        max_length=50,
+        choices=TYPE_CHOICES,
+        default=CONSENT_FORM,
     )
     full_name = models.CharField(max_length=255)
     email = models.EmailField()
     consent_text = models.TextField()
-    signature = models.TextField()  # base64 image string
+    signature = models.TextField()  # base64 PNG
 
     class Meta:
         db_table = 'patient_consents'
@@ -385,3 +397,53 @@ class PatientConsent(TimeStampedModel):
 
     def __str__(self):
         return f"{self.full_name} Consent"
+
+
+import uuid as _uuid
+
+
+class ClientFormRequest(TimeStampedModel):
+    """
+    Secure, single-use token that lets a patient complete their own profile
+    details through a public link emailed to them by staff.
+    """
+
+    patient = models.ForeignKey(
+        Patient,
+        on_delete=models.CASCADE,
+        related_name='client_form_requests',
+    )
+    token = models.UUIDField(
+        default=_uuid.uuid4,
+        unique=True,
+        editable=False,
+        db_index=True,
+    )
+    expires_at   = models.DateTimeField()
+    is_completed = models.BooleanField(default=False, db_index=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    accepted_terms   = models.BooleanField(default=False)
+    accepted_privacy = models.BooleanField(default=False)
+    accepted_at      = models.DateTimeField(null=True, blank=True)
+    sent_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sent_client_form_requests',
+    )
+
+    class Meta:
+        db_table = 'client_form_requests'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['patient', 'is_completed']),
+        ]
+
+    def __str__(self):
+        return f"ClientFormRequest({self.patient.get_full_name()}, completed={self.is_completed})"
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at

@@ -24,7 +24,9 @@ export interface PatientConsentRecord {
   id: number;
   patient: number | null;
   patient_name?: string;
-  portal_link: number;
+  clinic_name?: string;
+  portal_link: number | null;
+  type: string;
   full_name: string;
   email: string;
   consent_text: string;
@@ -114,5 +116,73 @@ export const getPatientIntakeForms = async (patientId: number) => {
  */
 export const getPatientConsents = async (patientId: number): Promise<PatientConsentRecord[]> => {
   const response = await axiosInstance.get<PatientConsentRecord[]>(`/patients/${patientId}/consents/`);
+  return response.data;
+};
+
+export interface CreateConsentPayload {
+  full_name: string;
+  email: string;
+  consent_text: string;
+  signature: string;
+  type?: string;
+}
+
+/**
+ * Create or replace the patient's consent form (one per patient per type).
+ */
+export const createOrUpdateConsent = async (
+  patientId: number,
+  payload: CreateConsentPayload,
+): Promise<PatientConsentRecord> => {
+  const response = await axiosInstance.post<PatientConsentRecord>(
+    `/patients/${patientId}/create_consent/`,
+    payload,
+  );
+  return response.data;
+};
+
+// ─── Client Form Request ───────────────────────────────────────────────────
+
+export interface ClientFormRequestRecord {
+  id: number;
+  patient: number;
+  patient_name: string;
+  patient_email: string;
+  token: string;
+  expires_at: string;
+  is_completed: boolean;
+  completed_at: string | null;
+  is_expired: boolean;
+  sent_by: number | null;
+  sent_by_name: string | null;
+  created_at: string;
+  accepted_terms:   boolean;
+  accepted_privacy: boolean;
+  accepted_at:      string | null;
+}
+
+/**
+ * Send a client form request email to the patient.
+ * POST /patients/{id}/send_client_form/
+ */
+export const sendClientForm = async (
+  patientId: number,
+  options?: { to?: string; body?: string },
+): Promise<ClientFormRequestRecord> => {
+  const response = await axiosInstance.post<ClientFormRequestRecord>(
+    `/patients/${patientId}/send_client_form/`,
+    options ?? {},
+  );
+  return response.data;
+};
+
+/**
+ * List all client form requests for a patient.
+ * GET /patients/{id}/client_form_requests/
+ */
+export const getClientFormRequests = async (patientId: number): Promise<ClientFormRequestRecord[]> => {
+  const response = await axiosInstance.get<ClientFormRequestRecord[]>(
+    `/patients/${patientId}/client_form_requests/`,
+  );
   return response.data;
 };

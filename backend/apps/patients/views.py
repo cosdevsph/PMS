@@ -13,13 +13,17 @@ from .models import (
     ServiceCategory, PortalService,
     PortalLink, PortalBooking,
     PatientConsent,
+    ClientFormRequest,
 )
 from .serializers import (
     PatientSerializer, IntakeFormSerializer,
     ServiceCategorySerializer, PortalServiceSerializer,
     PortalLinkPublicSerializer, PortalLinkAdminSerializer,
     PortalBookingCreateSerializer, PortalBookingResponseSerializer,
-    PatientConsentSerializer, PublicPatientConsentCreateSerializer,
+    PatientConsentSerializer, PatientConsentCreateSerializer,
+    PublicPatientConsentCreateSerializer,
+    ClientFormRequestSerializer,
+    PublicClientFormVerifySerializer, PublicClientFormSubmitSerializer,
 )
 import logging
 
@@ -198,6 +202,235 @@ class PatientViewSet(viewsets.ModelViewSet):
         ).order_by('-created_at')
         serializer = PatientConsentSerializer(consents, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='create_consent')
+    def create_consent(self, request, pk=None):
+        """
+        POST /api/patients/{id}/create_consent/
+        Creates or replaces the patient's consent form (1 per patient).
+        """
+        patient = self.get_object()
+
+        serializer = PatientConsentCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        consent, _created = PatientConsent.objects.update_or_create(
+            patient=patient,
+            type=serializer.validated_data.get('type', PatientConsent.CONSENT_FORM),
+            defaults={
+                'full_name':    serializer.validated_data['full_name'],
+                'email':        serializer.validated_data['email'],
+                'consent_text': serializer.validated_data['consent_text'],
+                'signature':    serializer.validated_data['signature'],
+            },
+        )
+        return Response(
+            PatientConsentSerializer(consent).data,
+            status=status.HTTP_201_CREATED if _created else status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=['post'], url_path='email_consent')
+    def email_consent(self, request, pk=None):
+        """
+        POST /api/patients/{id}/email_consent/
+        Send a consent form PDF to one or more recipients.
+        Accepts multipart/form-data: to, subject, body, attachment (PDF).
+        """
+        from django.conf import settings
+        from django.core.mail import EmailMessage
+        import threading
+
+        patient = self.get_object()
+        clinic  = patient.clinic
+
+        is_multipart = request.content_type and 'multipart/form-data' in request.content_type
+        if is_multipart:
+            to_raw  = request.POST.get('to', '')
+            subject = request.POST.get('subject', '')
+            body    = request.POST.get('body', '')
+        else:
+            to_raw  = request.data.get('to', '')
+            subject = request.data.get('subject', '')
+            body    = request.data.get('body', '')
+
+        recipients = [e.strip() for e in to_raw.replace(';', ',').split(',') if e.strip()]
+        if not recipients:
+            return Response(
+                {'detail': 'No recipient email address provided.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not subject:
+            subject = f"Data Privacy Consent Form – {patient.get_full_name()}"
+        if not body:
+            body = (
+                f"Dear {patient.get_full_name()},\n\n"
+                f"Please find attached your signed Data Privacy Consent Form.\n\n"
+                f"Best regards,\n{clinic.name if clinic else 'Clinic Team'}"
+            )
+
+        attachment_bytes = None
+        patient_slug = patient.get_full_name().replace(' ', '-').lower()
+        if is_multipart and 'attachment' in request.FILES:
+            attachment_bytes = request.FILES['attachment'].read()
+
+        def _send():
+            try:
+                email_msg = EmailMessage(
+                    subject=subject,
+                    body=body,
+                    from_email=getattr(clinic, 'email', None) or settings.DEFAULT_FROM_EMAIL,
+                    to=recipients,
+                )
+                if attachment_bytes:
+                    email_msg.attach(
+                        f"consent-form-{patient_slug}.pdf",
+                        attachment_bytes,
+                        'application/pdf',
+                    )
+                email_msg.send(fail_silently=True)
+            except Exception:
+                pass
+
+        threading.Thread(target=_send, daemon=True).start()
+
+        return Response({'detail': f"Consent form sent to {', '.join(recipients)}"})
+
+    @action(detail=True, methods=['post'], url_path='send_client_form')
+    def send_client_form(self, request, pk=None):
+        """
+        POST /api/patients/{id}/send_client_form/
+        Generates a secure single-use token, persists a ClientFormRequest, and
+        emails the patient a link to the public form.
+        """
+        from django.conf import settings as django_settings
+        from django.core.mail import EmailMultiAlternatives
+        from django.utils import timezone
+        from datetime import timedelta
+        import threading
+
+        patient = self.get_object()
+        clinic  = patient.clinic
+
+        if not patient.email:
+            return Response(
+                {'detail': 'This patient has no email address on file.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Custom recipient from request body (optional) ──────────────────
+        to_email = (request.data.get('to') or patient.email).strip()
+        body_override = request.data.get('body', '').strip()
+
+        # ── Create a fresh token valid for 72 hours ────────────────────────
+        expires_at = timezone.now() + timedelta(hours=72)
+        form_request = ClientFormRequest.objects.create(
+            patient=patient,
+            expires_at=expires_at,
+            sent_by=request.user,
+        )
+
+        frontend_base = getattr(django_settings, 'FRONTEND_URL', 'http://localhost:5173')
+        form_url = f"{frontend_base}/client-form/{form_request.token}"
+
+        clinic_name = clinic.name if clinic else 'The Clinic'
+        patient_name = patient.get_full_name()
+
+        subject = f"Please Complete Your Client Form — {clinic_name}"
+
+        plain_body = body_override or (
+            f"Dear {patient_name},\n\n"
+            f"We kindly ask you to complete this form prior to your booking so that "
+            f"we can ensure we have all necessary information for your session.\n\n"
+            f"Please click the link below to begin:\n{form_url}\n\n"
+            f"This link expires in 72 hours and can only be used once.\n\n"
+            f"Best regards,\n{clinic_name}"
+        )
+
+        html_body = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,.07)">
+
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#0ea5e9,#2563eb);padding:32px 40px;text-align:center">
+          <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700">{clinic_name}</h1>
+          <p style="margin:8px 0 0;color:#bae6fd;font-size:14px">Client Information Form</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:40px">
+          <p style="margin:0 0 16px;font-size:16px;color:#374151">Dear <strong>{patient_name}</strong>,</p>
+          <p style="margin:0 0 24px;font-size:15px;color:#6b7280;line-height:1.6">
+            We kindly ask you to complete this form prior to your booking so that we can ensure
+            we have all the necessary information for your session.
+          </p>
+
+          <!-- CTA Button -->
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px">
+            <tr><td align="center" style="border-radius:10px;background:#0ea5e9">
+              <a href="{form_url}"
+                 style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:10px">
+                Click Here To Start Filling Out
+              </a>
+            </td></tr>
+          </table>
+
+          <p style="margin:0 0 8px;font-size:13px;color:#9ca3af;text-align:center">
+            Or copy this link into your browser:
+          </p>
+          <p style="margin:0 0 32px;font-size:12px;color:#6b7280;text-align:center;word-break:break-all">
+            <a href="{form_url}" style="color:#0ea5e9">{form_url}</a>
+          </p>
+
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;font-size:13px;color:#6b7280">
+            <strong>Note:</strong> This link expires in <strong>72 hours</strong> and can only be used once.
+            If you have any questions, please contact us directly.
+          </div>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#f9fafb;padding:20px 40px;text-align:center;font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb">
+          Best regards, <strong>{clinic_name}</strong>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+        def _send():
+            try:
+                msg = EmailMultiAlternatives(
+                    subject=subject,
+                    body=plain_body,
+                    from_email=getattr(clinic, 'email', None) or django_settings.DEFAULT_FROM_EMAIL,
+                    to=[to_email],
+                )
+                msg.attach_alternative(html_body, 'text/html')
+                msg.send(fail_silently=True)
+            except Exception:
+                pass
+
+        threading.Thread(target=_send, daemon=True).start()
+
+        return Response(
+            ClientFormRequestSerializer(form_request).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=['get'], url_path='client_form_requests')
+    def client_form_requests(self, request, pk=None):
+        """GET /api/patients/{id}/client_form_requests/ — list form requests for a patient."""
+        patient = self.get_object()
+        qs = ClientFormRequest.objects.filter(patient=patient).order_by('-created_at')
+        return Response(ClientFormRequestSerializer(qs, many=True).data)
 
     @action(detail=True, methods=['post'], url_path='archive')
     def archive(self, request, pk=None):
@@ -769,3 +1002,176 @@ class PortalBookingDiaryView(APIView):
             })
 
         return Response(data)
+
+
+# ─── Public Client Form endpoints (no auth) ───────────────────────────────────
+
+class PublicClientFormView(APIView):
+    """
+    GET /api/public/client-form/{token}/
+    Returns minimal info (clinic name, patient first name) so the email-verify
+    page can display a friendly greeting — without leaking sensitive data.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        from django.utils import timezone as tz
+
+        try:
+            form_request = ClientFormRequest.objects.select_related(
+                'patient__clinic'
+            ).get(token=token)
+        except ClientFormRequest.DoesNotExist:
+            return Response({'detail': 'Invalid or expired link.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if form_request.is_completed:
+            return Response({'detail': 'This form has already been completed.'}, status=status.HTTP_410_GONE)
+
+        if tz.now() > form_request.expires_at:
+            return Response({'detail': 'This link has expired.'}, status=status.HTTP_410_GONE)
+
+        patient     = form_request.patient
+        clinic_name = patient.clinic.name if patient.clinic else 'The Clinic'
+
+        return Response({
+            'clinic_name':   clinic_name,
+            'patient_first': patient.first_name,
+            'expires_at':    form_request.expires_at,
+        })
+
+
+class PublicClientFormVerifyView(APIView):
+    """
+    POST /api/public/client-form/{token}/verify/
+    Body: { "email": "patient@example.com" }
+    If the email matches the patient linked to the token, returns the patient's
+    current profile data for pre-filling the form.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, token):
+        from django.utils import timezone as tz
+
+        serializer = PublicClientFormVerifySerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            form_request = ClientFormRequest.objects.select_related('patient').get(token=token)
+        except ClientFormRequest.DoesNotExist:
+            return Response({'detail': 'Invalid or expired link.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if form_request.is_completed:
+            return Response({'detail': 'This form has already been completed.'}, status=status.HTTP_410_GONE)
+
+        if tz.now() > form_request.expires_at:
+            return Response({'detail': 'This link has expired.'}, status=status.HTTP_410_GONE)
+
+        submitted_email = serializer.validated_data['email'].strip().lower()
+        patient_email   = (form_request.patient.email or '').strip().lower()
+
+        if submitted_email != patient_email:
+            return Response(
+                {'detail': 'The email address does not match our records.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        patient = form_request.patient
+        return Response({
+            'first_name':    patient.first_name,
+            'last_name':     patient.last_name,
+            'date_of_birth': patient.date_of_birth.isoformat() if patient.date_of_birth else '',
+            'gender':        patient.gender,
+            'address':       patient.address,
+            'province':      patient.province,
+            'city':          patient.city,
+            'postal_code':   patient.postal_code,
+            # Emergency contact
+            'emergency_contact_name':         patient.emergency_contact_name,
+            'emergency_contact_phone':        patient.emergency_contact_phone,
+            'emergency_contact_relationship': patient.emergency_contact_relationship,
+            # Medical info
+            'philhealth_number':  patient.philhealth_number,
+            'medical_conditions': patient.medical_conditions,
+            'allergies':          patient.allergies,
+            'medications':        patient.medications,
+        })
+
+
+class PublicClientFormSubmitView(APIView):
+    """
+    POST /api/public/client-form/{token}/submit/
+    Validates the email and updates the patient record, then marks the token used.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, token):
+        from django.utils import timezone as tz
+
+        try:
+            form_request = ClientFormRequest.objects.select_related('patient').get(token=token)
+        except ClientFormRequest.DoesNotExist:
+            return Response({'detail': 'Invalid or expired link.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if form_request.is_completed:
+            return Response({'detail': 'This form has already been completed.'}, status=status.HTTP_410_GONE)
+
+        if tz.now() > form_request.expires_at:
+            return Response({'detail': 'This link has expired.'}, status=status.HTTP_410_GONE)
+
+        # Email re-verification on submit (prevents someone guessing the URL)
+        submitted_email = (request.data.get('email') or '').strip().lower()
+        patient_email   = (form_request.patient.email or '').strip().lower()
+        if submitted_email != patient_email:
+            return Response(
+                {'detail': 'Email verification failed.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = PublicClientFormSubmitSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data    = serializer.validated_data
+        patient = form_request.patient
+
+        # Update patient profile
+        patient.first_name    = data['first_name']
+        patient.last_name     = data['last_name']
+        patient.date_of_birth = data['date_of_birth']
+        patient.gender        = data['gender']
+        patient.address       = data['address']
+        patient.province      = data['province']
+        patient.city          = data['city']
+        if data.get('postal_code'):
+            patient.postal_code = data['postal_code']
+        # Emergency contact
+        patient.emergency_contact_name         = data['emergency_contact_name']
+        patient.emergency_contact_phone        = data['emergency_contact_phone']
+        patient.emergency_contact_relationship = data['emergency_contact_relationship']
+        # Medical info
+        if data.get('philhealth_number'):
+            patient.philhealth_number = data['philhealth_number']
+        patient.medical_conditions = data.get('medical_conditions', '')
+        patient.allergies          = data.get('allergies', '')
+        patient.medications        = data.get('medications', '')
+        patient.save(update_fields=[
+            'first_name', 'last_name', 'date_of_birth', 'gender',
+            'address', 'province', 'city', 'postal_code',
+            'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship',
+            'philhealth_number', 'medical_conditions', 'allergies', 'medications',
+        ])
+
+        # Mark token as used and record consent
+        now = tz.now()
+        form_request.is_completed  = True
+        form_request.completed_at  = now
+        form_request.accepted_terms   = data['accepted_terms']
+        form_request.accepted_privacy = data['accepted_privacy']
+        form_request.accepted_at      = now
+        form_request.save(update_fields=[
+            'is_completed', 'completed_at',
+            'accepted_terms', 'accepted_privacy', 'accepted_at',
+        ])
+
+        return Response({'detail': 'Your information has been saved. Thank you!'})

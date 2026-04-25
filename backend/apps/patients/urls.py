@@ -6,6 +6,7 @@ from .views import (
     PortalLinkViewSet, PortalBookingAdminViewSet,
     PublicPortalView, PublicPortalBookView, PublicAvailableSlotsView,
     PublicPortalConsentCreateView,
+    PublicClientFormView, PublicClientFormVerifyView, PublicClientFormSubmitView,
 )
 
 router = DefaultRouter()
@@ -40,4 +41,21 @@ urlpatterns = [
         name='public-portal-slots',
     ),
     path('portal-bookings/diary/', PortalBookingDiaryView.as_view(), name='portal-bookings-diary'),
+
+    # ── Public Client Form (token-gated, no auth) ─────────────────────────
+    path(
+        'public/client-form/<uuid:token>/',
+        PublicClientFormView.as_view(),
+        name='public-client-form',
+    ),
+    path(
+        'public/client-form/<uuid:token>/verify/',
+        PublicClientFormVerifyView.as_view(),
+        name='public-client-form-verify',
+    ),
+    path(
+        'public/client-form/<uuid:token>/submit/',
+        PublicClientFormSubmitView.as_view(),
+        name='public-client-form-submit',
+    ),
 ]
