@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import type { CreateStaffData, StaffFormErrors, StaffMember } from '../../types/staff.types';
 import type { DutySchedule, DutyDay } from '@/features/clinics/clinic.api';
 import { TITLE_OPTIONS, DISCIPLINE_OPTIONS, GENDER_OPTIONS } from '../../types/staff.types';
@@ -17,6 +18,16 @@ const DUTY_DAY_OPTIONS: { value: DutyDay; label: string }[] = [
 ];
 
 const DEFAULT_DUTY_DAYS: DutyDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+/** Returns true if any two blocks in the list overlap in time. */
+const hasScheduleConflict = (blocks: { start: string; end: string }[]): boolean => {
+  if (blocks.length < 2) return false;
+  const sorted = [...blocks].sort((a, b) => a.start.localeCompare(b.start));
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (sorted[i].end > sorted[i + 1].start) return true;
+  }
+  return false;
+};
 
 const makeDefaultSchedule = (days: DutyDay[]): DutySchedule =>
   Object.fromEntries(days.map(d => [d, [{ start: '08:00', end: '17:00' }]])) as DutySchedule;
@@ -175,6 +186,11 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
             }
           }
           if (e.duty_schedule) break;
+          // Check for overlapping blocks within the same day
+          if (!e.duty_schedule && hasScheduleConflict(blocks)) {
+            e.duty_schedule = `${day}: shift blocks overlap. Please adjust the time ranges.`;
+            break;
+          }
         }
       }
       if (!formData.lunch_start_time) e.lunch_start_time = 'Required';
@@ -194,6 +210,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     
     if (!validateForm()) {
       console.log('[CreateStaffModal] Validation failed, errors:', errors);
+      toast.error('Please fix the highlighted errors before submitting.', { id: 'staff-validation' });
       return;
     }
     
@@ -205,11 +222,35 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       console.log('[CreateStaffModal] Calling onSubmit with:', payload);
       await onSubmit(payload);
       console.log('[CreateStaffModal] onSubmit completed successfully');
+      toast.success(
+        isEditMode ? 'Staff account updated successfully.' : 'Staff member created successfully.',
+      );
       handleClose();
     } catch (err: any) {
       console.error('[CreateStaffModal] Submit error:', err);
       console.error('[CreateStaffModal] Error response:', err?.response?.data);
-      setErrors({ general: err.message || 'Failed to save. Please try again.' });
+      const data = err?.response?.data as Record<string, string | string[]> | undefined;
+      if (data) {
+        const mapped: StaffFormErrors = {};
+        const pick = (v: string | string[]) => (Array.isArray(v) ? v[0] : v);
+        if (data.email)  mapped.email  = pick(data.email);
+        if (data.phone)  mapped.phone  = pick(data.phone);
+        if (data.detail) mapped.general = pick(data.detail);
+        if (Object.keys(mapped).length > 0) {
+          setErrors(mapped);
+          if (mapped.email)        toast.error(mapped.email,   { id: 'staff-email-error' });
+          else if (mapped.phone)   toast.error(mapped.phone,   { id: 'staff-phone-error' });
+          else if (mapped.general) toast.error(mapped.general);
+        } else {
+          const msg = err.message || 'Failed to save. Please try again.';
+          setErrors({ general: msg });
+          toast.error(msg);
+        }
+      } else {
+        const msg = err.message || 'Failed to save. Please try again.';
+        setErrors({ general: msg });
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }

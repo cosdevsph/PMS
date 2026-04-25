@@ -85,8 +85,10 @@ export const AdminRegister: React.FC = () => {
     e.preventDefault();
     setServerError('');
 
-    if (!validateForm() || isLoading) {
-        return;
+    if (isLoading) return;
+    if (!validateForm()) {
+      toast.error('Please fix the highlighted errors before submitting.');
+      return;
     }
 
     setIsLoading(true);
@@ -118,28 +120,33 @@ export const AdminRegister: React.FC = () => {
         const authError = error as AuthError;
         
         if (authError.email) {
-        setValidationErrors(prev => ({ ...prev, email: authError.email![0] }));
+          setValidationErrors(prev => ({ ...prev, email: authError.email![0] }));
+          toast.error('This email address is already registered. Please use a different email.');
         }
         if (authError.phone) {
-        setValidationErrors(prev => ({ ...prev, phone: authError.phone![0] }));
+          setValidationErrors(prev => ({ ...prev, phone: authError.phone![0] }));
+          if (!authError.email) {
+            toast.error('This phone number is already in use. Please use a different number.');
+          }
         }
         if (authError.first_name) {
-        setValidationErrors(prev => ({ ...prev, first_name: authError.first_name![0] }));
+          setValidationErrors(prev => ({ ...prev, first_name: authError.first_name![0] }));
         }
         if (authError.last_name) {
-        setValidationErrors(prev => ({ ...prev, last_name: authError.last_name![0] }));
+          setValidationErrors(prev => ({ ...prev, last_name: authError.last_name![0] }));
         }
         if (authError.company_name) {
-        setValidationErrors(prev => ({ ...prev, company_name: authError.company_name![0] }));
+          setValidationErrors(prev => ({ ...prev, company_name: authError.company_name![0] }));
         }
         
-        const errorMessage = 
-        authError.detail || 
-        authError.non_field_errors?.[0] || 
-        'Registration failed. Please try again.';
-        
-        setServerError(errorMessage);
-        toast.error(errorMessage);
+        if (!authError.email && !authError.phone) {
+          const errorMessage = 
+            authError.detail || 
+            authError.non_field_errors?.[0] || 
+            'Registration failed. Please try again.';
+          setServerError(errorMessage);
+          toast.error(errorMessage);
+        }
         
     } finally {
         setIsLoading(false);

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { X, User, MapPin, Phone, Heart } from 'lucide-react';
+import toast from 'react-hot-toast';
 import type { Patient, CreatePatientData } from '@/types';
 import { useAuthStore } from '@/store/auth.store';
 import { PhLocationSelect } from '@/components/location/PhLocationSelect';
@@ -139,6 +140,7 @@ export const PatientModal: React.FC<PatientModalProps> = ({
         setActiveTab('emergency');
       else
         setActiveTab('medical');
+      toast.error('Please fix the highlighted errors before submitting.', { id: 'patient-validation' });
       return;
     }
     setIsLoading(true);
@@ -146,8 +148,24 @@ export const PatientModal: React.FC<PatientModalProps> = ({
       await onSave(formData);
       onClose();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: Record<string, string> } };
-      if (err.response?.data) setErrors(err.response.data);
+      const err = error as { response?: { data?: Record<string, string | string[]> } };
+      const data = err.response?.data;
+      if (data) {
+        // Flatten potential array values from DRF
+        const flat: Record<string, string> = {};
+        Object.entries(data).forEach(([k, v]) => {
+          flat[k] = Array.isArray(v) ? v[0] : (v as string);
+        });
+        setErrors(flat);
+        if (flat.email)
+          toast.error(flat.email, { id: 'patient-email-error' });
+        else if (flat.phone)
+          toast.error(flat.phone, { id: 'patient-phone-error' });
+        else
+          toast.error('Failed to save client. Please check the form and try again.');
+      } else {
+        toast.error('Something went wrong. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -29,7 +29,10 @@ class AuthViewSet(viewsets.GenericViewSet):
     permission_classes = [AllowAny]
     
     def get_permissions(self):
-        if self.action in ['register_admin', 'register', 'login', 'verify_token']:
+        if self.action in [
+            'register_admin', 'register', 'login', 'verify_token',
+            'forgot_password', 'verify_code', 'reset_password_with_code',
+        ]:
             permission_classes = [AllowAny]
         else:
             permission_classes = [IsAuthenticated]
