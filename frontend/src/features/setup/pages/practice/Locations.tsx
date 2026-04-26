@@ -181,11 +181,24 @@ export const PracticeOption1: React.FC = () => {
       await refetch();
       setModalOpen(false);
     } catch (err: any) {
-      toast.error(
-        err.response?.data?.detail ||
-        err.response?.data?.name?.[0] ||
-        'Failed to save branch'
-      );
+      const data = err.response?.data;
+      if (data && typeof data === 'object') {
+        // Collect all field-level error messages
+        const fieldMessages = Object.entries(data)
+          .filter(([, v]) => v)
+          .map(([key, val]) => {
+            const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+            const msg = Array.isArray(val) ? val[0] : String(val);
+            return key === 'detail' ? msg : `${label}: ${msg}`;
+          });
+        if (fieldMessages.length > 0) {
+          fieldMessages.forEach((msg) => toast.error(msg));
+        } else {
+          toast.error('Failed to save branch');
+        }
+      } else {
+        toast.error(err.message || 'Failed to save branch');
+      }
     } finally {
       setSaving(false);
     }

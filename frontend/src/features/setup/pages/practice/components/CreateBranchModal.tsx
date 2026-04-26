@@ -5,7 +5,7 @@ import { ClinicLocationPicker } from '@/components/maps/ClinicLocationPicker';
 import type { ReverseGeocodeResult } from '@/components/maps/ClinicLocationPicker';
 import { forwardGeocode } from '@/utils/geocode';
 import type { ClinicBranch, CreateBranchData } from '@/types/clinic';
-import { formatPHPhone, isValidPHPhone } from '@/utils/phoneFormatter';
+import { formatPHPhone, isValidPHPhone, normalizePHPhone } from '@/utils/phoneFormatter';
 
 const EMPTY_FORM = {
   location: '',
@@ -149,7 +149,7 @@ export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({
     const payload: CreateBranchData = {
       name:            composedName,
       email:           form.email,
-      phone:           form.phone,
+      phone:           normalizePHPhone(form.phone),
       address:         form.address,
       city:            form.city,
       province:        form.province,
