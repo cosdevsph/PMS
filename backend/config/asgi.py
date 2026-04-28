@@ -11,11 +11,13 @@ from django.urls import re_path, path
 from apps.common.ws_auth import JWTAuthMiddleware
 from apps.notifications.consumers import NotificationConsumer
 from apps.messages.consumers import ChatConsumer, PresenceConsumer
+from apps.appointments.consumers import CalendarConsumer
 
 websocket_urlpatterns = [
     path('ws/notifications/', NotificationConsumer.as_asgi()),
     re_path(r'^ws/messages/(?P<conversation_id>\d+)/$', ChatConsumer.as_asgi()),
     re_path(r'^ws/presence/$', PresenceConsumer.as_asgi()),
+    path('ws/calendar/', CalendarConsumer.as_asgi()),
 ]
 
 application = ProtocolTypeRouter({

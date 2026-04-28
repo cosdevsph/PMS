@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { X, Loader2, GitBranch, Hash, Edit3, MapPin, Bell } from 'lucide-react';
 import { PhLocationSelect } from '@/components/location/PhLocationSelect';
 import { ClinicLocationPicker } from '@/components/maps/ClinicLocationPicker';
@@ -115,6 +115,15 @@ export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({
     }
   }, [isOpen, mode, branch, mainClinicName]);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     const formatted = name === 'phone' ? formatPHPhone(value) : value;
@@ -174,7 +183,7 @@ export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
           className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl pointer-events-auto max-h-[90vh] overflow-hidden flex flex-col"

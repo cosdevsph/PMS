@@ -30,6 +30,7 @@ from apps.appointments.email_service import (
 from apps.appointments.sms_service import send_appointment_reminder_sms
 from apps.appointments.reminder_service import send_all_reminders, send_bulk_all_reminders
 from apps.appointments.filters import AppointmentFilter
+from apps.appointments.calendar_events import emit_calendar_event, get_main_clinic_id
 from django.core.cache import cache
 
 import logging
@@ -128,6 +129,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.warning("Booking confirmation failed for appt #%s: %s", appointment.id, e)
 
+        # ── Broadcast real-time calendar event ───────────────────────────
+        try:
+            main_clinic_id = get_main_clinic_id(self.request.user)
+            if main_clinic_id:
+                data = AppointmentSerializer(appointment, context={'request': self.request}).data
+                emit_calendar_event(main_clinic_id, 'APPOINTMENT_CREATED', dict(data))
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for appt #%s: %s', appointment.id, exc)
+
     def perform_update(self, serializer):
         old_status = serializer.instance.status
         appointment = serializer.save(updated_by=self.request.user)
@@ -149,6 +159,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 patient.save(update_fields=['last_visit_date'])
             except Exception as e:
                 logger.warning("Failed to update last_visit_date for patient: %s", e)
+
+        # ── Broadcast real-time calendar event ───────────────────────────
+        try:
+            main_clinic_id = get_main_clinic_id(self.request.user)
+            if main_clinic_id:
+                data = AppointmentSerializer(appointment, context={'request': self.request}).data
+                emit_calendar_event(main_clinic_id, 'APPOINTMENT_UPDATED', dict(data))
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for appt #%s: %s', appointment.id, exc)
 
     # ── NEW: Partial edit action (restricted fields only) ─────────────────────
     @action(detail=True, methods=['patch'], url_path='edit')
@@ -193,6 +212,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             serializer.save(updated_by=request.user)
 
         full_serializer = AppointmentSerializer(appointment, context={'request': request})
+
+        # ── Broadcast real-time calendar event ───────────────────────────
+        try:
+            main_clinic_id = get_main_clinic_id(request.user)
+            if main_clinic_id:
+                emit_calendar_event(main_clinic_id, 'APPOINTMENT_UPDATED', dict(full_serializer.data))
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for appt #%s: %s', appointment.id, exc)
+
         return Response(full_serializer.data, status=status.HTTP_200_OK)
 
     # ── ENHANCED: Cancel with reason + email ─────────────────────────────────
@@ -264,6 +292,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         response_data['email_sent']    = email_sent
         if email_warning:
             response_data['email_warning'] = email_warning
+
+        # ── Broadcast real-time calendar event ───────────────────────────
+        try:
+            main_clinic_id = get_main_clinic_id(request.user)
+            if main_clinic_id:
+                emit_calendar_event(main_clinic_id, 'APPOINTMENT_UPDATED', dict(full_serializer.data))
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for appt #%s (cancel): %s', appointment.id, exc)
 
         return Response(response_data, status=status.HTTP_200_OK)
 
@@ -339,6 +375,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 'email_sent': email_sent,
             })
             cancelled_count += 1
+
+            # ── Broadcast real-time calendar event ───────────────────────
+            try:
+                main_clinic_id = get_main_clinic_id(request.user)
+                if main_clinic_id:
+                    apt_data = AppointmentSerializer(apt, context={'request': request}).data
+                    emit_calendar_event(main_clinic_id, 'APPOINTMENT_UPDATED', dict(apt_data))
+            except Exception as exc:
+                logger.warning('Calendar WS emit failed for bulk-cancel appt #%s: %s', apt.id, exc)
 
         # Handle IDs that weren't found
         found_ids = {r['appointment_id'] for r in results}
@@ -464,6 +509,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.status = 'CONFIRMED'
         appointment.updated_by = request.user
         appointment.save(update_fields=['status', 'updated_by', 'updated_at'])
+        self._emit_appointment_update(request, appointment)
         return Response({'status': 'appointment confirmed'})
 
     @action(detail=True, methods=['post'])
@@ -472,6 +518,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.status = 'CHECKED_IN'
         appointment.updated_by = request.user
         appointment.save(update_fields=['status', 'updated_by', 'updated_at'])
+        self._emit_appointment_update(request, appointment)
         return Response({'status': 'patient checked in'})
 
     @action(detail=True, methods=['post'])
@@ -480,6 +527,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.status = 'IN_PROGRESS'
         appointment.updated_by = request.user
         appointment.save(update_fields=['status', 'updated_by', 'updated_at'])
+        self._emit_appointment_update(request, appointment)
         return Response({'status': 'appointment started'})
 
     @action(detail=True, methods=['post'])
@@ -488,7 +536,32 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.status = 'COMPLETED'
         appointment.updated_by = request.user
         appointment.save(update_fields=['status', 'updated_by', 'updated_at'])
+        self._emit_appointment_update(request, appointment)
         return Response({'status': 'appointment completed'})
+
+    def _emit_appointment_update(self, request, appointment):
+        """Helper to broadcast APPOINTMENT_UPDATED without repeating try/except boilerplate."""
+        try:
+            main_clinic_id = get_main_clinic_id(request.user)
+            if main_clinic_id:
+                data = AppointmentSerializer(appointment, context={'request': request}).data
+                emit_calendar_event(main_clinic_id, 'APPOINTMENT_UPDATED', dict(data))
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for appt #%s: %s', appointment.id, exc)
+
+    def perform_destroy(self, instance):
+        """Emit APPOINTMENT_DELETED before soft-deleting the appointment."""
+        try:
+            main_clinic_id = get_main_clinic_id(self.request.user)
+            if main_clinic_id:
+                emit_calendar_event(
+                    main_clinic_id,
+                    'APPOINTMENT_DELETED',
+                    {'id': instance.id, 'clinic': instance.clinic_id},
+                )
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for appt delete #%s: %s', instance.id, exc)
+        super().perform_destroy(instance)
 
     # ── Available slots (existing) ────────────────────────────────────────────
     @action(detail=False, methods=['get'])
@@ -1257,12 +1330,40 @@ class BlockAppointmentViewSet(viewsets.ModelViewSet):
         return BlockAppointmentSerializer
 
     def perform_create(self, serializer):
-        """Set created_by to the current user"""
-        serializer.save(created_by=self.request.user)
+        """Set created_by and broadcast BLOCK_CREATED event."""
+        block = serializer.save(created_by=self.request.user)
+        try:
+            main_clinic_id = get_main_clinic_id(self.request.user)
+            if main_clinic_id:
+                data = BlockAppointmentSerializer(block, context={'request': self.request}).data
+                emit_calendar_event(main_clinic_id, 'BLOCK_CREATED', dict(data))
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for block #%s: %s', block.id, exc)
 
     def perform_update(self, serializer):
-        """Set modified_by to the current user"""
-        serializer.save(modified_by=self.request.user)
+        """Set modified_by and broadcast BLOCK_UPDATED event."""
+        block = serializer.save(modified_by=self.request.user)
+        try:
+            main_clinic_id = get_main_clinic_id(self.request.user)
+            if main_clinic_id:
+                data = BlockAppointmentSerializer(block, context={'request': self.request}).data
+                emit_calendar_event(main_clinic_id, 'BLOCK_UPDATED', dict(data))
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for block #%s: %s', block.id, exc)
+
+    def perform_destroy(self, instance):
+        """Emit BLOCK_DELETED before soft-deleting the block appointment."""
+        try:
+            main_clinic_id = get_main_clinic_id(self.request.user)
+            if main_clinic_id:
+                emit_calendar_event(
+                    main_clinic_id,
+                    'BLOCK_DELETED',
+                    {'id': instance.id, 'clinic': instance.clinic_id},
+                )
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for block delete #%s: %s', instance.id, exc)
+        super().perform_destroy(instance)
 
     # ── Custom action: Get block appointments for calendar ───────────────────────
     @action(detail=False, methods=['get'], url_path='calendar')

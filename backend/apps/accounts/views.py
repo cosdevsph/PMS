@@ -650,6 +650,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     last_name=serializer.validated_data['last_name'],
                     phone=serializer.validated_data.get('phone', ''),
                     role=role,
+                    position=serializer.validated_data.get('position', ''),
                     clinic=request.user.clinic,
                     clinic_branch=branch,          # ✅ assign branch
                     password_changed=False
@@ -681,14 +682,16 @@ class UserViewSet(viewsets.ModelViewSet):
                         practitioner_created = True
                         logger.info(f"Practitioner profile created for: {user.email}")
                 elif role == 'STAFF':
-                    # Save Staff availability directly on the User model
+                    # Save Staff availability and discipline directly on the User model
                     duty_schedule = request.data.get('duty_schedule', None)
                     duty_days = request.data.get('duty_days', [])
-                    if duty_schedule is not None or duty_days:
+                    discipline = request.data.get('discipline', '')
+                    if duty_schedule is not None or duty_days or discipline:
                         user.duty_schedule = duty_schedule
                         user.duty_days = duty_days if isinstance(duty_days, list) else []
                         user.lunch_start_time = request.data.get('lunch_start_time', '12:00')
                         user.lunch_end_time = request.data.get('lunch_end_time', '13:00')
+                        user.discipline = discipline
                         user.save()
 
                 company_name = request.user.clinic.name if request.user.clinic else 'Your Organization'

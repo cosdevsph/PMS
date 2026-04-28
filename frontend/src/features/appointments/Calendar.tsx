@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import {
   format, startOfWeek, addDays,
   startOfMonth, endOfMonth, endOfWeek,
@@ -7,6 +7,7 @@ import {
 import { useAppointmentModal }   from './hooks/useAppointmentModal';
 import { useDragSelection }      from './hooks/useDragSelection';
 import { useCalendarData }       from './hooks/useCalendarData.ts';
+import { useCalendarSocket }     from './hooks/useCalendarSocket';
 import { useBlockHover }         from './hooks/useBlockHover';
 import { useAppointmentDrag }    from './hooks/useAppointmentDrag';
 import { useBlockAppointmentDrag } from './hooks/useBlockAppointmentDrag';
@@ -104,6 +105,8 @@ interface CalendarProps {
   appointmentRefreshKey?: number;
   /** Called after recurring appointments are saved, so parent can trigger a refetch */
   onRecurringCreated?: () => void;
+  /** Called when the real-time WebSocket connection status changes. */
+  onLiveStatusChange?: (isLive: boolean) => void;
 }
 
 // isColorDark / hexToRgba removed — replaced by solid color styling
@@ -261,6 +264,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   onSlotAction,
   appointmentRefreshKey,
   onRecurringCreated,
+  onLiveStatusChange,
 }) => {
   // Staff entries have string ids (e.g. 'staff-5') — appointment hooks need a numeric id or null.
   // Pass null for String ids so appointment filtering is effectively disabled for Staff.
@@ -437,9 +441,12 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     appointments,
     updateAppointmentInState,
     addAppointmentToState,
+    removeAppointmentFromState,
     refetchAppointments: refetch,
     blockAppointments,
     updateBlockAppointmentInState,
+    addBlockAppointmentToState,
+    removeBlockAppointmentFromState,
     refetchBlockAppointments,
   } = useCalendarData({
     startDate,
@@ -448,6 +455,28 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     clinicBranchId: selectedClinicBranchId,
     blockClinicBranchId: null,
   });
+
+  // ── Real-time WebSocket sync ────────────────────────────────────────────────
+  // APPOINTMENT_CREATED: respect the current branch-tab filter before adding.
+  const handleWsAppointmentCreated = useCallback((apt: Appointment) => {
+    const aptBranch = apt.branch_id ?? apt.clinic;
+    if (selectedClinicBranchId !== null && aptBranch !== selectedClinicBranchId) return;
+    addAppointmentToState(apt);
+  }, [selectedClinicBranchId, addAppointmentToState]);
+
+  const { isConnected: isLive } = useCalendarSocket({
+    onAppointmentCreated: handleWsAppointmentCreated,
+    onAppointmentUpdated: updateAppointmentInState,
+    onAppointmentDeleted: removeAppointmentFromState,
+    onBlockCreated:       addBlockAppointmentToState,
+    onBlockUpdated:       updateBlockAppointmentInState,
+    onBlockDeleted:       removeBlockAppointmentFromState,
+  });
+
+  // Propagate live status to parent (e.g. Diary toolbar indicator).
+  useEffect(() => {
+    onLiveStatusChange?.(isLive);
+  }, [isLive, onLiveStatusChange]);
 
   const appointmentsByDate = useMemo(() => {
     const map: Record<string, Appointment[]> = {};

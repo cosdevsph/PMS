@@ -108,6 +108,10 @@ export const useAppointments = ({
     });
   }, []);
 
+  const removeAppointmentFromState = useCallback((appointmentId: number) => {
+    setAppointments(prev => prev.filter(a => a.id !== appointmentId));
+  }, []);
+
   return {
     appointments,
     portalBookings,
@@ -117,5 +121,6 @@ export const useAppointments = ({
     removePortalBooking,
     updateAppointmentInState,
     addAppointmentToState,
+    removeAppointmentFromState,
   };
 };

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { CreateStaffData, StaffFormErrors, StaffMember } from '../../types/staff.types';
 import type { DutySchedule, DutyDay } from '@/features/clinics/clinic.api';
-import { TITLE_OPTIONS, DISCIPLINE_OPTIONS, GENDER_OPTIONS } from '../../types/staff.types';
+import { TITLE_OPTIONS, GENDER_OPTIONS } from '../../types/staff.types';
+import { useDisciplineOptions } from '../../hooks/useDisciplineOptions';
 import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';
 import { formatPHPhone, isValidPHPhone, normalizePHPhone } from '@/utils/phoneFormatter';
 
@@ -107,6 +108,23 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   const [formData, setFormData] = useState<CreateStaffData>(EMPTY_FORM);
   const [errors, setErrors]     = useState<StaffFormErrors>({});
   const [loading, setLoading]   = useState(false);
+
+  // ── Discipline create-inline state ─────────────────────────────────────────
+  const [showCreateDiscipline, setShowCreateDiscipline] = useState(false);
+  const [newDisciplineLabel, setNewDisciplineLabel]     = useState('');
+  const newDisciplineInputRef = useRef<HTMLInputElement>(null);
+  const { allOptions: disciplineOptions, addDiscipline } = useDisciplineOptions();
+
+  const handleAddDiscipline = () => {
+    const created = addDiscipline(newDisciplineLabel);
+    if (!created) {
+      toast.error('Please enter a discipline name.');
+      return;
+    }
+    set('discipline', created.value);
+    setNewDisciplineLabel('');
+    setShowCreateDiscipline(false);
+  };
 
   const { branches, loading: loadingBranches } = useClinicBranches();
 
@@ -222,9 +240,6 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       console.log('[CreateStaffModal] Calling onSubmit with:', payload);
       await onSubmit(payload);
       console.log('[CreateStaffModal] onSubmit completed successfully');
-      toast.success(
-        isEditMode ? 'Staff account updated successfully.' : 'Staff member created successfully.',
-      );
       handleClose();
     } catch (err: any) {
       console.error('[CreateStaffModal] Submit error:', err);
@@ -317,6 +332,15 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     blocks[idx] = { ...blocks[idx], [field]: value };
     setFormData(prev => ({ ...prev, duty_schedule: { ...existing, [day]: blocks } }));
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -507,15 +531,58 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                   {/* Discipline */}
                   <div>
                     <Label required>Discipline</Label>
-                    <select
-                      value={formData.discipline}
-                      onChange={e => set('discipline', e.target.value as any)}
-                      className={selectCls}
-                    >
-                      {DISCIPLINE_OPTIONS.map(o => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
+                    {showCreateDiscipline ? (
+                      <div className="space-y-2">
+                        <input
+                          ref={newDisciplineInputRef}
+                          type="text"
+                          value={newDisciplineLabel}
+                          onChange={e => setNewDisciplineLabel(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') { e.preventDefault(); handleAddDiscipline(); }
+                            if (e.key === 'Escape') { setShowCreateDiscipline(false); setNewDisciplineLabel(''); }
+                          }}
+                          placeholder="e.g. Psychology"
+                          className={inputCls()}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleAddDiscipline}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 text-white rounded-lg text-xs font-semibold hover:bg-sky-700 transition-colors"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            Add
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowCreateDiscipline(false); setNewDisciplineLabel(''); }}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <select
+                        value={formData.discipline ?? ''}
+                        onChange={e => {
+                          if (e.target.value === '__CREATE__') {
+                            setShowCreateDiscipline(true);
+                          } else {
+                            set('discipline', e.target.value);
+                          }
+                        }}
+                        className={selectCls}
+                      >
+                        {disciplineOptions.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                        <option disabled className="text-gray-300">──────────────</option>
+                        <option value="__CREATE__">➕ Create Discipline...</option>
+                      </select>
+                    )}
                   </div>
 
                   {/* Role — toggle buttons */}

@@ -101,6 +101,7 @@ class UserSerializer(serializers.ModelSerializer):
             data['lunch_start_time'] = instance.lunch_start_time or '12:00'
             data['lunch_end_time']   = instance.lunch_end_time or '13:00'
             data['duty_schedule']    = instance.duty_schedule
+            data['discipline']       = instance.discipline or ''
         return data
 
     def validate_clinic_branch(self, value):
@@ -189,7 +190,7 @@ class UserSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password', None)
 
         # Pop fields that do not exist on the User model (Practitioner handles them)
-        for field in ['duty_start_time', 'duty_end_time', 'discipline']:
+        for field in ['duty_start_time', 'duty_end_time']:
             validated_data.pop(field, None)
 
         # duty_days, lunch_start_time, lunch_end_time, duty_schedule are columns on User
@@ -225,6 +226,8 @@ class UserSerializer(serializers.ModelSerializer):
         if instance.role == 'STAFF' or (validated_data.get('role') == 'STAFF'):
             for field, value in shared_availability.items():
                 setattr(instance, field, value)
+            if 'discipline' in practitioner_data:
+                instance.discipline = practitioner_data['discipline']
 
         if password:
             instance.set_password(password)

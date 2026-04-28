@@ -34,10 +34,13 @@ export const useCalendarData = ({
     appointments: appointmentState.appointments,
     updateAppointmentInState: appointmentState.updateAppointmentInState,
     addAppointmentToState: appointmentState.addAppointmentToState,
+    removeAppointmentFromState: appointmentState.removeAppointmentFromState,
     refetchAppointments: appointmentState.refetch,
 
     blockAppointments: blockState.blockAppointments,
     updateBlockAppointmentInState: blockState.updateBlockAppointmentInState,
+    addBlockAppointmentToState: blockState.addBlockAppointmentToState,
+    removeBlockAppointmentFromState: blockState.removeBlockAppointmentFromState,
     refetchBlockAppointments: blockState.refetch,
 
     // Unified loading / error — consumers can gate rendering on these
@@ -47,11 +50,14 @@ export const useCalendarData = ({
     appointmentState.appointments,
     appointmentState.updateAppointmentInState,
     appointmentState.addAppointmentToState,
+    appointmentState.removeAppointmentFromState,
     appointmentState.refetch,
     appointmentState.loading,
     appointmentState.error,
     blockState.blockAppointments,
     blockState.updateBlockAppointmentInState,
+    blockState.addBlockAppointmentToState,
+    blockState.removeBlockAppointmentFromState,
     blockState.refetch,
     blockState.loading,
     blockState.error,

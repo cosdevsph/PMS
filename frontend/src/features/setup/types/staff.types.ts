@@ -32,7 +32,7 @@ export interface StaffMember {
 
   // Additional staff fields
   position?: string;
-  discipline?: DisciplineType;
+  discipline?: string;
   date_of_birth?: string;
   gender?: GenderType;
   address?: string;
@@ -55,7 +55,7 @@ export interface CreateStaffData {
   role: 'STAFF' | 'PRACTITIONER';
   phone: string;
   position?: string;
-  discipline?: DisciplineType;
+  discipline?: string;
   date_of_birth?: string;
   gender?: GenderType;
   address?: string;

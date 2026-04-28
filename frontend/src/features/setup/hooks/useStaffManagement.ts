@@ -40,14 +40,15 @@ export const useStaffManagement = () => {
 
   const handleCreateStaff = async (data: CreateStaffData) => {
     try {
-      const newStaff = await createStaff(data);
-      setStaff((prev) => [...prev, newStaff]);
-      toast.success(`Staff member ${newStaff.first_name} ${newStaff.last_name} created successfully!`);
+      await createStaff(data);
+      // Re-fetch the full list so the newly created member appears with all
+      // computed fields (availability, clinic_branch_name, etc.) properly shaped.
+      await fetchStaff();
+      toast.success(`Staff member ${data.first_name} ${data.last_name} created successfully!`);
       toast.success('Login credentials have been sent to their email.', {
         duration: 5000,
         icon: '📧',
       });
-      return newStaff;
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to create staff member';
       toast.error(message);

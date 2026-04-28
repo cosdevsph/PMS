@@ -61,7 +61,10 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
 
     # Staff position/title (e.g., "Clinic Desk", "Office Manager")
     position = models.CharField(max_length=200, blank=True)
-    
+
+    # Discipline (for STAFF role — PRACTITIONERs use the Practitioner model)
+    discipline = models.CharField(max_length=200, blank=True)
+
     # Clinic association (main clinic)
     clinic = models.ForeignKey(
         'clinics.Clinic',

@@ -30,6 +30,7 @@ export const Diary: React.FC = () => {
   const [selectedClinicBranch, setSelectedClinicBranch] = useState<number | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [calendarReadyDate, setCalendarReadyDate] = useState<Date | null>(null);
+  const [isCalendarLive, setIsCalendarLive] = useState(false);
 
   // ── Admin Compare Mode State ────────────────────────────────────────────────
   const [compareMode, setCompareMode] = useState(false);
@@ -760,6 +761,14 @@ export const Diary: React.FC = () => {
                 </div>
 
                 {/* Add Event Button removed — admin uses double-click / drag-select on calendar */}
+
+                {/* Live status indicator */}
+                {isCalendarLive && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full select-none">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    Live
+                  </span>
+                )}
               </div>
             </div>
 
@@ -778,6 +787,7 @@ export const Diary: React.FC = () => {
                 onSlotAction={handleSlotAction}
                 onAppointmentsReady={setCalendarAppointments}
                 onCalendarReady={setCalendarReadyDate}
+                onLiveStatusChange={setIsCalendarLive}
                 practitionerAvailability={compareMode ? undefined : practitionerAvailabilityForCalendar}
                 allAvailabilities={calendarAllAvailabilities}
                 compareMode={calendarCompareMode}
