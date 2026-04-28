@@ -35,17 +35,19 @@ const getToken = (): string | null => {
 
 export interface CalendarSocketHandlers {
   /** Called when a new appointment is created by any user in the clinic. */
-  onAppointmentCreated:  (apt: Appointment)        => void;
+  onAppointmentCreated?:  (apt: Appointment)        => void;
   /** Called when an existing appointment is updated (any field). */
-  onAppointmentUpdated:  (apt: Appointment)        => void;
+  onAppointmentUpdated?:  (apt: Appointment)        => void;
   /** Called when an appointment is deleted; receives its numeric id. */
-  onAppointmentDeleted:  (id: number)              => void;
+  onAppointmentDeleted?:  (id: number)              => void;
   /** Called when a new block-appointment event is created. */
-  onBlockCreated:        (block: BlockAppointment) => void;
+  onBlockCreated?:        (block: BlockAppointment) => void;
   /** Called when an existing block-appointment event is updated. */
-  onBlockUpdated:        (block: BlockAppointment) => void;
+  onBlockUpdated?:        (block: BlockAppointment) => void;
   /** Called when a block-appointment event is deleted; receives its numeric id. */
-  onBlockDeleted:        (id: number)              => void;
+  onBlockDeleted?:        (id: number)              => void;
+  /** Called when a new patient record is created via portal booking. */
+  onPatientCreated?:      () => void;
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -71,6 +73,7 @@ export const useCalendarSocket = ({
   onBlockCreated,
   onBlockUpdated,
   onBlockDeleted,
+  onPatientCreated,
 }: CalendarSocketHandlers): { isConnected: boolean } => {
   const wsRef        = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -87,6 +90,7 @@ export const useCalendarSocket = ({
     onBlockCreated,
     onBlockUpdated,
     onBlockDeleted,
+    onPatientCreated,
   });
 
   useEffect(() => {
@@ -97,6 +101,7 @@ export const useCalendarSocket = ({
       onBlockCreated,
       onBlockUpdated,
       onBlockDeleted,
+      onPatientCreated,
     };
   }, [
     onAppointmentCreated,
@@ -105,6 +110,7 @@ export const useCalendarSocket = ({
     onBlockCreated,
     onBlockUpdated,
     onBlockDeleted,
+    onPatientCreated,
   ]);
 
   // ── Cleanup helper ────────────────────────────────────────────────────────
@@ -179,22 +185,25 @@ export const useCalendarSocket = ({
 
         switch (msg.event) {
           case 'APPOINTMENT_CREATED':
-            h.onAppointmentCreated(msg.data as Appointment);
+            h.onAppointmentCreated?.(msg.data as Appointment);
             break;
           case 'APPOINTMENT_UPDATED':
-            h.onAppointmentUpdated(msg.data as Appointment);
+            h.onAppointmentUpdated?.(msg.data as Appointment);
             break;
           case 'APPOINTMENT_DELETED':
-            h.onAppointmentDeleted((msg.data as { id: number }).id);
+            h.onAppointmentDeleted?.((msg.data as { id: number }).id);
             break;
           case 'BLOCK_CREATED':
-            h.onBlockCreated(msg.data as BlockAppointment);
+            h.onBlockCreated?.(msg.data as BlockAppointment);
             break;
           case 'BLOCK_UPDATED':
-            h.onBlockUpdated(msg.data as BlockAppointment);
+            h.onBlockUpdated?.(msg.data as BlockAppointment);
             break;
           case 'BLOCK_DELETED':
-            h.onBlockDeleted((msg.data as { id: number }).id);
+            h.onBlockDeleted?.((msg.data as { id: number }).id);
+            break;
+          case 'PATIENT_CREATED':
+            h.onPatientCreated?.();
             break;
           default:
             break;

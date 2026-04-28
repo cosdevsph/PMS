@@ -457,12 +457,13 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   });
 
   // ── Real-time WebSocket sync ────────────────────────────────────────────────
-  // APPOINTMENT_CREATED: respect the current branch-tab filter before adding.
+  // Filtering (practitioner + branch) is enforced inside useAppointments so
+  // addAppointmentToState / updateAppointmentInState are already filter-aware.
+  // No manual guard needed here — any event that doesn't match the current
+  // practitioner or branch is silently dropped by the hook.
   const handleWsAppointmentCreated = useCallback((apt: Appointment) => {
-    const aptBranch = apt.branch_id ?? apt.clinic;
-    if (selectedClinicBranchId !== null && aptBranch !== selectedClinicBranchId) return;
     addAppointmentToState(apt);
-  }, [selectedClinicBranchId, addAppointmentToState]);
+  }, [addAppointmentToState]);
 
   const { isConnected: isLive } = useCalendarSocket({
     onAppointmentCreated: handleWsAppointmentCreated,
@@ -1210,6 +1211,14 @@ const CalendarComponent: React.FC<CalendarProps> = ({
               style={col.useHex ? { color: col.subTextColor } : {}}
             >
               <span className={!col.useHex ? 'text-white/80' : ''}>{col.label}</span>
+            </div>
+          )}
+          {!compact && apt.created_by === null && apt.notes?.startsWith('Created from portal booking') && (
+            <div
+              className="text-xs truncate mt-1 italic"
+              style={col.useHex ? { color: col.subTextColor } : {}}
+            >
+              <span className={!col.useHex ? 'text-white/70' : 'text-gray-500'}>Online Booking</span>
             </div>
           )}
         </div>

@@ -95,18 +95,34 @@ export const useAppointments = ({
     setPortalBookings(prev => prev.filter(b => b.id !== bookingId));
   }, []);
 
+  // ── Filter helpers (mirror the API-level filters applied during fetch) ──────
+  // These ensure WS-injected items are held to the same practitioner + branch
+  // constraints as the initial fetch, preventing cross-practitioner state pollution.
+  const passesFilter = useCallback((apt: Appointment): boolean => {
+    if (practitionerId !== null && apt.practitioner !== practitionerId) return false;
+    const aptBranch = apt.branch_id ?? apt.clinic;
+    if (clinicBranchId !== null && aptBranch !== clinicBranchId) return false;
+    return true;
+  }, [practitionerId, clinicBranchId]);
+
   const updateAppointmentInState = useCallback((updated: Appointment) => {
-    setAppointments(prev =>
-      prev.map(appt => appt.id === updated.id ? updated : appt)
-    );
-  }, []);
+    setAppointments(prev => {
+      const fits       = passesFilter(updated);
+      const existsInState = prev.some(a => a.id === updated.id);
+      if (!fits && !existsInState) return prev;                                    // no-op
+      if (!fits &&  existsInState) return prev.filter(a => a.id !== updated.id);  // evict (e.g. re-assigned away)
+      if ( fits && !existsInState) return [...prev, updated];                      // add  (e.g. re-assigned to current prac)
+      return prev.map(appt => appt.id === updated.id ? updated : appt);            // normal update
+    });
+  }, [passesFilter]);
 
   const addAppointmentToState = useCallback((appointment: Appointment) => {
+    if (!passesFilter(appointment)) return;
     setAppointments(prev => {
       if (prev.some(a => a.id === appointment.id)) return prev;
       return [...prev, appointment];
     });
-  }, []);
+  }, [passesFilter]);
 
   const removeAppointmentFromState = useCallback((appointmentId: number) => {
     setAppointments(prev => prev.filter(a => a.id !== appointmentId));

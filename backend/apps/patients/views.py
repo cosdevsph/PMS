@@ -27,7 +27,9 @@ from .serializers import (
 )
 import logging
 import traceback
+from django.db import transaction
 from apps.common.validators import normalize_ph_phone
+from apps.appointments.calendar_events import emit_calendar_event
 
 logger = logging.getLogger(__name__)
 
@@ -53,45 +55,65 @@ def _confirm_portal_booking(booking, confirmed_by_user):
     # Normalize phone to +63XXXXXXXXXX (13 chars) so it fits Patient.phone max_length=15
     normalized_phone = normalize_ph_phone(booking.patient_phone) if booking.patient_phone else ''
 
-    # ── 1. Find or create Patient ─────────────────────────────────────────
-    patient = None
+    # ── 1. Find or create Patient (race-condition-safe) ─────────────────────
+    # Uses select_for_update inside a transaction to prevent duplicate records
+    # when concurrent portal bookings arrive with the same email.
+    is_new_patient = False
+    with transaction.atomic():
+        patient = None
 
-    if booking.patient_email:
-        patient = Patient.objects.filter(
-            clinic=clinic,
-            email__iexact=booking.patient_email,
-            is_deleted=False,
-        ).first()
+        if booking.patient_email:
+            patient = Patient.objects.select_for_update().filter(
+                clinic=clinic,
+                email__iexact=booking.patient_email,
+                is_deleted=False,
+            ).first()
 
-    if patient is None:
-        patient = Patient.objects.filter(
-            clinic=clinic,
-            first_name__iexact=booking.patient_first_name,
-            last_name__iexact=booking.patient_last_name,
-            is_deleted=False,
-        ).first()
+        if patient is None:
+            patient = Patient.objects.select_for_update().filter(
+                clinic=clinic,
+                first_name__iexact=booking.patient_first_name,
+                last_name__iexact=booking.patient_last_name,
+                is_deleted=False,
+            ).first()
 
-    if patient is None:
-        patient = Patient.objects.create(
-            clinic=clinic,
-            first_name=booking.patient_first_name,
-            last_name=booking.patient_last_name,
-            date_of_birth=booking.patient_date_of_birth or '2000-01-01',
-            gender='O',
-            email=booking.patient_email or '',
-            phone=normalized_phone,
-            address='',
-            city=clinic.city or '',
-            province=clinic.province or '',
-            emergency_contact_name='',
-            emergency_contact_phone='',
-            emergency_contact_relationship='',
-            is_active=True,
-        )
-        logger.info(
-            f"Patient created from portal booking #{booking.reference_number}: "
-            f"{patient.get_full_name()} ({patient.patient_number})"
-        )
+        if patient is None:
+            patient = Patient.objects.create(
+                clinic=clinic,
+                first_name=booking.patient_first_name,
+                last_name=booking.patient_last_name,
+                date_of_birth=booking.patient_date_of_birth or '2000-01-01',
+                gender='O',
+                email=booking.patient_email or '',
+                phone=normalized_phone,
+                address='',
+                city=clinic.city or '',
+                province=clinic.province or '',
+                emergency_contact_name='',
+                emergency_contact_phone='',
+                emergency_contact_relationship='',
+                is_active=True,
+            )
+            is_new_patient = True
+            logger.info(
+                f"Patient created from portal booking #{booking.reference_number}: "
+                f"{patient.get_full_name()} ({patient.patient_number})"
+            )
+
+    # Emit real-time event so Clients list updates without a page refresh.
+    if is_new_patient:
+        try:
+            _main_clinic_id = clinic.main_clinic.id
+            emit_calendar_event(
+                _main_clinic_id,
+                'PATIENT_CREATED',
+                {'id': patient.id, 'clinic': clinic.id},
+            )
+        except Exception as _ws_err:
+            logger.warning(
+                f"Patient WS emit failed for portal booking "
+                f"#{booking.reference_number}: {_ws_err}"
+            )
 
     # ── 2. Find or create Appointment ─────────────────────────────────────
     if booking.appointment_id:
@@ -166,11 +188,14 @@ class PatientViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs   = self.queryset
 
-        # Scope to clinic
-        if user.is_admin:
-            base_qs = qs.filter(clinic=user.clinic)
-        else:
-            base_qs = qs.filter(clinic=user.clinic) if user.clinic else qs.none()
+        if not user.clinic:
+            return qs.none()
+
+        # Scope to all branches of the main clinic so patients created at a
+        # branch (e.g. from a portal booking) are visible to all staff.
+        main_clinic    = user.clinic.main_clinic
+        all_branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
+        base_qs = qs.filter(clinic_id__in=all_branch_ids)
 
         # ── Default: exclude archived patients unless explicitly requested ──
         # Pass ?include_archived=true  → return ALL (active + archived)
@@ -718,6 +743,21 @@ class PublicPortalBookView(APIView):
 
             # Create patient + diary appointment
             patient, _appointment = _confirm_portal_booking(booking, confirmed_by_user=None)
+
+            # ── Broadcast real-time calendar event ─────────────────────────
+            try:
+                from apps.appointments.serializers import AppointmentSerializer
+                _main_clinic_id = _appointment.clinic.main_clinic.id
+                emit_calendar_event(
+                    _main_clinic_id,
+                    'APPOINTMENT_CREATED',
+                    dict(AppointmentSerializer(_appointment).data),
+                )
+            except Exception as _ws_err:
+                logger.warning(
+                    f"Calendar WS emit failed for portal booking "
+                    f"#{booking.reference_number}: {_ws_err}"
+                )
 
             if consent and consent.patient_id is None:
                 consent.patient = patient

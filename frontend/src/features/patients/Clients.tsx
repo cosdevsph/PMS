@@ -6,6 +6,7 @@ import { PatientModal } from './components/PatientModal';
 import { PatientDetailsModal } from './components/PatientDetailsModal';
 import { Users, Plus, Filter, Search, Loader2, Archive, ArchiveRestore } from 'lucide-react';
 import { usePatients } from './hooks/usePatients';
+import { useCalendarSocket } from '@/features/appointments/hooks/useCalendarSocket';
 import { createPatient, updatePatient } from './patient.api';
 import type { Patient, CreatePatientData } from '@/types';
 import toast from 'react-hot-toast';
@@ -30,6 +31,9 @@ export const Clients: React.FC = () => {
     handleArchive,
     handleRestore,
   } = usePatients();
+
+  // Refresh client list in real-time when a portal booking creates a new patient.
+  useCalendarSocket({ onPatientCreated: refresh });
 
   const [searchQuery,        setSearchQuery]        = useState('');
   const [isFilterModalOpen,  setIsFilterModalOpen]  = useState(false);

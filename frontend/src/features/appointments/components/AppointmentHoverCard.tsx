@@ -255,21 +255,36 @@ export const AppointmentHoverCard: React.FC<AppointmentHoverCardProps> = ({
         )}
 
         {/* Created by & Modified by */}
-        {(apt.created_by_name || apt.updated_by_name) && (
+        {(apt.created_by_name || apt.updated_by_name || (apt.created_by === null && apt.notes?.startsWith('Created from portal booking'))) && (
           <div className="py-2 border-t border-gray-100">
-            {apt.created_by_name && (
+            {apt.created_by === null && apt.notes?.startsWith('Created from portal booking') ? (
               <Row
                 icon={<User className="w-3.5 h-3.5" />}
                 label="Created by"
                 value={
-                  <span className="text-gray-600">
-                    {apt.created_by_name}
-                    <span className="text-gray-400 text-[10px] ml-1">
+                  <span className="text-sky-600 font-semibold">
+                    Online Booking
+                    <span className="text-gray-400 text-[10px] ml-1 font-normal">
                       {apt.created_at && format(parseISO(apt.created_at), 'MMM d, yyyy h:mm a')}
                     </span>
                   </span>
                 }
               />
+            ) : (
+              apt.created_by_name && (
+                <Row
+                  icon={<User className="w-3.5 h-3.5" />}
+                  label="Created by"
+                  value={
+                    <span className="text-gray-600">
+                      {apt.created_by_name}
+                      <span className="text-gray-400 text-[10px] ml-1">
+                        {apt.created_at && format(parseISO(apt.created_at), 'MMM d, yyyy h:mm a')}
+                      </span>
+                    </span>
+                  }
+                />
+              )
             )}
             {apt.updated_by_name && (
               <Row
