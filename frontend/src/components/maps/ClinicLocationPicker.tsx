@@ -96,10 +96,11 @@ export const ClinicLocationPicker: React.FC<Props> = ({
 
   return (
     <div>
-      {/* Map */}
+      {/* Map — isolation:isolate creates a stacking context so Leaflet's internal
+           z-indexes (tiles:200, markers:600, popups:700) don't escape the modal */}
       <div
         className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative"
-        style={{ height: 400 }}
+        style={{ height: 400, isolation: 'isolate' }}
       >
         <MapContainer
           center={hasPin ? [latitude!, longitude!] : PH_CENTER}
@@ -135,7 +136,7 @@ export const ClinicLocationPicker: React.FC<Props> = ({
 
         {/* Reverse-geocoding overlay */}
         {isGeocoding && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-[1000] rounded-2xl pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-1000 rounded-2xl pointer-events-none">
             <div className="flex items-center gap-2 bg-white rounded-xl shadow-md px-4 py-2 text-sm text-sky-700 font-medium">
               <Loader2 className="w-4 h-4 animate-spin" />
               Detecting location…
