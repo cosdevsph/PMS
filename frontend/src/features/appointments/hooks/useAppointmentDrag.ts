@@ -1,12 +1,16 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Appointment } from '@/types';
 
+const DRAG_THRESHOLD = 5; // pixels of movement required before drag activates
+
 export interface DragState {
-  isDragging:       boolean;
+  isDragging:         boolean;
   draggedAppointment: Appointment | null;
-  ghostPosition:    { x: number; y: number } | null;
-  holdProgress:     number;       // 0–100 for the hold indicator ring
-  isHolding:        boolean;      // true while the 2s hold timer is running
+  ghostPosition:      { x: number; y: number } | null;
+  /** Always 0 — hold-to-drag removed. Kept for interface compatibility. */
+  holdProgress:       number;
+  /** Always false — hold-to-drag removed. Kept for interface compatibility. */
+  isHolding:          boolean;
 }
 
 interface UseAppointmentDragReturn {
@@ -18,131 +22,82 @@ interface UseAppointmentDragReturn {
   cancelDrag:           () => void;
 }
 
-const HOLD_DURATION_MS = 2000;
+const EMPTY_STATE: DragState = {
+  isDragging:          false,
+  draggedAppointment:  null,
+  ghostPosition:       null,
+  holdProgress:        0,
+  isHolding:           false,
+};
 
 export const useAppointmentDrag = (
   onReschedule: (appointment: Appointment, newDate: Date, newHour: number, newMinutes: number) => void
 ): UseAppointmentDragReturn => {
 
-  const [dragState, setDragState] = useState<DragState>({
-    isDragging:          false,
-    draggedAppointment:  null,
-    ghostPosition:       null,
-    holdProgress:        0,
-    isHolding:           false,
-  });
+  const [dragState, setDragState] = useState<DragState>(EMPTY_STATE);
 
-  const holdTimerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
-  const holdStartRef      = useRef<number>(0);
-  const appointmentRef    = useRef<Appointment | null>(null);
+  /**
+   * Stores the mousedown position + appointment while waiting for the drag
+   * threshold. No state change on mousedown — keeps simple clicks fast.
+   */
+  const dragStartRef = useRef<{ x: number; y: number; apt: Appointment } | null>(null);
 
-  const clearHoldTimer = useCallback(() => {
-    if (holdTimerRef.current) {
-      clearInterval(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-  }, []);
-
+  /** Records the mousedown position. Actual drag starts in onDragMove once
+   *  the cursor moves more than DRAG_THRESHOLD pixels. */
   const startHold = useCallback((apt: Appointment, e: React.MouseEvent | React.TouchEvent) => {
-    // Only allow dragging non-cancelled/completed appointments
     if (apt.status === 'CANCELLED' || apt.status === 'COMPLETED') return;
 
     e.preventDefault();
     e.stopPropagation();
 
-    appointmentRef.current = apt;
-    holdStartRef.current   = Date.now();
-
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-    setDragState({
-      isDragging:          false,
-      draggedAppointment:  apt,
-      ghostPosition:       { x: clientX, y: clientY },
-      holdProgress:        0,
-      isHolding:           true,
-    });
+    dragStartRef.current = { x: clientX, y: clientY, apt };
+  }, []);
 
-    // Progress ring tick — every 50ms
-    holdTimerRef.current = setInterval(() => {
-      const elapsed  = Date.now() - holdStartRef.current;
-      const progress = Math.min((elapsed / HOLD_DURATION_MS) * 100, 100);
-
-      if (elapsed >= HOLD_DURATION_MS) {
-        clearHoldTimer();
-        setDragState(prev => ({
-          ...prev,
-          isDragging:   true,
-          isHolding:    false,
-          holdProgress: 100,
-        }));
-      } else {
-        setDragState(prev => ({ ...prev, holdProgress: progress }));
-      }
-    }, 50);
-  }, [clearHoldTimer]);
-
+  /** Cancels any pending or active drag. */
   const cancelHold = useCallback(() => {
-    clearHoldTimer();
-    appointmentRef.current = null;
-    setDragState({
-      isDragging:          false,
-      draggedAppointment:  null,
-      ghostPosition:       null,
-      holdProgress:        0,
-      isHolding:           false,
-    });
-  }, [clearHoldTimer]);
+    dragStartRef.current = null;
+    setDragState(EMPTY_STATE);
+  }, []);
 
   const onDragMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!dragState.isDragging && !dragState.isHolding) return;
-
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-    // If still holding (not yet dragging), cancel if moved too far
-    if (dragState.isHolding && !dragState.isDragging) {
-      const ghost = dragState.ghostPosition;
-      if (ghost) {
-        const dist = Math.sqrt((clientX - ghost.x) ** 2 + (clientY - ghost.y) ** 2);
-        if (dist > 10) {
-          cancelHold();
-          return;
-        }
+    // Pending drag — activate once movement exceeds threshold
+    if (dragStartRef.current && !dragState.isDragging) {
+      const dx = Math.abs(clientX - dragStartRef.current.x);
+      const dy = Math.abs(clientY - dragStartRef.current.y);
+      if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+        setDragState({
+          isDragging:         true,
+          draggedAppointment: dragStartRef.current.apt,
+          ghostPosition:      { x: clientX, y: clientY },
+          holdProgress:       0,
+          isHolding:          false,
+        });
+        dragStartRef.current = null;
       }
+      return;
     }
 
-    if (dragState.isDragging) {
-      setDragState(prev => ({
-        ...prev,
-        ghostPosition: { x: clientX, y: clientY },
-      }));
-    }
-  }, [dragState.isDragging, dragState.isHolding, dragState.ghostPosition, cancelHold]);
+    // Active drag — update ghost position
+    if (!dragState.isDragging) return;
+    setDragState(prev => ({ ...prev, ghostPosition: { x: clientX, y: clientY } }));
+  }, [dragState.isDragging]);
 
   const onDropOnSlot = useCallback((date: Date, hour: number, minutes: number) => {
     if (!dragState.isDragging || !dragState.draggedAppointment) return;
     onReschedule(dragState.draggedAppointment, date, hour, minutes);
-    setDragState({
-      isDragging:          false,
-      draggedAppointment:  null,
-      ghostPosition:       null,
-      holdProgress:        0,
-      isHolding:           false,
-    });
+    setDragState(EMPTY_STATE);
   }, [dragState.isDragging, dragState.draggedAppointment, onReschedule]);
 
   const cancelDrag = useCallback(() => {
-    clearHoldTimer();
-    setDragState({
-      isDragging:          false,
-      draggedAppointment:  null,
-      ghostPosition:       null,
-      holdProgress:        0,
-      isHolding:           false,
-    });
-  }, [clearHoldTimer]);
+    dragStartRef.current = null;
+    setDragState(EMPTY_STATE);
+  }, []);
 
   return { dragState, startHold, cancelHold, onDragMove, onDropOnSlot, cancelDrag };
 };

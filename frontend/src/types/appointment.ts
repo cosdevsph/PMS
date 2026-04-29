@@ -119,6 +119,31 @@ export interface CreateBlockAppointmentData {
   visible_to_user_ids?: number[];
 }
 
+// ── Calendar Note (sticky note on calendar) ────────────────────────────────────
+
+export interface CalendarNote {
+  id: number;
+  clinic: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  message: string;
+  created_by: number | null;
+  created_by_name: string | null;
+  modified_by: number | null;
+  modified_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCalendarNoteData {
+  clinic: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  message: string;
+}
+
 export const APPOINTMENT_STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   SCHEDULED:   { bg: 'bg-blue-500',   text: 'text-white',   border: 'border-blue-600'   },
   CONFIRMED:   { bg: 'bg-green-500',  text: 'text-white',  border: 'border-green-600'  },

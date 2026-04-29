@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAppointments } from './useAppointments';
 import { useBlockAppointments } from './useBlockAppointments';
+import { useNotes } from './useNotes';
 
 interface UseCalendarDataParams {
   startDate: Date;
@@ -30,6 +31,12 @@ export const useCalendarData = ({
     clinicBranchId: blockClinicBranchId,
   });
 
+  const noteState = useNotes({
+    startDate,
+    endDate,
+    clinicBranchId: blockClinicBranchId ?? clinicBranchId,
+  });
+
   return useMemo(() => ({
     appointments: appointmentState.appointments,
     updateAppointmentInState: appointmentState.updateAppointmentInState,
@@ -42,6 +49,12 @@ export const useCalendarData = ({
     addBlockAppointmentToState: blockState.addBlockAppointmentToState,
     removeBlockAppointmentFromState: blockState.removeBlockAppointmentFromState,
     refetchBlockAppointments: blockState.refetch,
+
+    notes: noteState.notes,
+    addNoteToState: noteState.addNoteToState,
+    removeNoteFromState: noteState.removeNoteFromState,
+    updateNoteInState: noteState.updateNoteInState,
+    refetchNotes: noteState.refetch,
 
     // Unified loading / error — consumers can gate rendering on these
     loading: appointmentState.loading || blockState.loading,
@@ -61,5 +74,10 @@ export const useCalendarData = ({
     blockState.refetch,
     blockState.loading,
     blockState.error,
+    noteState.notes,
+    noteState.addNoteToState,
+    noteState.removeNoteFromState,
+    noteState.updateNoteInState,
+    noteState.refetch,
   ]);
 };

@@ -1,6 +1,6 @@
 from apps.clinics import models
 from rest_framework import serializers
-from .models import Appointment, PractitionerSchedule, AppointmentReminder, BlockAppointment
+from .models import Appointment, PractitionerSchedule, AppointmentReminder, BlockAppointment, CalendarNote
 from apps.clinics.services.models import Service
 from apps.accounts.models import User
 
@@ -442,5 +442,37 @@ class BlockAppointmentCreateSerializer(serializers.ModelSerializer):
         else:
             # ALL — visible to everyone; no need to track individual users.
             instance.visible_to_users.clear()
+
+
+# ── Calendar Note Serializer ──────────────────────────────────────────────────
+
+class CalendarNoteSerializer(serializers.ModelSerializer):
+    created_by_name  = serializers.SerializerMethodField()
+    modified_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = CalendarNote
+        fields = [
+            'id', 'clinic',
+            'date', 'start_time', 'end_time',
+            'message',
+            'created_by', 'created_by_name',
+            'modified_by', 'modified_by_name',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'created_by', 'modified_by',
+            'created_at', 'updated_at',
+        ]
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.email
+        return None
+
+    def get_modified_by_name(self, obj):
+        if obj.modified_by:
+            return obj.modified_by.get_full_name() or obj.modified_by.email
+        return None
 
         return instance

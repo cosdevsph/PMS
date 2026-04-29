@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.db.models import Q, Prefetch
 from datetime import datetime, timedelta
 import pytz
-from .models import Appointment, PractitionerSchedule, AppointmentReminder, BlockAppointment, RebookingLink
+from .models import Appointment, PractitionerSchedule, AppointmentReminder, BlockAppointment, RebookingLink, CalendarNote
 from .serializers import (
     AppointmentSerializer,
     AppointmentEditSerializer,
@@ -18,6 +18,7 @@ from .serializers import (
     AppointmentPrintSerializer,
     BlockAppointmentSerializer,
     BlockAppointmentCreateSerializer,
+    CalendarNoteSerializer,
 )
 from apps.patients.models import PortalBooking
 from apps.clinics.models import Clinic
@@ -1325,7 +1326,7 @@ class BlockAppointmentViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         """Use different serializers for create/update vs retrieve"""
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action in ['create', 'update']:
             return BlockAppointmentCreateSerializer
         return BlockAppointmentSerializer
 
@@ -1375,6 +1376,85 @@ class BlockAppointmentViewSet(viewsets.ModelViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         serializer = BlockAppointmentSerializer(queryset, many=True)
         return Response(serializer.data)
+
+
+# ── Calendar Note ViewSet ─────────────────────────────────────────────────────
+
+class CalendarNoteViewSet(viewsets.ModelViewSet):
+    """CRUD for lightweight calendar sticky notes."""
+
+    serializer_class   = CalendarNoteSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends    = [DjangoFilterBackend]
+    filterset_fields   = ['clinic', 'date']
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.clinic:
+            return CalendarNote.objects.none()
+
+        main_clinic    = user.clinic.main_clinic
+        all_branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
+        qs = CalendarNote.objects.filter(clinic_id__in=all_branch_ids)
+
+        start_date = (
+            self.request.query_params.get('start_date') or
+            self.request.query_params.get('date_from')
+        )
+        end_date = (
+            self.request.query_params.get('end_date') or
+            self.request.query_params.get('date_to')
+        )
+        if start_date:
+            qs = qs.filter(date__gte=start_date)
+        if end_date:
+            qs = qs.filter(date__lte=end_date)
+
+        clinic_branch_param = self.request.query_params.get('clinic_branch')
+        if clinic_branch_param:
+            try:
+                branch_id = int(clinic_branch_param)
+                if branch_id in all_branch_ids:
+                    qs = qs.filter(clinic_id=branch_id)
+                else:
+                    return CalendarNote.objects.none()
+            except (ValueError, TypeError):
+                pass
+
+        return qs
+
+    def perform_create(self, serializer):
+        note = serializer.save(created_by=self.request.user, modified_by=self.request.user)
+        try:
+            main_clinic_id = get_main_clinic_id(self.request.user)
+            if main_clinic_id:
+                data = CalendarNoteSerializer(note).data
+                emit_calendar_event(main_clinic_id, 'NOTE_CREATED', dict(data))
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for note #%s: %s', note.id, exc)
+
+    def perform_update(self, serializer):
+        note = serializer.save(modified_by=self.request.user)
+        try:
+            main_clinic_id = get_main_clinic_id(self.request.user)
+            if main_clinic_id:
+                data = CalendarNoteSerializer(note).data
+                emit_calendar_event(main_clinic_id, 'NOTE_UPDATED', dict(data))
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for note #%s: %s', note.id, exc)
+
+    def perform_destroy(self, instance):
+        try:
+            main_clinic_id = get_main_clinic_id(self.request.user)
+            if main_clinic_id:
+                emit_calendar_event(
+                    main_clinic_id,
+                    'NOTE_DELETED',
+                    {'id': instance.id, 'clinic': instance.clinic_id},
+                )
+        except Exception as exc:
+            logger.warning('Calendar WS emit failed for note delete #%s: %s', instance.id, exc)
+        instance.delete()
 
 
 # ── Public Rebooking Views (no auth required) ─────────────────────────────────

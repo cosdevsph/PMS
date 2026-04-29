@@ -5,6 +5,8 @@ import type {
   PaginatedResponse,
   BlockAppointment,
   CreateBlockAppointmentData,
+  CalendarNote,
+  CreateCalendarNoteData,
 } from '@/types';
 
 export interface AppointmentFilters {
@@ -358,4 +360,51 @@ export const updateBlockAppointment = async (
 
 export const deleteBlockAppointment = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/block-appointments/${id}/`);
+};
+
+// ── Calendar Notes (sticky notes on calendar) ─────────────────────────────────
+
+export interface CalendarNoteFilters {
+  clinic?: number;
+  date?: string;
+  start_date?: string;
+  end_date?: string;
+  clinic_branch?: number;
+}
+
+export const getCalendarNotes = async (
+  filters?: CalendarNoteFilters,
+): Promise<CalendarNote[]> => {
+  const params = new URLSearchParams();
+  if (filters?.clinic)        params.append('clinic',        String(filters.clinic));
+  if (filters?.date)          params.append('date',          filters.date);
+  if (filters?.start_date)    params.append('start_date',    filters.start_date);
+  if (filters?.end_date)      params.append('end_date',      filters.end_date);
+  if (filters?.clinic_branch) params.append('clinic_branch', String(filters.clinic_branch));
+
+  const response = await axiosInstance.get<
+    CalendarNote[] | { count: number; results: CalendarNote[] }
+  >(`/calendar-notes/?${params.toString()}`);
+
+  const data = response.data;
+  return Array.isArray(data) ? data : (data.results ?? []);
+};
+
+export const createCalendarNote = async (
+  data: CreateCalendarNoteData,
+): Promise<CalendarNote> => {
+  const response = await axiosInstance.post<CalendarNote>('/calendar-notes/', data);
+  return response.data;
+};
+
+export const updateCalendarNote = async (
+  id: number,
+  data: Partial<CreateCalendarNoteData>,
+): Promise<CalendarNote> => {
+  const response = await axiosInstance.patch<CalendarNote>(`/calendar-notes/${id}/`, data);
+  return response.data;
+};
+
+export const deleteCalendarNote = async (id: number): Promise<void> => {
+  await axiosInstance.delete(`/calendar-notes/${id}/`);
 };

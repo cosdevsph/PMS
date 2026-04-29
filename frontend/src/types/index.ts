@@ -37,6 +37,8 @@ export type {
   AppointmentReminder,
   BlockAppointment,
   CreateBlockAppointmentData,
+  CalendarNote,
+  CreateCalendarNoteData,
 } from './appointment';
 
 export {

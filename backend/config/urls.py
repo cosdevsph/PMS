@@ -8,7 +8,7 @@ from django.http import JsonResponse
 
 from apps.accounts.views import AuthViewSet, UserViewSet, RoleViewSet, PermissionViewSet
 from apps.clinics.views import ClinicViewSet, PractitionerViewSet, LocationViewSet
-from apps.appointments.views import AppointmentViewSet, PractitionerScheduleViewSet, AppointmentReminderViewSet, BlockAppointmentViewSet, PublicRebookingLinkView
+from apps.appointments.views import AppointmentViewSet, PractitionerScheduleViewSet, AppointmentReminderViewSet, BlockAppointmentViewSet, CalendarNoteViewSet, PublicRebookingLinkView
 from apps.records.views import ClinicalNoteViewSet, NoteTemplateViewSet, OutcomeMeasureViewSet, AttachmentViewSet
 from apps.billing.views import (
     InvoiceViewSet, InvoiceItemViewSet, PaymentViewSet,
@@ -51,6 +51,7 @@ router.register(r'appointments',           AppointmentViewSet,          basename
 router.register(r'practitioner-schedules', PractitionerScheduleViewSet, basename='practitioner-schedules')
 router.register(r'appointment-reminders',  AppointmentReminderViewSet,  basename='appointment-reminders')
 router.register(r'block-appointments',      BlockAppointmentViewSet,      basename='block-appointments')
+router.register(r'calendar-notes',          CalendarNoteViewSet,          basename='calendar-notes')
 
 # Records
 router.register(r'clinical-notes',   ClinicalNoteViewSet,   basename='clinical-notes')

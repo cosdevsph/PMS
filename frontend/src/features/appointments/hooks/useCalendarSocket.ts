@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Appointment, BlockAppointment } from '@/types';
+import type { Appointment, BlockAppointment, CalendarNote } from '@/types';
 
 const WS_BASE     = (import.meta.env.VITE_WS_URL as string | undefined) ?? 'ws://127.0.0.1:8000';
 const MAX_RETRIES   = 5;
@@ -48,6 +48,12 @@ export interface CalendarSocketHandlers {
   onBlockDeleted?:        (id: number)              => void;
   /** Called when a new patient record is created via portal booking. */
   onPatientCreated?:      () => void;
+  /** Called when a new calendar note is created. */
+  onNoteCreated?:         (note: CalendarNote) => void;
+  /** Called when a calendar note is updated. */
+  onNoteUpdated?:         (note: CalendarNote) => void;
+  /** Called when a calendar note is deleted; receives its numeric id. */
+  onNoteDeleted?:         (id: number)         => void;
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -74,6 +80,9 @@ export const useCalendarSocket = ({
   onBlockUpdated,
   onBlockDeleted,
   onPatientCreated,
+  onNoteCreated,
+  onNoteUpdated,
+  onNoteDeleted,
 }: CalendarSocketHandlers): { isConnected: boolean } => {
   const wsRef        = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -91,6 +100,9 @@ export const useCalendarSocket = ({
     onBlockUpdated,
     onBlockDeleted,
     onPatientCreated,
+    onNoteCreated,
+    onNoteUpdated,
+    onNoteDeleted,
   });
 
   useEffect(() => {
@@ -102,6 +114,9 @@ export const useCalendarSocket = ({
       onBlockUpdated,
       onBlockDeleted,
       onPatientCreated,
+      onNoteCreated,
+      onNoteUpdated,
+      onNoteDeleted,
     };
   }, [
     onAppointmentCreated,
@@ -111,6 +126,9 @@ export const useCalendarSocket = ({
     onBlockUpdated,
     onBlockDeleted,
     onPatientCreated,
+    onNoteCreated,
+    onNoteUpdated,
+    onNoteDeleted,
   ]);
 
   // ── Cleanup helper ────────────────────────────────────────────────────────
@@ -204,6 +222,15 @@ export const useCalendarSocket = ({
             break;
           case 'PATIENT_CREATED':
             h.onPatientCreated?.();
+            break;
+          case 'NOTE_CREATED':
+            h.onNoteCreated?.(msg.data as CalendarNote);
+            break;
+          case 'NOTE_UPDATED':
+            h.onNoteUpdated?.(msg.data as CalendarNote);
+            break;
+          case 'NOTE_DELETED':
+            h.onNoteDeleted?.((msg.data as { id: number }).id);
             break;
           default:
             break;

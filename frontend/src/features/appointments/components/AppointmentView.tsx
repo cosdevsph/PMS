@@ -1011,7 +1011,7 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
                       {/* Duration */}
                       <div className="pt-1 border-t border-gray-100">
                         <p className="text-xs text-gray-500 mb-0.5">Duration</p>
-                        <p className="text-sm font-medium text-gray-900">{formatDuration(appointment.duration_minutes)}</p>
+                        <p className="text-sm font-medium text-gray-900">{formatDuration((() => { const [sH,sM] = appointment.start_time.split(':').map(Number); const [eH,eM] = appointment.end_time.split(':').map(Number); return Math.max((eH*60+eM)-(sH*60+sM), 15); })())}</p>
                       </div>
 
                       {/* Service / Type */}
@@ -1197,7 +1197,7 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
                           <div>
                             <p className="text-xs text-sky-600 font-medium">Duration</p>
                             <p className="text-sm font-semibold text-gray-900">
-                              {formatDuration(appointment.duration_minutes)}
+                              {formatDuration((() => { const [sH,sM] = appointment.start_time.split(':').map(Number); const [eH,eM] = appointment.end_time.split(':').map(Number); return Math.max((eH*60+eM)-(sH*60+sM), 15); })())}
                             </p>
                           </div>
                         </div>

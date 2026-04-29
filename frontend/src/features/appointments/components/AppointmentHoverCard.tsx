@@ -148,11 +148,20 @@ export const AppointmentHoverCard: React.FC<AppointmentHoverCardProps> = ({
               <span className="text-sky-600">
                 {fmt12(apt.start_time)} – {fmt12(apt.end_time)}
               </span>
-              {apt.duration_minutes && (
-                <span className="ml-1.5 text-gray-400 text-[10px]">
-                  ({apt.duration_minutes} min)
-                </span>
-              )}
+              {apt.start_time && apt.end_time && (() => {
+                const [sH, sM] = apt.start_time.split(':').map(Number);
+                const [eH, eM] = apt.end_time.split(':').map(Number);
+                const mins = Math.max((eH * 60 + eM) - (sH * 60 + sM), 0);
+                if (!mins) return null;
+                const hrs = Math.floor(mins / 60);
+                const rem = mins % 60;
+                const label = hrs > 0 && rem > 0 ? `${hrs}h ${rem}m` : hrs > 0 ? `${hrs}h` : `${mins} min`;
+                return (
+                  <span className="ml-1.5 text-gray-400 text-[10px]">
+                    ({label})
+                  </span>
+                );
+              })()}
             </>
           }
         />

@@ -9,6 +9,9 @@ import { useDragSelection }      from './hooks/useDragSelection';
 import { useCalendarData }       from './hooks/useCalendarData.ts';
 import { useCalendarSocket }     from './hooks/useCalendarSocket';
 import { useBlockHover }         from './hooks/useBlockHover';
+import { useNoteHover }          from './hooks/useNoteHover';
+import { useNoteDrag }           from './hooks/useNoteDrag';
+import { useResize }             from './hooks/useResize';
 import { useAppointmentDrag }    from './hooks/useAppointmentDrag';
 import { useBlockAppointmentDrag } from './hooks/useBlockAppointmentDrag';
 import { useAppointmentHover }   from './hooks/useAppointmentHover';
@@ -17,11 +20,14 @@ import { AppointmentModal }      from './components/AppointmentModal';
 import { AppointmentView }       from './components/AppointmentView';
 import { AppointmentHoverCard }  from './components/AppointmentHoverCard';
 import { BlockHoverCard }        from './components/BlockHoverCard';
+import { NoteHoverCard }         from './components/NoteHoverCard';
+import { NoteModal }             from './components/NoteModal';
 import { ConflictModal }         from './components/ConflictModal';
 import { APPOINTMENT_STATUS_COLORS } from '@/types';
-import type { Appointment, BlockAppointment } from '@/types';
+import type { Appointment, BlockAppointment, CalendarNote } from '@/types';
 import { rescheduleAppointment }      from './appointment.api';
 import { updateBlockAppointment }     from './appointment.api';
+import { updateCalendarNote }         from './appointment.api';
 import toast                          from 'react-hot-toast';
 import type { PractitionerAvailability, DutyDay } from '@/features/clinics/clinic.api';
 
@@ -156,39 +162,6 @@ const DragGhost: React.FC<DragGhostProps> = ({ appointment, position }) => (
   </div>
 );
 
-// ── Hold Progress Ring ────────────────────────────────────────────────────────
-interface HoldRingProps {
-  progress: number;
-  position: { x: number; y: number };
-}
-
-const HoldRing: React.FC<HoldRingProps> = ({ progress, position }) => {
-  const radius        = 22;
-  const stroke        = 3;
-  const normalised    = radius - stroke / 2;
-  const circumference = 2 * Math.PI * normalised;
-  const offset        = circumference - (progress / 100) * circumference;
-
-  return (
-    <div
-      className="fixed pointer-events-none z-[9999]"
-      style={{ left: position.x - 26, top: position.y - 26 }}
-    >
-      <svg width={52} height={52}>
-        <circle cx={26} cy={26} r={normalised} fill="rgba(255,255,255,0.85)" stroke="#e2e8f0" strokeWidth={stroke} />
-        <circle
-          cx={26} cy={26} r={normalised}
-          fill="none" stroke="#0ea5e9" strokeWidth={stroke}
-          strokeDasharray={circumference} strokeDashoffset={offset}
-          strokeLinecap="round" transform="rotate(-90 26 26)"
-          style={{ transition: 'stroke-dashoffset 0.05s linear' }}
-        />
-        <text x={26} y={30} textAnchor="middle" fontSize={12}>✋</text>
-      </svg>
-    </div>
-  );
-};
-
 // ── Overlap-aware column layout ───────────────────────────────────────────────
 // Given appointments and block appointments for one day/column, assigns each
 // item a left/right style so overlapping items are displayed side-by-side
@@ -196,16 +169,19 @@ const HoldRing: React.FC<HoldRingProps> = ({ progress, position }) => {
 const computeColumnLayout = (
   apts:   { id: number; start_time: string; end_time: string }[],
   blocks: { id: number; start_time: string; end_time: string }[],
+  notes:  { id: number; start_time: string; end_time: string }[] = [],
 ): {
   aptStyles:   Map<number, { left: string; right: string }>;
   blockStyles: Map<number, { left: string; right: string }>;
+  noteStyles:  Map<number, { left: string; right: string }>;
 } => {
   const t2m = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
-  type LItem = { id: number; type: 'apt' | 'block'; start: number; end: number };
+  type LItem = { id: number; type: 'apt' | 'block' | 'note'; start: number; end: number };
 
   const items: LItem[] = [
     ...apts.map(a   => ({ id: a.id, type: 'apt'   as const, start: t2m(a.start_time), end: t2m(a.end_time) })),
     ...blocks.map(b => ({ id: b.id, type: 'block' as const, start: t2m(b.start_time), end: t2m(b.end_time) })),
+    ...notes.map(n  => ({ id: n.id, type: 'note'  as const, start: t2m(n.start_time), end: t2m(n.end_time) })),
   ].sort((a, b) => a.start - b.start || b.end - a.end);
 
   // Greedy column assignment: each item goes into the first column whose last
@@ -221,6 +197,7 @@ const computeColumnLayout = (
 
   const aptStyles   = new Map<number, { left: string; right: string }>();
   const blockStyles = new Map<number, { left: string; right: string }>();
+  const noteStyles  = new Map<number, { left: string; right: string }>();
 
   for (const { item, col } of assigned) {
     // Find the max column index among all items that overlap with this one to
@@ -237,10 +214,11 @@ const computeColumnLayout = (
       left:  `calc(${leftPct.toFixed(2)}% + 2px)`,
       right: `calc(${rightPct.toFixed(2)}% + 2px)`,
     };
-    if (item.type === 'apt') aptStyles.set(item.id, style);
-    else                     blockStyles.set(item.id, style);
+    if (item.type === 'apt')   aptStyles.set(item.id, style);
+    else if (item.type === 'block') blockStyles.set(item.id, style);
+    else                       noteStyles.set(item.id, style);
   }
-  return { aptStyles, blockStyles };
+  return { aptStyles, blockStyles, noteStyles };
 };
 
 const CalendarComponent: React.FC<CalendarProps> = ({
@@ -359,6 +337,31 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     hideBlockHover,
   } = useBlockHover();
 
+  // ── Note hover card ────────────────────────────────────────────────────────
+  const {
+    noteHoverState,
+    onNoteMouseEnter,
+    onNoteMouseLeave,
+    onNotePopoverEnter,
+    onNotePopoverLeave,
+    hideNoteHover,
+  } = useNoteHover();
+
+  // ── Note modal state ───────────────────────────────────────────────────────
+  const [selectedNote,    setSelectedNote]    = useState<CalendarNote | null>(null);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+
+  const openNoteModal = useCallback((note: CalendarNote) => {
+    hideNoteHover();
+    setSelectedNote(note);
+    setIsNoteModalOpen(true);
+  }, [hideNoteHover]);
+
+  const closeNoteModal = useCallback(() => {
+    setSelectedNote(null);
+    setIsNoteModalOpen(false);
+  }, []);
+
 
 
   const getBlockColors = (apt: Appointment): BlockColors => {
@@ -448,6 +451,10 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     addBlockAppointmentToState,
     removeBlockAppointmentFromState,
     refetchBlockAppointments,
+    notes,
+    addNoteToState,
+    removeNoteFromState,
+    updateNoteInState,
   } = useCalendarData({
     startDate,
     endDate,
@@ -472,6 +479,9 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     onBlockCreated:       addBlockAppointmentToState,
     onBlockUpdated:       updateBlockAppointmentInState,
     onBlockDeleted:       removeBlockAppointmentFromState,
+    onNoteCreated:        addNoteToState,
+    onNoteUpdated:        updateNoteInState,
+    onNoteDeleted:        removeNoteFromState,
   });
 
   // Propagate live status to parent (e.g. Diary toolbar indicator).
@@ -488,6 +498,16 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     }
     return map;
   }, [appointments]);
+
+  const notesByDate = useMemo(() => {
+    const map: Record<string, CalendarNote[]> = {};
+    if (!Array.isArray(notes)) return map;
+    for (const note of notes) {
+      if (!map[note.date]) map[note.date] = [];
+      map[note.date].push(note);
+    }
+    return map;
+  }, [notes]);
 
   const blockAppointmentsByDate = useMemo(() => {
     const map: Record<string, BlockAppointment[]> = {};
@@ -512,9 +532,10 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   // ── Conflict detection for block appointments (must be after appointments is defined) ─────────────────────────────────
   const { getFirstConflict } = useBlockConflictDetection(appointments);
   const [rescheduleTarget, setRescheduleTarget] = useState<{
-    type: 'appointment' | 'block';
+    type: 'appointment' | 'block' | 'note';
     appointment?: Appointment;
     block?: BlockAppointment;
+    note?: CalendarNote;
     newDate:     Date;
     newHour:     number;
     newMinutes:  number;
@@ -571,6 +592,12 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     return blockAppointmentsByDate[dateStr] ?? [];
   }, [blockAppointmentsByDate]);
 
+  // O(1) lookup for notes by date
+  const getNotesForDate = useCallback((date: Date): CalendarNote[] => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return notesByDate[dateStr] ?? [];
+  }, [notesByDate]);
+
   // Helper to get style for block appointment
   // Calculate block appointment position based on current view
   // For Day view with filtered slots, offset is based on duty_start_time
@@ -598,6 +625,27 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     
     const durationSlots = Math.max(endSlotIndex - startSlotIndex, 1);
     // h-6 = 1.5rem per slot
+    return {
+      top:    `${startSlotIndex * 1.5}rem`,
+      height: `${durationSlots * 1.5}rem`,
+    };
+  };
+
+  // ── Note position style (mirrors getBlockAppointmentStyle) ────────────────
+  const getNoteStyle = (note: CalendarNote, forDayView = false) => {
+    const [sH, sM] = note.start_time.split(':').map(Number);
+    const [eH, eM] = note.end_time.split(':').map(Number);
+    let startSlotIndex: number;
+    let endSlotIndex:   number;
+    if (forDayView && practitionerAvailability) {
+      const dutyStartMins = timeToMinutes(practitionerAvailability.duty_start_time);
+      startSlotIndex = Math.floor((sH * 60 + sM - dutyStartMins) / 15);
+      endSlotIndex   = Math.floor((eH * 60 + eM - dutyStartMins) / 15);
+    } else {
+      startSlotIndex = (sH - 6) * 4 + Math.floor(sM / 15);
+      endSlotIndex   = (eH - 6) * 4 + Math.floor(eM / 15);
+    }
+    const durationSlots = Math.max(endSlotIndex - startSlotIndex, 1);
     return {
       top:    `${startSlotIndex * 1.5}rem`,
       height: `${durationSlots * 1.5}rem`,
@@ -661,6 +709,63 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     onBlockDropOnSlot,
   } = useBlockAppointmentDrag(handleBlockRescheduleRequest);
 
+  const handleNoteRescheduleRequest = useCallback((
+    note: CalendarNote,
+    newDate: Date,
+    newHour: number,
+    newMinutes: number,
+  ) => {
+    setRescheduleTarget({ type: 'note', note, newDate, newHour, newMinutes });
+  }, []);
+
+  const {
+    noteDragState,
+    startNoteDrag,
+    cancelNoteDrag,
+    onNoteDragMove,
+    onNoteDropOnSlot,
+  } = useNoteDrag(handleNoteRescheduleRequest);
+
+  // ── Resize ────────────────────────────────────────────────────────────────
+  const {
+    isResizing,
+    startResize,
+    onResizeMove,
+    commitResize,
+    cancelResize,
+    getPreviewTimes,
+  } = useResize();
+
+  // Commit resize: call API directly (no confirm dialog needed)
+  const handleResizeCommit = useCallback(async () => {
+    const result = commitResize();
+    if (!result) return;
+    const { type, id, date, start_time, end_time } = result;
+    try {
+      if (type === 'appointment') {
+        const apt = appointments.find(a => a.id === id);
+        if (!apt) return;
+        const updated = await rescheduleAppointment(id, { date, start_time, end_time });
+        updateAppointmentInState(updated);
+        toast.success('Appointment resized');
+      } else if (type === 'block') {
+        const updated = await updateBlockAppointment(id, { date, start_time, end_time });
+        updateBlockAppointmentInState(updated);
+        toast.success('Event resized');
+      } else if (type === 'note') {
+        const updated = await updateCalendarNote(id, { date, start_time, end_time });
+        updateNoteInState(updated);
+        toast.success('Note resized');
+      }
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      toast.error(msg ?? 'Failed to resize.');
+    }
+  }, [commitResize, appointments, updateAppointmentInState,
+      updateBlockAppointmentInState, updateNoteInState]);
+
   const confirmReschedule = async () => {
     if (!rescheduleTarget) return;
     const { type, appointment, block, newDate, newHour, newMinutes } = rescheduleTarget;
@@ -668,7 +773,10 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     setIsRescheduling(true);
     try {
       if (type === 'appointment' && appointment) {
-        const durationMins = appointment.duration_minutes;
+        // Compute duration from start/end — never trust duration_minutes (may be stale after resize)
+        const [origStartH, origStartM] = appointment.start_time.split(':').map(Number);
+        const [origEndH,   origEndM]   = appointment.end_time.split(':').map(Number);
+        const durationMins = Math.max((origEndH * 60 + origEndM) - (origStartH * 60 + origStartM), 15);
         const endTotalMins = newHour * 60 + newMinutes + durationMins;
         const endH         = Math.floor(endTotalMins / 60);
         const endM         = endTotalMins % 60;
@@ -693,17 +801,46 @@ const CalendarComponent: React.FC<CalendarProps> = ({
         const newEndH = Math.floor(newEndTotalMins / 60);
         const newEndM = newEndTotalMins % 60;
 
-        const updated = await updateBlockAppointment(block.id, {
+        // Build optimistic update from known block data — safe even if API
+        // response body is missing fields (e.g. old cached serializer format).
+        const optimisticBlock = {
+          ...block,
           date:       format(newDate, 'yyyy-MM-dd'),
           start_time: `${String(newHour).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`,
           end_time:   `${String(newEndH).padStart(2, '0')}:${String(newEndM).padStart(2, '0')}`,
+        };
+        // Apply immediately so the card moves without waiting for the response.
+        updateBlockAppointmentInState(optimisticBlock);
+
+        const updated = await updateBlockAppointment(block.id, {
+          date:       optimisticBlock.date,
+          start_time: optimisticBlock.start_time,
+          end_time:   optimisticBlock.end_time,
         });
-        updateBlockAppointmentInState(updated);
+        // Reconcile with server response (includes updated modified_by etc.)
+        // Guard: only update if the response contains a valid id.
+        if (updated?.id) updateBlockAppointmentInState(updated);
         refetchBlockAppointments();
         toast.success(
           `Event rescheduled to ${format(newDate, 'MMM d')} at ` +
           `${String(newHour).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`
         );
+      } else if (type === 'note' && rescheduleTarget?.note) {
+        const n = rescheduleTarget.note;
+        const [nStartH, nStartM] = n.start_time.split(':').map(Number);
+        const [nEndH, nEndM]     = n.end_time.split(':').map(Number);
+        const duration = (nEndH * 60 + nEndM) - (nStartH * 60 + nStartM);
+        const newEndTotalMins = newHour * 60 + newMinutes + duration;
+        const newEndH = Math.floor(newEndTotalMins / 60);
+        const newEndM = newEndTotalMins % 60;
+
+        const updated = await updateCalendarNote(n.id, {
+          date:       format(newDate, 'yyyy-MM-dd'),
+          start_time: `${String(newHour).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`,
+          end_time:   `${String(newEndH).padStart(2, '0')}:${String(newEndM).padStart(2, '0')}`,
+        });
+        updateNoteInState(updated);
+        toast.success(`Note moved to ${format(newDate, 'MMM d')} at ${String(newHour).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`);
       }
     } catch (err: unknown) {
       const errorMessage = err && typeof err === 'object' && 'response' in err 
@@ -797,21 +934,19 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   // Uses h-6 (1.5rem) per 15-minute slot for Nookal-style grid
   const getAppointmentStyle = (apt: Appointment, forDayView = false) => {
     const [sH, sM] = apt.start_time.split(':').map(Number);
-    const durationSlots = Math.max(apt.duration_minutes / 15, 1);
-    
+    const [eH, eM] = apt.end_time.split(':').map(Number);
+    // Always derive duration from start/end times — never trust duration_minutes
+    const durationMins  = Math.max((eH * 60 + eM) - (sH * 60 + sM), 15);
+    const durationSlots = durationMins / 15;
+
     let startSlotIndex: number;
     if (forDayView && practitionerAvailability) {
-      // Day view with filtered slots: offset based on duty_start_time
       const dutyStartMins = timeToMinutes(practitionerAvailability.duty_start_time);
-      // Calculate position relative to duty start time
-      const aptStartMins = sH * 60 + sM;
-      const slotsFromDutyStart = Math.floor((aptStartMins - dutyStartMins) / 15);
-      startSlotIndex = slotsFromDutyStart;
+      startSlotIndex = Math.floor((sH * 60 + sM - dutyStartMins) / 15);
     } else {
-      // Week view or no availability: offset from 6 AM (original behavior)
       startSlotIndex = (sH - 6) * 4 + Math.floor(sM / 15);
     }
-    
+
     // h-6 = 1.5rem per slot
     return {
       top:    `${startSlotIndex * 1.5}rem`,
@@ -836,21 +971,21 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   };
 
   const handleAppointmentClick = (apt: Appointment) => {
-    if (dragState.isDragging || dragState.isHolding || blockDragState.isDragging || blockDragState.isHolding) return;
+    if (dragState.isDragging || dragState.isHolding || blockDragState.isDragging || blockDragState.isHolding || noteDragState.isDragging || isResizing) return;
     hideHover();
     setSelectedAppointment(apt);
     setIsViewOpen(true);
   };
 
   const handleMouseDown = (_date: Date, slot: CalendarSlot) => {
-    if (dragState.isDragging || blockDragState.isDragging) return;
+    if (dragState.isDragging || blockDragState.isDragging || noteDragState.isDragging || isResizing) return;
     isDraggingRef.current    = false;
     dragStartTimeRef.current = Date.now();
     startSelection(slot);
   };
 
   const handleMouseEnter = (slot: CalendarSlot) => {
-    if (dragState.isDragging || blockDragState.isDragging) return;
+    if (dragState.isDragging || blockDragState.isDragging || noteDragState.isDragging || isResizing) return;
     if (selection.isSelecting) {
       const cur   = slot.hour * 4 + slot.quarter;
       const start = selection.startSlot
@@ -862,7 +997,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   };
 
   const handleMouseUp = (date: Date) => {
-    if ((dragState.isDragging && dragState.draggedAppointment) || (blockDragState.isDragging && blockDragState.draggedBlock)) return;
+    if ((dragState.isDragging && dragState.draggedAppointment) || (blockDragState.isDragging && blockDragState.draggedBlock) || (noteDragState.isDragging && noteDragState.draggedNote) || isResizing) return;
 
     if (selection.startSlot) {
       const duration  = getSelectionDuration();
@@ -896,11 +1031,15 @@ const CalendarComponent: React.FC<CalendarProps> = ({
       onBlockDropOnSlot(date, slot.hour, slot.minutes);
       return;
     }
+    if (noteDragState.isDragging) {
+      onNoteDropOnSlot(date, slot.hour, slot.minutes);
+      return;
+    }
     handleMouseUp(date);
   };
 
   const handleDoubleClick = (date: Date, slot: CalendarSlot) => {
-    if (dragState.isDragging || dragState.isHolding || blockDragState.isDragging || blockDragState.isHolding) return;
+    if (dragState.isDragging || dragState.isHolding || blockDragState.isDragging || blockDragState.isHolding || noteDragState.isDragging || isResizing) return;
     if (onSlotAction) {
       onSlotAction({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15 });
       return;
@@ -939,14 +1078,8 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   // ── Shared overlays ───────────────────────────────────────────────────────
   const dragOverlays = (
     <>
-      {dragState.isHolding && dragState.ghostPosition && (
-        <HoldRing progress={dragState.holdProgress} position={dragState.ghostPosition} />
-      )}
       {dragState.isDragging && dragState.ghostPosition && dragState.draggedAppointment && (
         <DragGhost appointment={dragState.draggedAppointment} position={dragState.ghostPosition} />
-      )}
-      {blockDragState.isHolding && blockDragState.ghostPosition && (
-        <HoldRing progress={blockDragState.holdProgress} position={blockDragState.ghostPosition} />
       )}
       {blockDragState.isDragging && blockDragState.ghostPosition && blockDragState.draggedBlock && (
         <div
@@ -973,6 +1106,31 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           </div>
         </div>
       )}
+      {noteDragState.isDragging && noteDragState.ghostPosition && noteDragState.draggedNote && (
+        <div
+          className="fixed pointer-events-none z-[9999] opacity-90 shadow-2xl"
+          style={{
+            left:      noteDragState.ghostPosition.x - 80,
+            top:       noteDragState.ghostPosition.y - 20,
+            width:     160,
+            transform: 'rotate(-1deg)',
+          }}
+        >
+          <div className="bg-orange-500 text-white px-3 py-2 text-xs font-semibold shadow-lg border-2 border-orange-600">
+            <div className="truncate">📌 {noteDragState.draggedNote.message}</div>
+            <div className="text-orange-200 mt-0.5 truncate">
+              {formatTime12Hour(noteDragState.draggedNote.start_time)} · {formatTime12Hour(noteDragState.draggedNote.end_time)}
+            </div>
+            <div className="mt-1 flex items-center gap-1 text-orange-300">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Drop to move note
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -993,6 +1151,27 @@ const CalendarComponent: React.FC<CalendarProps> = ({
       anchorRect={blockHoverState.anchorRect}
       onEnter={onBlockPopoverEnter}
       onLeave={onBlockPopoverLeave}
+    />
+  );
+
+  // ── Note hover card overlay ────────────────────────────────────────────────
+  const noteHoverCardOverlay = noteHoverState.visible && noteHoverState.note && noteHoverState.anchorRect && (
+    <NoteHoverCard
+      note={noteHoverState.note}
+      anchorRect={noteHoverState.anchorRect}
+      onEnter={onNotePopoverEnter}
+      onLeave={onNotePopoverLeave}
+    />
+  );
+
+  // ── Note modal overlay ─────────────────────────────────────────────────────
+  const noteModalOverlay = (
+    <NoteModal
+      note={selectedNote}
+      isOpen={isNoteModalOpen}
+      onClose={closeNoteModal}
+      onDeleted={(id) => { removeNoteFromState(id); closeNoteModal(); }}
+      onUpdated={(updated) => { updateNoteInState(updated); setSelectedNote(updated); }}
     />
   );
 
@@ -1029,6 +1208,23 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                 {rescheduleTarget.block.date} at {formatTime12Hour(rescheduleTarget.block.start_time)} - {formatTime12Hour(rescheduleTarget.block.end_time)}
               </div>
               <div className="flex items-center gap-2 text-sky-600">
+                <span className="font-medium">To:</span>
+                {format(rescheduleTarget.newDate, 'yyyy-MM-dd')} at{' '}
+                {formatTime12Hour(`${String(rescheduleTarget.newHour).padStart(2, '0')}:${String(rescheduleTarget.newMinutes).padStart(2, '0')}`)}
+              </div>
+            </div>
+          </>
+        ) : rescheduleTarget.type === 'note' && rescheduleTarget.note ? (
+          <>
+            <p className="text-sm text-gray-600 mb-1">
+              <span className="font-semibold">📌 Note</span>
+            </p>
+            <div className="bg-orange-50 rounded-lg p-3 mb-4 text-sm space-y-1">
+              <div className="flex items-center gap-2 text-gray-500">
+                <span className="font-medium text-gray-700">From:</span>
+                {rescheduleTarget.note.date} at {formatTime12Hour(rescheduleTarget.note.start_time)}
+              </div>
+              <div className="flex items-center gap-2 text-orange-600">
                 <span className="font-medium">To:</span>
                 {format(rescheduleTarget.newDate, 'yyyy-MM-dd')} at{' '}
                 {formatTime12Hour(`${String(rescheduleTarget.newHour).padStart(2, '0')}:${String(rescheduleTarget.newMinutes).padStart(2, '0')}`)}
@@ -1073,6 +1269,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
         onCreated={handleAppointmentCreated}
         selectedSlot={selectedSlot}
         selectedClinicBranchId={selectedClinicBranchId}
+        defaultPractitionerId={typeof selectedPractitionerId === 'number' ? selectedPractitionerId : null}
       />
       <AppointmentView
         isOpen={isViewOpen}
@@ -1131,26 +1328,46 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   // compact = true for week view (smaller cards)
   // forDayView = true when rendering in Day view (filtered slots)
   const renderTimelineCard = (apt: Appointment, compact = false, forDayView = false, positionOverride?: { left: string; right: string }) => {
-    const style     = getAppointmentStyle(apt, forDayView);
     const col       = getBlockColors(apt);
     const isDragged = dragState.draggedAppointment?.id === apt.id;
     const isHeld    = dragState.isHolding && dragState.draggedAppointment?.id === apt.id;
     const canDrag   = apt.status !== 'CANCELLED' && apt.status !== 'COMPLETED';
 
+    // Live resize preview — overrides original times while dragging
+    const resizeOvr    = getPreviewTimes('appointment', apt.id);
+    const displayStart = resizeOvr?.start_time ?? apt.start_time;
+    const displayEnd   = resizeOvr?.end_time   ?? apt.end_time;
+
+    // Recompute position/height from preview times when resizing
+    let baseStyle: { top: string; height: string };
+    if (resizeOvr) {
+      const [sH, sM] = displayStart.split(':').map(Number);
+      const [eH, eM] = displayEnd.split(':').map(Number);
+      const startSlot = forDayView && practitionerAvailability
+        ? Math.floor((sH * 60 + sM - timeToMinutes(practitionerAvailability.duty_start_time)) / 15)
+        : (sH - 6) * 4 + Math.floor(sM / 15);
+      const durationSlots = Math.max(((eH * 60 + eM) - (sH * 60 + sM)) / 15, 1);
+      baseStyle = { top: `${startSlot * 1.5}rem`, height: `${durationSlots * 1.5}rem` };
+    } else {
+      baseStyle = getAppointmentStyle(apt, forDayView);
+    }
+
+    const anyDragging = dragState.isDragging || blockDragState.isDragging;
     const containerStyle: React.CSSProperties = {
-      ...style,
+      ...baseStyle,
       position:     'absolute',
       left:         positionOverride?.left  ?? '4px',
       right:        positionOverride?.right ?? '4px',
-      zIndex:       isDragged ? 5 : 10,
+      zIndex:       isDragged ? 5 : (resizeOvr ? 15 : 10),
       overflow:     'hidden',
       borderRadius: '0',
-      border:       '1px solid transparent',
+      border:       resizeOvr ? '2px solid rgba(255,255,255,0.7)' : '1px solid transparent',
       padding:      compact ? '2px 6px' : '6px 8px',
       cursor:       canDrag ? (dragState.isDragging ? 'grabbing' : 'grab') : 'pointer',
-      transition:   'filter 0.15s, opacity 0.15s, transform 0.15s',
+      transition:   resizeOvr ? 'none' : 'filter 0.15s, opacity 0.15s, transform 0.15s',
       opacity:      isDragged ? 0.35 : 1,
       transform:    isHeld ? 'scale(1.03)' : 'scale(1)',
+      pointerEvents: anyDragging ? 'none' : 'auto',
       ...(col.useHex ? col.bgStyle : {}),
     };
 
@@ -1158,14 +1375,21 @@ const CalendarComponent: React.FC<CalendarProps> = ({
       <div
         key={apt.id}
         style={containerStyle}
-        onMouseEnter={(e) => { if (!dragState.isDragging) onCardMouseEnter(apt, e); }}
-        onMouseLeave={() => { if (!dragState.isDragging) onCardMouseLeave(); }}
-        onMouseDown={canDrag ? (e) => { hideHover(); startHold(apt, e); } : undefined}
-        onMouseUp={canDrag ? () => { if (!dragState.isDragging) { cancelHold(); handleAppointmentClick(apt); } } : undefined}
-        onClick={(e) => { e.stopPropagation(); if (!dragState.isDragging && !dragState.isHolding) handleAppointmentClick(apt); }}
-        className={`hover:brightness-90 select-none transition-all duration-150 shadow-sm rounded-none ${!col.useHex ? `${col.bg} ${col.border}` : ''}`}
-        title={canDrag ? 'Hold 2s to drag and reschedule' : undefined}
+        onMouseEnter={(e) => { if (!dragState.isDragging && !isResizing) onCardMouseEnter(apt, e); }}
+        onMouseLeave={() => { if (!dragState.isDragging && !isResizing) onCardMouseLeave(); }}
+        onMouseDown={canDrag ? (e) => { e.stopPropagation(); hideHover(); startHold(apt, e); } : (e) => e.stopPropagation()}
+        onMouseUp={canDrag ? (e) => { e.stopPropagation(); if (!dragState.isDragging) { cancelHold(); handleAppointmentClick(apt); } } : (e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); if (!canDrag && !dragState.isDragging) handleAppointmentClick(apt); }}
+        className={`hover:brightness-90 select-none transition-all duration-150 shadow-sm rounded-none group relative ${!col.useHex ? `${col.bg} ${col.border}` : ''}`}
+        title={canDrag ? 'Drag to reschedule · Drag edges to resize' : undefined}
       >
+        {/* TOP RESIZE HANDLE */}
+        {canDrag && (
+          <div
+            className="absolute top-0 left-0 right-0 h-1.5 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 bg-white/20 transition-opacity select-none"
+            onMouseDown={(e) => { e.stopPropagation(); startResize('appointment', apt.id, 'top', apt.start_time, apt.end_time, apt.date, e); }}
+          />
+        )}
         {isHeld && (
           <div
             className="absolute inset-0 pointer-events-none border-2 border-sky-400 animate-pulse"
@@ -1185,7 +1409,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
               style={col.useHex ? { color: col.subTextColor } : {}}
             >
               <span className={!col.useHex ? 'text-white/80' : ''}>
-                {formatTime12Hour(apt.start_time)} – {formatTime12Hour(apt.end_time)}
+                {formatTime12Hour(displayStart)} – {formatTime12Hour(displayEnd)}
               </span>
             </div>
           )}
@@ -1194,7 +1418,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
               className="text-xs truncate"
               style={col.useHex ? { color: col.subTextColor } : {}}
             >
-              <span className={!col.useHex ? 'text-white/80' : ''}>{formatTime12Hour(apt.start_time)}</span>
+              <span className={!col.useHex ? 'text-white/80' : ''}>{formatTime12Hour(displayStart)}</span>
             </div>
           )}
           {col.label && !compact && (
@@ -1222,6 +1446,17 @@ const CalendarComponent: React.FC<CalendarProps> = ({
             </div>
           )}
         </div>
+        {/* BOTTOM RESIZE HANDLE with expand indicator */}
+        {canDrag && (
+          <div
+            className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity select-none flex items-end justify-end pr-0.5 pb-0.5"
+            onMouseDown={(e) => { e.stopPropagation(); startResize('appointment', apt.id, 'bottom', apt.start_time, apt.end_time, apt.date, e); }}
+          >
+            <svg width="7" height="7" viewBox="0 0 7 7" fill="currentColor" className="text-black/70">
+              <path d="M0 7 L7 0 L7 7 Z" />
+            </svg>
+          </div>
+        )}
       </div>
     );
   };
@@ -1231,69 +1466,84 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   // compact = true for week view (smaller cards)
   // forDayView = true when rendering in Day view (filtered slots)
   const renderBlockTimelineCard = (block: BlockAppointment, compact = false, forDayView = false, positionOverride?: { left: string; right: string }) => {
-    const style = getBlockAppointmentStyle(block, forDayView);
+    const isDragged   = blockDragState.draggedBlock?.id === block.id;
+    const isHeld      = blockDragState.isHolding && blockDragState.draggedBlock?.id === block.id;
+    const resizeOvr   = getPreviewTimes('block', block.id);
+    const displayStart = resizeOvr?.start_time ?? block.start_time;
+    const displayEnd   = resizeOvr?.end_time   ?? block.end_time;
 
-    const isDragged = blockDragState.draggedBlock?.id === block.id;
-    const isHeld    = blockDragState.isHolding && blockDragState.draggedBlock?.id === block.id;
+    let baseStyle: { top: string; height: string };
+    if (resizeOvr) {
+      const [sH, sM] = displayStart.split(':').map(Number);
+      const [eH, eM] = displayEnd.split(':').map(Number);
+      const startSlot = forDayView && practitionerAvailability
+        ? Math.floor((sH * 60 + sM - timeToMinutes(practitionerAvailability.duty_start_time)) / 15)
+        : (sH - 6) * 4 + Math.floor(sM / 15);
+      const durationSlots = Math.max(((eH * 60 + eM) - (sH * 60 + sM)) / 15, 1);
+      baseStyle = { top: `${startSlot * 1.5}rem`, height: `${durationSlots * 1.5}rem` };
+    } else {
+      baseStyle = getBlockAppointmentStyle(block, forDayView);
+    }
 
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!blockDragState.isDragging) {
-        onEventClick?.(block);
-      }
+      if (!blockDragState.isDragging && !isResizing) onEventClick?.(block);
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
       e.stopPropagation();
       hideBlockHover();
-      startBlockHold(block, e);
+      if (!isResizing) startBlockHold(block, e);
     };
 
-    const handleMouseUp = () => {
-      if (!blockDragState.isDragging) {
-        cancelBlockHold();
-      }
+    const handleMouseUp = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!blockDragState.isDragging && !isResizing) cancelBlockHold();
     };
 
     const handleMouseEnter = (e: React.MouseEvent) => {
-      if (!blockDragState.isDragging) {
-        onBlockMouseEnter(block, e);
-      }
+      if (!blockDragState.isDragging && !isResizing) onBlockMouseEnter(block, e);
     };
 
     const handleMouseLeave = () => {
-      if (!blockDragState.isDragging) {
-        onBlockMouseLeave();
-      }
+      if (!blockDragState.isDragging && !isResizing) onBlockMouseLeave();
     };
 
+    const anyDragging = dragState.isDragging || blockDragState.isDragging;
     const containerStyle: React.CSSProperties = {
-      ...style,
-      position:     'absolute',
-      left:         positionOverride?.left  ?? '4px',
-      right:        positionOverride?.right ?? '4px',
-      zIndex:      isDragged ? 5 : 10,
-      overflow:    'hidden',
-      borderRadius: '0',
+      ...baseStyle,
+      position:        'absolute',
+      left:            positionOverride?.left  ?? '4px',
+      right:           positionOverride?.right ?? '4px',
+      zIndex:          isDragged ? 5 : (resizeOvr ? 15 : 10),
+      overflow:        'hidden',
+      borderRadius:    '0',
       backgroundColor: isDragged ? '#6b7280' : '#1f2937',
-      cursor:       blockDragState.isDragging ? 'grabbing' : 'grab',
-      opacity:      isDragged ? 0.35 : 1,
-      transform:    isHeld ? 'scale(1.03)' : 'scale(1)',
-      transition:   'filter 0.15s, opacity 0.15s, transform 0.15s',
+      border:          resizeOvr ? '2px solid rgba(255,255,255,0.5)' : undefined,
+      cursor:          blockDragState.isDragging ? 'grabbing' : 'grab',
+      opacity:         isDragged ? 0.35 : 1,
+      transform:       isHeld ? 'scale(1.03)' : 'scale(1)',
+      transition:      resizeOvr ? 'none' : 'filter 0.15s, opacity 0.15s, transform 0.15s',
+      pointerEvents:   anyDragging ? 'none' : 'auto',
     };
 
     return (
       <div
         key={`block-${block.id}`}
         style={containerStyle}
-        className="border border-gray-600 px-2 py-1 transition-all select-none hover:bg-gray-700"
-        title="Hold 2s to drag and reschedule"
+        className="border border-gray-600 px-2 py-1 transition-all select-none hover:bg-gray-700 group relative"
+        title="Drag to reschedule · Drag edges to resize"
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
+        {/* TOP RESIZE HANDLE */}
+        <div
+          className="absolute top-0 left-0 right-0 h-1.5 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 bg-white/20 transition-opacity select-none"
+          onMouseDown={(e) => { e.stopPropagation(); startResize('block', block.id, 'top', block.start_time, block.end_time, block.date, e); }}
+        />
         {isHeld && (
           <div
             className="absolute inset-0 border-2 border-sky-400 animate-pulse pointer-events-none"
@@ -1305,7 +1555,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
         </div>
         {!compact && (
           <div className="text-xs text-gray-300 truncate mt-0.5">
-            {formatTime12Hour(block.start_time)} - {formatTime12Hour(block.end_time)}
+            {formatTime12Hour(displayStart)} - {formatTime12Hour(displayEnd)}
           </div>
         )}
         {!compact && block.created_by_name && (
@@ -1313,9 +1563,143 @@ const CalendarComponent: React.FC<CalendarProps> = ({
             Created by {block.created_by_name}
           </div>
         )}
+        {/* BOTTOM RESIZE HANDLE with expand indicator */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity select-none flex items-end justify-end pr-0.5 pb-0.5"
+          onMouseDown={(e) => { e.stopPropagation(); startResize('block', block.id, 'bottom', block.start_time, block.end_time, block.date, e); }}
+        >
+          <svg width="7" height="7" viewBox="0 0 7 7" fill="currentColor" className="text-black/70">
+            <path d="M0 7 L7 0 L7 7 Z" />
+          </svg>
+        </div>
       </div>
     );
   };
+
+  // ── Note Card — Day/Week ──────────────────────────────────────────────────
+  const renderNoteTimelineCard = (
+    note: CalendarNote,
+    compact = false,
+    forDayView = false,
+    positionOverride?: { left: string; right: string },
+  ) => {
+    void compact;
+    const isDragged   = noteDragState.isDragging && noteDragState.draggedNote?.id === note.id;
+    const isHeld      = noteDragState.isHolding && !noteDragState.isDragging && noteDragState.draggedNote?.id === note.id;
+    const resizeOvr   = getPreviewTimes('note', note.id);
+    const displayStart = resizeOvr?.start_time ?? note.start_time;
+    const displayEnd   = resizeOvr?.end_time   ?? note.end_time;
+
+    let baseNoteStyle: { top: string; height: string };
+    if (resizeOvr) {
+      const [sH, sM] = displayStart.split(':').map(Number);
+      const [eH, eM] = displayEnd.split(':').map(Number);
+      const startSlot = forDayView && practitionerAvailability
+        ? Math.floor((sH * 60 + sM - timeToMinutes(practitionerAvailability.duty_start_time)) / 15)
+        : (sH - 6) * 4 + Math.floor(sM / 15);
+      const durationSlots = Math.max(((eH * 60 + eM) - (sH * 60 + sM)) / 15, 1);
+      baseNoteStyle = { top: `${startSlot * 1.5}rem`, height: `${durationSlots * 1.5}rem` };
+    } else {
+      baseNoteStyle = getNoteStyle(note, forDayView);
+    }
+
+    const anyDragging = dragState.isDragging || blockDragState.isDragging || noteDragState.isDragging;
+    const defaultRight = positionOverride ? positionOverride.right : '15%';
+    const style: React.CSSProperties = {
+      ...baseNoteStyle,
+      position:        'absolute',
+      left:            positionOverride?.left ?? '4px',
+      right:           defaultRight,
+      zIndex:          isDragged ? 5 : (resizeOvr ? 15 : 8),
+      overflow:        'hidden',
+      borderRadius:    '0',
+      backgroundColor: isDragged ? '#c2410c' : '#f97316',
+      borderColor:     '#ea580c',
+      border:          resizeOvr ? '2px solid #fed7aa' : '1px solid #ea580c',
+      padding:         '4px 8px',
+      cursor:          noteDragState.isDragging ? 'grabbing' : 'grab',
+      boxShadow:       '0 1px 3px rgba(0,0,0,0.15)',
+      pointerEvents:   anyDragging ? 'none' : 'auto',
+      opacity:         isDragged ? 0.35 : 1,
+      transform:       isHeld ? 'scale(1.03)' : 'scale(1)',
+      transition:      resizeOvr ? 'none' : 'filter 0.15s, opacity 0.15s, transform 0.15s',
+    };
+
+    const handleNoteMouseEnter = (e: React.MouseEvent) => {
+      if (!noteDragState.isDragging && !noteDragState.isHolding && !isResizing) {
+        (e.currentTarget as HTMLElement).style.backgroundColor = '#ea580c';
+        (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 6px rgba(0,0,0,0.25)';
+        onNoteMouseEnter(note, e);
+      }
+    };
+
+    const handleNoteMouseLeave = (e: React.MouseEvent) => {
+      (e.currentTarget as HTMLElement).style.backgroundColor = isDragged ? '#c2410c' : '#f97316';
+      (e.currentTarget as HTMLElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
+      onNoteMouseLeave();
+    };
+
+    return (
+      <div
+        key={`note-${note.id}`}
+        style={style}
+        className="select-none group relative"
+        title="Drag to move · Drag edges to resize · Click to view"
+        onMouseDown={(e) => { e.stopPropagation(); if (!isResizing) { hideNoteHover(); startNoteDrag(note, e); } }}
+        onMouseUp={(e) => {
+          e.stopPropagation();
+          if (!noteDragState.isDragging && !isResizing) {
+            cancelNoteDrag();
+            openNoteModal(note);
+          }
+        }}
+        onMouseEnter={handleNoteMouseEnter}
+        onMouseLeave={handleNoteMouseLeave}
+      >
+        {/* TOP RESIZE HANDLE */}
+        <div
+          className="absolute top-0 left-0 right-0 h-1.5 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 bg-white/30 transition-opacity select-none"
+          onMouseDown={(e) => { e.stopPropagation(); startResize('note', note.id, 'top', note.start_time, note.end_time, note.date, e); }}
+        />
+        {isHeld && (
+          <div
+            className="absolute inset-0 pointer-events-none border-2 border-orange-300 animate-pulse"
+            style={{ zIndex: 20 }}
+          />
+        )}
+        <div className="text-xs font-medium text-white leading-tight line-clamp-3 whitespace-pre-wrap break-words">
+          {note.message}
+        </div>
+        {note.created_by_name && (
+          <div className="text-[10px] text-orange-200 truncate mt-0.5">
+            {note.created_by_name}
+          </div>
+        )}
+        {/* BOTTOM RESIZE HANDLE with expand indicator */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity select-none flex items-end justify-end pr-0.5 pb-0.5"
+          onMouseDown={(e) => { e.stopPropagation(); startResize('note', note.id, 'bottom', note.start_time, note.end_time, note.date, e); }}
+        >
+          <svg width="7" height="7" viewBox="0 0 7 7" fill="currentColor" className="text-black/70">
+            <path d="M0 7 L7 0 L7 7 Z" />
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Note Card — Month ──────────────────────────────────────────────────────
+  const renderNoteMonthCard = (note: CalendarNote) => (
+    <div
+      key={`note-month-${note.id}`}
+      className="bg-orange-400 hover:bg-orange-500 text-white text-xs px-2 py-1 rounded-sm shadow-sm truncate cursor-pointer transition-colors duration-150"
+      title={note.message}
+      onClick={(e) => { e.stopPropagation(); openNoteModal(note); }}
+    >
+      <span className="font-medium">📌 </span>
+      {formatTime12Hour(note.start_time)} · {note.message}
+    </div>
+  );
 
   // ── Appointment Card — Month ──────────────────────────────────────────────
   const renderMonthCard = (apt: Appointment) => {
@@ -1345,10 +1729,11 @@ const CalendarComponent: React.FC<CalendarProps> = ({
         onMouseEnter={(e) => { if (!dragState.isDragging) onCardMouseEnter(apt, e); }}
         onMouseLeave={() => { if (!dragState.isDragging) onCardMouseLeave(); }}
         onMouseDown={canDrag ? (e) => { e.stopPropagation(); hideHover(); startHold(apt, e); } : undefined}
-        onClick={(e) => { e.stopPropagation(); if (!dragState.isDragging && !dragState.isHolding) handleAppointmentClick(apt); }}
+        onMouseUp={canDrag ? () => { if (!dragState.isDragging) { cancelHold(); handleAppointmentClick(apt); } } : undefined}
+        onClick={(e) => { e.stopPropagation(); if (!canDrag && !dragState.isDragging) handleAppointmentClick(apt); }}
         style={containerStyle}
         className={`border px-2 py-1 transition-all duration-150 select-none hover:brightness-90 shadow-sm ${!col.useHex ? `${col.bg} ${col.border}` : ''}`}
-        title={canDrag ? 'Hold 2s to drag and reschedule' : undefined}
+        title={canDrag ? 'Drag to reschedule' : undefined}
       >
         {isHeld && (
           <div className="absolute inset-0 pointer-events-none border-2 border-sky-400 animate-pulse" />
@@ -1454,17 +1839,34 @@ const CalendarComponent: React.FC<CalendarProps> = ({
         onMouseEnter={() => handleMouseEnter(slot)}
         onMouseUp={() => handleSlotMouseUp(date, slot)}
         onDoubleClick={() => handleDoubleClick(date, slot)}
-        className={`h-6 transition-colors relative select-none cursor-pointer border-r border-gray-200
+        className={`h-6 transition-colors relative select-none cursor-pointer border-r border-gray-200 flex
           ${borderClass}
           ${slotBgClass}`}
         title={slotTitle}
       >
-        {isSelected && (
-          <div className="absolute inset-0 bg-sky-200 pointer-events-none" />
-        )}
-        {isDropTarget && (
-          <div className="absolute inset-0 border-b border-dashed border-emerald-300 pointer-events-none" />
-        )}
+        {/* Left 85% — appointment area (drag, select, double-click) */}
+        <div className="w-[85%] h-full relative">
+          {isSelected && (
+            <div className="absolute inset-0 bg-sky-200 pointer-events-none" />
+          )}
+          {isDropTarget && (
+            <div className="absolute inset-0 border-b border-dashed border-emerald-300 pointer-events-none" />
+          )}
+        </div>
+        {/* Right 15% — dedicated single-click "add" strip */}
+        <div
+          className="w-[15%] h-full cursor-pointer hover:bg-gray-100/60 transition-colors duration-100"
+          onMouseDown={e => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onSlotAction) {
+              onSlotAction({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15 });
+            } else {
+              openModal({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15 });
+            }
+          }}
+          title="Click to add appointment, block, or note"
+        />
       </div>
     );
   };
@@ -1543,19 +1945,53 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     );
   };
 
+  // ── Global resize listeners — fire everywhere, not just inside the wrapper ──
+  // Kept in refs so the effect closure always sees the latest version without
+  // tearing down and re-attaching the listeners on every render.
+  const handleResizeCommitRef = useRef(handleResizeCommit);
+  const onResizeMoveRef       = useRef(onResizeMove);
+  const cancelResizeRef       = useRef(cancelResize);
+  handleResizeCommitRef.current = handleResizeCommit;
+  onResizeMoveRef.current       = onResizeMove;
+  cancelResizeRef.current       = cancelResize;
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const onMove = (e: MouseEvent) => {
+      // Synthesise a minimal React-compatible event shape for onResizeMove
+      onResizeMoveRef.current(e as unknown as React.MouseEvent);
+    };
+    const onUp = () => { void handleResizeCommitRef.current(); };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+    };
+  }, [isResizing]);
+
   // ── Global mouse-move / mouse-up on the calendar wrapper ─────────────────
   const calendarWrapperProps = {
-    onMouseMove:  (e: React.MouseEvent) => {
+    style: isResizing ? ({ cursor: 'ns-resize', userSelect: 'none' } as React.CSSProperties) : undefined,
+    onMouseMove: (e: React.MouseEvent) => {
+      if (isResizing) return; // handled by document listener above
       onDragMove(e);
       onBlockDragMove(e);
+      onNoteDragMove(e);
     },
-    onMouseUp:    () => {
-      if (dragState.isHolding && !dragState.isDragging) cancelHold();
-      if (blockDragState.isHolding && !blockDragState.isDragging) cancelBlockHold();
+    onMouseUp: () => {
+      if (isResizing) return; // handled by document listener above
+      if (!dragState.isDragging) cancelHold();
+      if (!blockDragState.isDragging) cancelBlockHold();
+      if (!noteDragState.isDragging) cancelNoteDrag();
     },
     onMouseLeave: () => {
-      if (dragState.isHolding && !dragState.isDragging) cancelHold();
-      if (blockDragState.isHolding && !blockDragState.isDragging) cancelBlockHold();
+      if (isResizing) return; // resize commits on mouseup anywhere — don't cancel on leave
+      if (!dragState.isDragging) cancelHold();
+      if (!blockDragState.isDragging) cancelBlockHold();
+      if (!noteDragState.isDragging) cancelNoteDrag();
     },
   };
 
@@ -1647,6 +2083,8 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           {rescheduleModal}
           {hoverCardOverlay}
           {blockHoverCardOverlay}
+          {noteHoverCardOverlay}
+          {noteModalOverlay}
         </div>
       );
     }
@@ -1688,8 +2126,9 @@ const CalendarComponent: React.FC<CalendarProps> = ({
             {(() => {
               const dayAppts  = getAppointmentsForDate(currentDate);
               const dayBlocks = getBlockAppointmentsForDate(currentDate);
+              const dayNotes  = getNotesForDate(currentDate);
               const slotsToRender = isDayAvailable ? dayViewTimeSlots : timeSlots;
-              const { aptStyles, blockStyles } = computeColumnLayout(dayAppts, dayBlocks);
+              const { aptStyles, blockStyles, noteStyles } = computeColumnLayout(dayAppts, dayBlocks, dayNotes);
               return (
                 <div className="grid grid-cols-[80px_1fr]">
                   {/* Time column */}
@@ -1701,6 +2140,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                     {slotsToRender.map((slot, i) => renderTimeSlot(slot, currentDate, i))}
                     {dayAppts.map(apt   => renderTimelineCard(apt, false, isDayAvailable, aptStyles.get(apt.id)))}
                     {dayBlocks.map(block => renderBlockTimelineCard(block, false, isDayAvailable, blockStyles.get(block.id)))}
+                    {dayNotes.map(note   => renderNoteTimelineCard(note, false, isDayAvailable, noteStyles.get(note.id)))}
                   </div>
                 </div>
               );
@@ -1712,6 +2152,8 @@ const CalendarComponent: React.FC<CalendarProps> = ({
         {rescheduleModal}
         {hoverCardOverlay}
         {blockHoverCardOverlay}
+        {noteHoverCardOverlay}
+        {noteModalOverlay}
       </div>
     );
   }
@@ -1808,6 +2250,8 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           {rescheduleModal}
           {hoverCardOverlay}
           {blockHoverCardOverlay}
+          {noteHoverCardOverlay}
+          {noteModalOverlay}
         </div>
       );
     }
@@ -1857,12 +2301,14 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                   {weekDays.map(day => {
                     const dayAppts  = getAppointmentsForDate(day);
                     const dayBlocks = getBlockAppointmentsForDate(day);
-                    const { aptStyles, blockStyles } = computeColumnLayout(dayAppts, dayBlocks);
+                    const dayNotes  = getNotesForDate(day);
+                    const { aptStyles, blockStyles, noteStyles } = computeColumnLayout(dayAppts, dayBlocks, dayNotes);
                     return (
                       <div key={day.toISOString()} className="border-l border-gray-200 relative">
                         {timeSlots.map((slot, i) => renderTimeSlot(slot, day, i))}
                         {dayAppts.map(apt   => renderTimelineCard(apt, true, false, aptStyles.get(apt.id)))}
                         {dayBlocks.map(block => renderBlockTimelineCard(block, true, false, blockStyles.get(block.id)))}
+                        {dayNotes.map(note   => renderNoteTimelineCard(note, true, false, noteStyles.get(note.id)))}
                       </div>
                     );
                   })}
@@ -1876,6 +2322,8 @@ const CalendarComponent: React.FC<CalendarProps> = ({
         {rescheduleModal}
         {hoverCardOverlay}
         {blockHoverCardOverlay}
+        {noteHoverCardOverlay}
+        {noteModalOverlay}
       </div>
     );
   }
@@ -1911,10 +2359,11 @@ const CalendarComponent: React.FC<CalendarProps> = ({
             {monthDays.map((week, wi) => (
               <div key={wi} className="grid grid-cols-7 border-b border-gray-200 last:border-b-0">
                 {week.map(day => {
-                  const dayAppts     = getAppointmentsForDay(day);
+                  const dayAppts      = getAppointmentsForDay(day);
                   const dayBlockAppts = getBlockAppointmentsForDate(day);
-                  const count        = dayAppts.length + dayBlockAppts.length;
-                  const isDropTarget = dragState.isDragging || blockDragState.isDragging;
+                  const dayNoteItems  = getNotesForDate(day);
+                  const count         = dayAppts.length + dayBlockAppts.length + dayNoteItems.length;
+                  const isDropTarget  = dragState.isDragging || blockDragState.isDragging;
 
                   // Use our helper function to check if this is a duty day
                   const isAvailableDay = isDutyDay(day);
@@ -2024,6 +2473,8 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                         {count > 3 && (
                           <div className="text-xs text-gray-500 font-medium px-2">+{count - 3} more</div>
                         )}
+                        {/* Notes */}
+                        {dayNoteItems.slice(0, 2).map(note => renderNoteMonthCard(note))}
                       </div>
                     </div>
                   );
@@ -2037,6 +2488,8 @@ const CalendarComponent: React.FC<CalendarProps> = ({
         {rescheduleModal}
         {hoverCardOverlay}
         {blockHoverCardOverlay}
+        {noteHoverCardOverlay}
+        {noteModalOverlay}
       </div>
     );
   }

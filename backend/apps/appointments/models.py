@@ -421,3 +421,59 @@ class RebookingLink(TimeStampedModel):
     @property
     def is_valid(self) -> bool:
         return not self.is_used and not self.is_expired
+
+
+# ── Calendar Note ─────────────────────────────────────────────────────────────
+
+class CalendarNote(TimeStampedModel):
+    """
+    Lightweight sticky notes displayed on the calendar.
+    Non-blocking — they do NOT prevent appointments from being booked
+    on the same slot.  Visual-only, orange-coloured, message-only.
+    """
+
+    clinic = models.ForeignKey(
+        'clinics.Clinic',
+        on_delete=models.CASCADE,
+        related_name='calendar_notes',
+        help_text='Clinic branch this note belongs to',
+    )
+
+    date = models.DateField(help_text='Date of the note')
+
+    start_time = models.TimeField(help_text='Start time of the note')
+
+    end_time = models.TimeField(help_text='End time of the note')
+
+    message = models.TextField(help_text='Note content displayed on the calendar')
+
+    created_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='calendar_notes_created',
+    )
+
+    modified_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='calendar_notes_modified',
+    )
+
+    class Meta:
+        db_table = 'calendar_notes'
+        ordering = ['-date', '-start_time']
+        indexes = [
+            models.Index(fields=['clinic', 'date']),
+            models.Index(fields=['date']),
+        ]
+
+    def __str__(self):
+        return f"Note @ {self.date} {self.start_time}–{self.end_time}: {self.message[:40]}"
+
+    def clean(self):
+        if self.start_time and self.end_time and self.end_time <= self.start_time:
+            raise ValidationError('End time must be after start time')

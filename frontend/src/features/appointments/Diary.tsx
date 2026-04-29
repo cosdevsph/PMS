@@ -5,6 +5,7 @@ import { Calendar } from './Calendar';
 import { ArrivalsList } from './components/ArrivalsList';
 import { EventViewModal } from './components/EventViewModal';
 import { AddEventModal } from './components/AddEventModal';
+import { AddNoteModal } from './components/AddNoteModal';
 import { SelectOptionModal } from './components/SelectOptionModal';
 import { AppointmentModal } from './components/AppointmentModal';
 import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
@@ -270,6 +271,8 @@ export const Diary: React.FC = () => {
   const [showCreateAppointmentModal, setShowCreateAppointmentModal] = useState(false);
   // Block appointment creation (from SelectOptionModal "Add Block Appointment")
   const [showAddEventModal, setShowAddEventModal] = useState(false);
+  // Note creation (from SelectOptionModal "Add Note")
+  const [showAddNoteModal, setShowAddNoteModal] = useState(false);
   const [eventRefreshKey, setEventRefreshKey] = useState(0);
   // Increment to trigger Calendar to refetch regular appointments
   const [appointmentRefreshKey, setAppointmentRefreshKey] = useState(0);
@@ -334,6 +337,11 @@ export const Diary: React.FC = () => {
     if (!pendingSlot) return;
     setShowSelectOptionModal(false);
     setShowAddEventModal(true);
+  };
+
+  const handleSelectNote = () => {
+    setShowSelectOptionModal(false);
+    setShowAddNoteModal(true);
   };
 
   return (
@@ -805,6 +813,7 @@ export const Diary: React.FC = () => {
               onClose={handleSelectOptionClose}
               onSelectNewAppointment={handleSelectNewAppointment}
               onSelectBlockAppointment={handleSelectBlockAppointment}
+              onSelectNote={handleSelectNote}
             />
 
             {/* Appointment Modal — opened via SelectOptionModal "Create New Appointment" */}
@@ -818,6 +827,7 @@ export const Diary: React.FC = () => {
               }}
               selectedSlot={pendingSlot}
               selectedClinicBranchId={selectedClinicBranch}
+              defaultPractitionerId={typeof selectedPractitioner === 'number' ? selectedPractitioner : null}
             />
 
             {/* Add Event Modal — opened via SelectOptionModal "Add Block Appointment" */}
@@ -843,6 +853,32 @@ export const Diary: React.FC = () => {
                   initialTime={pendingSlot ? `${startH}:${startM}` : undefined}
                   initialEndTime={pendingSlot ? `${endH}:${endMm}` : undefined}
                   appointments={calendarAppointments}
+                />
+              );
+            })()}
+
+            {/* Add Note Modal — opened via SelectOptionModal "Add Note" */}
+            {(() => {
+              const startH = pendingSlot ? String(pendingSlot.hour).padStart(2, '0') : '09';
+              const startM = pendingSlot ? String(pendingSlot.minutes).padStart(2, '0') : '00';
+              const endMin = pendingSlot
+                ? pendingSlot.hour * 60 + pendingSlot.minutes + Math.max(pendingSlot.duration, 30)
+                : 600;
+              const endH  = String(Math.floor(endMin / 60)).padStart(2, '0');
+              const endMm = String(endMin % 60).padStart(2, '0');
+              return (
+                <AddNoteModal
+                  isOpen={showAddNoteModal}
+                  onClose={() => { setShowAddNoteModal(false); setPendingSlot(null); }}
+                  onCreated={() => {
+                    setShowAddNoteModal(false);
+                    setPendingSlot(null);
+                    // WS NOTE_CREATED event will update calendar state automatically
+                  }}
+                  selectedClinicBranchId={selectedClinicBranch}
+                  initialDate={pendingSlot?.date}
+                  initialTime={pendingSlot ? `${startH}:${startM}` : undefined}
+                  initialEndTime={pendingSlot ? `${endH}:${endMm}` : undefined}
                 />
               );
             })()}

@@ -23,6 +23,10 @@ BLOCK_CREATED = 'BLOCK_CREATED'
 BLOCK_UPDATED = 'BLOCK_UPDATED'
 BLOCK_DELETED = 'BLOCK_DELETED'
 
+NOTE_CREATED = 'NOTE_CREATED'
+NOTE_UPDATED = 'NOTE_UPDATED'
+NOTE_DELETED = 'NOTE_DELETED'
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

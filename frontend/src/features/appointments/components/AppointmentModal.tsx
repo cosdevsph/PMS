@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X, Calendar, Clock, Timer, User, FileText,
-  AlertCircle, UserPlus, Stethoscope, Layers, Building2,  // ← ADD Building2
+  AlertCircle, UserPlus, Stethoscope, Layers, Building2, Lock,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -15,9 +15,9 @@ import type { Patient, CreateAppointmentData, Appointment } from '@/types';
 import toast from 'react-hot-toast';
 
 interface AppointmentModalProps {
-  isOpen:                 boolean;
-  onClose:                () => void;
-  onCreated?:             (appointment: Appointment) => void;
+  isOpen:                  boolean;
+  onClose:                 () => void;
+  onCreated?:              (appointment: Appointment) => void;
   selectedSlot: {
     date:     Date;
     time:     string;
@@ -25,7 +25,9 @@ interface AppointmentModalProps {
     minutes:  number;
     duration: number;
   } | null;
-  selectedClinicBranchId?: number | null;   // ← ADD
+  selectedClinicBranchId?:  number | null;
+  /** Pre-select the practitioner from the active calendar filter. The user can still change it. */
+  defaultPractitionerId?:   number | null;
 }
 
 interface FormData {
@@ -39,7 +41,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   onClose,
   onCreated,
   selectedSlot,
-  selectedClinicBranchId,   // ← ADD
+  selectedClinicBranchId,
+  defaultPractitionerId,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -71,16 +74,33 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const selectedService   = services.find(s => s.id === Number(formData.service));
   const effectiveDuration = selectedService?.duration_minutes ?? selectedSlot?.duration ?? 60;
 
+  // True when the practitioner was auto-filled from the calendar filter and is
+  // confirmed to exist in the current branch list. The field is read-only in this state.
+  const isPractitionerLocked = useMemo(() => {
+    if (!defaultPractitionerId) return false;
+    if (loadingPractitioners) return false;
+    return practitioners.some(p => p.id === defaultPractitionerId);
+  }, [defaultPractitionerId, practitioners, loadingPractitioners]);
+
+  const lockedPractitioner = useMemo(
+    () => (isPractitionerLocked ? practitioners.find(p => p.id === defaultPractitionerId) ?? null : null),
+    [isPractitionerLocked, practitioners, defaultPractitionerId],
+  );
+
   useEffect(() => {
     if (isOpen) {
       loadPatients();
-      setFormData({ patient: '', practitioner: '', service: '' });
+      setFormData({
+        patient:      '',
+        practitioner: defaultPractitionerId ?? '',
+        service:      '',
+      });
       setChiefComplaint('');
       setNotes('');
       setPatientNotes('');
       setErrors({});
     }
-  }, [isOpen]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPatients = async () => {
     setLoadingPatients(true);
@@ -351,11 +371,30 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Assigned Practitioner
-                  <span className="ml-2 text-xs font-normal text-gray-400">Select to Assign</span>
+                  {isPractitionerLocked ? (
+                    <span className="ml-2 inline-flex items-center gap-1 text-xs font-normal text-sky-600">
+                      <Lock className="w-3 h-3" />
+                      Auto-assigned from filter
+                    </span>
+                  ) : (
+                    <span className="ml-2 text-xs font-normal text-gray-400">Select to Assign</span>
+                  )}
                 </label>
                 {loadingPractitioners ? (
                   <div className="flex items-center justify-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-sky-600 border-t-transparent" />
+                  </div>
+                ) : isPractitionerLocked && lockedPractitioner ? (
+                  /* ── Read-only display when auto-filled from calendar filter ── */
+                  <div className="relative flex items-center gap-3 px-3 py-2.5 bg-sky-50 border border-sky-200 rounded-lg">
+                    <Stethoscope className="w-4 h-4 text-sky-500 shrink-0" />
+                    <span className="flex-1 text-sm font-medium text-sky-900">
+                      {lockedPractitioner.name}
+                      {lockedPractitioner.specialization && (
+                        <span className="ml-1 font-normal text-sky-600">— {lockedPractitioner.specialization}</span>
+                      )}
+                    </span>
+                    <Lock className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   </div>
                 ) : (
                   <div className="relative">
@@ -369,11 +408,13 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   </div>
                 )}
                 <p className="mt-1 text-xs text-gray-400">
-                  {practitioners.length === 0
-                    ? selectedClinicBranchId
-                      ? 'No practitioners assigned to this branch.'
-                      : 'No practitioners available. Contact admin to add practitioners.'
-                    : 'Select a practitioner or leave unassigned to assign later.'}
+                  {isPractitionerLocked
+                    ? 'Practitioner is set by the active calendar filter.'
+                    : practitioners.length === 0
+                      ? selectedClinicBranchId
+                        ? 'No practitioners assigned to this branch.'
+                        : 'No practitioners available. Contact admin to add practitioners.'
+                      : 'Select a practitioner or leave unassigned to assign later.'}
                 </p>
               </div>
 

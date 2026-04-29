@@ -1,11 +1,12 @@
 import React from 'react';
-import { X, Calendar, Ban } from 'lucide-react';
+import { X, Calendar, Ban, StickyNote } from 'lucide-react';
 
 interface SelectOptionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectNewAppointment: () => void;
   onSelectBlockAppointment: () => void;
+  onSelectNote: () => void;
 }
 
 export const SelectOptionModal: React.FC<SelectOptionModalProps> = ({
@@ -13,6 +14,7 @@ export const SelectOptionModal: React.FC<SelectOptionModalProps> = ({
   onClose,
   onSelectNewAppointment,
   onSelectBlockAppointment,
+  onSelectNote,
 }) => {
   if (!isOpen) return null;
 
@@ -74,6 +76,23 @@ export const SelectOptionModal: React.FC<SelectOptionModalProps> = ({
                 <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
                   Block off time on the calendar for events, breaks, or unavailability.
                   Drag across slots to set the duration.
+                </p>
+              </div>
+            </button>
+
+            {/* Add Note */}
+            <button
+              onClick={onSelectNote}
+              className="flex items-start gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-orange-400 hover:bg-orange-50 transition-all text-left group"
+            >
+              <div className="w-11 h-11 bg-orange-100 group-hover:bg-orange-200 rounded-xl flex items-center justify-center shrink-0 transition-colors">
+                <StickyNote className="w-5 h-5 text-orange-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900">Add Note</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                  Add a sticky note to the calendar. Non-blocking — appointments
+                  can still be booked at the same time.
                 </p>
               </div>
             </button>
