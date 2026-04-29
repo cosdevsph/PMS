@@ -5,7 +5,7 @@ import {
   Receipt, Plus, Printer, AlertCircle,
   RefreshCw, ChevronDown, Building2, Edit3, Trash2,
   Save, XCircle, Search, UserCircle, ClipboardList,
-  ExternalLink, Repeat, List, Stethoscope,
+  ExternalLink, Repeat, List, Stethoscope, Repeat2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -57,6 +57,8 @@ interface AppointmentViewProps {
   appointment: Appointment | null;
   onUpdated?:  (appointment: Appointment) => void;
   onRecurringCreated?: () => void;
+  /** Called when the user initiates rebook mode from this appointment's dropdown */
+  onRebook?: (appointment: Appointment) => void;
 }
 
 interface EditableItem {
@@ -564,6 +566,7 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
   appointment: initialAppointment,
   onUpdated,
   onRecurringCreated,
+  onRebook,
 }) => {
   const [activeTab,             setActiveTab]             = useState<Tab>('client');
   const [showCancelModal,       setShowCancelModal]       = useState(false);
@@ -844,6 +847,19 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
                       <Repeat className="w-4 h-4 text-sky-500" />
                       Add Recurring Appointments
                     </button>
+                    {onRebook && (
+                      <button
+                        onClick={() => {
+                          setShowAppointmentDropdown(false);
+                          onRebook(appointment);
+                          onClose();
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-emerald-700 hover:bg-emerald-50 transition-colors"
+                      >
+                        <Repeat2 className="w-4 h-4 text-emerald-500" />
+                        Rebook Appointment
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setShowAppointmentDropdown(false);

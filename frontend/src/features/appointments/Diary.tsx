@@ -14,6 +14,10 @@ import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';
 import { useAuthStore } from '@/store/auth.store';
 import type { BlockAppointment, Appointment } from '@/types';
 import type { PractitionerAvailability } from '@/features/clinics/clinic.api';
+import { useRebookMode } from './hooks/useRebookMode';
+import { createAppointment } from './appointment.api';
+import type { CreateAppointmentData } from '@/types';
+import toast from 'react-hot-toast';
 
 type CalendarView = 'day' | 'week' | 'month';
 
@@ -23,6 +27,24 @@ export const Diary: React.FC = () => {
   const isAdmin        = user?.role === 'ADMIN';
   const isPractitioner = user?.role === 'PRACTITIONER';
   const isStaff        = user?.role === 'STAFF';
+
+  // ── Rebook Mode ──────────────────────────────────────────────────
+  const { rebookMode, rebookData, startRebook, exitRebook } = useRebookMode();
+
+  // Change body cursor to crosshair while in rebook mode
+  useEffect(() => {
+    document.body.style.cursor = rebookMode ? 'crosshair' : '';
+    return () => { document.body.style.cursor = ''; };
+  }, [rebookMode]);
+
+  // ESC key exits rebook mode
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && rebookMode) exitRebook();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [rebookMode, exitRebook]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   // Default to week view for practitioners / staff
@@ -314,9 +336,52 @@ export const Diary: React.FC = () => {
   const handleSlotAction = useCallback((slot: {
     date: Date; time: string; hour: number; minutes: number; duration: number;
   }) => {
+    // In rebook mode, immediately create the appointment on this slot
+    if (rebookMode && rebookData) {
+      void handleRebookDrop(slot);
+      return;
+    }
     setPendingSlot(slot);
     setShowSelectOptionModal(true);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rebookMode, rebookData]);
+
+  // ── handleRebookDrop — creates a new appointment at the given slot using rebook data ──
+  const handleRebookDrop = async (slot: {
+    date: Date; hour: number; minutes: number;
+  }) => {
+    if (!rebookData || !user) return;
+    const { hour, minutes } = slot;
+    const endTotalMins = hour * 60 + minutes + rebookData.duration_minutes;
+    const endH = Math.floor(endTotalMins / 60);
+    const endM = endTotalMins % 60;
+    const clinicId = selectedClinicBranch ?? user.clinic ?? 0;
+    const data: CreateAppointmentData = {
+      clinic:           clinicId as number,
+      patient:          rebookData.patient,
+      practitioner:     rebookData.practitioner ?? undefined,
+      service:          rebookData.service ?? undefined,
+      appointment_type: rebookData.appointment_type,
+      date:             format(slot.date, 'yyyy-MM-dd'),
+      start_time:       `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
+      end_time:         `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`,
+      duration_minutes: rebookData.duration_minutes,
+      chief_complaint:  rebookData.chief_complaint,
+      notes:            rebookData.notes,
+      patient_notes:    rebookData.patient_notes,
+    };
+    try {
+      await createAppointment(data);
+      setAppointmentRefreshKey(prev => prev + 1);
+      toast.success(`Rebooked for ${format(slot.date, 'MMM d')} at ${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+      // Keep rebook mode active so user can place another booking
+    } catch (err: unknown) {
+      const detail = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : undefined;
+      toast.error(detail ?? 'Failed to rebook appointment');
+    }
+  };
 
   const calendarCompareMode = useMemo(
     () => (isAdmin || isPractitioner || isStaff) && compareMode && !isDuplicateComparePractitioner && (view === 'day' || view === 'week'),
@@ -804,6 +869,15 @@ export const Diary: React.FC = () => {
                 comparePractitionerNames={comparePractitionerNames}
                 comparePractitionerIdA={typeof comparePractitioners[0] === 'number' ? comparePractitioners[0] : null}
                 comparePractitionerIdB={typeof comparePractitioners[1] === 'number' ? comparePractitioners[1] : null}
+                onRebook={startRebook}
+                rebookMode={rebookMode}
+                rebookPreviewLabel={
+                  rebookData
+                    ? `${rebookData.patient_name}${
+                        rebookData.service_name ? ` · ${rebookData.service_name}` : ''
+                      } · ${rebookData.duration_minutes} min`
+                    : undefined
+                }
               />
             </div>
 
@@ -897,6 +971,28 @@ export const Diary: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Rebook Mode floating banner ── */}
+      {rebookMode && rebookData && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10000 flex items-center gap-3 bg-emerald-700 text-white px-5 py-3 rounded-full shadow-2xl border border-emerald-500 select-none animate-fade-in">
+          <span className="text-lg">🔁</span>
+          <div className="flex flex-col leading-tight">
+            <span className="font-semibold text-sm">{rebookData.patient_name}</span>
+            <span className="text-xs text-emerald-200">
+              {rebookData.service_name
+                ? `${rebookData.service_name} · ${rebookData.duration_minutes} min`
+                : `${rebookData.duration_minutes} min`}
+              {' · '}Click a slot to rebook · ESC to cancel
+            </span>
+          </div>
+          <button
+            onClick={exitRebook}
+            className="ml-2 px-3 py-1 rounded-full bg-white text-emerald-800 text-xs font-bold hover:bg-emerald-50 transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

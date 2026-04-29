@@ -113,6 +113,12 @@ interface CalendarProps {
   onRecurringCreated?: () => void;
   /** Called when the real-time WebSocket connection status changes. */
   onLiveStatusChange?: (isLive: boolean) => void;
+  /** Called when the user clicks "Rebook Appointment" in AppointmentView. */
+  onRebook?: (appointment: Appointment) => void;
+  /** When true, changes cursor to crosshair and shows rebook ghost on hover. */
+  rebookMode?: boolean;
+  /** Label shown in the rebook ghost tooltip (patient + service). */
+  rebookPreviewLabel?: string;
 }
 
 // isColorDark / hexToRgba removed — replaced by solid color styling
@@ -243,6 +249,9 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   appointmentRefreshKey,
   onRecurringCreated,
   onLiveStatusChange,
+  onRebook,
+  rebookMode = false,
+  rebookPreviewLabel,
 }) => {
   // Staff entries have string ids (e.g. 'staff-5') — appointment hooks need a numeric id or null.
   // Pass null for String ids so appointment filtering is effectively disabled for Staff.
@@ -316,6 +325,21 @@ const CalendarComponent: React.FC<CalendarProps> = ({
 
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isViewOpen,           setIsViewOpen]           = useState(false);
+
+  // ── Rebook ghost — tracks mouse position when rebookMode is active ────────
+  const [rebookGhostPos, setRebookGhostPos] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!rebookMode) { setRebookGhostPos(null); return; }
+    const onMove = (e: MouseEvent) => setRebookGhostPos({ x: e.clientX, y: e.clientY });
+    const onLeave = () => setRebookGhostPos(null);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseleave', onLeave);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseleave', onLeave);
+    };
+  }, [rebookMode]);
 
   // ── Hover card ────────────────────────────────────────────────────────────
   const {
@@ -1131,6 +1155,30 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           </div>
         </div>
       )}
+      {/* Rebook mode ghost — follows cursor when placing a rebook */}
+      {rebookMode && rebookGhostPos && (
+        <div
+          className="fixed pointer-events-none z-[9999] opacity-90 shadow-2xl"
+          style={{
+            left:      rebookGhostPos.x - 80,
+            top:       rebookGhostPos.y - 20,
+            width:     180,
+            transform: 'rotate(-1.5deg)',
+          }}
+        >
+          <div className="bg-emerald-600 text-white rounded-lg px-3 py-2 text-xs font-semibold shadow-lg border-2 border-emerald-400">
+            <div className="truncate">{rebookPreviewLabel ?? 'Rebook'}</div>
+            <div className="text-emerald-200 mt-0.5 truncate">Click slot to rebook</div>
+            <div className="mt-1 flex items-center gap-1 text-emerald-100">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              ESC to cancel
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -1280,6 +1328,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           setSelectedAppointment(updated);
         }}
         onRecurringCreated={onRecurringCreated}
+        onRebook={onRebook}
       />
       {/* Conflict Modal for block drag/reschedule */}
       <ConflictModal
@@ -1974,7 +2023,11 @@ const CalendarComponent: React.FC<CalendarProps> = ({
 
   // ── Global mouse-move / mouse-up on the calendar wrapper ─────────────────
   const calendarWrapperProps = {
-    style: isResizing ? ({ cursor: 'ns-resize', userSelect: 'none' } as React.CSSProperties) : undefined,
+    style: (isResizing
+      ? ({ cursor: 'ns-resize', userSelect: 'none' } as React.CSSProperties)
+      : rebookMode
+        ? ({ cursor: 'crosshair' } as React.CSSProperties)
+        : undefined),
     onMouseMove: (e: React.MouseEvent) => {
       if (isResizing) return; // handled by document listener above
       onDragMove(e);
