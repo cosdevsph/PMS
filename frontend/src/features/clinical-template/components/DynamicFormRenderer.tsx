@@ -82,12 +82,12 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
 }) => {
   const commonProps = {
     label: field.label,
-    value: value || field.defaultValue || '',
+    value: value ?? field.defaultValue ?? '',
     onChange,
     error,
     required: field.required,
     disabled,
-    placeholder: field.placeholder,
+    helpText: field.helpText,
   };
 
   switch (field.type) {

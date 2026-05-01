@@ -184,7 +184,7 @@ const FieldSettings: React.FC<FieldSettingsProps> = ({ field, onChange, onDelete
   const isScale = field.type === 'scale';
   const isChart = field.type === 'chart';
   const isTextArea = field.type === 'textarea';
-  const showPlaceholder = !['section_header', 'heading', 'checkbox', 'checkbox_group', 'radio', 'chart', 'scale'].includes(field.type);
+  const showDefault = !['section_header', 'heading', 'checkbox', 'checkbox_group', 'radio', 'chart', 'scale'].includes(field.type);
   const showHelpText = !['section_header', 'heading'].includes(field.type);
   const showRequired = !['section_header', 'heading', 'chart'].includes(field.type);
 
@@ -309,16 +309,16 @@ const FieldSettings: React.FC<FieldSettingsProps> = ({ field, onChange, onDelete
           </div>
         )}
 
-        {/* Placeholder */}
-        {showPlaceholder && (
-          <div className="flex items-center px-4 py-3">
-            <label className="w-28 text-sm text-gray-600 shrink-0">Placeholder:</label>
-            <input
-              type="text"
-              value={field.placeholder || ''}
-              onChange={(e) => update('placeholder', e.target.value)}
-              className="flex-1 text-sm border border-gray-200 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-sky-500"
-              placeholder="Optional placeholder text"
+        {/* Default value */}
+        {showDefault && (
+          <div className="flex items-start px-4 py-3">
+            <label className="w-28 text-sm text-gray-600 shrink-0 pt-1.5">Default:</label>
+            <textarea
+              value={field.defaultValue ?? ''}
+              onChange={(e) => update('defaultValue', e.target.value)}
+              rows={3}
+              className="flex-1 text-sm border border-gray-200 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-sky-500 resize-y"
+              placeholder="Default Values"
             />
           </div>
         )}

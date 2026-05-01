@@ -7,10 +7,11 @@ interface DateInputProps {
   error?: string;
   required?: boolean;
   disabled?: boolean;
+  helpText?: string;
 }
 
 export const DateInput: React.FC<DateInputProps> = ({
-  label, value, onChange, error, required, disabled,
+  label, value, onChange, error, required, disabled, helpText,
 }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -25,6 +26,7 @@ export const DateInput: React.FC<DateInputProps> = ({
         error ? 'border-red-400' : 'border-gray-300'
       }`}
     />
+    {helpText && <p className="text-xs text-gray-400 mt-1 italic">{helpText}</p>}
     {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
   </div>
 );

@@ -9,10 +9,11 @@ interface RadioGroupProps {
   error?: string;
   required?: boolean;
   disabled?: boolean;
+  helpText?: string;
 }
 
 export const RadioGroup: React.FC<RadioGroupProps> = ({
-  label, value, onChange, options, error, required, disabled,
+  label, value, onChange, options, error, required, disabled, helpText,
 }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -33,6 +34,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
         </label>
       ))}
     </div>
+    {helpText && <p className="text-xs text-gray-400 mt-1 italic">{helpText}</p>}
     {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
   </div>
 );

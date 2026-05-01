@@ -10,10 +10,11 @@ interface TagsInputProps {
   required?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  helpText?: string;
 }
 
 export const TagsInput: React.FC<TagsInputProps> = ({
-  label, value = [], onChange, error, required, disabled, placeholder,
+  label, value = [], onChange, error, required, disabled, placeholder, helpText,
 }) => {
   const [input, setInput] = useState('');
   const tags = Array.isArray(value) ? value : [];
@@ -75,6 +76,7 @@ export const TagsInput: React.FC<TagsInputProps> = ({
         )}
       </div>
       <p className="text-xs text-gray-400 mt-1">Press Enter or comma to add a tag</p>
+      {helpText && <p className="text-xs text-gray-400 mt-1 italic">{helpText}</p>}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );

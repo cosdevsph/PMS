@@ -7,10 +7,11 @@ interface CheckboxInputProps {
   error?: string;
   required?: boolean;
   disabled?: boolean;
+  helpText?: string;
 }
 
 export const CheckboxInput: React.FC<CheckboxInputProps> = ({
-  label, value, onChange, error, required, disabled,
+  label, value, onChange, error, required, disabled, helpText,
 }) => (
   <div>
     <label className="flex items-center gap-2 cursor-pointer">
@@ -25,6 +26,7 @@ export const CheckboxInput: React.FC<CheckboxInputProps> = ({
         {label}{required && <span className="text-red-500 ml-1">*</span>}
       </span>
     </label>
+    {helpText && <p className="text-xs text-gray-400 mt-1 ml-6 italic">{helpText}</p>}
     {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
   </div>
 );

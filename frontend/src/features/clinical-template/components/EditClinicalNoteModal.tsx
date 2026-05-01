@@ -348,7 +348,7 @@ export const EditClinicalNoteModal: React.FC<EditClinicalNoteModalProps> = ({
                     return (
                       <div key={field.id || fieldIndex} className="mb-3 last:mb-0">
                         <p className="text-xs font-medium text-gray-600 mb-1">{field.label}</p>
-                        <div className="text-sm text-gray-900 bg-gray-50 rounded p-2 min-h-8">
+                        <div className="text-sm text-gray-900 bg-gray-50 rounded p-2 min-h-8 whitespace-pre-wrap">
                           {displayValue()}
                         </div>
                       </div>

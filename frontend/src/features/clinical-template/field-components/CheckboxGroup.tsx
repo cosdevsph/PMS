@@ -9,6 +9,7 @@ interface CheckboxGroupProps {
   error?: string;
   required?: boolean;
   disabled?: boolean;
+  helpText?: string;
 }
 
 export const CheckboxGroup: React.FC<CheckboxGroupProps> = ({

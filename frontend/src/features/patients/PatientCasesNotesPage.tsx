@@ -293,7 +293,7 @@ const NoteDetailCard = ({ note, onEdit }: NoteDetailCardProps) => {
                       return (
                         <div key={field.id || fieldIndex}>
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">{field.label}</p>
-                          <p className="text-sm text-gray-900 bg-gray-50 rounded px-2 py-1.5 min-h-8">{displayValue()}</p>
+                          <p className="text-sm text-gray-900 bg-gray-50 rounded px-2 py-1.5 min-h-8 whitespace-pre-wrap">{displayValue()}</p>
                         </div>
                       );
                     })}

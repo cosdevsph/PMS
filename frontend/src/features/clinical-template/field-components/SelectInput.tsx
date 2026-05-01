@@ -10,10 +10,11 @@ interface SelectInputProps {
   required?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  helpText?: string;
 }
 
 export const SelectInput: React.FC<SelectInputProps> = ({
-  label, value, onChange, options, error, required, disabled, placeholder,
+  label, value, onChange, options, error, required, disabled, placeholder, helpText,
 }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -32,6 +33,7 @@ export const SelectInput: React.FC<SelectInputProps> = ({
         <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
     </select>
+    {helpText && <p className="text-xs text-gray-400 mt-1 italic">{helpText}</p>}
     {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
   </div>
 );

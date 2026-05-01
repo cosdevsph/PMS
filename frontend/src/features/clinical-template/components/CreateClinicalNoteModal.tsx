@@ -150,7 +150,7 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
             } else if (field.type === 'chart') {
               initialContent[field.id] = null;
             } else {
-              initialContent[field.id] = '';
+              initialContent[field.id] = field.defaultValue ?? '';
             }
           });
         }
@@ -396,7 +396,7 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
                     return (
                       <div key={field.id || fieldIndex} className="mb-3 last:mb-0">
                         <p className="text-xs font-medium text-gray-600 mb-1">{field.label}</p>
-                        <div className="text-sm text-gray-900 bg-gray-50 rounded p-2 min-h-[32px]">
+                        <div className="text-sm text-gray-900 bg-gray-50 rounded p-2 min-h-[32px] whitespace-pre-wrap">
                           {displayValue()}
                         </div>
                       </div>

@@ -9,10 +9,11 @@ interface PainScaleInputProps {
   disabled?: boolean;
   min?: number;
   max?: number;
+  helpText?: string;
 }
 
 export const PainScaleInput: React.FC<PainScaleInputProps> = ({
-  label, value, onChange, error, required, disabled, min = 0, max = 10,
+  label, value, onChange, error, required, disabled, min = 0, max = 10, helpText,
 }) => {
   const current = Number(value) || 0;
   const steps = Array.from({ length: max - min + 1 }, (_, i) => i + min);
@@ -50,6 +51,7 @@ export const PainScaleInput: React.FC<PainScaleInputProps> = ({
         <span>No pain</span>
         <span>Worst pain</span>
       </div>
+      {helpText && <p className="text-xs text-gray-400 mt-1 italic">{helpText}</p>}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
