@@ -55,6 +55,16 @@ export const PractitionerStep: React.FC<PractitionerStepProps> = ({
     (p) => !activeFilter || p.discipline === activeFilter,
   );
 
+  // ── Group displayed practitioners by discipline ───────────────────────────
+  const grouped = displayed.reduce<Record<string, PortalPractitioner[]>>((acc, p) => {
+    const key = p.discipline ?? 'GENERAL';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(p);
+    return acc;
+  }, {});
+
+  const groupEntries = Object.entries(grouped);
+
   return (
     <div className="space-y-5">
       <div>
@@ -115,81 +125,102 @@ export const PractitionerStep: React.FC<PractitionerStepProps> = ({
         </div>
       )}
 
-      {/* Practitioner grid */}
-      {displayed.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {displayed.map((p) => {
-            const isSelected      = selectedPractitioner?.id === p.id;
-            const disciplineLabel = getDisciplineLabel(p.discipline);
+      {/* Practitioner groups */}
+      {groupEntries.length > 0 && (
+        <div className="space-y-8">
+          {groupEntries.map(([disciplineKey, list]) => {
+            const groupLabel = disciplineKey === 'GENERAL'
+              ? 'General'
+              : (getDisciplineLabel(disciplineKey) ?? disciplineKey);
 
             return (
-              <button
-                key={p.id}
-                onClick={() => onSelect(p)}
-                className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all text-center shadow-sm ${
-                  isSelected
-                    ? 'border-sky-500 bg-sky-50 shadow-md'
-                    : 'border-gray-200 bg-white hover:border-sky-300 hover:shadow-md'
-                }`}
-              >
-                {/* Avatar */}
-                <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 shrink-0">
-                  {p.avatar_url ? (
-                    <img src={p.avatar_url} alt={p.full_name} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-10 h-10 text-gray-400" />
-                  )}
+              <div key={disciplineKey}>
+                {/* Section header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+                    {groupLabel}
+                  </h3>
+                  <div className="flex-1 h-px bg-gray-200" />
                 </div>
 
-                {/* Info block */}
-                <div className="w-full space-y-1">
-                  <p className={`text-sm font-bold leading-tight ${isSelected ? 'text-sky-800' : 'text-gray-900'}`}>
-                    {p.title ? `${p.title}. ${p.full_name}` : p.full_name}
-                  </p>
+                {/* Practitioner grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {list.map((p) => {
+                    const isSelected      = selectedPractitioner?.id === p.id;
+                    const disciplineLabel = getDisciplineLabel(p.discipline);
 
-                  {(p.occupation || p.position) && (
-                    <p className={`text-xs font-semibold ${isSelected ? 'text-sky-600' : 'text-gray-600'}`}>
-                      {p.occupation || p.position}
-                    </p>
-                  )}
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => onSelect(p)}
+                        className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all text-center shadow-sm ${
+                          isSelected
+                            ? 'border-sky-500 bg-sky-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-sky-300 hover:shadow-md'
+                        }`}
+                      >
+                        {/* Avatar */}
+                        <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 shrink-0">
+                          {p.avatar_url ? (
+                            <img src={p.avatar_url} alt={p.full_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <User className="w-10 h-10 text-gray-400" />
+                          )}
+                        </div>
 
-                  {disciplineLabel && (
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium leading-snug ${
-                      isSelected ? 'bg-sky-100 text-sky-700' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {disciplineLabel}
-                    </span>
-                  )}
+                        {/* Info block */}
+                        <div className="w-full space-y-1">
+                          <p className={`text-sm font-bold leading-tight ${isSelected ? 'text-sky-800' : 'text-gray-900'}`}>
+                            {p.title ? `${p.title}. ${p.full_name}` : p.full_name}
+                          </p>
 
-                  {!p.occupation && !p.position && !disciplineLabel && p.specialization && (
-                    <p className="text-xs text-gray-500">{p.specialization}</p>
-                  )}
+                          {(p.occupation || p.position) && (
+                            <p className={`text-xs font-semibold ${isSelected ? 'text-sky-600' : 'text-gray-600'}`}>
+                              {p.occupation || p.position}
+                            </p>
+                          )}
 
-                  {/* Services offered */}
-                  {p.services && p.services.length > 0 && (
-                    <div className="flex flex-wrap gap-1 justify-center mt-1">
-                      {p.services.slice(0, 3).map(svc => (
-                        <span
-                          key={svc.id}
-                          className="text-[9px] bg-gray-50 border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full"
-                        >
-                          {svc.name}
-                        </span>
-                      ))}
-                      {p.services.length > 3 && (
-                        <span className="text-[9px] text-gray-400">+{p.services.length - 3} more</span>
-                      )}
-                    </div>
-                  )}
+                          {disciplineLabel && (
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium leading-snug ${
+                              isSelected ? 'bg-sky-100 text-sky-700' : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {disciplineLabel}
+                            </span>
+                          )}
+
+                          {!p.occupation && !p.position && !disciplineLabel && p.specialization && (
+                            <p className="text-xs text-gray-500">{p.specialization}</p>
+                          )}
+
+                          {/* Services offered */}
+                          {p.services && p.services.length > 0 && (
+                            <div className="flex flex-wrap gap-1 justify-center mt-1">
+                              {p.services.slice(0, 3).map(svc => (
+                                <span
+                                  key={svc.id}
+                                  className="text-[9px] bg-gray-50 border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full"
+                                >
+                                  {svc.name}
+                                </span>
+                              ))}
+                              {p.services.length > 3 && (
+                                <span className="text-[9px] text-gray-400">+{p.services.length - 3} more</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* CTA button */}
+                        <div className={`w-full py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                          isSelected ? 'bg-sky-500 text-white' : 'bg-gray-800 text-white'
+                        }`}>
+                          {isSelected ? 'Selected ✓' : 'Select'}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-
-                {/* CTA button */}
-                <div className={`w-full py-1.5 rounded-xl text-xs font-semibold transition-colors ${
-                  isSelected ? 'bg-sky-500 text-white' : 'bg-gray-800 text-white'
-                }`}>
-                  {isSelected ? 'Selected ✓' : 'Select'}
-                </div>
-              </button>
+              </div>
             );
           })}
         </div>

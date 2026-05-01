@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, FileText, Loader2, Save, Calendar, ClipboardList, Eye, Plus } from 'lucide-react';
+import { X, FileText, Loader2, Save, Calendar, ClipboardList, Plus } from 'lucide-react';
 import { getActiveTemplates, createNote } from '../clinical-templates.api';
 import { getAppointments } from '@/features/appointments/appointment.api';
 import { DynamicFormRenderer } from './DynamicFormRenderer';
-import { ChartDrawingCanvas } from './ChartDrawingCanvas';
-import type { ChartAnnotation } from './ChartDrawingCanvas';
-import type { ClinicalTemplate, CreateClinicalNoteData, TemplateSection, TemplateField, ChartType } from '@/types/clinicalTemplate';
+import type { ClinicalTemplate, CreateClinicalNoteData, TemplateSection, TemplateField } from '@/types/clinicalTemplate';
 import type { Appointment } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -40,17 +38,6 @@ const formatDate = (dateStr: string): string => {
   });
 };
 
-// Helper to format full date
-const formatFullDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-PH', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
-
 export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = ({
   isOpen,
   onClose,
@@ -69,7 +56,6 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
   const [content, setContent] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
 
   const navigate = useNavigate();
 
@@ -243,189 +229,6 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
     return details;
   }, [appointments, selectedAppointment]);
 
-  // Render preview section
-  const renderPreview = () => {
-    if (!selectedTemplate) return null;
-
-    const sections = selectedTemplate.structure?.sections as TemplateSection[] || [];
-    const currentTime = new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
-    const practitionerName = selectedAppointmentDetails?.practitioner_name || 'Not assigned';
-    const practitionerAvatar = selectedAppointmentDetails?.practitioner_avatar || null;
-
-    console.log('[CreateClinicalNoteModal renderPreview] practitionerAvatar:', practitionerAvatar);
-    console.log('[CreateClinicalNoteModal renderPreview] practitionerName:', practitionerName);
-    console.log('[CreateClinicalNoteModal renderPreview] selectedAppointmentDetails:', selectedAppointmentDetails);
-
-    // Generate initials for avatar fallback
-    const getInitials = (name: string) => {
-      if (!name || name === 'Not assigned') return '?';
-      const parts = name.split(' ');
-      return parts.length > 1 
-        ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() 
-        : name.substring(0, 2).toUpperCase();
-    };
-
-    return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full flex flex-col overflow-hidden">
-        {/* Preview Header */}
-        <div className="bg-gradient-to-r from-sky-600 to-sky-700 text-white p-4 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4" />
-              <span className="font-semibold text-sm">Preview</span>
-            </div>
-            <button
-              onClick={() => setShowPreview(!showPreview)}
-              className="text-white/80 hover:text-white text-xs"
-            >
-              {showPreview ? 'Hide' : 'Show'}
-            </button>
-          </div>
-        </div>
-
-        {/* Preview Content */}
-        {showPreview && (
-          <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-            {/* Header Section */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-              {/* Practitioner Avatar and Info */}
-              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-200">
-                {practitionerAvatar ? (
-                  <img 
-                    src={practitionerAvatar} 
-                    alt={practitionerName}
-                    className="w-12 h-12 rounded-full object-cover border-2 border-sky-500 shadow-sm"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-sky-100 border-2 border-sky-500 flex items-center justify-center text-sky-600 font-bold text-lg shadow-sm">
-                    {getInitials(practitionerName)}
-                  </div>
-                )}
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-900 text-sm">{practitionerName}</h3>
-                  <p className="text-xs text-gray-500">{selectedTemplate.name}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">Date</p>
-                  <p className="text-sm font-medium text-gray-900">{formatFullDate(noteDate)}</p>
-                </div>
-              </div>
-              
-              {/* Patient Info */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <p className="text-gray-500">Patient</p>
-                  <p className="font-medium text-gray-900">{patientName}</p>
-                </div>
-                {selectedAppointmentDetails && (
-                  <>
-                    <div>
-                      <p className="text-gray-500">Session</p>
-                      <p className="font-medium text-gray-900">
-                        {formatDate(selectedAppointmentDetails.date)} - {formatTime(selectedAppointmentDetails.start_time)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Practitioner</p>
-                      <p className="font-medium text-gray-900">{selectedAppointmentDetails.practitioner_name || 'Not assigned'}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Service</p>
-                      <p className="font-medium text-gray-900">{selectedAppointmentDetails.service_name || 'N/A'}</p>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Template Sections Preview */}
-            {sections.map((section: TemplateSection, sectionIndex: number) => (
-              <div key={section.id || sectionIndex} className="bg-white rounded-lg border border-gray-200 mb-4">
-                <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 rounded-t-lg">
-                  <h4 className="font-semibold text-sm text-gray-900">{section.title}</h4>
-                  {section.description && (
-                    <p className="text-xs text-gray-500">{section.description}</p>
-                  )}
-                </div>
-                <div className="p-4">
-                  {section.fields && (section.fields as TemplateField[]).map((field: TemplateField, fieldIndex: number) => {
-                    // Skip non-data field types
-                    if (field.type === 'section_header') return null;
-                    
-                    // Render heading as styled heading
-                    if (field.type === 'heading') {
-                      return (
-                        <div key={field.id || fieldIndex} className="mb-3 last:mb-0 pt-2">
-                          <h5 className="text-base font-semibold text-gray-800">{field.label}</h5>
-                          {field.helpText && <p className="text-xs text-gray-500 mt-0.5">{field.helpText}</p>}
-                        </div>
-                      );
-                    }
-
-                    // Render chart preview in disabled/read-only mode
-                    if (field.type === 'chart') {
-                      return (
-                        <div key={field.id || fieldIndex} className="mb-3 last:mb-0">
-                          <ChartDrawingCanvas
-                            chartType={(field.chartType as ChartType) || 'body'}
-                            value={content[field.id] as ChartAnnotation | null}
-                            disabled
-                            label={field.label}
-                          />
-                        </div>
-                      );
-                    }
-
-                    const value = content[field.id];
-                    const displayValue = () => {
-                      if (value === undefined || value === '' || value === null) {
-                        return <span className="text-gray-400 italic">Not filled</span>;
-                      }
-                      if (typeof value === 'boolean') {
-                        return value ? 'Yes' : 'No';
-                      }
-                      if (Array.isArray(value)) {
-                        return value.length > 0 ? value.join(', ') : <span className="text-gray-400 italic">Not filled</span>;
-                      }
-                      if (field.type === 'scale') {
-                        return `${value} / ${field.max || 10}`;
-                      }
-                      return String(value);
-                    };
-
-                    return (
-                      <div key={field.id || fieldIndex} className="mb-3 last:mb-0">
-                        <p className="text-xs font-medium text-gray-600 mb-1">{field.label}</p>
-                        <div className="text-sm text-gray-900 bg-gray-50 rounded p-2 min-h-[32px] whitespace-pre-wrap">
-                          {displayValue()}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-
-            {/* Footer - Date, Time, Practitioner */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4 mt-4">
-              <div className="flex justify-between items-center text-xs text-gray-500">
-                <div>
-                  <p>Date: <span className="font-medium text-gray-700">{formatFullDate(noteDate)}</span></p>
-                </div>
-                <div>
-                  <p>Time: <span className="font-medium text-gray-700">{currentTime}</span></p>
-                </div>
-                <div>
-                  <p>Practitioner: <span className="font-medium text-gray-700">{practitionerName}</span></p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -437,27 +240,12 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
             <h2 className="text-lg font-bold text-gray-900">Create Clinical Note</h2>
             <p className="text-sm text-gray-500">Patient: {patientName}</p>
           </div>
-          <div className="flex items-center gap-2">
-            {step === 'form' && (
-              <button
-                onClick={() => setShowPreview(!showPreview)}
-                className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  showPreview 
-                    ? 'bg-sky-100 text-sky-700 border border-sky-300' 
-                    : 'bg-gray-100 text-gray-700 border border-gray-300'
-                }`}
-              >
-                <Eye className="w-4 h-4" />
-                {showPreview ? 'Hide Preview' : 'Show Preview'}
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Body */}
@@ -487,48 +275,72 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
                 <div className="text-center py-8 text-gray-500">
                   No active templates available. Create one from the Clinical Templates page.
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {templates.map((template) => (
-                    <button
-                      key={template.id}
-                      onClick={() => handleTemplateSelect(template)}
-                      className="flex flex-col items-start p-4 border border-gray-200 rounded-xl hover:border-sky-500 hover:bg-sky-50 transition-all text-left group"
-                    >
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-sm font-semibold text-gray-900 group-hover:text-sky-700">
-                          {template.name}
-                        </span>
-                        {template.discipline && (
-                          <span className="text-xs bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full">
-                            {template.discipline}
-                          </span>
-                        )}
+              ) : (() => {
+                // Group templates by discipline; no discipline → "General"
+                const grouped = templates.reduce<Record<string, ClinicalTemplate[]>>((acc, t) => {
+                  const group = t.discipline?.trim() || 'General';
+                  if (!acc[group]) acc[group] = [];
+                  acc[group].push(t);
+                  return acc;
+                }, {});
+                const sortedGroups = Object.keys(grouped).sort((a, b) => {
+                  if (a === 'General') return -1;
+                  if (b === 'General') return 1;
+                  return a.localeCompare(b);
+                });
+                return (
+                  <div className="space-y-6 overflow-y-auto">
+                    {sortedGroups.map((group) => (
+                      <div key={group}>
+                        {/* Section Header */}
+                        <div className="border-b border-gray-200 pb-2 mb-3">
+                          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{group}</h2>
+                        </div>
+                        {/* Template Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {grouped[group].map((template) => (
+                            <button
+                              key={template.id}
+                              onClick={() => handleTemplateSelect(template)}
+                              className="flex flex-col items-start p-4 border border-gray-200 rounded-xl hover:border-sky-500 hover:bg-sky-50 transition-all text-left group"
+                            >
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-900 group-hover:text-sky-700">
+                                  {template.name}
+                                </span>
+                                {template.discipline && (
+                                  <span className="text-xs bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full">
+                                    {template.discipline}
+                                  </span>
+                                )}
+                              </div>
+                              {template.description && (
+                                <p className="text-xs text-gray-500 line-clamp-2">{template.description}</p>
+                              )}
+                              <div className="flex items-center gap-2 text-xs text-gray-400 mt-2">
+                                <span>v{template.version}</span>
+                                <span>·</span>
+                                <span>{template.structure?.sections?.reduce((acc: number, s: TemplateSection) => acc + (s.fields?.length || 0), 0) || 0} fields</span>
+                                {template.clinic_branch_name && (
+                                  <>
+                                    <span>·</span>
+                                    <span>{template.clinic_branch_name}</span>
+                                  </>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      {template.description && (
-                        <p className="text-xs text-gray-500 line-clamp-2">{template.description}</p>
-                      )}
-                      <div className="flex items-center gap-2 text-xs text-gray-400 mt-2">
-                        <span>v{template.version}</span>
-                        <span>·</span>
-                        <span>{template.structure?.sections?.reduce((acc: number, s: TemplateSection) => acc + (s.fields?.length || 0), 0) || 0} fields</span>
-                        {template.clinic_branch_name && (
-                          <>
-                            <span>·</span>
-                            <span>{template.clinic_branch_name}</span>
-                          </>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           ) : (
-            // Step 2: Form Editor with Two Columns
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-              {/* Left Column - Input Form */}
-              <div className="space-y-6 overflow-y-auto pr-2">
+            // Step 2: Form Editor (single column)
+            <div className="h-full overflow-y-auto">
+              <div className="space-y-6 max-w-3xl mx-auto">
                 {/* Meta Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
                   <div>
@@ -584,22 +396,14 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
                 </div>
 
                 {/* Template Info */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-sky-600" />
-                    <span className="text-sm font-medium text-gray-700">
-                      Template: {selectedTemplate?.name}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      (v{selectedTemplate?.version})
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setStep('template')}
-                    className="text-xs text-sky-600 hover:text-sky-700"
-                  >
-                    Change template
-                  </button>
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-sky-600" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Template: {selectedTemplate?.name}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    (v{selectedTemplate?.version})
+                  </span>
                 </div>
 
                 {/* Dynamic Form */}
@@ -612,11 +416,6 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
                     />
                   </div>
                 )}
-              </div>
-
-              {/* Right Column - Preview */}
-              <div className="h-full overflow-hidden">
-                {renderPreview()}
               </div>
             </div>
           )}

@@ -49,6 +49,21 @@ export const TemplateList: React.FC<TemplateListProps> = ({
   const fieldCount = (t: ClinicalTemplate) =>
     t.structure?.sections?.reduce((acc, s) => acc + s.fields.length, 0) || 0;
 
+  // Group filtered templates: no discipline → "General", otherwise by discipline name
+  const groupedTemplates = filtered.reduce<Record<string, ClinicalTemplate[]>>((acc, t) => {
+    const group = t.discipline?.trim() || 'General';
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(t);
+    return acc;
+  }, {});
+
+  // Sort groups: "General" first, then alphabetically
+  const sortedGroups = Object.keys(groupedTemplates).sort((a, b) => {
+    if (a === 'General') return -1;
+    if (b === 'General') return 1;
+    return a.localeCompare(b);
+  });
+
   if (loading) {
     return (
       <div className="space-y-3 p-4">
@@ -96,8 +111,8 @@ export const TemplateList: React.FC<TemplateListProps> = ({
         </button>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      {/* Grouped List */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <FileText className="w-12 h-12 text-gray-200 mb-3" />
@@ -108,7 +123,16 @@ export const TemplateList: React.FC<TemplateListProps> = ({
           </div>
         )}
 
-        {filtered.map((template) => (
+        {sortedGroups.map((group) => (
+          <div key={group}>
+            {/* Section Header */}
+            <div className="border-b border-gray-200 pb-2 mb-3">
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{group}</h2>
+            </div>
+
+            {/* Templates in group */}
+            <div className="space-y-2">
+              {groupedTemplates[group].map((template) => (
           <div
             key={template.id}
             className={`bg-white rounded-xl border transition-all hover:shadow-sm ${
@@ -224,6 +248,9 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                   </>
                 )}
               </div>
+            </div>
+          </div>
+        ))}
             </div>
           </div>
         ))}
