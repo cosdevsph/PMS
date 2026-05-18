@@ -320,7 +320,7 @@ REST_FRAMEWORK = {
 
 # JWT Settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),   # short-lived; refresh silently handles re-auth
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),      # matches inactivity timeout; silent refresh on 401
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,

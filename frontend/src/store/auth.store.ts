@@ -1,9 +1,56 @@
+import axios from 'axios';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User, AuthTokens, AuthState } from '@/types';
 import { authService } from '@/services/authService';
 import { queryClient } from '@/lib/queryClient';
 import { invalidateClinicSettingsCache } from '@/hooks/useClinicSettings';
+
+const AUTH_API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+
+/** Attempt a silent access-token refresh. Returns new access token or null on failure. */
+async function silentRefresh(): Promise<string | null> {
+  const refreshToken =
+    localStorage.getItem('refresh_token') ??
+    (() => {
+      try {
+        const s = localStorage.getItem('auth-storage');
+        if (s) {
+          const p = JSON.parse(s);
+          return p?.state?.tokens?.refresh || p?.tokens?.refresh || null;
+        }
+      } catch { /* ignore */ }
+      return null;
+    })();
+
+  if (!refreshToken) return null;
+
+  try {
+    const res = await axios.post(`${AUTH_API_BASE}/auth/token/refresh/`, { refresh: refreshToken });
+    const newAccess: string   = res.data.access;
+    const newRefresh: string  = res.data.refresh ?? refreshToken;
+
+    localStorage.setItem('access_token',  newAccess);
+    localStorage.setItem('refresh_token', newRefresh);
+
+    // Patch Zustand persisted store
+    try {
+      const raw = localStorage.getItem('auth-storage');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.state?.tokens) {
+          parsed.state.tokens.access  = newAccess;
+          parsed.state.tokens.refresh = newRefresh;
+          localStorage.setItem('auth-storage', JSON.stringify(parsed));
+        }
+      }
+    } catch { /* ignore */ }
+
+    return newAccess;
+  } catch {
+    return null;
+  }
+}
 
 interface AuthStore extends AuthState {
   setAuth: (user: User, tokens: AuthTokens) => void;
@@ -121,49 +168,70 @@ export const useAuthStore = create<AuthStore>()(
         const token        = localStorage.getItem('access_token');
         const refreshToken = localStorage.getItem('refresh_token');
 
-        if (!token) {
-          console.log('❌ No token found');
+        if (!token && !refreshToken) {
+          console.log('❌ No credentials found');
           set({ isAuthenticated: false, isLoading: false, user: null, tokens: null });
           return false;
         }
 
-        try {
+        // Resolve a valid access token — refresh silently if expired.
+        let activeToken: string | null = token;
+
+        if (token) {
           const tokenCheck = await authService.verifyToken(token);
-
-          if (tokenCheck.valid && refreshToken) {
-            // ── CRITICAL: Fetch FRESH user data from server ─────────────────
-            // This ensures the latest permissions_map is applied even if the
-            // admin changed the user's permission group since last login.
-            let freshUser: User;
-            try {
-              freshUser = await authService.getMe(token);
-              console.log('✅ Token valid, session refreshed with latest permissions');
-            } catch (meError) {
-              // Fallback to cached user only if /auth/me/ is unreachable (offline)
-              console.warn('⚠️ Could not refresh user from server, using cached data:', meError);
-              const userStr = localStorage.getItem('user');
-              if (!userStr) {
-                get().logout();
-                return false;
-              }
-              freshUser = JSON.parse(userStr);
+          if (!tokenCheck.valid) {
+            console.log('🔄 Access token expired — attempting silent refresh...');
+            activeToken = await silentRefresh();
+            if (!activeToken) {
+              console.log('❌ Silent refresh failed — logging out');
+              get().logout();
+              return false;
             }
-
-            // Sync fresh user to localStorage for subsequent cold-starts
-            localStorage.setItem('user', JSON.stringify(freshUser));
-
-            set({
-              user: freshUser,
-              tokens: { access: token, refresh: refreshToken },
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            return true;
-          } else {
-            console.log('❌ Token invalid or expired');
+            console.log('✅ Token silently refreshed');
+          }
+        } else {
+          // No access token but have refresh token — try to obtain new tokens.
+          console.log('🔄 No access token — attempting silent refresh...');
+          activeToken = await silentRefresh();
+          if (!activeToken) {
+            console.log('❌ Silent refresh failed — logging out');
             get().logout();
             return false;
           }
+        }
+
+        try {
+          // ── CRITICAL: Fetch FRESH user data from server ─────────────────
+          // This ensures the latest permissions_map is applied even if the
+          // admin changed the user's permission group since last login.
+          let freshUser: User;
+          try {
+            freshUser = await authService.getMe(activeToken!);
+            console.log('✅ Token valid, session refreshed with latest permissions');
+          } catch (meError) {
+            // Fallback to cached user only if /auth/me/ is unreachable (offline)
+            console.warn('⚠️ Could not refresh user from server, using cached data:', meError);
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+              get().logout();
+              return false;
+            }
+            freshUser = JSON.parse(userStr);
+          }
+
+          // Sync fresh user to localStorage for subsequent cold-starts
+          localStorage.setItem('user', JSON.stringify(freshUser));
+
+          set({
+            user: freshUser,
+            tokens: {
+              access:  activeToken!,
+              refresh: localStorage.getItem('refresh_token')!,
+            },
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return true;
         } catch (error: any) {
           console.error('❌ Auth verification failed:', error);
           if (error.response) {

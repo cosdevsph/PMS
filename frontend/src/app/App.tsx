@@ -5,7 +5,9 @@ import { useAuthStore } from '@/store/auth.store';
 import { SidebarProvider } from '@/contexts/SidebarContext';
 import { ProtectedRoute, PublicRoute, ClinicMemberRoute, ClinicSetupRoute, ChangePasswordRoute } from './router';
 import { LogoutConfirmModal } from '@/components/modals/LogoutConfirmModal';
+import { SessionExpiryWarningModal } from '@/components/modals/SessionExpiryWarningModal';
 import { useLogoutConfirm } from '@/hooks/useLogoutConfirm';
+import { useInactivityLogout } from '@/hooks/useInactivityLogout';
 
 //vercel web analytics
 import { Analytics } from "@vercel/analytics/react";
@@ -152,6 +154,21 @@ const GlobalLogoutModal = () => {
         </div>
       </div>
     </>
+  );
+};
+
+/** Inactivity guard — renders the session-expiry warning modal when the user
+ *  has been idle for nearly 2 hours, and logs them out on timeout. */
+const SessionGuard = () => {
+  const { logout }                           = useAuthStore();
+  const { showWarning, remainingMs, stayLoggedIn } = useInactivityLogout();
+  return (
+    <SessionExpiryWarningModal
+      showWarning={showWarning}
+      remainingMs={remainingMs}
+      onStayLoggedIn={stayLoggedIn}
+      onLogout={logout}
+    />
   );
 };
 
@@ -303,6 +320,7 @@ function App() {
         <NotificationBellGuard />
         <FloatingNotificationsContainer />
         <GlobalLogoutModal />
+        <SessionGuard />
         <Analytics />
       </BrowserRouter>
     </SidebarProvider>
