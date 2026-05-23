@@ -65,6 +65,14 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const { practitioners, loading: loadingPractitioners } = usePractitioners({
     clinicBranchId: selectedClinicBranchId ?? null,   // ← ADD: filter by branch
   });
+
+  // Only PRACTITIONER-role users are bookable in appointment forms.
+  const bookablePractitioners = useMemo(
+    () => practitioners.filter(p =>
+      (p.roles ?? []).includes('PRACTITIONER') || p.role === 'PRACTITIONER'
+    ),
+    [practitioners],
+  );
   const { services, loading: loadingServices } = useAppointmentServices();
 
   // Resolve branch name for display
@@ -406,7 +414,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <select name="practitioner" value={formData.practitioner} onChange={handleSelectChange} className={`${inputBase} pl-9`}>
                       <option value="">Unassigned</option>
-                      {practitioners.map(p => (
+                      {bookablePractitioners.map(p => (
                         <option key={p.id} value={p.id}>{p.name}{p.specialization && ` — ${p.specialization}`}</option>
                       ))}
                     </select>
@@ -415,7 +423,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 <p className="mt-1 text-xs text-gray-400">
                   {isPractitionerLocked
                     ? 'Practitioner is set by the active calendar filter.'
-                    : practitioners.length === 0
+                    : bookablePractitioners.length === 0
                       ? selectedClinicBranchId
                         ? 'No practitioners assigned to this branch.'
                         : 'No practitioners available. Contact admin to add practitioners.'

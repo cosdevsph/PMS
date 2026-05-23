@@ -107,7 +107,7 @@ interface CalendarProps {
   comparePractitionerIdA?: number | null;
   comparePractitionerIdB?: number | null;
   /** Admin-only: intercept double-click / drag-select instead of opening AppointmentModal internally */
-  onSlotAction?: (slot: { date: Date; time: string; hour: number; minutes: number; duration: number }) => void;
+  onSlotAction?: (slot: { date: Date; time: string; hour: number; minutes: number; duration: number; practitionerId?: number | null }) => void;
   /** Increment to trigger a refetch of appointments (e.g. after creating one from outside Calendar) */
   appointmentRefreshKey?: number;
   /** Called after recurring appointments are saved, so parent can trigger a refetch */
@@ -120,9 +120,30 @@ interface CalendarProps {
   rebookMode?: boolean;
   /** Label shown in the rebook ghost tooltip (patient + service). */
   rebookPreviewLabel?: string;
+  /** Multi-practitioner list for Day View split-column layout.
+   * When provided with 1+ entries and no specific practitioner filter,
+   * Day View renders one column per practitioner. */
+  multiPractitioners?: Array<{
+    id: number | string;
+    name: string;
+    specialization: string | null;
+    availability?: PractitionerAvailability;
+  }>;
 }
 
 // isColorDark / hexToRgba removed — replaced by solid color styling
+
+// Colour palette for multi-practitioner day-view column headers (cycles if >8 practitioners)
+const COL_HEADER_COLORS = [
+  { bg: 'bg-sky-50',     text: 'text-sky-700',     sub: 'text-sky-500'     },
+  { bg: 'bg-violet-50',  text: 'text-violet-700',   sub: 'text-violet-500'  },
+  { bg: 'bg-emerald-50', text: 'text-emerald-700',  sub: 'text-emerald-500' },
+  { bg: 'bg-amber-50',   text: 'text-amber-700',    sub: 'text-amber-500'   },
+  { bg: 'bg-rose-50',    text: 'text-rose-700',     sub: 'text-rose-500'    },
+  { bg: 'bg-indigo-50',  text: 'text-indigo-700',   sub: 'text-indigo-500'  },
+  { bg: 'bg-teal-50',    text: 'text-teal-700',     sub: 'text-teal-500'    },
+  { bg: 'bg-orange-50',  text: 'text-orange-700',   sub: 'text-orange-500'  },
+];
 
 type BlockColors =
   | { useHex: true;  hex: string; bgStyle: React.CSSProperties; textColor: string; subTextColor: string; label: string | null; }
@@ -254,6 +275,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   onRebook,
   rebookMode = false,
   rebookPreviewLabel,
+  multiPractitioners,
 }) => {
   // Staff entries have string ids (e.g. 'staff-5') — appointment hooks need a numeric id or null.
   // Pass null for String ids so appointment filtering is effectively disabled for Staff.
@@ -1090,6 +1112,44 @@ const CalendarComponent: React.FC<CalendarProps> = ({
       return;
     }
     openModal({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15 });
+  };
+
+  // ── Column-aware variants for multi-practitioner day view ─────────────────
+  // These are identical to handleDoubleClick / handleMouseUp but pass the
+  // column's practitioner id through onSlotAction so Diary can pre-fill it.
+  const handleColumnDoubleClick = (date: Date, slot: CalendarSlot, practId: number | null) => {
+    if (dragState.isDragging || dragState.isHolding || blockDragState.isDragging || blockDragState.isHolding || noteDragState.isDragging || isResizing) return;
+    if (onSlotAction) {
+      onSlotAction({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15, practitionerId: practId });
+      return;
+    }
+    openModal({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15 });
+  };
+
+  const handleColumnMouseUp = (date: Date, practId: number | null) => {
+    if ((dragState.isDragging && dragState.draggedAppointment) || (blockDragState.isDragging && blockDragState.draggedBlock) || (noteDragState.isDragging && noteDragState.draggedNote) || isResizing) return;
+    if (selection.startSlot) {
+      const duration  = getSelectionDuration();
+      const startTime = getSelectionStartTime();
+      if (isDraggingRef.current && duration > 15 && startTime) {
+        const slotInfo = {
+          date,
+          time:    `${startTime.hour}:${startTime.minutes.toString().padStart(2, '0')}`,
+          hour:    startTime.hour,
+          minutes: startTime.minutes,
+          duration,
+          practitionerId: practId,
+        };
+        if (onSlotAction) {
+          onSlotAction(slotInfo);
+        } else {
+          openModal(slotInfo);
+        }
+      }
+    }
+    endSelection();
+    clearSelection();
+    isDraggingRef.current = false;
   };
 
   const handleAppointmentCreated = (appointment: Appointment) => {
@@ -2193,10 +2253,216 @@ const CalendarComponent: React.FC<CalendarProps> = ({
       );
     }
 
+    // ── MULTI-PRACTITIONER DAY VIEW ─────────────────────────────────────────
+    // Triggered when All-Practitioners mode is active and a practitioners list
+    // is provided. Renders one column per practitioner side-by-side.
+    if (!selectedPractitionerId && multiPractitioners && multiPractitioners.length > 0) {
+      const pCount   = multiPractitioners.length;
+      const gridCols = `80px repeat(${pCount}, minmax(0, 1fr))`;
+      const minWidth = 80 + pCount * 180;
+      const dayAppts  = getAppointmentsForDate(currentDate);
+      const dayBlocks = getBlockAppointmentsForDate(currentDate);
+      const dayNotes  = getNotesForDate(currentDate);
+
+      // Per-column slot renderer — mirrors renderTimeSlotCompare but routes
+      // double-click / mouse-up through the column-aware handlers so the
+      // practitioner id is forwarded to onSlotAction.
+      const renderColumnSlot = (
+        slot: typeof timeSlots[0],
+        date: Date,
+        i: number,
+        avail: PractitionerAvailability | undefined,
+        colKey: string,
+        hasEvents: boolean,
+        practId: number | null,
+      ) => {
+        const { isAvailable, isLunch, dayAvailable } = evalSlotAvailability(slot, date, avail);
+        const isSelected   = isSlotSelected(slot);
+        const isDropTarget = dragState.isDragging;
+
+        if (isLunch && dayAvailable && avail) {
+          const [lH, lM] = avail.lunch_start_time.split(':').map(Number);
+          const isFirstLunchSlot = slot.hour === lH && slot.minutes === lM;
+          return (
+            <div
+              key={`${colKey}-${i}`}
+              data-slot-date={format(date, 'yyyy-MM-dd')}
+              data-slot-hour={slot.hour}
+              data-slot-minute={slot.minutes}
+              onMouseDown={() => handleMouseDown(date, slot)}
+              onMouseEnter={() => handleMouseEnter(slot)}
+              onMouseUp={() => handleColumnMouseUp(date, practId)}
+              onDoubleClick={() => handleColumnDoubleClick(date, slot, practId)}
+              className={`h-6 relative select-none bg-amber-400 cursor-pointer border-r border-amber-500 ${slot.quarter === 0 ? 'border-t border-amber-500' : 'border-t border-amber-400'}`}
+            >
+              {isFirstLunchSlot && (
+                <div className="absolute inset-0 flex items-center px-2 z-10 pointer-events-none">
+                  <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wide whitespace-nowrap">Lunch</span>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        let slotBgClass = '';
+        if (!isAvailable) {
+          slotBgClass = 'bg-trust-harbor/30';
+        } else if (isSelected) {
+          slotBgClass = 'bg-sky-200 hover:bg-sky-300';
+        } else if (isDropTarget) {
+          slotBgClass = 'bg-white hover:bg-emerald-100';
+        } else {
+          slotBgClass = 'bg-white hover:bg-sky-50';
+        }
+
+        const borderClass = slot.quarter === 0 ? 'border-t border-gray-300' : 'border-t border-gray-100';
+
+        return (
+          <div
+            key={`${colKey}-${i}`}
+            data-slot-date={format(date, 'yyyy-MM-dd')}
+            data-slot-hour={slot.hour}
+            data-slot-minute={slot.minutes}
+            onMouseDown={() => handleMouseDown(date, slot)}
+            onMouseEnter={() => handleMouseEnter(slot)}
+            onMouseUp={() => handleColumnMouseUp(date, practId)}
+            onDoubleClick={() => handleColumnDoubleClick(date, slot, practId)}
+            className={`h-6 transition-colors relative select-none cursor-pointer border-r border-gray-200 flex ${borderClass} ${slotBgClass}`}
+          >
+            <div className="w-[90%] h-full relative">
+              {isSelected && <div className="absolute inset-0 bg-sky-200 pointer-events-none" />}
+              {isDropTarget && <div className="absolute inset-0 border-b border-dashed border-emerald-300 pointer-events-none" />}
+            </div>
+            {hasEvents && (
+              <div
+                className="w-[10%] h-full cursor-pointer border-l border-gray-100/80 hover:bg-blue-50/60 transition-colors duration-100 flex items-center justify-center group/strip"
+                onMouseDown={e => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onSlotAction) {
+                    onSlotAction({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15, practitionerId: practId });
+                  } else {
+                    openModal({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15 });
+                  }
+                }}
+                title="Click to add appointment, block, or note"
+              >
+                <span className="text-[9px] text-gray-300 group-hover/strip:text-blue-400 font-bold leading-none select-none transition-colors">+</span>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      return (
+        <div {...calendarWrapperProps} className="h-full flex flex-col">
+          <div className="flex flex-col h-full bg-white rounded-xl border border-gray-200 overflow-hidden">
+
+            {/* Date header */}
+            <div className="shrink-0 px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900">
+                {format(currentDate, 'EEEE, MMMM d, yyyy')}
+              </h3>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full font-medium">
+                {pCount} practitioner{pCount !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {/* Practitioner column headers */}
+            <div
+              className="shrink-0 border-b border-gray-200 overflow-x-auto"
+              style={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: `${minWidth}px` }}
+            >
+              <div className="bg-gray-50 border-r border-gray-200" />
+              {multiPractitioners.map((p, idx) => {
+                const colors = COL_HEADER_COLORS[idx % COL_HEADER_COLORS.length];
+                return (
+                  <div key={String(p.id)} className={`py-3 px-3 ${colors.bg} border-l border-gray-200 text-center`}>
+                    <div className={`text-sm font-bold ${colors.text} truncate`}>{p.name}</div>
+                    {p.specialization && (
+                      <div className={`text-xs ${colors.sub} truncate mt-0.5`}>{p.specialization}</div>
+                    )}
+                    {p.availability && (
+                      <div className={`text-[11px] ${colors.sub} mt-1`}>
+                        {formatTime12Hour(p.availability.duty_start_time)} – {formatTime12Hour(p.availability.duty_end_time)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Scrollable grid body */}
+            <div className="flex-1 overflow-y-auto min-h-0 overflow-x-auto">
+              <div style={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: `${minWidth}px` }}>
+                {/* Time column */}
+                <div className="border-r border-gray-200 sticky left-0 bg-gray-50 z-10">
+                  {timeSlots.map((slot, i) => renderTimeLabel(slot, i))}
+                </div>
+                {/* Practitioner columns */}
+                {multiPractitioners.map((p) => {
+                  const practId  = typeof p.id === 'number' ? p.id : null;
+                  const colAppts = practId != null ? dayAppts.filter(a => a.practitioner === practId) : [];
+                  const { aptStyles, blockStyles, noteStyles } = computeColumnLayout(colAppts, dayBlocks, dayNotes);
+                  return (
+                    <div
+                      key={String(p.id)}
+                      className="border-l border-gray-200 relative"
+                      onMouseUp={() => handleColumnMouseUp(currentDate, practId)}
+                    >
+                      {timeSlots.map((slot, i) => {
+                        const slotMin  = slot.hour * 60 + slot.minutes;
+                        const occupied = [...colAppts, ...dayBlocks, ...dayNotes].some(ev => {
+                          const [sh, sm] = ev.start_time.split(':').map(Number);
+                          const [eh, em] = ev.end_time.split(':').map(Number);
+                          return sh * 60 + sm < slotMin + 15 && eh * 60 + em > slotMin;
+                        });
+                        return renderColumnSlot(slot, currentDate, i, p.availability, String(p.id), occupied, practId);
+                      })}
+                      {colAppts.map(apt   => renderTimelineCard(apt, false, false, aptStyles.get(apt.id)))}
+                      {dayBlocks.map(block => renderBlockTimelineCard(block, false, false, blockStyles.get(block.id)))}
+                      {dayNotes.map(note   => renderNoteTimelineCard(note, false, false, noteStyles.get(note.id)))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Stats footer — one DayStatsBlock per column */}
+            <div
+              className="shrink-0 border-t border-gray-200 overflow-x-auto"
+              style={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: `${minWidth}px` }}
+            >
+              <div className="bg-gray-50 border-r border-gray-200" />
+              {multiPractitioners.map((p) => {
+                const practId  = typeof p.id === 'number' ? p.id : null;
+                const colAppts = practId != null ? dayAppts.filter(a => a.practitioner === practId) : [];
+                return (
+                  <DayStatsBlock
+                    key={String(p.id)}
+                    date={currentDate}
+                    appointments={colAppts}
+                    availability={p.availability}
+                    compact
+                  />
+                );
+              })}
+            </div>
+          </div>
+          {sharedModals}
+          {dragOverlays}
+          {rescheduleModal}
+          {hoverCardOverlay}
+          {blockHoverCardOverlay}
+          {noteHoverCardOverlay}
+          {noteModalOverlay}
+        </div>
+      );
+    }
+
+    // ── SINGLE-PRACTITIONER DAY VIEW (default) ──────────────────────────────
     const dayOfWeek = DAY_MAP[currentDate.getDay()];
     const isDayAvailable = !practitionerAvailability || practitionerAvailability.duty_days.includes(dayOfWeek);
-
-    // NOTE: Non-duty days are still shown (not blocked) - availability is VISUAL ONLY
     // Users can still click and create appointments on non-duty days/hours
 
     return (

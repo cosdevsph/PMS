@@ -73,6 +73,16 @@ export const Diary: React.FC = () => {
     clinicBranchId: selectedClinicBranch,
   });
 
+  // Only show users with PRACTITIONER in their roles[] in filter dropdowns.
+  // STAFF-only entries remain in the full `practitioners` list so their own
+  // schedule can be cached, but they must not appear in the selection UI.
+  const practitionerOptions = useMemo(
+    () => practitioners.filter(p =>
+      (p.roles ?? []).includes('PRACTITIONER') || p.role === 'PRACTITIONER'
+    ),
+    [practitioners],
+  );
+
   // Cache the logged-in user's availability AND branch assignment so they
   // survive branch switches (switching tabs refetches practitioners for that branch,
   // losing data about the user's home branch).
@@ -329,6 +339,7 @@ export const Diary: React.FC = () => {
   const [showSelectOptionModal, setShowSelectOptionModal] = useState(false);
   const [pendingSlot, setPendingSlot] = useState<{
     date: Date; time: string; hour: number; minutes: number; duration: number;
+    practitionerId?: number | null;
   } | null>(null);
   // Appointment creation (from SelectOptionModal "Create New Appointment")
   const [showCreateAppointmentModal, setShowCreateAppointmentModal] = useState(false);
@@ -376,6 +387,7 @@ export const Diary: React.FC = () => {
   // Available to all users: Admin, Practitioner, Staff
   const handleSlotAction = useCallback((slot: {
     date: Date; time: string; hour: number; minutes: number; duration: number;
+    practitionerId?: number | null;
   }) => {
     // In rebook mode, immediately create the appointment on this slot
     if (rebookMode && rebookData) {
@@ -679,7 +691,7 @@ export const Diary: React.FC = () => {
 
                               <div className="border-t border-gray-200" />
 
-                              {practitioners.length === 0 ? (
+                              {practitionerOptions.length === 0 ? (
                                 <div className="px-4 py-6 text-sm text-gray-500 text-center">
                                   <p className="font-medium">No practitioners found</p>
                                   {selectedClinicBranch && (
@@ -689,7 +701,7 @@ export const Diary: React.FC = () => {
                                   )}
                                 </div>
                               ) : (
-                                practitioners.map((practitioner) => (
+                                practitionerOptions.map((practitioner) => (
                                   <button
                                     key={practitioner.id}
                                     onClick={() => handlePractitionerSelect(practitioner.id)}
@@ -758,7 +770,7 @@ export const Diary: React.FC = () => {
                                 <div className="px-4 py-2 bg-care-blue/10 border-b border-care-blue/20">
                                   <p className="text-xs font-semibold text-care-blue">Select Practitioner A</p>
                                 </div>
-                                {practitioners.map((p) => (
+                                {practitionerOptions.map((p) => (
                                   <button
                                     key={p.id}
                                     onClick={() => handleComparePractitionerASelect(p.id)}
@@ -802,7 +814,7 @@ export const Diary: React.FC = () => {
                                 <div className="px-4 py-2 bg-violet-50 border-b border-violet-100">
                                   <p className="text-xs font-semibold text-violet-700">Select Practitioner B</p>
                                 </div>
-                                {practitioners.map((p) => (
+                                {practitionerOptions.map((p) => (
                                   <button
                                     key={p.id}
                                     onClick={() => handleComparePractitionerBSelect(p.id)}
@@ -919,6 +931,16 @@ export const Diary: React.FC = () => {
                       } · ${rebookData.duration_minutes} min`
                     : undefined
                 }
+                multiPractitioners={
+                  view === 'day' && !calendarCompareMode && !selectedPractitioner
+                    ? practitionerOptions.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        specialization: p.specialization ?? null,
+                        availability: p.availability,
+                      }))
+                    : undefined
+                }
               />
             </div>
 
@@ -942,7 +964,11 @@ export const Diary: React.FC = () => {
               }}
               selectedSlot={pendingSlot}
               selectedClinicBranchId={selectedClinicBranch}
-              defaultPractitionerId={typeof selectedPractitioner === 'number' ? selectedPractitioner : null}
+              defaultPractitionerId={
+                pendingSlot?.practitionerId !== undefined
+                  ? pendingSlot.practitionerId
+                  : (typeof selectedPractitioner === 'number' ? selectedPractitioner : null)
+              }
             />
 
             {/* Add Event Modal — opened via SelectOptionModal "Add Block Appointment" */}

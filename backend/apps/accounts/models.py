@@ -164,14 +164,56 @@ DEFAULT_PERMISSIONS = {
 
 # Role precedence used to derive the "primary" role field when a user has
 # multiple roles (highest priority wins).
-ROLE_PRIORITY = ['ADMIN', 'PRACTITIONER', 'STAFF']
+ROLE_PRIORITY = ['ADMIN', 'ADMIN_ASSISTANT', 'PRACTITIONER', 'STAFF', 'FINANCE']
+
+# Permission defaults for ADMIN_ASSISTANT (manager-level) and FINANCE roles.
+DEFAULT_PERMISSIONS['ADMIN_ASSISTANT'] = DEFAULT_PERMISSIONS['MANAGER'].copy()
+DEFAULT_PERMISSIONS['FINANCE'] = {
+    'dashboard':    'view',
+    'appointments': 'view',
+    'calendar':     'view',
+    'diary':        'none',
+    'clinical_notes':   'none',
+    'client_cases':     'none',
+    'patients':         'view',
+    'reports':          'view',
+    'inventory':        'view',
+    'invoices':         'edit',
+    'billing':          'edit',
+    'subscriptions':    'none',
+    'setup':            'none',
+    'staff_management': 'none',
+    'permissions':      'none',
+    'settings':         'none',
+    'documents':        'none',
+    'outcome_measures': 'none',
+    'contacts':         'view',
+    'communication':    'view',
+    # Granular setup card permissions
+    'setup_practice':      'none',
+    'setup_items':         'none',
+    'setup_users':         'none',
+    'setup_account':       'none',
+    'setup_communication': 'none',
+    # Granular manage card permissions
+    'manage_administration': 'edit',
+    'manage_clinical':       'none',
+    'manage_communications': 'none',
+    # Granular report card permissions
+    'reports_administration': 'view',
+    'reports_clinic':         'none',
+    'reports_financial':      'edit',
+    'reports_performance':    'view',
+}
 
 # Default permission matrix per role — used for union-based access when a user
 # has no explicit PermissionGroup assigned but holds multiple roles.
 ROLE_DEFAULT_PERMISSIONS = {
-    'ADMIN':        {key: 'edit' for key in FEATURE_KEYS},
-    'PRACTITIONER': DEFAULT_PERMISSIONS['PRACTITIONER'],
-    'STAFF':        DEFAULT_PERMISSIONS['FRONTDESK'],
+    'ADMIN':           {key: 'edit' for key in FEATURE_KEYS},
+    'ADMIN_ASSISTANT': DEFAULT_PERMISSIONS['ADMIN_ASSISTANT'],
+    'PRACTITIONER':    DEFAULT_PERMISSIONS['PRACTITIONER'],
+    'STAFF':           DEFAULT_PERMISSIONS['FRONTDESK'],
+    'FINANCE':         DEFAULT_PERMISSIONS['FINANCE'],
 }
 
 ACCESS_LEVELS = {'none': 0, 'view': 1, 'edit': 2}
@@ -317,9 +359,11 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
     """Custom User model with role-based access control"""
     
     ROLE_CHOICES = [
-        ('ADMIN', 'Administrator'),
-        ('PRACTITIONER', 'Practitioner'),
-        ('STAFF', 'Staff'),
+        ('ADMIN',            'Administrator'),
+        ('ADMIN_ASSISTANT',  'Admin Assistant'),
+        ('PRACTITIONER',     'Practitioner'),
+        ('STAFF',            'Staff'),
+        ('FINANCE',          'Finance'),
     ]
     
     username = None  # Remove username field

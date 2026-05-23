@@ -995,6 +995,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                                       if p.user.clinic_branch else None,
                 'availability':       p.availability,
                 'role':               'PRACTITIONER',
+                'roles':              list(p.user.roles) if p.user.roles else ['PRACTITIONER'],
             }
             for p in base_qs
         ]
@@ -1046,7 +1047,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     'lunch_end_time':   staff_user.lunch_end_time or '13:00',
                     'duty_schedule':    staff_user.duty_schedule,
                 },
-                'role': 'STAFF',
+                'role':  'STAFF',
+                'roles': list(staff_user.roles) if staff_user.roles else ['STAFF'],
             })
 
         result = {'practitioners': practitioners_data}

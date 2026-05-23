@@ -36,6 +36,7 @@ export interface Practitioner {
   clinic_branch_name: string | null;
   availability?:      PractitionerAvailability;
   role?:              'PRACTITIONER' | 'STAFF';
+  roles?:             string[];
 }
 
 export interface PractitionersResponse {

@@ -5,7 +5,8 @@ import {
 } from 'lucide-react';
 import type { User as UserType } from '@/types/auth';
 import type { UpdateProfileData } from '../services/profile.api';
-import { formatPHPhone, normalizePHPhone } from '@/utils/phoneFormatter';\nimport { validatePHPhoneDetailed } from '@/utils/validation';
+import { formatPHPhone, normalizePHPhone } from '@/utils/phoneFormatter';
+import { validatePHPhoneDetailed } from '@/utils/validation';
 
 interface ProfileInfoCardProps {
   user:           UserType;

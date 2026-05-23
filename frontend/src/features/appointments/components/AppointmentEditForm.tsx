@@ -164,7 +164,9 @@ export const AppointmentEditForm: React.FC<AppointmentEditFormProps> = ({
             className={inputBase}
           >
             <option value="">Unassigned</option>
-            {practitioners.map(p => (
+            {practitioners.filter(p =>
+              (p.roles ?? []).includes('PRACTITIONER') || p.role === 'PRACTITIONER'
+            ).map(p => (
               <option key={p.id} value={p.id}>
                 {p.name}{p.specialization && ` — ${p.specialization}`}
               </option>

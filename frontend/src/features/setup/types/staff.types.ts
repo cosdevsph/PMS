@@ -22,7 +22,7 @@ export interface StaffMember {
   nickname?: string;
   title?: TitleType;
   /** Primary role — backward compat; use `roles` for multi-role checks. */
-  role: 'STAFF' | 'PRACTITIONER' | 'ADMIN';
+  role: 'STAFF' | 'PRACTITIONER' | 'ADMIN' | 'ADMIN_ASSISTANT' | 'FINANCE';
   /** All assigned roles (multi-role). */
   roles: UserRole[];
   phone: string;
@@ -58,10 +58,8 @@ export interface CreateStaffData {
   middle_name?: string;
   nickname?: string;
   title?: TitleType;
-  /** Primary role. */
-  role: 'STAFF' | 'PRACTITIONER' | 'ADMIN';
-  /** All roles to assign. Defaults to [role] if omitted. */
-  roles?: UserRole[];
+  /** All assigned clinical roles (multi-select). */
+  roles: ('ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'ADMIN')[];
   phone: string;
   position?: string;
   discipline?: string;
@@ -69,7 +67,6 @@ export interface CreateStaffData {
   gender?: GenderType;
   address?: string;
   clinic_branch?: number | null;
-  permission_group?: number | null;
 
   // Legacy single-block availability (PRACTITIONER only, kept for compat)
   duty_start_time?: string;

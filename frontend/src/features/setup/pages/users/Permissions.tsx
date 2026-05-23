@@ -123,11 +123,13 @@ const ALL_FEATURE_KEYS = FEATURE_GROUPS.flatMap((g) => g.keys.map((k) => k.key))
 // DISPLAY ONLY — does not affect RBAC logic or database records.
 
 const ROLE_ORDER: Record<string, number> = {
-  OWNER:        1,
-  MANAGER:      2,
-  FRONTDESK:    3,
-  PRACTITIONER: 4,
-  CUSTOM:       5,
+  OWNER:           1,
+  MANAGER:         2,
+  ADMIN_ASSISTANT: 3,
+  FRONTDESK:       4,
+  PRACTITIONER:    5,
+  FINANCE:         6,
+  CUSTOM:          7,
 };
 
 // ─── Role template styles ─────────────────────────────────────────────────────
@@ -136,11 +138,13 @@ const TEMPLATE_STYLES: Record<
   RoleTemplate,
   { iconBg: string; icon: React.ElementType; iconColor: string; badge: string }
 > = {
-  OWNER:        { iconBg: 'bg-amber-100',  icon: Crown,       iconColor: 'text-amber-600',  badge: 'bg-amber-100  text-amber-800  border-amber-200'  },
-  MANAGER:      { iconBg: 'bg-sky-100',    icon: UserCog,     iconColor: 'text-sky-600',    badge: 'bg-sky-100    text-sky-800    border-sky-200'    },
-  FRONTDESK:    { iconBg: 'bg-teal-100',   icon: Users,       iconColor: 'text-teal-600',   badge: 'bg-teal-100   text-teal-800   border-teal-200'   },
-  PRACTITIONER: { iconBg: 'bg-violet-100', icon: Stethoscope, iconColor: 'text-violet-600', badge: 'bg-violet-100 text-violet-800 border-violet-200' },
-  CUSTOM:       { iconBg: 'bg-gray-100',   icon: Shield,      iconColor: 'text-gray-500',   badge: 'bg-gray-100   text-gray-700   border-gray-200'   },
+  OWNER:           { iconBg: 'bg-amber-100',   icon: Crown,       iconColor: 'text-amber-600',   badge: 'bg-amber-100  text-amber-800  border-amber-200'  },
+  MANAGER:         { iconBg: 'bg-sky-100',     icon: UserCog,     iconColor: 'text-sky-600',     badge: 'bg-sky-100    text-sky-800    border-sky-200'    },
+  ADMIN_ASSISTANT: { iconBg: 'bg-violet-100',  icon: UserCog,     iconColor: 'text-violet-600',  badge: 'bg-violet-100 text-violet-800 border-violet-200' },
+  FRONTDESK:       { iconBg: 'bg-teal-100',    icon: Users,       iconColor: 'text-teal-600',    badge: 'bg-teal-100   text-teal-800   border-teal-200'   },
+  PRACTITIONER:    { iconBg: 'bg-purple-100',  icon: Stethoscope, iconColor: 'text-purple-600',  badge: 'bg-purple-100 text-purple-800 border-purple-200' },
+  FINANCE:         { iconBg: 'bg-green-100',   icon: Users,       iconColor: 'text-green-600',   badge: 'bg-green-100  text-green-800  border-green-200'  },
+  CUSTOM:          { iconBg: 'bg-gray-100',    icon: Shield,      iconColor: 'text-gray-500',    badge: 'bg-gray-100   text-gray-700   border-gray-200'   },
 };
 
 // ─── Access level selector ────────────────────────────────────────────────────
@@ -317,6 +321,18 @@ const TEMPLATE_DEFAULT_PERMS: Record<RoleTemplate, Record<string, AccessLevel>> 
     reports_administration: 'edit', reports_clinic: 'edit',
     reports_financial: 'edit', reports_performance: 'edit',
   },
+  ADMIN_ASSISTANT: {
+    dashboard: 'edit', appointments: 'edit', calendar: 'edit', diary: 'edit',
+    clinical_notes: 'edit', client_cases: 'edit', patients: 'edit', reports: 'edit',
+    inventory: 'edit', invoices: 'edit', billing: 'edit', subscriptions: 'view',
+    setup: 'view', staff_management: 'edit', permissions: 'view', settings: 'view',
+    documents: 'edit', outcome_measures: 'edit', contacts: 'edit', communication: 'edit',
+    setup_practice: 'edit', setup_items: 'edit', setup_users: 'edit',
+    setup_account: 'view', setup_communication: 'edit',
+    manage_administration: 'edit', manage_clinical: 'edit', manage_communications: 'edit',
+    reports_administration: 'edit', reports_clinic: 'edit',
+    reports_financial: 'edit', reports_performance: 'edit',
+  },
   FRONTDESK: {
     dashboard: 'view', appointments: 'edit', calendar: 'edit', diary: 'edit',
     clinical_notes: 'view', client_cases: 'view', patients: 'edit', reports: 'view',
@@ -341,15 +357,29 @@ const TEMPLATE_DEFAULT_PERMS: Record<RoleTemplate, Record<string, AccessLevel>> 
     reports_administration: 'none', reports_clinic: 'edit',
     reports_financial: 'none', reports_performance: 'view',
   },
+  FINANCE: {
+    dashboard: 'view', appointments: 'view', calendar: 'view', diary: 'none',
+    clinical_notes: 'none', client_cases: 'none', patients: 'view', reports: 'view',
+    inventory: 'view', invoices: 'edit', billing: 'edit', subscriptions: 'none',
+    setup: 'none', staff_management: 'none', permissions: 'none', settings: 'none',
+    documents: 'none', outcome_measures: 'none', contacts: 'view', communication: 'view',
+    setup_practice: 'none', setup_items: 'none', setup_users: 'none',
+    setup_account: 'none', setup_communication: 'none',
+    manage_administration: 'edit', manage_clinical: 'none', manage_communications: 'none',
+    reports_administration: 'view', reports_clinic: 'none',
+    reports_financial: 'edit', reports_performance: 'view',
+  },
   CUSTOM: Object.fromEntries(ALL_FEATURE_KEYS.map((k) => [k, 'none'])) as Record<string, AccessLevel>,
 };
 
 const TEMPLATE_OPTIONS: { value: RoleTemplate; label: string }[] = [
-  { value: 'OWNER',        label: 'Owner (Full Access)' },
-  { value: 'MANAGER',      label: 'Manager' },
-  { value: 'FRONTDESK',    label: 'Frontdesk' },
-  { value: 'PRACTITIONER', label: 'Practitioner' },
-  { value: 'CUSTOM',       label: 'Custom (No Access)' },
+  { value: 'OWNER',           label: 'Owner (Full Access)' },
+  { value: 'MANAGER',         label: 'Manager' },
+  { value: 'ADMIN_ASSISTANT', label: 'Admin Assistant' },
+  { value: 'FRONTDESK',       label: 'Frontdesk' },
+  { value: 'PRACTITIONER',    label: 'Practitioner' },
+  { value: 'FINANCE',         label: 'Finance' },
+  { value: 'CUSTOM',          label: 'Custom (No Access)' },
 ];
 
 // ─── Create Group Modal ───────────────────────────────────────────────────────

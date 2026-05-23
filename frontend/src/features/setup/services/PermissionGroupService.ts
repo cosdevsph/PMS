@@ -1,7 +1,7 @@
 import { axiosInstance } from '@/lib/axios';
 
 export type AccessLevel = 'none' | 'view' | 'edit';
-export type RoleTemplate = 'OWNER' | 'MANAGER' | 'FRONTDESK' | 'PRACTITIONER' | 'CUSTOM';
+export type RoleTemplate = 'OWNER' | 'MANAGER' | 'FRONTDESK' | 'PRACTITIONER' | 'ADMIN_ASSISTANT' | 'FINANCE' | 'CUSTOM';
 
 export interface FeaturePermissionRecord {
   id:           number;

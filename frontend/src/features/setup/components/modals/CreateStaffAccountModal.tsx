@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2, Check } from 'lucide-react';
+import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2, Check, ShieldCheck, Stethoscope, Users, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { CreateStaffData, StaffFormErrors, StaffMember } from '../../types/staff.types';
 import type { DutySchedule, DutyDay } from '@/features/clinics/clinic.api';
@@ -8,10 +8,54 @@ import { useDisciplineOptions } from '../../hooks/useDisciplineOptions';
 import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';
 import { formatPHPhone, isValidPHPhone, normalizePHPhone } from '@/utils/phoneFormatter';
 import { validateEmailDetailed, validatePHPhoneDetailed } from '@/utils/validation';
-import {
-  listPermissionGroups,
-  type PermissionGroup as PGroup,
-} from '../../services/PermissionGroupService';
+
+// ── Clinical Role Cards ──────────────────────────────────────────────────────
+
+type ClinicalRoleValue = 'ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE';
+
+const CLINICAL_ROLES: {
+  value: ClinicalRoleValue;
+  label: string;
+  description: string;
+  icon: React.ElementType;
+  ring: string;
+  bg: string;
+}[] = [
+  {
+    value: 'ADMIN_ASSISTANT',
+    label: 'Admin Assistant',
+    description: 'Full administrative access',
+    icon: ShieldCheck,
+    ring: 'ring-violet-400',
+    bg: 'bg-violet-50 text-violet-700 border-violet-200',
+  },
+  {
+    value: 'PRACTITIONER',
+    label: 'Practitioner',
+    description: 'Clinical & patient care',
+    icon: Stethoscope,
+    ring: 'ring-purple-400',
+    bg: 'bg-purple-50 text-purple-700 border-purple-200',
+  },
+  {
+    value: 'STAFF',
+    label: 'Staff',
+    description: 'General operations & scheduling',
+    icon: Users,
+    ring: 'ring-sky-400',
+    bg: 'bg-sky-50 text-sky-700 border-sky-200',
+  },
+  {
+    value: 'FINANCE',
+    label: 'Finance',
+    description: 'Billing, invoicing & reports',
+    icon: DollarSign,
+    ring: 'ring-green-400',
+    bg: 'bg-green-50 text-green-700 border-green-200',
+  },
+];
+
+const CLINICAL_ROLE_VALUES: ClinicalRoleValue[] = CLINICAL_ROLES.map(r => r.value);
 
 const DUTY_DAY_OPTIONS: { value: DutyDay; label: string }[] = [
   { value: 'Mon', label: 'Mon' },
@@ -72,9 +116,8 @@ const EMPTY_FORM: CreateStaffData = {
   address:       '',
   date_of_birth: '',
   gender:        'Male',
-  role:          'STAFF',
+  roles:         ['STAFF'],
   clinic_branch: null,
-  permission_group: null,
   // Availability defaults
   duty_days:        DEFAULT_DUTY_DAYS,
   lunch_start_time: '12:00',
@@ -122,12 +165,6 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   const [errors, setErrors]     = useState<StaffFormErrors>({});
   const [loading, setLoading]   = useState(false);
 
-  // Permission groups
-  const [permGroups, setPermGroups] = useState<PGroup[]>([]);
-  useEffect(() => {
-    listPermissionGroups().then(setPermGroups).catch(() => {});
-  }, []);
-
   // ── Discipline create-inline state ─────────────────────────────────────────
   const [showCreateDiscipline, setShowCreateDiscipline] = useState(false);
   const [newDisciplineLabel, setNewDisciplineLabel]     = useState('');
@@ -157,13 +194,11 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       // Cache original roles for submit preservation
       originalRolesRef.current = effectiveRoles;
 
-      // Determine the "clinical display role" for the form.
-      // Prefer PRACTITIONER over STAFF; fall back to primary role.
-      const clinicalRole: CreateStaffData['role'] = effectiveRoles.includes('PRACTITIONER')
-        ? 'PRACTITIONER'
-        : effectiveRoles.includes('STAFF')
-        ? 'STAFF'
-        : (editingStaff.role as CreateStaffData['role']);
+      // Extract only the clinical roles (those selectable in the multi-role cards).
+      const clinicalRoles = effectiveRoles.filter(r =>
+        CLINICAL_ROLE_VALUES.includes(r as ClinicalRoleValue)
+      ) as ClinicalRoleValue[];
+      const displayRoles: ClinicalRoleValue[] = clinicalRoles.length > 0 ? clinicalRoles : ['STAFF'];
 
       setFormData({
         first_name:    editingStaff.first_name,
@@ -172,19 +207,14 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
         nickname:      editingStaff.nickname       ?? '',
         title:         editingStaff.title          ?? 'Mr',
         position:      editingStaff.position       ?? '',
-        // For ADMIN+PRACTITIONER users the discipline lives on the Practitioner
-        // model and is serialised into editingStaff.discipline by to_representation.
-        // The backend also mirrors it onto User.discipline as a fallback.
         discipline:    editingStaff.discipline || 'OCCUPATIONAL_THERAPY',
         email:         editingStaff.email,
         phone:         editingStaff.phone ? formatPHPhone(editingStaff.phone) : '',
         address:       editingStaff.address        ?? '',
         date_of_birth: editingStaff.date_of_birth  ?? '',
         gender:        editingStaff.gender         ?? 'Male',
-        // Use clinical role (PRACTITIONER/STAFF) so the schedule section appears
-        role:          clinicalRole,
+        roles:         displayRoles,
         clinic_branch: editingStaff.clinic_branch  ?? null,
-        permission_group: editingStaff.permission_group ?? null,
         // Availability
         duty_days:        (editingStaff.duty_days ?? editingStaff.availability?.duty_days ?? DEFAULT_DUTY_DAYS) as DutyDay[],
         lunch_start_time: editingStaff.lunch_start_time ?? editingStaff.availability?.lunch_start_time ?? '12:00',
@@ -199,11 +229,11 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   }, [editingStaff, isOpen]);
 
   const validateForm = (): boolean => {
-    console.log('[CreateStaffModal] validateForm called, role:', formData.role);
     const e: StaffFormErrors = {};
     if (!formData.first_name.trim()) e.first_name = 'First name is required';
     if (!formData.last_name.trim())  e.last_name  = 'Last name is required';
     if (!formData.position?.trim())  e.position   = 'Position is required';
+    if (!formData.roles || formData.roles.length === 0) e.general = 'Select at least one clinical role';
 
     const emailErr = validateEmailDetailed(formData.email);
     if (emailErr) e.email = emailErr;
@@ -214,8 +244,9 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     if (formData.date_of_birth && new Date(formData.date_of_birth) > new Date())
       e.date_of_birth = 'Date of birth cannot be in the future';
 
-    // Availability validation (for both PRACTITIONER and STAFF)
-    if (formData.role === 'PRACTITIONER' || formData.role === 'STAFF') {
+    // Availability validation (for PRACTITIONER and STAFF roles)
+    const needsSchedule = (formData.roles ?? []).some(r => r === 'PRACTITIONER' || r === 'STAFF');
+    if (needsSchedule) {
       if (!formData.duty_days || formData.duty_days.length === 0)
         e.duty_days = 'At least one duty day is required';
       // Validate per-day blocks
@@ -233,7 +264,6 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
             }
           }
           if (e.duty_schedule) break;
-          // Check for overlapping blocks within the same day
           if (!e.duty_schedule && hasScheduleConflict(blocks)) {
             e.duty_schedule = `${day}: shift blocks overlap. Please adjust the time ranges.`;
             break;
@@ -244,7 +274,6 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       if (!formData.lunch_end_time)   e.lunch_end_time   = 'Required';
     }
 
-    console.log('[CreateStaffModal] Validation errors:', e);
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -258,22 +287,17 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     setLoading(true);
     setErrors({});
     try {
-      // Rebuild the full roles array: keep non-clinical roles (e.g. ADMIN) +
-      // replace clinical slot with whatever is selected in the toggle.
-      const originalRoles = originalRolesRef.current;
-      const hasAdmin = originalRoles.includes('ADMIN');
-      const nonClinicalRoles = originalRoles.filter(r => r !== 'PRACTITIONER' && r !== 'STAFF');
-      const finalRoles: string[] =
-        formData.role === 'PRACTITIONER' || formData.role === 'STAFF'
-          ? [...nonClinicalRoles, formData.role]
-          : hasAdmin
-          ? nonClinicalRoles
-          : [formData.role];
+      // Rebuild the full roles array: preserve non-clinical roles (e.g. ADMIN) +
+      // add all selected clinical roles from the multi-select cards.
+      const preservedRoles = originalRolesRef.current.filter(
+        r => !CLINICAL_ROLE_VALUES.includes(r as ClinicalRoleValue)
+      );
+      const finalRoles = [...preservedRoles, ...(formData.roles ?? ['STAFF'])];
 
       const payload: CreateStaffData = {
         ...formData,
         phone: normalizePHPhone(formData.phone),
-        ...(isEditMode ? { roles: finalRoles as any } : {}),
+        roles: finalRoles as CreateStaffData['roles'],
       };
       await onSubmit(payload);
       handleClose();
@@ -556,6 +580,50 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                 <SectionTitle color="text-slate-500">Professional Information</SectionTitle>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
 
+                  {/* ── Clinical Role (multi-select cards) — FIRST ── */}
+                  <div className="md:col-span-2">
+                    <Label required>Clinical Role</Label>
+                    {/* Admin badge — read-only notice for admin users */}
+                    {originalRolesRef.current.includes('ADMIN') && (
+                      <div className="flex items-center gap-2 mb-2 p-2.5 bg-violet-50 border border-violet-200 rounded-lg">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700 border border-violet-200">
+                          Admin
+                        </span>
+                        <span className="text-xs text-violet-600">
+                          Admin role is managed via Role Management. Select the clinical access below.
+                        </span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {CLINICAL_ROLES.map(opt => {
+                        const Icon = opt.icon;
+                        const isSelected = (formData.roles ?? []).includes(opt.value);
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              const current = formData.roles ?? [];
+                              const next = isSelected
+                                ? current.filter(r => r !== opt.value)
+                                : [...current, opt.value];
+                              setFormData(prev => ({ ...prev, roles: next.length > 0 ? next : [opt.value] }));
+                            }}
+                            className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border text-sm font-medium transition-all ${
+                              isSelected
+                                ? `${opt.bg} ring-2 ${opt.ring}`
+                                : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Icon className={`w-5 h-5 ${isSelected ? '' : 'text-gray-400'}`} />
+                            <span className="text-xs font-semibold leading-tight text-center">{opt.label}</span>
+                            <span className={`text-[10px] leading-tight text-center ${isSelected ? 'opacity-80' : 'text-gray-400'}`}>{opt.description}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* Position */}
                   <div>
                     <Label required>Position</Label>
@@ -569,122 +637,72 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                     <FieldError msg={errors.position} />
                   </div>
 
-                  {/* Discipline */}
-                  <div>
-                    <Label required>Discipline</Label>
-                    {showCreateDiscipline ? (
-                      <div className="space-y-2">
-                        <input
-                          ref={newDisciplineInputRef}
-                          type="text"
-                          value={newDisciplineLabel}
-                          onChange={e => setNewDisciplineLabel(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') { e.preventDefault(); handleAddDiscipline(); }
-                            if (e.key === 'Escape') { setShowCreateDiscipline(false); setNewDisciplineLabel(''); }
-                          }}
-                          placeholder="e.g. Psychology"
-                          className={inputCls()}
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={handleAddDiscipline}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 text-white rounded-lg text-xs font-semibold hover:bg-sky-700 transition-colors"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            Add
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setShowCreateDiscipline(false); setNewDisciplineLabel(''); }}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                          >
-                            Cancel
-                          </button>
+                  {/* Discipline — only shown for PRACTITIONER */}
+                  {(formData.roles ?? []).includes('PRACTITIONER') && (
+                    <div>
+                      <Label required>Discipline</Label>
+                      {showCreateDiscipline ? (
+                        <div className="space-y-2">
+                          <input
+                            ref={newDisciplineInputRef}
+                            type="text"
+                            value={newDisciplineLabel}
+                            onChange={e => setNewDisciplineLabel(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') { e.preventDefault(); handleAddDiscipline(); }
+                              if (e.key === 'Escape') { setShowCreateDiscipline(false); setNewDisciplineLabel(''); }
+                            }}
+                            placeholder="e.g. Psychology"
+                            className={inputCls()}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handleAddDiscipline}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 text-white rounded-lg text-xs font-semibold hover:bg-sky-700 transition-colors"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              Add
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setShowCreateDiscipline(false); setNewDisciplineLabel(''); }}
+                              className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <select
-                        value={formData.discipline ?? ''}
-                        onChange={e => {
-                          if (e.target.value === '__CREATE__') {
-                            setShowCreateDiscipline(true);
-                          } else {
-                            set('discipline', e.target.value);
-                          }
-                        }}
-                        className={selectCls}
-                      >
-                        {disciplineOptions.map(o => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                        <option disabled className="text-gray-300">──────────────</option>
-                        <option value="__CREATE__">➕ Create Discipline...</option>
-                      </select>
-                    )}
-                  </div>
-
-                  {/* Role — toggle buttons */}
-                  <div className="md:col-span-2">
-                    <Label required>Clinical Role</Label>
-                    {/* Show read-only Admin badge if the user being edited has the ADMIN role */}
-                    {originalRolesRef.current.includes('ADMIN') && (
-                      <div className="flex items-center gap-2 mb-2 p-2.5 bg-violet-50 border border-violet-200 rounded-lg">
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700 border border-violet-200">
-                          Admin
-                        </span>
-                        <span className="text-xs text-violet-600">
-                          Admin role is managed via Role Management. Set the clinical access below.
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex gap-3">
-                      {[
-                        { value: 'STAFF',        label: 'Staff',        ring: 'ring-sky-400',    bg: 'bg-sky-50   text-sky-700   border-sky-200'   },
-                        { value: 'PRACTITIONER', label: 'Practitioner', ring: 'ring-purple-400', bg: 'bg-purple-50 text-purple-700 border-purple-200' },
-                      ].map(opt => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => set('role', opt.value as any)}
-                          className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
-                            formData.role === opt.value
-                              ? `${opt.bg} ring-2 ${opt.ring}`
-                              : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
-                          }`}
+                      ) : (
+                        <select
+                          value={formData.discipline ?? ''}
+                          onChange={e => {
+                            if (e.target.value === '__CREATE__') {
+                              setShowCreateDiscipline(true);
+                            } else {
+                              set('discipline', e.target.value);
+                            }
+                          }}
+                          className={selectCls}
                         >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Permission Group */}
-                  {permGroups.length > 0 && (
-                    <div className="md:col-span-2">
-                      <Label>Permission Group</Label>
-                      <select
-                        value={formData.permission_group ?? ''}
-                        onChange={(e) => set('permission_group', e.target.value ? Number(e.target.value) : null)}
-                        className={selectCls}
-                      >
-                        <option value="">— No group assigned —</option>
-                        {permGroups.map((g) => (
-                          <option key={g.id} value={g.id}>{g.name}</option>
-                        ))}
-                      </select>
+                          {disciplineOptions.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                          <option disabled className="text-gray-300">──────────────</option>
+                          <option value="__CREATE__">➕ Create Discipline...</option>
+                        </select>
+                      )}
                     </div>
                   )}
 
                   {/* ── Availability Section (for PRACTITIONER and STAFF) ── */}
-                  {(formData.role === 'PRACTITIONER' || formData.role === 'STAFF') && (
+                  {(formData.roles ?? []).some(r => r === 'PRACTITIONER' || r === 'STAFF') && (
                     <div className="md:col-span-2 border-t border-gray-200 pt-5">
                       <SectionTitle color="text-emerald-600">
                         <span className="flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5" />
-                          {formData.role === 'PRACTITIONER' ? 'Practitioner' : 'Staff'} Schedule
+                          {(formData.roles ?? []).includes('PRACTITIONER') ? 'Practitioner' : 'Staff'} Schedule
                         </span>
                       </SectionTitle>
 
