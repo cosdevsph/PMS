@@ -37,6 +37,7 @@ export interface Practitioner {
   availability?:      PractitionerAvailability;
   role?:              'PRACTITIONER' | 'STAFF';
   roles?:             string[];
+  discipline?:        string | null;
 }
 
 export interface PractitionersResponse {

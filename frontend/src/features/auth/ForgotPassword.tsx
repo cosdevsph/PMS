@@ -99,7 +99,7 @@ export const ForgotPassword: React.FC = () => {
         </div>
 
         <div className="relative z-10 text-blue-200 text-sm">
-          © 2026 Malasakit EMR Solutions
+          © 2026 Malasakit
         </div>
       </div>
 

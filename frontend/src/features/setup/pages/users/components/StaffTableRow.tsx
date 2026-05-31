@@ -12,19 +12,21 @@ interface Props {
 }
 
 const ROLE_BADGE: Record<string, string> = {
-  ADMIN:        'bg-violet-50 text-violet-700 border-violet-200',
-  PRACTITIONER: 'bg-purple-50 text-purple-700 border-purple-200',
-  STAFF:        'bg-sky-50   text-sky-700   border-sky-200',
+  ADMIN:           'bg-amber-50  text-amber-700  border-amber-200',
+  ADMIN_ASSISTANT: 'bg-violet-50 text-violet-700 border-violet-200',
+  PRACTITIONER:    'bg-purple-50 text-purple-700 border-purple-200',
+  STAFF:           'bg-sky-50    text-sky-700    border-sky-200',
+  FINANCE:         'bg-green-50  text-green-700  border-green-200',
+  READ_ONLY:       'bg-gray-50   text-gray-500   border-gray-200',
 };
 
 const ROLE_LABEL: Record<string, string> = {
-  ADMIN:        'Admin',
-  PRACTITIONER: 'Practitioner',
-  STAFF:        'Staff',
-};
-
-const DISCIPLINE_BADGE: Record<string, string> = {
-  default: 'bg-slate-50 text-slate-600 border-slate-200',
+  ADMIN:           'Administrator',
+  ADMIN_ASSISTANT: 'Admin Asst.',
+  PRACTITIONER:    'Practitioner',
+  STAFF:           'Staff',
+  FINANCE:         'Finance',
+  READ_ONLY:       'Read-Only',
 };
 
 export const StaffTableRow: React.FC<Props> = ({
@@ -78,7 +80,7 @@ export const StaffTableRow: React.FC<Props> = ({
 
       {/* Discipline */}
       <td className="px-4 py-3">
-        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${DISCIPLINE_BADGE['default']}`}>
+        <span className="px-2 py-0.5 rounded-full text-xs font-medium border bg-slate-50 text-slate-600 border-slate-200">
           {disciplineLabel}
         </span>
       </td>

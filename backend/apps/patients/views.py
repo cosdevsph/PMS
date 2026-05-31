@@ -14,6 +14,7 @@ from .models import (
     PortalLink, PortalBooking,
     PatientConsent,
     ClientFormRequest,
+    PatientCase,
 )
 from .serializers import (
     PatientSerializer, IntakeFormSerializer,
@@ -24,6 +25,7 @@ from .serializers import (
     PublicPatientConsentCreateSerializer,
     ClientFormRequestSerializer,
     PublicClientFormVerifySerializer, PublicClientFormSubmitSerializer,
+    PatientCaseSerializer,
 )
 import logging
 import traceback
@@ -1227,3 +1229,24 @@ class PublicClientFormSubmitView(APIView):
         ])
 
         return Response({'detail': 'Your information has been saved. Thank you!'})
+
+
+# ─── Patient Case ViewSet ──────────────────────────────────────────────────────
+
+class PatientCaseViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing patient clinical cases."""
+    queryset = PatientCase.objects.all()
+    serializer_class = PatientCaseSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['patient', 'status']
+    ordering_fields = ['created_at', '-created_at']
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.clinic:
+            return self.queryset.none()
+
+        main_clinic = user.clinic.main_clinic
+        all_branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
+        return self.queryset.filter(patient__clinic_id__in=all_branch_ids)

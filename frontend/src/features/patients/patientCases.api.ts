@@ -1,0 +1,52 @@
+import axiosInstance from '@/lib/axios';
+import type { PatientCase, PatientCaseStatus, PatientCasePayer } from '@/types/patient';
+
+const BASE_URL = '/patient-cases/';
+
+export interface CreateCaseData {
+  patient: number;
+  title: string;
+  description?: string;
+  status?: PatientCaseStatus;
+  primary_practitioner?: number;
+  primary_practitioner_name?: string;
+  payer?: PatientCasePayer;
+  alert_notes?: string;
+  referred_by?: string;
+  referral_info?: string;
+}
+
+export interface UpdateCaseData {
+  title?: string;
+  description?: string;
+  status?: PatientCaseStatus;
+  primary_practitioner?: number;
+  primary_practitioner_name?: string;
+  payer?: PatientCasePayer;
+  alert_notes?: string;
+  referred_by?: string;
+  referral_info?: string;
+}
+
+export const getPatientCases = async (patientId: number): Promise<PatientCase[]> => {
+  const response = await axiosInstance.get(`${BASE_URL}?patient=${patientId}`);
+  return response.data.results ?? response.data;
+};
+
+export const createPatientCase = async (data: CreateCaseData): Promise<PatientCase> => {
+  const response = await axiosInstance.post(BASE_URL, data);
+  return response.data;
+};
+
+export const updatePatientCase = async (caseId: number, data: UpdateCaseData): Promise<PatientCase> => {
+  const response = await axiosInstance.patch(`${BASE_URL}${caseId}/`, data);
+  return response.data;
+};
+
+export const deletePatientCase = async (caseId: number): Promise<void> => {
+  await axiosInstance.delete(`${BASE_URL}${caseId}/`);
+};
+
+export const assignNoteToCase = async (noteId: number, caseId: number): Promise<void> => {
+  await axiosInstance.patch(`/clinical-templates/notes/${noteId}/`, { patient_case: caseId });
+};

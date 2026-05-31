@@ -463,3 +463,61 @@ class ClientFormRequest(TimeStampedModel):
     def is_expired(self):
         from django.utils import timezone
         return timezone.now() > self.expires_at
+
+
+class PatientCase(TimeStampedModel):
+    """Patient clinical cases for organizing clinical notes."""
+
+    STATUS_CHOICES = [
+        ('OPEN', 'Open'),
+        ('MONITORING', 'Monitoring'),
+        ('DISCHARGED', 'Discharged'),
+        ('CLOSED', 'Closed'),
+    ]
+
+    PAYER_CHOICES = [
+        ('PRIVATE', 'Private Pay'),
+        ('HMO', 'HMO'),
+        ('INSURANCE', 'Insurance'),
+        ('CORPORATE', 'Corporate'),
+    ]
+
+    patient = models.ForeignKey(
+        'patients.Patient',
+        on_delete=models.CASCADE,
+        related_name='cases'
+    )
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
+    primary_practitioner = models.ForeignKey(
+        'clinics.Practitioner',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='patient_cases'
+    )
+    payer = models.CharField(
+        max_length=20,
+        choices=PAYER_CHOICES,
+        blank=True,
+        default='',
+        help_text='Insurance or payment type for this case.'
+    )
+    alert_notes = models.TextField(
+        blank=True,
+        default='',
+        help_text='Persistent alert notes visible across all sessions for this case.'
+    )
+    referred_by = models.CharField(max_length=200, blank=True, default='')
+    referral_info = models.TextField(blank=True, default='')
+
+    class Meta:
+        db_table = 'patient_cases'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['patient', 'status']),
+            models.Index(fields=['patient', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.title} - {self.patient.get_full_name()}"

@@ -74,7 +74,9 @@ function isoToday(): string {
 
 export const ClinicianPerformance: React.FC = () => {
   const { user } = useAuth();
-  const isPractitioner = user?.role === 'PRACTITIONER';
+  // Multi-role aware: ADMIN+PRACTITIONER users have role='ADMIN' but roles=['ADMIN','PRACTITIONER']
+  const userRoles = user?.roles && user.roles.length > 0 ? user.roles : (user?.role ? [user.role] : []);
+  const isPractitioner = userRoles.includes('PRACTITIONER');
 
   const [data,         setData]         = useState<ClinicianPerformanceData | null>(null);
   const [isLoading,    setIsLoading]    = useState(false);

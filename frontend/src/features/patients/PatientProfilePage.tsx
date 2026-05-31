@@ -14,7 +14,6 @@ import toast from 'react-hot-toast';
 import { archivePatient, restorePatient, updatePatient } from './patient.api';
 import { PatientModal } from './components/PatientModal';
 import { usePatientProfileContext } from './context/PatientProfileContext';
-import { listPatientCases } from './patientCases.storage';
 import {
   formatDate,
   formatDateTime,
@@ -93,9 +92,8 @@ const ConfirmDialog = ({
 
 export const PatientProfilePage = () => {
   const {
-    patient,
-    appointments,
     clinicalNotes,
+    cases,
     loadingPatient,
     refreshPatient,
   } = usePatientProfileContext();
@@ -112,10 +110,7 @@ export const PatientProfilePage = () => {
     [appointments, appointmentIdsWithNotes]
   );
 
-  const caseCount = useMemo(() => {
-    if (!patient) return 0;
-    return listPatientCases(patient.id).length;
-  }, [patient]);
+  const caseCount = cases.length;
 
   const cards = [
     {

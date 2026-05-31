@@ -164,7 +164,7 @@ DEFAULT_PERMISSIONS = {
 
 # Role precedence used to derive the "primary" role field when a user has
 # multiple roles (highest priority wins).
-ROLE_PRIORITY = ['ADMIN', 'ADMIN_ASSISTANT', 'PRACTITIONER', 'STAFF', 'FINANCE']
+ROLE_PRIORITY = ['ADMIN', 'ADMIN_ASSISTANT', 'PRACTITIONER', 'STAFF', 'FINANCE', 'READ_ONLY']
 
 # Permission defaults for ADMIN_ASSISTANT (manager-level) and FINANCE roles.
 DEFAULT_PERMISSIONS['ADMIN_ASSISTANT'] = DEFAULT_PERMISSIONS['MANAGER'].copy()
@@ -206,6 +206,17 @@ DEFAULT_PERMISSIONS['FINANCE'] = {
     'reports_performance':    'view',
 }
 
+# READ_ONLY: view-only access. Sensitive admin-only keys are set to 'none'.
+DEFAULT_PERMISSIONS['READ_ONLY'] = {key: 'view' for key in FEATURE_KEYS}
+DEFAULT_PERMISSIONS['READ_ONLY'].update({
+    'permissions':       'none',
+    'subscriptions':     'none',
+    'setup_account':     'none',
+    'staff_management':  'none',
+    'setup_users':       'none',
+    # Granular manage/report sections — view is fine for read-only
+})
+
 # Default permission matrix per role — used for union-based access when a user
 # has no explicit PermissionGroup assigned but holds multiple roles.
 ROLE_DEFAULT_PERMISSIONS = {
@@ -214,6 +225,7 @@ ROLE_DEFAULT_PERMISSIONS = {
     'PRACTITIONER':    DEFAULT_PERMISSIONS['PRACTITIONER'],
     'STAFF':           DEFAULT_PERMISSIONS['FRONTDESK'],
     'FINANCE':         DEFAULT_PERMISSIONS['FINANCE'],
+    'READ_ONLY':       DEFAULT_PERMISSIONS['READ_ONLY'],
 }
 
 ACCESS_LEVELS = {'none': 0, 'view': 1, 'edit': 2}
@@ -229,6 +241,7 @@ _ROLE_TO_PG_TEMPLATE = {
     'PRACTITIONER':    'PRACTITIONER',
     'STAFF':           'FRONTDESK',        # STAFF users get Frontdesk-level group
     'FINANCE':         'FINANCE',
+    'READ_ONLY':       'READ_ONLY',
 }
 
 
@@ -299,6 +312,7 @@ class PermissionGroup(TimeStampedModel):
         ('FRONTDESK',       'Frontdesk'),
         ('PRACTITIONER',    'Practitioner'),
         ('FINANCE',         'Finance'),
+        ('READ_ONLY',       'Read-Only'),
         ('CUSTOM',          'Custom'),
     ]
 
@@ -416,6 +430,7 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
         ('PRACTITIONER',     'Practitioner'),
         ('STAFF',            'Staff'),
         ('FINANCE',          'Finance'),
+        ('READ_ONLY',        'Read-Only'),
     ]
     
     username = None  # Remove username field

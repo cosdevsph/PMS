@@ -11,19 +11,14 @@ import { CreateClinicalNoteModal } from '@/features/clinical-template/components
 import { EditClinicalNoteModal } from '@/features/clinical-template/components/EditClinicalNoteModal';
 import { ViewClinicalNoteModal } from '@/features/clinical-template/components/ViewClinicalNoteModal';
 import { usePatientProfileContext } from './context/PatientProfileContext';
-import {
-  assignNotesToCase,
-  getCaseIdForNote,
-  getCaseNotes,
-  getUnassignedNotes,
-  listPatientCases,
-} from './patientCases.storage';
+import { assignNoteToCase } from './patientCases.api';
 import { formatDate } from './patientProfile.utils.tsx';
 
 export const PatientClinicalNotesPage = () => {
   const {
     patient,
     clinicalNotes,
+    cases,
     loadingNotes,
     refreshClinicalNotes,
   } = usePatientProfileContext();
@@ -39,19 +34,14 @@ export const PatientClinicalNotesPage = () => {
 
   const selectedCaseFilter = searchParams.get('case') ?? 'all';
 
-  const patientCases = useMemo(() => {
-    if (!patient) return [];
-    return listPatientCases(patient.id);
-  }, [patient]);
-
   useEffect(() => {
     if (selectedCaseFilter === 'all' || selectedCaseFilter === '__unassigned') return;
 
-    const exists = patientCases.some((caseItem) => caseItem.id === selectedCaseFilter);
+    const exists = cases.some((caseItem) => caseItem.id === Number(selectedCaseFilter));
     if (!exists) {
       setSearchParams({}, { replace: true });
     }
-  }, [patientCases, selectedCaseFilter, setSearchParams]);
+  }, [cases, selectedCaseFilter, setSearchParams]);
 
   useEffect(() => {
     if (selectedCaseFilter !== 'all' && selectedCaseFilter !== '__unassigned') {
@@ -62,18 +52,18 @@ export const PatientClinicalNotesPage = () => {
   useEffect(() => {
     if (!createCaseId) return;
 
-    const exists = patientCases.some((caseItem) => caseItem.id === createCaseId);
+    const exists = cases.some((caseItem) => caseItem.id === Number(createCaseId));
     if (!exists) {
       setCreateCaseId('');
     }
-  }, [createCaseId, patientCases]);
+  }, [createCaseId, cases]);
 
   const filteredNotes = useMemo(() => {
     if (!patient) return [];
 
     if (selectedCaseFilter === 'all') return clinicalNotes;
-    if (selectedCaseFilter === '__unassigned') return getUnassignedNotes(patient.id, clinicalNotes);
-    return getCaseNotes(patient.id, selectedCaseFilter, clinicalNotes);
+    if (selectedCaseFilter === '__unassigned') return clinicalNotes.filter(note => !note.patient_case);
+    return clinicalNotes.filter(note => note.patient_case === Number(selectedCaseFilter));
   }, [clinicalNotes, patient, selectedCaseFilter]);
 
   const handleOpenCreateNote = () => {
@@ -151,8 +141,8 @@ export const PatientClinicalNotesPage = () => {
               >
                 <option value="all">All Cases</option>
                 <option value="__unassigned">Unassigned Notes</option>
-                {patientCases.map((caseItem) => (
-                  <option key={caseItem.id} value={caseItem.id}>{caseItem.title}</option>
+                {cases.map((caseItem) => (
+                  <option key={caseItem.id} value={String(caseItem.id)}>{caseItem.title}</option>
                 ))}
               </select>
             </div>
@@ -165,8 +155,8 @@ export const PatientClinicalNotesPage = () => {
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
               >
                 <option value="">No case assignment</option>
-                {patientCases.map((caseItem) => (
-                  <option key={caseItem.id} value={caseItem.id}>{caseItem.title}</option>
+                {cases.map((caseItem) => (
+                  <option key={caseItem.id} value={String(caseItem.id)}>{caseItem.title}</option>
                 ))}
               </select>
             </div>
@@ -191,8 +181,7 @@ export const PatientClinicalNotesPage = () => {
           ) : (
             <div className="space-y-3">
               {filteredNotes.map((note) => {
-                const noteCaseId = getCaseIdForNote(patient.id, note.id);
-                const noteCase = patientCases.find((caseItem) => caseItem.id === noteCaseId);
+                const noteCase = cases.find((caseItem) => caseItem.id === note.patient_case);
 
                 return (
                   <article
@@ -306,7 +295,9 @@ export const PatientClinicalNotesPage = () => {
                   .filter((noteId) => !beforeNoteIds.has(noteId));
 
                 if (newNoteIds.length > 0) {
-                  assignNotesToCase(patient.id, newNoteIds, createCaseId);
+                  for (const noteId of newNoteIds) {
+                    await assignNoteToCase(noteId, Number(createCaseId));
+                  }
                   toast.success('Clinical note assigned to selected case');
                 }
               }

@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.core.cache import cache
-from .models import Service
+from .models import Service, DISCIPLINE_CHOICES
 from .serializers import ServiceSerializer
 import logging
 
@@ -23,12 +23,13 @@ class ServiceViewSet(viewsets.ModelViewSet):
     DELETE /api/clinic-services/{id}/       — soft-delete
     PATCH  /api/clinic-services/{id}/toggle_active/  — toggle is_active
     GET    /api/clinic-services/portal_services/     — portal-visible only
+    GET    /api/clinic-services/discipline_choices/  — available discipline options
     """
 
     serializer_class   = ServiceSerializer
     permission_classes = [IsAuthenticated]
     filter_backends    = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields   = ['is_active', 'show_in_portal']
+    filterset_fields   = ['is_active', 'show_in_portal', 'discipline']
     search_fields      = ['name', 'description']
     ordering_fields    = ['sort_order', 'name', 'price', 'created_at']
 
@@ -57,16 +58,15 @@ class ServiceViewSet(viewsets.ModelViewSet):
         return response
 
     def perform_create(self, serializer):
-        practitioners = serializer.validated_data.pop('assigned_practitioners', [])
-        service = serializer.save(clinic=self.request.user.clinic)
-        service.assigned_practitioners.set(practitioners)
+        # assigned_practitioners no longer driven from the UI — strip silently
+        serializer.validated_data.pop('assigned_practitioners', [])
+        serializer.save(clinic=self.request.user.clinic)
         cache.delete(f'clinic_services_{self.request.user.clinic_id}')
 
     def perform_update(self, serializer):
-        practitioners = serializer.validated_data.pop('assigned_practitioners', None)
-        service = serializer.save()
-        if practitioners is not None:
-            service.assigned_practitioners.set(practitioners)
+        # assigned_practitioners no longer driven from the UI — strip silently
+        serializer.validated_data.pop('assigned_practitioners', None)
+        serializer.save()
         cache.delete(f'clinic_services_{self.request.user.clinic_id}')
 
     def destroy(self, request, *args, **kwargs):
@@ -106,36 +106,31 @@ class ServiceViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
-        """Soft-delete instead of hard delete."""
-        instance = self.get_object()
-        instance.is_deleted = True
-        instance.is_active  = False
-        instance.save()
-        logger.info(
-            f"Service '{instance.name}' soft-deleted by {request.user.email}"
-        )
-        return Response(
-            {'detail': f"Service '{instance.name}' has been removed."},
-            status=status.HTTP_204_NO_CONTENT,
-        )
+    @action(detail=False, methods=['get'], url_path='discipline_choices')
+    def discipline_choices(self, request):
+        """
+        Return all available practitioner discipline choices so the frontend
+        can populate the Assigned Discipline dropdown dynamically.
 
-    @action(detail=True, methods=['patch'], url_path='toggle_active')
-    def toggle_active(self, request, pk=None):
-        """Quick toggle for the is_active flag."""
-        service = self.get_object()
-        service.is_active = not service.is_active
-        service.save(update_fields=['is_active'])
-        return Response(
-            {
-                'id':        service.id,
-                'is_active': service.is_active,
-                'detail':    f"Service {'activated' if service.is_active else 'deactivated'}.",
-            }
-        )
+        Response: [{ "value": "OCCUPATIONAL_THERAPY", "label": "Occupational Therapy" }, …]
+        """
+        return Response([
+            {'value': value, 'label': label}
+            for value, label in DISCIPLINE_CHOICES
+        ])
 
-    @action(detail=False, methods=['get'], url_path='portal_services')
-    def portal_services(self, request):
-        """Return only services visible in the patient portal."""
-        qs = self.get_queryset().filter(is_active=True, show_in_portal=True)
+    @action(detail=False, methods=['get'], url_path='by_discipline')
+    def by_discipline(self, request):
+        """
+        Filter services by discipline query param.
+        Used by appointment scheduling to show only services matching the
+        selected practitioner's discipline.
+
+        GET /api/clinic-services/by_discipline/?discipline=OCCUPATIONAL_THERAPY
+        """
+        discipline = request.query_params.get('discipline')
+        qs = self.get_queryset().filter(is_active=True)
+        if discipline:
+            qs = qs.filter(discipline=discipline)
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)

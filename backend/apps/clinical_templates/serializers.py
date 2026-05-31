@@ -92,7 +92,7 @@ class ClinicalNoteSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'patient', 'patient_name', 'practitioner', 'practitioner_name', 'practitioner_avatar',
             'appointment', 'appointment_date', 'appointment_time', 'appointment_service', 'appointment_practitioner',
-            'clinic', 'template', 'template_name', 'template_version',
+            'clinic', 'template', 'template_name', 'template_version', 'patient_case',
             'date', 'note_type', 'is_signed', 'signed_at', 'is_draft', 'last_autosave',
             'content', 'decrypted_content', 'chart_annotation_data', 'created_at', 'updated_at'
         ]
@@ -104,6 +104,7 @@ class ClinicalNoteSerializer(serializers.ModelSerializer):
             'appointment': {'required': True},  # Required - each note must be linked to an appointment
             'template': {'required': True},
             'date': {'required': True},
+            'patient_case': {'required': False, 'allow_null': True},
         }
         read_only_fields = [
             'id', 'signed_at', 'last_autosave', 'created_at', 'updated_at',

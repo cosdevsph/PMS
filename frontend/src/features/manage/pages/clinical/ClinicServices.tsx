@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight,
-  Globe, X, Clock, Loader2, AlertCircle,
+  Globe, X, Clock, Loader2, AlertCircle, Stethoscope,
 } from 'lucide-react';
 import { useClinicServices } from '../../hooks/useClinicServices';
 import { ServiceFormModal } from './components/ServiceFormModal';
@@ -81,7 +81,7 @@ export const ClinicServices: React.FC = () => {
           </p>
           <h1 className="text-2xl font-bold text-gray-900 mt-0.5">Clinic Services</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Manage the services your clinic offers. Services marked as &ldquo;Show in Portal&rdquo; are bookable online.
+            Manage the services your clinic offers. Services are assigned to practitioner disciplines and are bookable across all matching practitioners.
           </p>
         </div>
         <button
@@ -113,6 +113,7 @@ export const ClinicServices: React.FC = () => {
               <th className="px-4 py-3 text-left w-16">Code</th>
               <th className="px-4 py-3 text-left">Name</th>
               <th className="px-4 py-3 text-left">Description</th>
+              <th className="px-4 py-3 text-left">Discipline</th>
               <th className="px-4 py-3 text-center w-20">Colour</th>
               <th className="px-4 py-3 text-center w-28">Duration</th>
               <th className="px-4 py-3 text-right w-28">Price</th>
@@ -125,7 +126,7 @@ export const ClinicServices: React.FC = () => {
           <tbody className="divide-y divide-gray-50">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-16 text-center text-gray-400">
+                <td colSpan={10} className="px-4 py-16 text-center text-gray-400">
                   {search
                     ? 'No services match your search.'
                     : 'No services yet. Click "Create Service" to add one.'}
@@ -155,6 +156,14 @@ export const ClinicServices: React.FC = () => {
                   {/* Description */}
                   <td className="px-4 py-3 text-gray-500 max-w-xs truncate">
                     {svc.description || <span className="text-gray-300">—</span>}
+                  </td>
+
+                  {/* Discipline */}
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-teal-50 text-teal-700 rounded-lg text-xs font-medium">
+                      <Stethoscope className="w-3 h-3" />
+                      {svc.discipline_label || svc.discipline || <span className="text-gray-300">—</span>}
+                    </span>
                   </td>
 
                   {/* Colour */}

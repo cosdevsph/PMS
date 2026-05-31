@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, ChevronRight, FileText, FolderKanban, Loader2, Mail, Pencil, Plus, Printer, Search, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createRoot } from 'react-dom/client';
@@ -13,18 +13,15 @@ import type { Practitioner } from '@/features/clinics/clinic.api';
 import { CaseModal, type CaseFormData } from './CaseModal';
 import { usePatientProfileContext } from './context/PatientProfileContext';
 import {
-  assignNotesToCase,
-  createPatientCase,
-  deletePatientCase,
-  getCaseNoteCount,
-  getCaseNotes,
-  listPatientCases,
-  type PatientCase,
-  type PatientCaseStatus,
-  updatePatientCase,
-} from './patientCases.storage';
+  getPatientCases,
+  createPatientCase as apiCreatePatientCase,
+  updatePatientCase as apiUpdatePatientCase,
+  deletePatientCase as apiDeletePatientCase,
+  assignNoteToCase,
+} from './patientCases.api';
 import { formatDate } from './patientProfile.utils.tsx';
 import type { ClinicalNote, ClinicalTemplate, TemplateSection, TemplateField } from '@/types/clinicalTemplate';
+import type { PatientCase, PatientCaseStatus } from '@/types/patient';
 
 const getInitials = (name: string): string => {
   if (!name) return '?';
@@ -375,13 +372,15 @@ export const PatientCasesNotesPage = () => {
   const {
     patient,
     clinicalNotes,
+    cases,
     loadingPatient,
     loadingNotes,
+    loadingCases,
     refreshClinicalNotes,
+    refreshCases,
   } = usePatientProfileContext();
 
-  const [cases, setCases] = useState<PatientCase[]>([]);
-  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
   const [notes, setNotes] = useState<ClinicalNote[]>([]);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -395,19 +394,6 @@ export const PatientCasesNotesPage = () => {
 
   const [isCreateNoteOpen, setIsCreateNoteOpen] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
-
-  const loadCases = useCallback(() => {
-    if (!patient) {
-      setCases([]);
-      return;
-    }
-
-    setCases(listPatientCases(patient.id));
-  }, [patient]);
-
-  useEffect(() => {
-    loadCases();
-  }, [loadCases]);
 
   useEffect(() => {
     if (cases.length === 0) {
@@ -424,7 +410,7 @@ export const PatientCasesNotesPage = () => {
   const monthOptions = useMemo(() => {
     const values = new Set<string>();
     cases.forEach((caseItem) => {
-      values.add(caseItem.createdAt.slice(0, 7));
+      values.add(caseItem.created_at.slice(0, 7));
     });
 
     return Array.from(values).sort((a, b) => b.localeCompare(a));
@@ -435,7 +421,7 @@ export const PatientCasesNotesPage = () => {
 
     return cases.filter((caseItem) => {
       const titleMatch = caseItem.title.toLowerCase().includes(normalizedSearch);
-      const monthMatch = selectedMonth ? caseItem.createdAt.startsWith(selectedMonth) : true;
+      const monthMatch = selectedMonth ? caseItem.created_at.startsWith(selectedMonth) : true;
       return titleMatch && monthMatch;
     });
   }, [cases, searchTerm, selectedMonth]);
@@ -468,7 +454,7 @@ export const PatientCasesNotesPage = () => {
       return;
     }
 
-    setNotes(getCaseNotes(patient.id, selectedCase.id, clinicalNotes));
+    setNotes(clinicalNotes.filter((note) => note.patient_case === selectedCase.id));
   }, [patient, selectedCase, clinicalNotes]);
 
   useEffect(() => {
@@ -487,64 +473,89 @@ export const PatientCasesNotesPage = () => {
     return () => { cancelled = true; };
   }, []);
 
-  const handleCreateCase = (data: CaseFormData) => {
+  const handleCreateCase = async (data: CaseFormData) => {
     if (!patient) return;
 
-    const createdCase = createPatientCase(patient.id, {
-      title: data.title,
-      description: data.description,
-      status: data.status,
-      primaryPractitionerId: data.primaryPractitionerId || undefined,
-      primaryPractitionerName: data.primaryPractitionerName || undefined,
-      referredBy: data.referredBy || undefined,
-      referralInfo: data.referralInfo || undefined,
-    });
+    try {
+      const createdCase = await apiCreatePatientCase({
+        patient: patient.id,
+        title: data.title,
+        description: data.description,
+        status: data.status,
+        primary_practitioner: data.primaryPractitionerId ? Number(data.primaryPractitionerId) : undefined,
+        primary_practitioner_name: data.primaryPractitionerName || undefined,
+        referred_by: data.referredBy || undefined,
+        referral_info: data.referralInfo || undefined,
+      });
 
-    toast.success('Case created successfully');
-    setIsCreateCaseOpen(false);
-    loadCases();
-    setSelectedCaseId(createdCase.id);
+      toast.success('Case created successfully');
+      setIsCreateCaseOpen(false);
+      await refreshCases();
+      setSelectedCaseId(createdCase.id);
+    } catch {
+      toast.error('Failed to create case');
+    }
   };
 
-  const handleDeleteCase = (caseId: string, title: string) => {
+  const handleDeleteCase = async (caseId: number, title: string) => {
     if (!patient) return;
 
     const confirmed = window.confirm(`Delete case "${title}"? This will remove note-to-case links.`);
     if (!confirmed) return;
 
-    deletePatientCase(patient.id, caseId);
-    toast.success('Case deleted');
-    loadCases();
+    try {
+      await apiDeletePatientCase(caseId);
+      toast.success('Case deleted');
+      await refreshCases();
+    } catch {
+      toast.error('Failed to delete case');
+    }
   };
 
-  const handleSaveEditCase = (data: CaseFormData) => {
+  const handleSaveEditCase = async (data: CaseFormData) => {
     if (!patient || !editingCase) return;
 
-    updatePatientCase(patient.id, editingCase.id, {
-      title: data.title,
-      description: data.description,
-      status: data.status,
-      primaryPractitionerId: data.primaryPractitionerId || undefined,
-      primaryPractitionerName: data.primaryPractitionerName || undefined,
-      referredBy: data.referredBy || undefined,
-      referralInfo: data.referralInfo || undefined,
-    });
+    try {
+      await apiUpdatePatientCase(editingCase.id, {
+        title: data.title,
+        description: data.description,
+        status: data.status,
+        primary_practitioner: data.primaryPractitionerId ? Number(data.primaryPractitionerId) : undefined,
+        primary_practitioner_name: data.primaryPractitionerName || undefined,
+        referred_by: data.referredBy || undefined,
+        referral_info: data.referralInfo || undefined,
+      });
 
-    toast.success('Case updated successfully');
-    setEditingCase(null);
-    loadCases();
+      toast.success('Case updated successfully');
+      setEditingCase(null);
+      await refreshCases();
+    } catch {
+      toast.error('Failed to update case');
+    }
   };
 
-  const handleStatusChange = (caseId: string, status: PatientCaseStatus) => {
+  const handleStatusChange = async (caseId: number, status: PatientCaseStatus) => {
     if (!patient) return;
-    updatePatientCase(patient.id, caseId, { status });
-    loadCases();
+    try {
+      await apiUpdatePatientCase(caseId, { status });
+      await refreshCases();
+    } catch {
+      toast.error('Failed to update case status');
+    }
   };
 
   if (loadingPatient || !patient) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 rounded-2xl border border-gray-200">
         <p className="text-sm text-gray-500">Loading patient cases...</p>
+      </div>
+    );
+  }
+
+  if (loadingCases) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50 rounded-2xl border border-gray-200">
+        <Loader2 className="w-5 h-5 text-sky-400 animate-spin" />
       </div>
     );
   }
@@ -604,7 +615,7 @@ export const PatientCasesNotesPage = () => {
               paginatedCases.map((caseItem) => {
                 const isActive = selectedCase?.id === caseItem.id;
                 const statusCfg = STATUS_CONFIG[caseItem.status];
-                const noteCount = getCaseNoteCount(patient.id, caseItem.id, clinicalNotes);
+                const noteCount = clinicalNotes.filter((note) => note.patient_case === caseItem.id).length;
 
                 return (
                   <div
@@ -659,7 +670,7 @@ export const PatientCasesNotesPage = () => {
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-gray-400">{formatDate(caseItem.createdAt)}</p>
+                      <p className="text-[10px] text-gray-400">{formatDate(caseItem.created_at)}</p>
                     </div>
                   </div>
                 );
@@ -786,7 +797,9 @@ export const PatientCasesNotesPage = () => {
                   .filter((noteId) => !beforeNoteIds.has(noteId));
 
                 if (newNoteIds.length > 0) {
-                  assignNotesToCase(patient.id, newNoteIds, selectedCaseAtSave);
+                  for (const noteId of newNoteIds) {
+                    await assignNoteToCase(noteId, selectedCaseAtSave);
+                  }
                   toast.success('Clinical note assigned to selected case');
                 }
               } catch {

@@ -21,15 +21,18 @@ import type { Invoice } from '@/types/billing';
 import {
   getCaseNoteCount,
   getCaseNotes,
-  listPatientCases,
-  createPatientCase,
-  updatePatientCase,
   getLinkedCaseId,
   setLinkedCaseId,
   clearLinkedCase,
   type PatientCase,
   type PatientCaseStatus,
 } from '@/features/patients/patientCases.storage';
+import {
+  getPatientCases,
+  createPatientCase as apiCreatePatientCase,
+  updatePatientCase as apiUpdatePatientCase,
+} from '@/features/patients/patientCases.api';
+import type { PatientCase as ApiPatientCase } from '@/types/patient';
 import { CaseModal, type CaseFormData } from '@/features/patients/CaseModal';
 import type { Practitioner } from '@/features/clinics/clinic.api';
 
@@ -251,23 +254,23 @@ const ClinicalCaseWorkspace = React.forwardRef<
     onDirtyChange:        (dirty: boolean) => void;
   }
 >(({ appointment, patientCases, practitioners, loadingPractitioners, onCasesChanged, onDirtyChange }, ref) => {
-  const [selectedCaseId,  setSelectedCaseId]  = useState<string>(patientCases[0]?.id ?? '');
+  const [selectedCaseId,  setSelectedCaseId]  = useState<string>(patientCases[0]?.id ? String(patientCases[0].id) : '');
   const [editPayer,       setEditPayer]        = useState<string>(patientCases[0]?.payer ?? '');
   const [editStatus,      setEditStatus]       = useState<PatientCaseStatus>(patientCases[0]?.status ?? 'OPEN');
-  const [editAlertNotes,  setEditAlertNotes]   = useState<string>(patientCases[0]?.alertNotes ?? '');
+  const [editAlertNotes,  setEditAlertNotes]   = useState<string>(patientCases[0]?.alert_notes ?? '');
   const [saveError,       setSaveError]        = useState<string | null>(null);
   const [savedOk,         setSavedOk]          = useState(false);
   const [showCreateModal, setShowCreateModal]  = useState(false);
   const [showEditModal,   setShowEditModal]    = useState(false);
 
-  const selectedCase = patientCases.find(c => c.id === selectedCaseId) ?? null;
+  const selectedCase = patientCases.find(c => String(c.id) === selectedCaseId) ?? null;
 
   // Sync editable fields when user switches cases; clear them when deselected
   useEffect(() => {
     if (selectedCase) {
       setEditPayer(selectedCase.payer ?? '');
       setEditStatus(selectedCase.status);
-      setEditAlertNotes(selectedCase.alertNotes ?? '');
+      setEditAlertNotes(selectedCase.alert_notes ?? '');
     } else {
       setEditPayer('');
       setEditStatus('OPEN');
@@ -287,7 +290,7 @@ const ClinicalCaseWorkspace = React.forwardRef<
   // Keep selectedCaseId valid after cases list changes (e.g. after create/delete).
   // '' is a valid "no case" state — never auto-select a case the user didn't choose.
   useEffect(() => {
-    if (selectedCaseId !== '' && !patientCases.some(c => c.id === selectedCaseId)) {
+    if (selectedCaseId !== '' && !patientCases.some(c => String(c.id) === selectedCaseId)) {
       setSelectedCaseId('');
       clearLinkedCase(appointment.id);
     }
@@ -296,58 +299,64 @@ const ClinicalCaseWorkspace = React.forwardRef<
   const isDirty = !!selectedCase && (
     editPayer      !== (selectedCase.payer      ?? '') ||
     editStatus     !== selectedCase.status             ||
-    editAlertNotes !== (selectedCase.alertNotes ?? '')
+    editAlertNotes !== (selectedCase.alert_notes ?? '')
   );
 
   const handleSave = () => {
     if (!selectedCase) return;
     setSaveError(null);
-    try {
-      updatePatientCase(appointment.patient, selectedCase.id, {
-        payer:      (editPayer as PatientCase['payer']) || undefined,
-        status:     editStatus,
-        alertNotes: editAlertNotes || undefined,
-      });
+    apiUpdatePatientCase(Number(selectedCase.id), {
+      payer:      editPayer || undefined,
+      status:     editStatus,
+      alert_notes: editAlertNotes || undefined,
+    }).then(() => {
       setSavedOk(true);
       setTimeout(() => setSavedOk(false), 3000);
       onCasesChanged();
-    } catch {
+    }).catch(() => {
       setSaveError('Failed to save. Please try again.');
-    }
+    });
   };
 
   const handleCreateCase = (data: CaseFormData) => {
-    const created = createPatientCase(appointment.patient, {
-      title:                   data.title,
-      description:             data.description,
-      status:                  data.status,
-      primaryPractitionerId:   data.primaryPractitionerId   || undefined,
-      primaryPractitionerName: data.primaryPractitionerName || undefined,
-      referredBy:              data.referredBy              || undefined,
-      referralInfo:            data.referralInfo            || undefined,
+    apiCreatePatientCase({
+      patient:     appointment.patient,
+      title:       data.title,
+      description: data.description,
+      status:      data.status,
+      primary_practitioner: data.primaryPractitionerId ? Number(data.primaryPractitionerId) : undefined,
+      primary_practitioner_name: data.primaryPractitionerName || undefined,
+      payer:       data.payer || undefined,
+      alert_notes:  data.alertNotes || undefined,
+      referred_by:  data.referredBy || undefined,
+      referral_info: data.referralInfo || undefined,
+    }).then((created) => {
+      setLinkedCaseId(appointment.id, String(created.id)); // explicitly link to this appointment
+      toast.success('Case created');
+      setShowCreateModal(false);
+      setSelectedCaseId(String(created.id));
+      onCasesChanged();
     });
-    setLinkedCaseId(appointment.id, created.id); // explicitly link to this appointment
-    toast.success('Case created');
-    setShowCreateModal(false);
-    setSelectedCaseId(created.id);
-    onCasesChanged();
   };
 
   const handleEditCase = (data: CaseFormData) => {
     if (!selectedCase) return;
-    updatePatientCase(appointment.patient, selectedCase.id, {
+    apiUpdatePatientCase(Number(selectedCase.id), {
       title:                   data.title,
       description:             data.description,
       status:                  data.status,
-      primaryPractitionerId:   data.primaryPractitionerId   || undefined,
-      primaryPractitionerName: data.primaryPractitionerName || undefined,
-      referredBy:              data.referredBy              || undefined,
-      referralInfo:            data.referralInfo            || undefined,
+      primary_practitioner:    data.primaryPractitionerId ? Number(data.primaryPractitionerId) : undefined,
+      primary_practitioner_name: data.primaryPractitionerName || undefined,
+      payer:       data.payer || undefined,
+      alert_notes:  data.alertNotes || undefined,
+      referred_by:  data.referredBy || undefined,
+      referral_info: data.referralInfo || undefined,
+    }).then(() => {
+      setEditStatus(data.status);
+      toast.success('Case updated');
+      setShowEditModal(false);
+      onCasesChanged();
     });
-    setEditStatus(data.status);
-    toast.success('Case updated');
-    setShowEditModal(false);
-    onCasesChanged();
   };
 
   const _handleSaveRef = useRef(handleSave);
@@ -426,18 +435,18 @@ const ClinicalCaseWorkspace = React.forwardRef<
               </div>
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">Opened</p>
-                <p className="font-medium text-gray-900">{format(new Date(selectedCase.createdAt), 'MMM d, yyyy')}</p>
+                <p className="font-medium text-gray-900">{format(new Date(selectedCase.created_at), 'MMM d, yyyy')}</p>
               </div>
-              {selectedCase.primaryPractitionerName && (
+              {selectedCase.primary_practitioner_name && (
                 <div className="col-span-2">
                   <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">Case Practitioner</p>
-                  <p className="font-medium text-gray-900">{selectedCase.primaryPractitionerName}</p>
+                  <p className="font-medium text-gray-900">{selectedCase.primary_practitioner_name}</p>
                 </div>
               )}
-              {selectedCase.referredBy && (
+              {selectedCase.referred_by && (
                 <div className="col-span-2">
                   <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">Referred By</p>
-                  <p className="font-medium text-gray-900">{selectedCase.referredBy}</p>
+                  <p className="font-medium text-gray-900">{selectedCase.referred_by}</p>
                 </div>
               )}
               {selectedCase.description && (
@@ -506,9 +515,9 @@ const ClinicalCaseWorkspace = React.forwardRef<
         onClose={() => setShowCreateModal(false)}
         mode="create"
         initialValues={{
-          primaryPractitionerId:   appointment.practitioner ? String(appointment.practitioner) : '',
-          primaryPractitionerName: appointment.practitioner_name ?? '',
-        }}
+            primary_practitioner:      appointment.practitioner ?? null,
+            primary_practitioner_name: appointment.practitioner_name ?? null,
+          }}
         lockPractitioner
         onSave={handleCreateCase}
         practitioners={practitioners}
@@ -1238,9 +1247,15 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
     }
   }, [isOpen, cancelEdit]);
 
-  // casesVersion increments trigger re-renders, which re-reads localStorage below.
+  // casesVersion increments trigger re-renders, which re-fetches from API below.
+  const { data: apiPatientCases = [] } = useQuery<ApiPatientCase[]>({
+    queryKey: ['patient-cases', appointment?.patient],
+    queryFn: () => getPatientCases(appointment!.patient),
+    enabled: !!appointment?.patient,
+  });
+
   const patientCases = casesVersion >= 0 && appointment
-    ? listPatientCases(appointment.patient)
+    ? apiPatientCases
     : [];
 
   if (!isOpen || !appointment) return null;

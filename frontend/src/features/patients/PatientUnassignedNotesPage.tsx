@@ -4,12 +4,7 @@ import toast from 'react-hot-toast';
 import { EditClinicalNoteModal } from '@/features/clinical-template/components/EditClinicalNoteModal';
 import { ViewClinicalNoteModal } from '@/features/clinical-template/components/ViewClinicalNoteModal';
 import { usePatientProfileContext } from './context/PatientProfileContext';
-import {
-  assignNotesToCase,
-  getCaseIdForNote,
-  listPatientCases,
-  type PatientCase,
-} from './patientCases.storage';
+import { assignNoteToCase } from './patientCases.api';
 import { formatDate } from './patientProfile.utils.tsx';
 import type { ClinicalNote } from '@/types/clinicalTemplate';
 
@@ -17,52 +12,46 @@ export const PatientUnassignedNotesPage = () => {
   const {
     patient,
     clinicalNotes,
+    cases,
     loadingPatient,
     loadingNotes,
     refreshClinicalNotes,
   } = usePatientProfileContext();
 
-  const [cases, setCases] = useState<PatientCase[]>([]);
   const [viewingNoteId, setViewingNoteId] = useState<number | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   // Track per-note assignment state: noteId → selected case id string
   const [pendingAssignments, setPendingAssignments] = useState<Record<number, string>>({});
   const [assigningNoteId, setAssigningNoteId] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!patient) {
-      setCases([]);
-      return;
-    }
-    setCases(listPatientCases(patient.id));
-  }, [patient, clinicalNotes]); // refresh cases list whenever notes change too
-
   // Notes with no case assignment
   const unassignedNotes = useMemo<ClinicalNote[]>(() => {
     if (!patient) return [];
-    return clinicalNotes.filter((note) => !getCaseIdForNote(patient.id, note.id));
+    return clinicalNotes.filter((note) => !note.patient_case);
   }, [patient, clinicalNotes]);
 
-  const handleAssign = (note: ClinicalNote, caseId: string) => {
+  const handleAssign = (note: ClinicalNote, caseId: number) => {
     if (!patient || !caseId) return;
 
     setAssigningNoteId(note.id);
-    try {
-      assignNotesToCase(patient.id, [note.id], caseId);
-      const targetCase = cases.find((c) => c.id === caseId);
-      toast.success(`Note assigned to "${targetCase?.title ?? 'case'}"`);
-      // Clear the pending selection for this note then refresh
-      setPendingAssignments((prev) => {
-        const next = { ...prev };
-        delete next[note.id];
-        return next;
+    assignNoteToCase(note.id, caseId)
+      .then(() => {
+        const targetCase = cases.find((c) => c.id === caseId);
+        toast.success(`Note assigned to "${targetCase?.title ?? 'case'}"`);
+        // Clear the pending selection for this note then refresh
+        setPendingAssignments((prev) => {
+          const next = { ...prev };
+          delete next[note.id];
+          return next;
+        });
+        void refreshClinicalNotes();
+      })
+      .catch(() => {
+        toast.error('Failed to assign note');
+      })
+      .finally(() => {
+        setAssigningNoteId(null);
       });
-      void refreshClinicalNotes();
-    } catch {
-      toast.error('Failed to assign note');
-    } finally {
-      setAssigningNoteId(null);
-    }
   };
 
   if (loadingPatient || !patient) {
@@ -175,7 +164,7 @@ export const PatientUnassignedNotesPage = () => {
                         >
                           <option value="">Assign to case…</option>
                           {cases.map((c) => (
-                            <option key={c.id} value={c.id}>
+                            <option key={c.id} value={String(c.id)}>
                               {c.title}
                             </option>
                           ))}
@@ -184,7 +173,7 @@ export const PatientUnassignedNotesPage = () => {
                         <button
                           type="button"
                           disabled={!pendingAssignments[note.id] || assigningNoteId === note.id}
-                          onClick={() => handleAssign(note, pendingAssignments[note.id])}
+                          onClick={() => handleAssign(note, Number(pendingAssignments[note.id]))}
                           className="px-2.5 py-1.5 text-xs font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                           {assigningNoteId === note.id ? (

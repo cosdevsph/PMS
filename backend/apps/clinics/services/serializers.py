@@ -1,12 +1,16 @@
 from rest_framework import serializers
 from apps.clinics.models import Practitioner
-from .models import Service
+from .models import Service, DISCIPLINE_CHOICES
 
 
 class ServiceSerializer(serializers.ModelSerializer):
-    image_url  = serializers.SerializerMethodField()
+    image_url   = serializers.SerializerMethodField()
     clinic_name = serializers.CharField(source='clinic.name', read_only=True)
-    # List of practitioner PKs — writable for assign/unassign
+
+    # Human-readable label for the discipline value
+    discipline_label = serializers.SerializerMethodField()
+
+    # Legacy field — kept for appointment backward-compat; not writable via API
     assigned_practitioners = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Practitioner.objects.filter(is_deleted=False),
@@ -19,17 +23,26 @@ class ServiceSerializer(serializers.ModelSerializer):
             'id', 'clinic', 'clinic_name',
             'name', 'description', 'duration_minutes',
             'price', 'image', 'image_url', 'color_hex',
+            'discipline', 'discipline_label',
             'sort_order', 'is_active', 'show_in_portal',
             'assigned_practitioners',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'clinic', 'clinic_name', 'image_url', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'clinic', 'clinic_name', 'image_url',
+            'discipline_label', 'created_at', 'updated_at',
+        ]
 
     def get_image_url(self, obj) -> str | None:
         request = self.context.get('request')
         if obj.image and request:
             return request.build_absolute_uri(obj.image.url)
         return None
+
+    def get_discipline_label(self, obj) -> str:
+        """Return the human-readable label for the discipline value."""
+        mapping = dict(DISCIPLINE_CHOICES)
+        return mapping.get(obj.discipline, obj.discipline)
 
     def validate_name(self, value):
         """Name must be unique per clinic — exclude current instance on update."""
@@ -44,6 +57,14 @@ class ServiceSerializer(serializers.ModelSerializer):
         if qs.exists():
             raise serializers.ValidationError(
                 "A service with this name already exists in your clinic."
+            )
+        return value
+
+    def validate_discipline(self, value):
+        valid_values = [c[0] for c in DISCIPLINE_CHOICES]
+        if value not in valid_values:
+            raise serializers.ValidationError(
+                f"Invalid discipline. Choose from: {', '.join(valid_values)}."
             )
         return value
 

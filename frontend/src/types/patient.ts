@@ -57,6 +57,27 @@ export interface IntakeForm {
   created_at: string;
 }
 
+export type PatientCaseStatus = 'OPEN' | 'MONITORING' | 'DISCHARGED' | 'CLOSED';
+
+export type PatientCasePayer = 'PRIVATE' | 'HMO' | 'INSURANCE' | 'CORPORATE' | '';
+
+export interface PatientCase {
+  id: number;
+  patient: number;
+  patient_name: string;
+  title: string;
+  description: string;
+  status: PatientCaseStatus;
+  primary_practitioner: number | null;
+  primary_practitioner_name: string | null;
+  payer: PatientCasePayer;
+  alert_notes: string;
+  referred_by: string;
+  referral_info: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CreatePatientData {
   clinic: number;
   first_name: string;
@@ -70,9 +91,9 @@ export interface CreatePatientData {
   city: string;
   province: string;
   postal_code?: string;
-  emergency_contact_name: string;
-  emergency_contact_phone: string;
-  emergency_contact_relationship: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relationship?: string;
   philhealth_number?: string;
   hmo_provider?: string;
   hmo_number?: string;

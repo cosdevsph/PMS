@@ -184,7 +184,10 @@ export const ClinicSetupPage: React.FC = () => {
 
   // ── Derived completion state ──────────────────────────────────────────────
   const hasPractitioner = useMemo(
-    () => staff.some((s) => s.role === 'PRACTITIONER'),
+    () => staff.some((s) => {
+      const r = s.roles && s.roles.length > 0 ? s.roles : [s.role];
+      return r.includes('PRACTITIONER');
+    }),
     [staff],
   );
   const step1Complete = useMemo(() => {
@@ -386,7 +389,7 @@ export const ClinicSetupPage: React.FC = () => {
       if (user && tokens) {
         setAuth({ ...user, clinic_setup_complete: true }, tokens);
       }
-      toast.success('Setup complete! Welcome to Malasakit EMR Solutions.');
+      toast.success('Setup complete! Welcome to Malasakit.');
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
       const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
@@ -406,7 +409,7 @@ export const ClinicSetupPage: React.FC = () => {
         <div className="text-center pt-2">
           <img
             src={MalasakitLogo}
-            alt="Malasakit EMR Solutions"
+            alt="Malasakit"
             className="h-7 mx-auto mb-5"
           />
           <h1 className="text-2xl font-bold text-gray-900">Clinic Onboarding</h1>
@@ -783,7 +786,8 @@ export const ClinicSetupPage: React.FC = () => {
               {staff.length > 0 && (
                 <div className="space-y-2 mb-4">
                   {staff.map((member) => {
-                    const isPractitioner = member.role === 'PRACTITIONER';
+                    const effectiveRoles = member.roles && member.roles.length > 0 ? member.roles : [member.role];
+                    const isPractitioner = effectiveRoles.includes('PRACTITIONER');
                     return (
                       <div key={member.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-md border border-gray-100">
                         <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${isPractitioner ? 'bg-purple-50' : 'bg-blue-50'}`}>

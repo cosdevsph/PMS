@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Practitioner } from '@/features/clinics/clinic.api';
-import type { PatientCase, PatientCaseStatus } from './patientCases.storage';
+import type { PatientCase, PatientCaseStatus, PatientCasePayer } from '@/types/patient';
 
 export interface CaseFormData {
   title: string;
   status: PatientCaseStatus;
   primaryPractitionerId: string;
   primaryPractitionerName: string;
+  payer: PatientCasePayer;
+  alertNotes: string;
   referredBy: string;
   referralInfo: string;
   description: string;
@@ -29,10 +31,12 @@ interface CaseModalProps {
 export const CaseModal = ({ isOpen, onClose, mode, initialValues, onSave, practitioners, loadingPractitioners, lockPractitioner }: CaseModalProps) => {
   const [title, setTitle] = useState(initialValues?.title ?? '');
   const [status, setStatus] = useState<PatientCaseStatus>(initialValues?.status ?? 'OPEN');
-  const [primaryPractitionerId, setPrimaryPractitionerId] = useState(initialValues?.primaryPractitionerId ?? '');
-  const [primaryPractitionerName, setPrimaryPractitionerName] = useState(initialValues?.primaryPractitionerName ?? '');
-  const [referredBy, setReferredBy] = useState(initialValues?.referredBy ?? '');
-  const [referralInfo, setReferralInfo] = useState(initialValues?.referralInfo ?? '');
+  const [primaryPractitionerId, setPrimaryPractitionerId] = useState(initialValues?.primary_practitioner ? String(initialValues.primary_practitioner) : '');
+  const [primaryPractitionerName, setPrimaryPractitionerName] = useState(initialValues?.primary_practitioner_name ?? '');
+  const [payer, setPayer] = useState<PatientCasePayer>(initialValues?.payer ?? '');
+  const [alertNotes, setAlertNotes] = useState(initialValues?.alert_notes ?? '');
+  const [referredBy, setReferredBy] = useState(initialValues?.referred_by ?? '');
+  const [referralInfo, setReferralInfo] = useState(initialValues?.referral_info ?? '');
   const [description, setDescription] = useState(initialValues?.description ?? '');
 
   const handlePractitionerChange = (id: string) => {
@@ -117,6 +121,36 @@ export const CaseModal = ({ isOpen, onClose, mode, initialValues, onSave, practi
               )}
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Payer</label>
+              <select
+                value={payer}
+                onChange={(e) => setPayer(e.target.value as PatientCasePayer)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="">— Select payer —</option>
+                <option value="PRIVATE">Private Pay</option>
+                <option value="HMO">HMO</option>
+                <option value="INSURANCE">Insurance</option>
+                <option value="CORPORATE">Corporate</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 mb-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                Alert Notes
+                <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded px-1 py-0.5 leading-none">CASE-WIDE</span>
+              </label>
+              <textarea
+                value={alertNotes}
+                onChange={(e) => setAlertNotes(e.target.value)}
+                rows={2}
+                placeholder="Persistent alerts visible across all sessions for this case..."
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-sky-500"
+              />
+            </div>
+
             <div className="space-y-3 pt-2 border-t border-gray-100">
               <p className="text-xs font-semibold text-gray-600">Referral <span className="text-gray-400 font-normal">(Optional)</span></p>
               <div>
@@ -168,7 +202,7 @@ export const CaseModal = ({ isOpen, onClose, mode, initialValues, onSave, practi
                   toast.error('Case title is required');
                   return;
                 }
-                onSave({ title: title.trim(), status, primaryPractitionerId, primaryPractitionerName, referredBy, referralInfo, description });
+                onSave({ title: title.trim(), status, primaryPractitionerId, primaryPractitionerName, payer, alertNotes, referredBy, referralInfo, description });
               }}
               className="px-3 py-2 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700"
             >

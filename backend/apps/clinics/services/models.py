@@ -3,10 +3,23 @@ from apps.common.models import TimeStampedModel, SoftDeleteModel
 from apps.clinics.models import Clinic
 
 
+DISCIPLINE_CHOICES = [
+    ('OCCUPATIONAL_THERAPY',        'Occupational Therapy'),
+    ('SPEECH_LANGUAGE_PATHOLOGIST', 'Speech Language Pathologist'),
+    ('PHYSICAL_THERAPY',            'Physical Therapy'),
+    ('OSTEOPATHY',                  'Osteopathy'),
+    ('DENTISTRY',                   'Dentistry'),
+    ('MD_GENERAL_PRACTITIONER',     'MD: General Practitioner'),
+]
+
+
 class Service(TimeStampedModel, SoftDeleteModel):
     """
     A service offered by a clinic (e.g. General Consultation, Dental Cleaning).
     Displayed in the Patient Portal for booking.
+
+    Services are assigned to a practitioner **discipline** so that all
+    practitioners sharing the same discipline can offer the service.
     """
 
     clinic = models.ForeignKey(
@@ -29,6 +42,15 @@ class Service(TimeStampedModel, SoftDeleteModel):
         help_text='Hex color for calendar display e.g. #0D9488',
     )
 
+    # Discipline this service belongs to.
+    # All practitioners with this discipline can offer the service.
+    discipline = models.CharField(
+        max_length=50,
+        choices=DISCIPLINE_CHOICES,
+        default='OCCUPATIONAL_THERAPY',
+        help_text='Practitioner discipline this service is assigned to.',
+    )
+
     # Ordering / visibility
     sort_order  = models.PositiveIntegerField(default=0)
     is_active   = models.BooleanField(default=True)
@@ -39,12 +61,13 @@ class Service(TimeStampedModel, SoftDeleteModel):
         help_text='If true, patients can book this service online',
     )
 
-    # Practitioners who offer this service (optional — empty means any practitioner)
+    # Legacy: kept for backward compatibility with existing appointment records.
+    # New services are assigned via the `discipline` field instead.
     assigned_practitioners = models.ManyToManyField(
         'clinics.Practitioner',
         blank=True,
         related_name='services',
-        help_text='Practitioners who offer this service. Empty = any practitioner.',
+        help_text='[Legacy] Practitioners who offer this service. Use discipline instead.',
     )
 
     class Meta:

@@ -22,7 +22,7 @@ export interface StaffMember {
   nickname?: string;
   title?: TitleType;
   /** Primary role — backward compat; use `roles` for multi-role checks. */
-  role: 'STAFF' | 'PRACTITIONER' | 'ADMIN' | 'ADMIN_ASSISTANT' | 'FINANCE';
+  role: 'STAFF' | 'PRACTITIONER' | 'ADMIN' | 'ADMIN_ASSISTANT' | 'FINANCE' | 'READ_ONLY';
   /** All assigned roles (multi-role). */
   roles: UserRole[];
   phone: string;
@@ -59,7 +59,7 @@ export interface CreateStaffData {
   nickname?: string;
   title?: TitleType;
   /** All assigned clinical roles (multi-select). */
-  roles: ('ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'ADMIN')[];
+  roles: ('ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'ADMIN' | 'READ_ONLY')[];
   phone: string;
   position?: string;
   discipline?: string;

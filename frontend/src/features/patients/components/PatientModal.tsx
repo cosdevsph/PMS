@@ -138,15 +138,15 @@ export const PatientModal: React.FC<PatientModalProps> = ({
     const age = computeAge(formData.date_of_birth);
     const minor = age !== null && age < 18;
     if (minor) {
-      if (!formData.emergency_contact_name.trim())
+      if (!formData.emergency_contact_name?.trim())
         newErrors.emergency_contact_name  = 'Emergency contact name is required for minor patients.';
-      if (!formData.emergency_contact_phone.trim())
+      if (!formData.emergency_contact_phone?.trim())
         newErrors.emergency_contact_phone = 'Emergency contact phone is required for minor patients.';
       else if (!isValidPHPhone(formData.emergency_contact_phone))
         newErrors.emergency_contact_phone = 'Enter a valid Philippine mobile number';
-      if (!formData.emergency_contact_relationship.trim())
+      if (!formData.emergency_contact_relationship?.trim())
         newErrors.emergency_contact_relationship = 'Relationship is required for minor patients.';
-    } else if (formData.emergency_contact_phone.trim() && !isValidPHPhone(formData.emergency_contact_phone)) {
+    } else if (formData.emergency_contact_phone?.trim() && !isValidPHPhone(formData.emergency_contact_phone)) {
       // Still validate format when provided voluntarily by adult patients.
       newErrors.emergency_contact_phone = 'Enter a valid Philippine mobile number';
     }
@@ -366,7 +366,9 @@ export const PatientModal: React.FC<PatientModalProps> = ({
               <div>
                 <div className="flex items-center gap-2 pb-2 mb-4 border-b border-gray-200">
                   <Phone className="w-4 h-4 text-sky-600" />
-                  <h3 className="text-sm font-bold text-gray-700">Emergency Contact</h3>
+                  <h3 className="text-sm font-bold text-gray-700">
+                    Emergency Contact {isMinor ? '(Required for minors)' : '(Optional)'}
+                  </h3>
                 </div>
                 {isMinor && (
                   <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
@@ -551,16 +553,16 @@ export const PatientModal: React.FC<PatientModalProps> = ({
                           <p className="text-xs text-gray-500">Receive appointment reminders and updates via email</p>
                         </div>
                       </label>
-                      <label className="flex items-center gap-3 cursor-pointer">
+                      <label className="flex items-center gap-3 cursor-not-allowed opacity-60">
                         <input
                           type="checkbox"
                           checked={formData.sms_notifications_enabled ?? false}
-                          onChange={(e) => setFormData(prev => ({ ...prev, sms_notifications_enabled: e.target.checked }))}
-                          className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500"
+                          disabled
+                          className="w-4 h-4 text-gray-400 border-gray-300 rounded focus:ring-gray-500 cursor-not-allowed"
                         />
                         <div>
                           <p className="text-sm text-gray-900">SMS notifications</p>
-                          <p className="text-xs text-gray-500">Receive appointment reminders via text message</p>
+                          <p className="text-xs text-gray-500">Currently not available. Coming soon.</p>
                         </div>
                       </label>
                     </div>

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { X, FileText, FolderKanban, Loader2, Save, Calendar, ClipboardList } from 'lucide-react';
 import { getActiveTemplates, getNote, updateNote } from '../clinical-templates.api';
 import { getAppointments } from '@/features/appointments/appointment.api';
-import { assignNotesToCase, type PatientCase } from '@/features/patients/patientCases.storage';
+import { assignNoteToCase } from '@/features/patients/patientCases.api';
+import type { PatientCase } from '@/types/patient';
 import { DynamicFormRenderer } from './DynamicFormRenderer';
 import type { ClinicalTemplate, TemplateSection } from '@/types/clinicalTemplate';
 import type { Appointment } from '@/types';
@@ -53,7 +54,7 @@ export const EditClinicalNoteModal: React.FC<EditClinicalNoteModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [patientName, setPatientName] = useState<string>('');
-  const [selectedCaseId, setSelectedCaseId] = useState<string>('');
+  const [selectedCaseId, setSelectedCaseId] = useState<number | ''>('');
 
   // Fetch note data and templates on mount
   const fetchData = useCallback(async () => {
@@ -143,9 +144,9 @@ export const EditClinicalNoteModal: React.FC<EditClinicalNoteModalProps> = ({
         content,
       });
 
-      // Assign to case if selected (local storage)
+      // Assign to case if selected (via API)
       if (selectedCaseId && patientId) {
-        assignNotesToCase(patientId, [noteId], selectedCaseId);
+        await assignNoteToCase(noteId, selectedCaseId);
       }
 
       console.log('[EditClinicalNoteModal] Note updated successfully!');
@@ -261,12 +262,12 @@ export const EditClinicalNoteModal: React.FC<EditClinicalNoteModalProps> = ({
                       </label>
                       <select
                         value={selectedCaseId}
-                        onChange={(e) => setSelectedCaseId(e.target.value)}
+                        onChange={(e) => setSelectedCaseId(e.target.value ? Number(e.target.value) : '')}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white"
                       >
                         <option value="">— Keep unassigned —</option>
                         {cases.map((c) => (
-                          <option key={c.id} value={c.id}>
+                          <option key={c.id} value={String(c.id)}>
                             {c.title} ({c.status})
                           </option>
                         ))}

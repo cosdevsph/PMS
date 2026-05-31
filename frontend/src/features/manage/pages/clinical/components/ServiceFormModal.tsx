@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { X, Save, Loader2 } from 'lucide-react';
-import { getPractitioners } from '@/features/clinics/clinic.api';
-import type { Practitioner } from '@/features/clinics/clinic.api';
-import type { ClinicService, ClinicServicePayload } from '../../../services/clinic-services.api';
+import { X, Save, Loader2, AlertCircle, Stethoscope } from 'lucide-react';
+import type { ClinicService, ClinicServicePayload, DisciplineChoice } from '../../../services/clinic-services.api';
+import { clinicServicesApi } from '../../../services/clinic-services.api';
 
 interface ServiceFormModalProps {
   open:      boolean;
@@ -19,7 +18,7 @@ const EMPTY: ClinicServicePayload = {
   color_hex:        '#0D9488',
   is_active:        true,
   show_in_portal:   true,
-  assigned_practitioners: [],
+  discipline:       '',
 };
 
 // ── Duration options in 15-min increments (15 min → 8 hours) ─────────────────
@@ -39,25 +38,44 @@ const DURATION_OPTIONS: { value: number; label: string }[] = Array.from(
   },
 );
 
+// ── Field helpers ─────────────────────────────────────────────────────────────
+
+const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500';
+const selectCls = `${inputCls} bg-white`;
+
+const FieldError: React.FC<{ msg?: string }> = ({ msg }) =>
+  msg ? (
+    <p className="flex items-center gap-1 mt-1 text-xs text-rose-500">
+      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+      {msg}
+    </p>
+  ) : null;
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   open,
   editing,
   onClose,
   onSubmit,
 }) => {
-  const [form,         setForm]         = useState<ClinicServicePayload>(EMPTY);
-  const [submitting,   setSubmitting]   = useState(false);
-  const [errors,       setErrors]       = useState<Partial<Record<keyof ClinicServicePayload, string>>>({});
-  const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
+  const [form,        setForm]        = useState<ClinicServicePayload>(EMPTY);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [errors,      setErrors]      = useState<Partial<Record<keyof ClinicServicePayload, string>>>({});
+  const [disciplines, setDisciplines] = useState<DisciplineChoice[]>([]);
+  const [loadingDisc, setLoadingDisc] = useState(false);
 
-  // Load practitioners once on open
+  // Load discipline choices once on open
   useEffect(() => {
     if (!open) return;
-    getPractitioners().then(r => setPractitioners(
-      r.practitioners.filter(p => typeof p.id === 'number') as Practitioner[]
-    )).catch(() => {});
+    setLoadingDisc(true);
+    clinicServicesApi.getDisciplineChoices()
+      .then(setDisciplines)
+      .catch(() => {})
+      .finally(() => setLoadingDisc(false));
   }, [open]);
 
+  // Populate form when editing
   useEffect(() => {
     if (editing) {
       setForm({
@@ -66,9 +84,9 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
         duration_minutes: editing.duration_minutes,
         price:            editing.price,
         color_hex:        editing.color_hex,
-        is_active:        editing.is_active,
-        show_in_portal:   editing.show_in_portal,
-        assigned_practitioners: editing.assigned_practitioners ?? [],
+        is_active:        true,
+        show_in_portal:   true,
+        discipline:       editing.discipline ?? '',
       });
     } else {
       setForm(EMPTY);
@@ -79,17 +97,13 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   const set = <K extends keyof ClinicServicePayload>(k: K, v: ClinicServicePayload[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  const togglePractitioner = (id: number) => {
-    const current = form.assigned_practitioners ?? [];
-    set('assigned_practitioners', current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
-  };
-
   const validate = (): boolean => {
     const e: typeof errors = {};
-    if (!form.name.trim())          e.name             = 'Name is required.';
+    if (!form.name.trim())          e.name             = 'Service name is required.';
     if (form.duration_minutes <= 0) e.duration_minutes = 'Duration must be > 0.';
     if (parseFloat(form.price) < 0) e.price            = 'Price cannot be negative.';
     if (!/^#[0-9A-Fa-f]{6}$/.test(form.color_hex)) e.color_hex = 'Invalid hex color.';
+    if (!form.discipline)           e.discipline       = 'Assigned Discipline is required.';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -106,12 +120,9 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
     }
   };
 
+  // Body scroll lock
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = open ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
@@ -134,61 +145,57 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
 
-          {/* Name */}
+          {/* ── Service Name ─────────────────────────────────────────────── */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">
-              Service Name <span className="text-red-500">*</span>
+              Service Name <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => set('name', e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className={`${inputCls} ${errors.name ? 'border-rose-400 ring-2 ring-rose-200' : ''}`}
               placeholder="e.g. Initial Consultation"
             />
-            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+            <FieldError msg={errors.name} />
           </div>
 
-          {/* Description */}
+          {/* ── Description ──────────────────────────────────────────────── */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Description</label>
             <textarea
               rows={3}
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+              className={`${inputCls} resize-none`}
               placeholder="Brief description of this service..."
             />
           </div>
 
-          {/* Duration + Price row */}
+          {/* ── Duration + Price ─────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-4">
 
             {/* Duration */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Duration <span className="text-red-500">*</span>
+                Duration <span className="text-rose-500">*</span>
               </label>
               <select
                 value={form.duration_minutes}
                 onChange={(e) => set('duration_minutes', parseInt(e.target.value))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                className={selectCls}
               >
                 {DURATION_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              {errors.duration_minutes && (
-                <p className="text-xs text-red-500 mt-1">{errors.duration_minutes}</p>
-              )}
+              <FieldError msg={errors.duration_minutes} />
             </div>
 
             {/* Price */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Price (₱) <span className="text-red-500">*</span>
+                Price (₱) <span className="text-rose-500">*</span>
               </label>
               <input
                 type="number"
@@ -196,13 +203,13 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
                 step="0.01"
                 value={form.price}
                 onChange={(e) => set('price', e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className={`${inputCls} ${errors.price ? 'border-rose-400 ring-2 ring-rose-200' : ''}`}
               />
-              {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
+              <FieldError msg={errors.price} />
             </div>
           </div>
 
-          {/* Color — full width now that sort order is removed */}
+          {/* ── Calendar Colour ───────────────────────────────────────────── */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">
               Calendar Colour
@@ -218,67 +225,45 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
                 type="text"
                 value={form.color_hex}
                 onChange={(e) => set('color_hex', e.target.value)}
-                className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className={`flex-1 ${inputCls} font-mono ${errors.color_hex ? 'border-rose-400 ring-2 ring-rose-200' : ''}`}
                 placeholder="#0D9488"
               />
             </div>
-            {errors.color_hex && <p className="text-xs text-red-500 mt-1">{errors.color_hex}</p>}
+            <FieldError msg={errors.color_hex} />
           </div>
 
-          {/* Toggles */}
-          <div className="space-y-3 pt-2">
-            {(
-              [
-                { key: 'is_active',      label: 'Active',         sub: 'Enable this service for use.' },
-                { key: 'show_in_portal', label: 'Show in Portal', sub: 'Patients can book this online.' },
-              ] as const
-            ).map(({ key, label, sub }) => (
-              <label key={key} className="flex items-center justify-between cursor-pointer group">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{label}</p>
-                  <p className="text-xs text-gray-400">{sub}</p>
-                </div>
-                <div
-                  onClick={() => set(key, !form[key])}
-                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                    form[key] ? 'bg-teal-500' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                      form[key] ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </div>
-              </label>
-            ))}
-          </div>
-
-          {/* Assigned Practitioners */}
-          {practitioners.length > 0 && (
-            <div className="pt-2">
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Assigned Practitioners
-                <span className="ml-1 font-normal text-gray-400">(leave blank to allow any)</span>
-              </label>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-2.5">
-                {practitioners.map((p) => {
-                  const checked = (form.assigned_practitioners ?? []).includes(p.id as number);
-                  return (
-                    <label key={p.id} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => togglePractitioner(p.id as number)}
-                        className="w-4 h-4 rounded accent-teal-600"
-                      />
-                      <span className="text-sm text-gray-700">{p.name}</span>
-                    </label>
-                  );
-                })}
+          {/* ── Assigned Discipline ───────────────────────────────────────── */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              <span className="flex items-center gap-1.5">
+                <Stethoscope className="w-3.5 h-3.5 text-teal-500" />
+                Assigned Discipline <span className="text-rose-500">*</span>
+              </span>
+            </label>
+            {loadingDisc ? (
+              <div className={`${selectCls} text-gray-400 flex items-center gap-2`}>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading disciplines…
               </div>
-            </div>
-          )}
+            ) : (
+              <select
+                value={form.discipline}
+                onChange={(e) => set('discipline', e.target.value)}
+                className={`${selectCls} ${errors.discipline ? 'border-rose-400 ring-2 ring-rose-200' : ''}`}
+              >
+                <option value="" disabled>— Select a discipline —</option>
+                {disciplines.map((d) => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            )}
+            <FieldError msg={errors.discipline} />
+            {!errors.discipline && (
+              <p className="mt-0.5 text-[10px] text-gray-400">
+                All practitioners with this discipline can offer this service.
+              </p>
+            )}
+          </div>
+
         </form>
 
         {/* Footer */}

@@ -354,12 +354,12 @@ EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Malasakit EMR Solutions <noreply@malasakit.ph>')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Malasakit Team <noreply@malasakit.ph>')
 
 # ── Twilio SMS Settings ───────────────────────────────────────────────────────
 TWILIO_ACCOUNT_SID      = os.getenv('TWILIO_ACCOUNT_SID', '')
 TWILIO_AUTH_TOKEN       = os.getenv('TWILIO_AUTH_TOKEN', '')
-TWILIO_FROM_NUMBER      = os.getenv('TWILIO_FROM_NUMBER', '')
+TWILIO_FROM_NUMBER      = os.getenv('TWILIO_FROM_NUMBER', '')   
 SMS_REMINDERS_ENABLED   = os.getenv('SMS_REMINDERS_ENABLED', 'False') == 'True'
 
 # Cloudinary Settings

@@ -131,7 +131,7 @@ export const Login: React.FC = () => {
 
         {/* Footer */}
         <div className="relative z-10 text-blue-200 text-sm">
-          © 2026 Malasakit EMR Solutions
+          © 2026 Malasakit
         </div>
       </div>
 
@@ -239,19 +239,6 @@ export const Login: React.FC = () => {
                   )}
                 </button>
               </div>
-            </div>
-
-            {/* Remember Me */}
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-care-blue focus:ring-care-blue border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-600">
-                Remember me
-              </label>
             </div>
 
             {/* Submit Button */}

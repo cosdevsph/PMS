@@ -201,7 +201,7 @@ export const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     >
       {/* Card */}
       <div
-        className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         onKeyDown={handleFormKeyDown}
       >
         {/* ── Header gradient bar ─────────────────────────────────── */}
@@ -292,7 +292,7 @@ export const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
             type="button"
             onClick={handleVerify}
             disabled={isVerifying || isExpired || !isFilled}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg
               font-semibold text-sm text-white bg-primary-gradient
               hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-care-blue focus:ring-offset-2
               disabled:opacity-50 disabled:cursor-not-allowed transition-all"

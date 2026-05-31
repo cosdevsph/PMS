@@ -27,7 +27,7 @@ class EmailService:
 <td align="center" style="width:40px;height:40px;background:{accent}15;border-radius:8px;text-align:center;vertical-align:middle;">
 <span style="font-size:18px;line-height:40px;">{icon}</span></td></tr></table>
 <h1 style="margin:0;font-size:20px;font-weight:700;color:{accent};line-height:1.3;">{title}</h1>
-<p style="margin:6px 0 0;font-size:13px;color:#6b7280;">Malasakit EMR Solutions</p>
+<p style="margin:6px 0 0;font-size:13px;color:#6b7280;">Malasakit</p>
 </td></tr></table></td></tr>
 <tr><td style="padding:32px 40px;">{body_html}</td></tr>
 <tr><td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
@@ -42,7 +42,7 @@ class EmailService:
         Send welcome email with auto-generated credentials.
         """
         try:
-            subject = f'Welcome to Malasakit EMR Solutions - Your Account Credentials'
+            subject = f'Welcome to Malasakit - Your Account Credentials'
             
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
 <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">Your admin account for <strong>{company_name}</strong> has been successfully created!</p>
@@ -67,11 +67,11 @@ class EmailService:
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td align="center">
 <a href="{settings.FRONTEND_URL}/login" style="display:inline-block;background:#0ea5e9;color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 32px;border-radius:6px;">Login &amp; Set Your Password</a>
 </td></tr></table>
-<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit EMR Solutions Team</strong></p>"""
+<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit Team</strong></p>"""
 
-            html_message = EmailService._build_html(icon='🎉', title='Welcome to Malasakit EMR Solutions', accent='#0ea5e9', body_html=body)
+            html_message = EmailService._build_html(icon='🎉', title='Welcome to Malasakit', accent='#0ea5e9', body_html=body)
             
-            plain_message = f"""Welcome to Malasakit EMR Solutions!
+            plain_message = f"""Welcome to Malasakit!
 
 Hello {user_name},
 
@@ -87,7 +87,7 @@ You cannot access any part of the platform until the password change is complete
 Login: {settings.FRONTEND_URL}/login
 
 Best regards,
-Malasakit EMR Solutions Team
+Malasakit Team
 
 ---
 This email was generated automatically by Malasakit PMS.
@@ -121,7 +121,7 @@ Please do not reply directly to this email."""
     def send_password_reset_email(user_email: str, user_name: str, new_password: str) -> bool:
         """Send a new auto-generated password to the user's email."""
         try:
-            subject = 'Malasakit EMR Solutions — Your Password Has Been Reset'
+            subject = 'Malasakit — Your Password Has Been Reset'
 
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
 <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">Your password has been <strong>reset successfully</strong>. Use the temporary password below to log in.</p>
@@ -142,11 +142,11 @@ Please do not reply directly to this email."""
 <a href="{settings.FRONTEND_URL}/login" style="display:inline-block;background:#0891b2;color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 32px;border-radius:6px;">Login Now</a>
 </td></tr></table>
 <p style="font-size:13px;color:#6b7280;margin:0 0 16px;">If you did not request this reset, contact your administrator immediately.</p>
-<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit EMR Solutions Team</strong></p>"""
+<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit Team</strong></p>"""
 
             html_message = EmailService._build_html(icon='🔐', title='Password Reset', accent='#0891b2', body_html=body)
 
-            plain_message = f"""Malasakit EMR Solutions — Password Reset
+            plain_message = f"""Malasakit — Password Reset
 
 Hello {user_name},
 
@@ -160,7 +160,7 @@ Login: {settings.FRONTEND_URL}/login
 You will be prompted to change this password after login.
 
 Best regards,
-Malasakit EMR Solutions Team
+Malasakit Team
 
 ---
 This email was generated automatically by Malasakit PMS.
@@ -186,7 +186,7 @@ Please do not reply directly to this email."""
     def send_verification_code_email(user_email: str, user_name: str, code: str) -> bool:
         """Send verification code for password reset process."""
         try:
-            subject = 'Malasakit EMR Solutions — Password Reset Verification Code'
+            subject = 'Malasakit — Password Reset Verification Code'
 
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
 <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">You requested to reset your password. Use the verification code below to proceed.</p>
@@ -201,11 +201,11 @@ Please do not reply directly to this email."""
 <p style="font-size:13px;color:#92400e;font-weight:600;margin:0 0 6px;">&#9888;&#65039; Security Notice</p>
 <p style="font-size:13px;color:#4b5563;margin:0;line-height:1.6;">Never share this code with anyone. If you didn't request this, please ignore this email.</p>
 </td></tr></table>
-<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit EMR Solutions Team</strong></p>"""
+<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit Team</strong></p>"""
 
             html_message = EmailService._build_html(icon='🔐', title='Password Reset Verification', accent='#0891b2', body_html=body)
 
-            plain_message = f"""Malasakit EMR Solutions — Verification Code
+            plain_message = f"""Malasakit — Verification Code
 
 Hello {user_name},
 
@@ -218,7 +218,7 @@ This code expires in 10 minutes.
 If you didn't request this, please ignore this email.
 
 Best regards,
-Malasakit EMR Solutions Team
+Malasakit Team
 
 ---
 This email was generated automatically by Malasakit PMS.
@@ -247,7 +247,7 @@ Please do not reply directly to this email."""
         via Account Settings.  The new password is intentionally NOT included.
         """
         try:
-            subject = 'Malasakit EMR Solutions — Your Password Has Been Changed'
+            subject = 'Malasakit — Your Password Has Been Changed'
 
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
 <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">Your account password was successfully changed via Account Settings.</p>
@@ -256,11 +256,11 @@ Please do not reply directly to this email."""
 <p style="font-size:13px;color:#92400e;font-weight:600;margin:0 0 6px;">&#9888;&#65039; Did not make this change?</p>
 <p style="font-size:13px;color:#4b5563;margin:0;line-height:1.6;">If you did not update your password, contact your administrator immediately and change your password right away.</p>
 </td></tr></table>
-<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit EMR Solutions Team</strong></p>"""
+<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit Team</strong></p>"""
 
             html_message = EmailService._build_html(icon='✅', title='Password Changed', accent='#059669', body_html=body)
 
-            plain_message = f"""Malasakit EMR Solutions — Password Changed
+            plain_message = f"""Malasakit — Password Changed
 
 Hello {user_name},
 
@@ -269,7 +269,7 @@ Your account password was successfully changed via Account Settings.
 If you did not make this change, contact your administrator immediately.
 
 Best regards,
-Malasakit EMR Solutions Team
+Malasakit Team
 
 ---
 This email was generated automatically by Malasakit PMS.
@@ -298,7 +298,7 @@ Please do not reply directly to this email."""
         Structurally identical to send_password_reset_email but with distinct copy.
         """
         try:
-            subject = 'Malasakit EMR Solutions — Scheduled Password Rotation'
+            subject = 'Malasakit — Scheduled Password Rotation'
 
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
 <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">Your password has been automatically rotated as per your security settings.</p>
@@ -318,11 +318,11 @@ Please do not reply directly to this email."""
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td align="center">
 <a href="{settings.FRONTEND_URL}/login" style="display:inline-block;background:#7c3aed;color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 32px;border-radius:6px;">Login Now</a>
 </td></tr></table>
-<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit EMR Solutions Team</strong></p>"""
+<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit Team</strong></p>"""
 
             html_message = EmailService._build_html(icon='🔄', title='Scheduled Password Rotation', accent='#7c3aed', body_html=body)
 
-            plain_message = f"""Malasakit EMR Solutions — Scheduled Password Rotation
+            plain_message = f"""Malasakit — Scheduled Password Rotation
 
 Hello {user_name},
 
@@ -336,7 +336,7 @@ Login: {settings.FRONTEND_URL}/login
 You will be prompted to change this password after login.
 
 Best regards,
-Malasakit EMR Solutions Team
+Malasakit Team
 
 ---
 This email was generated automatically by Malasakit PMS.
@@ -375,7 +375,7 @@ Please do not reply directly to this email."""
 
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
 <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">
-  You requested to create a <strong>Malasakit EMR Solutions</strong> admin account.
+  You requested to create a <strong>Malasakit</strong> admin account.
   Use the verification code below to confirm your email address.
 </p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -399,7 +399,7 @@ Please do not reply directly to this email."""
   </p>
 </td></tr></table>
 <p style="font-size:14px;color:#4b5563;margin:0;">
-  Best regards,<br/><strong>The Malasakit EMR Solutions Team</strong>
+  Best regards,<br/><strong>The Malasakit Team</strong>
 </p>"""
 
             html_message = EmailService._build_html(
@@ -409,11 +409,11 @@ Please do not reply directly to this email."""
                 body_html=body,
             )
 
-            plain_message = f"""Malasakit EMR Solutions — Email Verification
+            plain_message = f"""Malasakit — Email Verification
 
 Hello {user_name},
 
-You requested to create an admin account on Malasakit EMR Solutions.
+You requested to create an admin account on Malasakit.
 
 Your Verification Code: {otp_code}
 
@@ -422,7 +422,7 @@ This code expires in {expiration_minutes} minutes.
 Never share this code with anyone. If you did not attempt to register, ignore this email.
 
 Best regards,
-Malasakit EMR Solutions Team
+Malasakit Team
 
 ---
 This email was generated automatically by Malasakit PMS.
@@ -510,7 +510,7 @@ Please do not reply directly to this email."""
   </a>
 </td></tr></table>
 <p style="font-size:14px;color:#4b5563;margin:0;">
-  Best regards,<br/><strong>The Malasakit EMR Solutions Team</strong>
+  Best regards,<br/><strong>The Malasakit Team</strong>
 </p>"""
 
             html_message = EmailService._build_html(
@@ -520,7 +520,7 @@ Please do not reply directly to this email."""
                 body_html=body,
             )
 
-            plain_message = f"""Welcome to {company_name} — Malasakit EMR Solutions
+            plain_message = f"""Welcome to {company_name} — Malasakit
 
 Hello {user_name},
 
@@ -538,7 +538,7 @@ Temporary Password: {password}
 Sign in: {settings.FRONTEND_URL}/login
 
 Best regards,
-Malasakit EMR Solutions Team
+Malasakit Team
 
 ---
 This email was generated automatically by Malasakit PMS.
@@ -624,7 +624,7 @@ Please do not reply directly to this email."""
   </a>
 </td></tr></table>
 <p style="font-size:14px;color:#4b5563;margin:0;">
-  Best regards,<br/><strong>The Malasakit EMR Solutions Team</strong>
+  Best regards,<br/><strong>The Malasakit Team</strong>
 </p>"""
 
             html_message = EmailService._build_html(
@@ -653,7 +653,7 @@ Temporary Password: {temp_password}
 Sign in: {settings.FRONTEND_URL}/login
 
 Best regards,
-Malasakit EMR Solutions Team
+Malasakit Team
 
 ---
 This email was generated automatically by Malasakit PMS.
@@ -697,7 +697,7 @@ Please do not reply directly to this email."""
 
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
 <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">
-  We received a request to reset the password for your <strong>Malasakit EMR Solutions</strong> account.
+  We received a request to reset the password for your <strong>Malasakit</strong> account.
   Use the verification code below to continue.
 </p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -721,7 +721,7 @@ Please do not reply directly to this email."""
     Your password will <strong>not</strong> be changed unless you complete the process.
   </p>
 </td></tr></table>
-<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit EMR Solutions Team</strong></p>"""
+<p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit Team</strong></p>"""
 
             html_message = EmailService._build_html(
                 icon='🔐',
@@ -730,7 +730,7 @@ Please do not reply directly to this email."""
                 body_html=body,
             )
 
-            plain_message = f"""Malasakit EMR Solutions — Password Reset Code
+            plain_message = f"""Malasakit — Password Reset Code
 
 Hello {user_name},
 
@@ -744,7 +744,7 @@ SECURITY NOTICE: Never share this code with anyone.
 If you did not request this, please ignore this email — your password will not change.
 
 Best regards,
-Malasakit EMR Solutions Team
+Malasakit Team
 
 ---
 This email was generated automatically by Malasakit PMS.

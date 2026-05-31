@@ -156,7 +156,7 @@ export const ChangePasswordPage: React.FC = () => {
           </ul>
         </div>
 
-        <div className="relative z-10 text-blue-200 text-sm">© 2026 Malasakit EMR Solutions</div>
+        <div className="relative z-10 text-blue-200 text-sm">© 2026 Malasakit</div>
       </div>
 
       {/* ── Right form panel ────────────────────────────────────────────── */}

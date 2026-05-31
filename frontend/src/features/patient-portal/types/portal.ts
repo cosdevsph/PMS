@@ -50,7 +50,7 @@ export interface PortalService {
   category:         number | null;
   category_name:    string | null;
   color_hex:        string;
-  assigned_practitioner_ids?: number[]; // empty = any practitioner
+  discipline:       string | null; // matches practitioner.discipline for filtering
 }
 
 export interface PortalCategory {

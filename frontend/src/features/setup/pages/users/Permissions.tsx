@@ -14,7 +14,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import {
   Shield, Plus, Edit2, Copy, Trash2, Users, ChevronDown,
   ChevronUp, Crown, UserCog, Stethoscope, RefreshCw, X,
-  AlertTriangle, Save, Info,
+  AlertTriangle, Save, Info, Eye,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -129,7 +129,8 @@ const ROLE_ORDER: Record<string, number> = {
   FRONTDESK:       4,
   PRACTITIONER:    5,
   FINANCE:         6,
-  CUSTOM:          7,
+  READ_ONLY:       7,
+  CUSTOM:          8,
 };
 
 // ─── Role template styles ─────────────────────────────────────────────────────
@@ -144,6 +145,7 @@ const TEMPLATE_STYLES: Record<
   FRONTDESK:       { iconBg: 'bg-teal-100',    icon: Users,       iconColor: 'text-teal-600',    badge: 'bg-teal-100   text-teal-800   border-teal-200'   },
   PRACTITIONER:    { iconBg: 'bg-purple-100',  icon: Stethoscope, iconColor: 'text-purple-600',  badge: 'bg-purple-100 text-purple-800 border-purple-200' },
   FINANCE:         { iconBg: 'bg-green-100',   icon: Users,       iconColor: 'text-green-600',   badge: 'bg-green-100  text-green-800  border-green-200'  },
+  READ_ONLY:       { iconBg: 'bg-gray-100',    icon: Eye,         iconColor: 'text-gray-500',    badge: 'bg-gray-100   text-gray-600   border-gray-300'   },
   CUSTOM:          { iconBg: 'bg-gray-100',    icon: Shield,      iconColor: 'text-gray-500',    badge: 'bg-gray-100   text-gray-700   border-gray-200'   },
 };
 
@@ -369,6 +371,19 @@ const TEMPLATE_DEFAULT_PERMS: Record<RoleTemplate, Record<string, AccessLevel>> 
     reports_administration: 'view', reports_clinic: 'none',
     reports_financial: 'edit', reports_performance: 'view',
   },
+  READ_ONLY: {
+    // View access to all non-admin features; admin-only sections set to 'none'.
+    dashboard: 'view', appointments: 'view', calendar: 'view', diary: 'view',
+    clinical_notes: 'view', client_cases: 'view', patients: 'view', reports: 'view',
+    inventory: 'view', invoices: 'view', billing: 'view', subscriptions: 'none',
+    setup: 'none', staff_management: 'none', permissions: 'none', settings: 'none',
+    documents: 'view', outcome_measures: 'view', contacts: 'view', communication: 'view',
+    setup_practice: 'none', setup_items: 'none', setup_users: 'none',
+    setup_account: 'none', setup_communication: 'none',
+    manage_administration: 'none', manage_clinical: 'view', manage_communications: 'view',
+    reports_administration: 'none', reports_clinic: 'view',
+    reports_financial: 'none', reports_performance: 'view',
+  },
   CUSTOM: Object.fromEntries(ALL_FEATURE_KEYS.map((k) => [k, 'none'])) as Record<string, AccessLevel>,
 };
 
@@ -379,6 +394,7 @@ const TEMPLATE_OPTIONS: { value: RoleTemplate; label: string }[] = [
   { value: 'FRONTDESK',       label: 'Frontdesk' },
   { value: 'PRACTITIONER',    label: 'Practitioner' },
   { value: 'FINANCE',         label: 'Finance' },
+  { value: 'READ_ONLY',       label: 'Read-Only (View Only)' },
   { value: 'CUSTOM',          label: 'Custom (No Access)' },
 ];
 

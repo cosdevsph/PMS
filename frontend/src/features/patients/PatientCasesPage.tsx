@@ -1,45 +1,36 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getPractitioners } from '@/features/clinics/clinic.api';
 import type { Practitioner } from '@/features/clinics/clinic.api';
 import { CaseModal, type CaseFormData } from './CaseModal';
 import { usePatientProfileContext } from './context/PatientProfileContext';
 import {
-  createPatientCase,
-  deletePatientCase,
-  getCaseNoteCount,
-  getCaseNotes,
-  listPatientCases,
-  type PatientCase,
-  type PatientCaseStatus,
-  updatePatientCase,
-} from './patientCases.storage';
+  getPatientCases,
+  createPatientCase as apiCreatePatientCase,
+  updatePatientCase as apiUpdatePatientCase,
+  deletePatientCase as apiDeletePatientCase,
+} from './patientCases.api';
+import type { PatientCase, PatientCaseStatus } from '@/types/patient';
 import { formatDate } from './patientProfile.utils.tsx';
 
 export const PatientCasesPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { patient, clinicalNotes, loadingPatient } = usePatientProfileContext();
 
-  const [cases, setCases] = useState<PatientCase[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCase, setEditingCase] = useState<PatientCase | null>(null);
   const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
   const [loadingPractitioners, setLoadingPractitioners] = useState(false);
 
-  const loadCases = useCallback(() => {
-    if (!patient) {
-      setCases([]);
-      return;
-    }
-
-    setCases(listPatientCases(patient.id));
-  }, [patient]);
-
-  useEffect(() => {
-    loadCases();
-  }, [loadCases]);
+  const { data: cases = [], isLoading: loadingCases } = useQuery<PatientCase[]>({
+    queryKey: ['patient-cases', patient?.id],
+    queryFn: () => getPatientCases(patient!.id),
+    enabled: !!patient,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -63,82 +54,118 @@ export const PatientCasesPage = () => {
     const metrics: Record<string, { noteCount: number; lastUpdated: string }> = {};
 
     cases.forEach((caseItem) => {
-      const notes = getCaseNotes(patient.id, caseItem.id, clinicalNotes);
-      const noteCount = getCaseNoteCount(patient.id, caseItem.id, clinicalNotes);
+      const notes = clinicalNotes.filter(note => note.patient_case === caseItem.id);
+      const noteCount = notes.length;
       const latestNoteDate = notes
         .map((note) => note.updated_at || note.date)
         .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
 
       metrics[caseItem.id] = {
         noteCount,
-        lastUpdated: latestNoteDate || caseItem.createdAt,
+        lastUpdated: latestNoteDate || caseItem.created_at,
       };
     });
 
     return metrics;
   }, [cases, clinicalNotes, patient]);
 
+  const createCaseMutation = useMutation({
+    mutationFn: (data: CaseFormData) =>
+      apiCreatePatientCase({
+        patient: patient!.id,
+        title: data.title,
+        description: data.description,
+        status: data.status,
+        primary_practitioner: data.primaryPractitionerId ? Number(data.primaryPractitionerId) : undefined,
+        primary_practitioner_name: data.primaryPractitionerName || undefined,
+        payer: data.payer || undefined,
+        alert_notes: data.alertNotes || undefined,
+        referred_by: data.referredBy || undefined,
+        referral_info: data.referralInfo || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patient-cases', patient?.id] });
+      toast.success('Case created successfully');
+      setIsCreateOpen(false);
+    },
+    onError: () => {
+      toast.error('Failed to create case');
+    },
+  });
+
+  const updateCaseMutation = useMutation({
+    mutationFn: ({ caseId, data }: { caseId: number; data: CaseFormData }) =>
+      apiUpdatePatientCase(caseId, {
+        title: data.title,
+        description: data.description,
+        status: data.status,
+        primary_practitioner: data.primaryPractitionerId ? Number(data.primaryPractitionerId) : undefined,
+        primary_practitioner_name: data.primaryPractitionerName || undefined,
+        payer: data.payer || undefined,
+        alert_notes: data.alertNotes || undefined,
+        referred_by: data.referredBy || undefined,
+        referral_info: data.referralInfo || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patient-cases', patient?.id] });
+      toast.success('Case updated successfully');
+      setEditingCase(null);
+    },
+    onError: () => {
+      toast.error('Failed to update case');
+    },
+  });
+
+  const deleteCaseMutation = useMutation({
+    mutationFn: (caseId: number) => apiDeletePatientCase(caseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patient-cases', patient?.id] });
+      toast.success('Case deleted');
+    },
+    onError: () => {
+      toast.error('Failed to delete case');
+    },
+  });
+
   const handleCreateCase = (data: CaseFormData) => {
     if (!patient) return;
-
-    createPatientCase(patient.id, {
-      title: data.title,
-      description: data.description,
-      status: data.status,
-      primaryPractitionerId: data.primaryPractitionerId || undefined,
-      primaryPractitionerName: data.primaryPractitionerName || undefined,
-      referredBy: data.referredBy || undefined,
-      referralInfo: data.referralInfo || undefined,
-    });
-
-    toast.success('Case created successfully');
-    setIsCreateOpen(false);
-    loadCases();
+    createCaseMutation.mutate(data);
   };
 
   const handleSaveEditCase = (data: CaseFormData) => {
     if (!patient || !editingCase) return;
+    updateCaseMutation.mutate({ caseId: editingCase.id, data });
+  };
 
-    updatePatientCase(patient.id, editingCase.id, {
-      title: data.title,
-      description: data.description,
-      status: data.status,
-      primaryPractitionerId: data.primaryPractitionerId || undefined,
-      primaryPractitionerName: data.primaryPractitionerName || undefined,
-      referredBy: data.referredBy || undefined,
-      referralInfo: data.referralInfo || undefined,
+  const handleStatusChange = (caseId: number, status: PatientCaseStatus) => {
+    if (!patient) return;
+    updateCaseMutation.mutate({
+      caseId,
+      data: { title: '', description: '', status, primaryPractitionerId: '', primaryPractitionerName: '', payer: '', alertNotes: '', referredBy: '', referralInfo: '' } as CaseFormData,
     });
-
-    toast.success('Case updated successfully');
-    setEditingCase(null);
-    loadCases();
   };
 
-  const handleStatusChange = (caseId: string, status: PatientCaseStatus) => {
+  const handleDeleteCase = (caseId: number, title: string) => {
     if (!patient) return;
 
-    const updated = updatePatientCase(patient.id, caseId, { status });
-    if (updated) {
-      toast.success('Case status updated');
-      loadCases();
-    }
-  };
-
-  const handleDeleteCase = (caseId: string, title: string) => {
-    if (!patient) return;
-
-    const confirmed = window.confirm(`Delete case \"${title}\"? This will remove note-to-case links.`);
+    const confirmed = window.confirm(`Delete case "${title}"? This will remove note-to-case links.`);
     if (!confirmed) return;
 
-    deletePatientCase(patient.id, caseId);
-    toast.success('Case deleted');
-    loadCases();
+    deleteCaseMutation.mutate(caseId);
   };
 
   if (loadingPatient || !patient) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 rounded-2xl border border-gray-200">
         <p className="text-sm text-gray-500">Loading patient cases...</p>
+      </div>
+    );
+  }
+
+  if (loadingCases) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50 rounded-2xl border border-gray-200">
+        <p className="text-sm text-gray-500">Loading cases...</p>
       </div>
     );
   }
@@ -177,17 +204,17 @@ export const PatientCasesPage = () => {
             {cases.map((caseItem) => {
               const metrics = caseMetrics[caseItem.id];
               const noteCount = metrics?.noteCount ?? 0;
-              const lastUpdated = metrics?.lastUpdated ?? caseItem.createdAt;
+              const lastUpdated = metrics?.lastUpdated ?? caseItem.created_at;
 
               return (
                 <article key={caseItem.id} className="bg-white border border-gray-200 rounded-xl p-4">
                     <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-base font-semibold text-gray-900">{caseItem.title}</h3>
-                      {caseItem.primaryPractitionerName && (
-                        <p className="text-xs text-gray-500 mt-0.5">Primary: {caseItem.primaryPractitionerName}</p>
+                      {caseItem.primary_practitioner_name && (
+                        <p className="text-xs text-gray-500 mt-0.5">Primary: {caseItem.primary_practitioner_name}</p>
                       )}
-                      <p className="text-xs text-gray-500 mt-0.5">Created {formatDate(caseItem.createdAt)}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Created {formatDate(caseItem.created_at)}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <button

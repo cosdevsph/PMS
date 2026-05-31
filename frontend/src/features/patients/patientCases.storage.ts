@@ -1,3 +1,10 @@
+/**
+ * @deprecated This module is deprecated and will be removed.
+ * Patient Cases are now stored in the backend database.
+ * Use patientCases.api.ts instead for all case operations.
+ */
+console.warn('DEPRECATED: patientCases.storage.ts is deprecated. Use patientCases.api.ts instead.');
+
 import type { ClinicalNote } from '@/types/clinicalTemplate';
 
 export type PatientCaseStatus = 'OPEN' | 'MONITORING' | 'CLOSED' | 'DISCHARGED';

@@ -132,9 +132,9 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     const emailValue = formData.email ?? '';
     const emailErr = validateEmailDetailed(emailValue);
     if (emailErr) e.email = emailErr;
-    if (!formData.address.trim())  e.address  = 'Address is required';
-    if (!formData.city.trim())     e.city     = 'City is required';
-    if (!formData.province.trim()) e.province = 'Province is required';
+    if (!formData.address.trim())  {}  // address is optional
+    if (!formData.city.trim())     {}  // city is optional
+    if (!formData.province.trim()) {}  // province is optional
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -465,7 +465,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
 
                   <div className="md:col-span-2">
-                    <Label required>Street Address</Label>
+                    <Label>Street Address <span className="text-gray-400 font-normal">(Optional)</span></Label>
                     <input
                       type="text"
                       value={formData.address}
@@ -482,9 +482,6 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                     city={formData.city}
                     onProvinceChange={(value) => set('province', value)}
                     onCityChange={(value) => set('city', value)}
-                    provinceError={errors.province}
-                    cityError={errors.city}
-                    required
                   />
 
                   <div>

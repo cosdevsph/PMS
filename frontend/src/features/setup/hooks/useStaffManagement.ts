@@ -29,15 +29,9 @@ export const useStaffManagement = () => {
 
     try {
       const data = await getStaff();
-      // Include anyone with STAFF or PRACTITIONER in their roles array.
-      // Admin-only users (no STAFF/PRACTITIONER role) are excluded.
-      const filteredStaff = data.filter((member: StaffMember) => {
-        const effectiveRoles = member.roles && member.roles.length > 0
-          ? member.roles
-          : [member.role];
-        return effectiveRoles.includes('STAFF') || effectiveRoles.includes('PRACTITIONER');
-      });
-      setStaff(filteredStaff);
+      // Show all users — every clinical role appears in the staff table.
+      // The backend already scopes the list to the current admin's clinic.
+      setStaff(data);
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to load staff members';
       setError(message);

@@ -98,12 +98,10 @@ export const PortalHome: React.FC = () => {
 
   // ── Inner navigation ─────────────────────────────────────────────────────
   const handleSelectPractitioner = (p: PortalPractitioner) => {
-    // Reset service & date when practitioner changes
-    if (selectedPractitioner?.id !== p.id) {
-      setSelectedService(null);
-      setSelectedDate('');
-      setSelectedSlot('');
-    }
+    // Always reset service & date when practitioner changes (discipline may differ)
+    setSelectedService(null);
+    setSelectedDate('');
+    setSelectedSlot('');
     setSelectedPractitioner(p);
   };
 
@@ -206,24 +204,25 @@ export const PortalHome: React.FC = () => {
     });
   }, [portal?.practitioners, selectedBranch]);
 
-  // ── Filter services by selected practitioner + search ────────────────────
+  // ── Filter services by selected practitioner's discipline + search ──────────
   const filteredCategories = React.useMemo(() => {
-    const praId = selectedPractitioner?.id ?? null;
+    const pracDiscipline = selectedPractitioner?.discipline ?? null;
+
     return (portal?.categories ?? [])
       .map((cat: PortalCategory) => ({
         ...cat,
         services: cat.services.filter((s: PortalService) => {
+          // If no practitioner chosen yet → show nothing (handled by UI gate)
+          if (!pracDiscipline) return false;
+          // Match service discipline to practitioner discipline
+          if (s.discipline !== pracDiscipline) return false;
           // Search filter
           if (
             search &&
             !s.name.toLowerCase().includes(search.toLowerCase()) &&
             !s.description.toLowerCase().includes(search.toLowerCase())
           ) return false;
-          // Practitioner filter: empty assigned_practitioner_ids = available to all
-          const ids = s.assigned_practitioner_ids;
-          if (!ids || ids.length === 0) return true;
-          if (!praId) return true;
-          return ids.includes(praId);
+          return true;
         }),
       }))
       .filter((cat: PortalCategory) => cat.services.length > 0);
@@ -377,6 +376,7 @@ export const PortalHome: React.FC = () => {
             <ServiceList
               categories={filteredCategories}
               selectedService={selectedService}
+              selectedPractitioner={selectedPractitioner}
               onSelectService={handleSelectService}
             />
           )}

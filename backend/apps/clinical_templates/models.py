@@ -164,7 +164,15 @@ class ClinicalNote(TimeStampedModel, SoftDeleteModel):
         on_delete=models.CASCADE,
         related_name='clinical_notes_v2'
     )
-    
+
+    # Case assignment (optional - notes can exist without a case)
+    patient_case = models.ForeignKey(
+        'patients.PatientCase',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='clinical_notes'
+    )
+
     # Template reference (historical, does not affect content)
     template = models.ForeignKey(
         ClinicalTemplate,
@@ -213,6 +221,7 @@ class ClinicalNote(TimeStampedModel, SoftDeleteModel):
             models.Index(fields=['clinic', 'date']),
             models.Index(fields=['is_draft', 'is_signed']),
             models.Index(fields=['appointment']),
+            models.Index(fields=['patient_case']),
         ]
     
     def __str__(self):

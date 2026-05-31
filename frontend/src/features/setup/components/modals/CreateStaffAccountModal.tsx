@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2, Check, ShieldCheck, Stethoscope, Users, DollarSign } from 'lucide-react';
+import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2, Check, ShieldCheck, Stethoscope, Users, DollarSign, Crown, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { CreateStaffData, StaffFormErrors, StaffMember } from '../../types/staff.types';
 import type { DutySchedule, DutyDay } from '@/features/clinics/clinic.api';
@@ -8,19 +8,34 @@ import { useDisciplineOptions } from '../../hooks/useDisciplineOptions';
 import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';
 import { formatPHPhone, normalizePHPhone } from '@/utils/phoneFormatter';
 import { validateEmailDetailed, validatePHPhoneDetailed } from '@/utils/validation';
+import { usePermissions } from '@/hooks/usePermissions';
 
 // ── Clinical Role Cards ──────────────────────────────────────────────────────
 
-type ClinicalRoleValue = 'ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE';
+type ClinicalRoleValue = 'ADMIN' | 'ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'READ_ONLY';
 
-const CLINICAL_ROLES: {
+const ALL_CLINICAL_ROLES: {
   value: ClinicalRoleValue;
   label: string;
   description: string;
   icon: React.ElementType;
   ring: string;
   bg: string;
+  /** If true, only admins (isOwner) can see + select this card */
+  ownerOnly?: boolean;
+  /** Warning shown beneath role card when selected */
+  warning?: string;
 }[] = [
+  {
+    value: 'ADMIN',
+    label: 'Administrator',
+    description: 'Full system access',
+    icon: Crown,
+    ring: 'ring-amber-400',
+    bg: 'bg-amber-50 text-amber-700 border-amber-200',
+    ownerOnly: true,
+    warning: 'This user will have full system access. At least one Administrator must always exist.',
+  },
   {
     value: 'ADMIN_ASSISTANT',
     label: 'Admin Assistant',
@@ -40,7 +55,7 @@ const CLINICAL_ROLES: {
   {
     value: 'STAFF',
     label: 'Staff',
-    description: 'General operations & scheduling',
+    description: 'Front desk & operations',
     icon: Users,
     ring: 'ring-sky-400',
     bg: 'bg-sky-50 text-sky-700 border-sky-200',
@@ -53,9 +68,17 @@ const CLINICAL_ROLES: {
     ring: 'ring-green-400',
     bg: 'bg-green-50 text-green-700 border-green-200',
   },
+  {
+    value: 'READ_ONLY',
+    label: 'Read-Only',
+    description: 'View-only access',
+    icon: Eye,
+    ring: 'ring-gray-400',
+    bg: 'bg-gray-100 text-gray-600 border-gray-300',
+  },
 ];
 
-const CLINICAL_ROLE_VALUES: ClinicalRoleValue[] = CLINICAL_ROLES.map(r => r.value);
+const CLINICAL_ROLE_VALUES: ClinicalRoleValue[] = ALL_CLINICAL_ROLES.map(r => r.value);
 
 const DUTY_DAY_OPTIONS: { value: DutyDay; label: string }[] = [
   { value: 'Mon', label: 'Mon' },
@@ -155,11 +178,15 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   isOpen, onClose, onSubmit, editingStaff = null, currentUserId,
 }) => {
   const isEditMode = !!editingStaff;
+  const { isOwner } = usePermissions();
 
   // Multi-role helpers
   const isMe = !!(editingStaff && currentUserId && editingStaff.id === currentUserId);
   // Original roles array of the staff being edited (for submit payload preservation)
   const originalRolesRef = useRef<string[]>([]);
+
+  // Roles visible to current user: ADMIN card only shown to owners
+  const visibleClinicalRoles = ALL_CLINICAL_ROLES.filter(r => !r.ownerOnly || isOwner);
 
   const [formData, setFormData] = useState<CreateStaffData>(EMPTY_FORM);
   const [errors, setErrors]     = useState<StaffFormErrors>({});
@@ -244,8 +271,11 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     if (formData.date_of_birth && new Date(formData.date_of_birth) > new Date())
       e.date_of_birth = 'Date of birth cannot be in the future';
 
-    // Availability validation (for PRACTITIONER and STAFF roles)
-    const needsSchedule = (formData.roles ?? []).some(r => r === 'PRACTITIONER' || r === 'STAFF');
+    // Branch is required for all roles — every user must be scoped to a branch
+    if (!formData.clinic_branch) e.clinic_branch = 'Branch assignment is required.';
+
+    // Availability validation (for PRACTITIONER role only)
+    const needsSchedule = (formData.roles ?? []).includes('PRACTITIONER');
     if (needsSchedule) {
       if (!formData.duty_days || formData.duty_days.length === 0)
         e.duty_days = 'At least one duty day is required';
@@ -287,8 +317,10 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     setLoading(true);
     setErrors({});
     try {
-      // Rebuild the full roles array: preserve non-clinical roles (e.g. ADMIN) +
-      // add all selected clinical roles from the multi-select cards.
+      // Rebuild the full roles array: preserve non-clinical roles that aren't
+      // selectable in the card UI (none currently), then add all selected
+      // clinical roles. ADMIN is now a selectable card so it flows through
+      // the standard clinical-roles path.
       const preservedRoles = originalRolesRef.current.filter(
         r => !CLINICAL_ROLE_VALUES.includes(r as ClinicalRoleValue)
       );
@@ -583,19 +615,29 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                   {/* ── Clinical Role (multi-select cards) — FIRST ── */}
                   <div className="md:col-span-2">
                     <Label required>Clinical Role</Label>
-                    {/* Admin badge — read-only notice for admin users */}
-                    {originalRolesRef.current.includes('ADMIN') && (
-                      <div className="flex items-center gap-2 mb-2 p-2.5 bg-violet-50 border border-violet-200 rounded-lg">
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700 border border-violet-200">
-                          Admin
-                        </span>
-                        <span className="text-xs text-violet-600">
-                          Admin role is managed via Role Management. Select the clinical access below.
+
+                    {/* READ-ONLY notice banner */}
+                    {(formData.roles ?? []).includes('READ_ONLY') && !(formData.roles ?? []).some(r => r !== 'READ_ONLY') && (
+                      <div className="flex items-center gap-2 mb-2 p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+                        <Eye className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                        <span className="text-xs text-gray-600">
+                          Read-Only users can view allowed modules but cannot create, edit, or delete anything.
                         </span>
                       </div>
                     )}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {CLINICAL_ROLES.map(opt => {
+
+                    {/* ADMIN promotion warning */}
+                    {(formData.roles ?? []).includes('ADMIN') && (
+                      <div className="flex items-center gap-2 mb-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                        <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span className="text-xs text-amber-700">
+                          This user will have <strong>full system access</strong>. At least one Administrator must always exist.
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {visibleClinicalRoles.map(opt => {
                         const Icon = opt.icon;
                         const isSelected = (formData.roles ?? []).includes(opt.value);
                         return (
@@ -696,13 +738,13 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                     </div>
                   )}
 
-                  {/* ── Availability Section (for PRACTITIONER and STAFF) ── */}
-                  {(formData.roles ?? []).some(r => r === 'PRACTITIONER' || r === 'STAFF') && (
+                  {/* ── Availability Section (for PRACTITIONER only) ── */}
+                  {(formData.roles ?? []).includes('PRACTITIONER') && (
                     <div className="md:col-span-2 border-t border-gray-200 pt-5">
                       <SectionTitle color="text-emerald-600">
                         <span className="flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5" />
-                          {(formData.roles ?? []).includes('PRACTITIONER') ? 'Practitioner' : 'Staff'} Schedule
+                          Practitioner Schedule
                         </span>
                       </SectionTitle>
 
@@ -805,35 +847,31 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                     </div>
                   )}
 
-                  {/* Clinic Branch */}
+                  {/* Assign Branch — required for all roles */}
                   <div className="md:col-span-2">
-                    <Label>
+                    <Label required>
                       <span className="flex items-center gap-1.5">
                         <Building2 className="w-3.5 h-3.5 text-sky-500" />
                         Assign to Clinic Branch
                       </span>
                     </Label>
-                    {originalRolesRef.current.includes('ADMIN') && (
-                      <div className="flex items-center gap-2 mb-2 p-2.5 bg-sky-50 border border-sky-200 rounded-lg">
-                        <Building2 className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                        <span className="text-xs text-sky-700">
-                          As an Admin, you have access to <strong>All Branches</strong>. Optionally assign a home branch for calendar filtering.
-                        </span>
-                      </div>
-                    )}
                     {loadingBranches ? (
                       <div className={`${selectCls} text-gray-400`}>Loading branches…</div>
                     ) : branches.length === 0 ? (
-                      <div className={`${selectCls} text-gray-400`}>No branches available</div>
+                      <div className={`${selectCls} text-amber-600 bg-amber-50 border-amber-200`}>
+                        No branches found. Please add a clinic branch first.
+                      </div>
                     ) : (
                       <select
                         value={formData.clinic_branch ?? ''}
                         onChange={e =>
                           set('clinic_branch', e.target.value ? Number(e.target.value) : null)
                         }
-                        className={selectCls}
+                        className={`${selectCls} ${
+                          errors.clinic_branch ? 'border-rose-400 ring-2 ring-rose-200' : ''
+                        }`}
                       >
-                        <option value="">— All Branches (no specific branch) —</option>
+                        <option value="" disabled>— Select a branch —</option>
                         {branches.map(b => (
                           <option key={b.id} value={b.id}>
                             {b.name}
@@ -843,9 +881,16 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                         ))}
                       </select>
                     )}
-                    <p className="mt-0.5 text-[10px] text-gray-400">
-                      Assigns a home branch for calendar filtering. Admins always see all branches.
-                    </p>
+                    {errors.clinic_branch ? (
+                      <p className="mt-1 text-xs text-rose-500 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {errors.clinic_branch}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-[10px] text-gray-400">
+                        Every user must be assigned to a branch for correct diary and calendar scoping.
+                      </p>
+                    )}
                   </div>
 
                 </div>

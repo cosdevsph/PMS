@@ -40,9 +40,9 @@ class Contact(TimeStampedModel):
     alternative_phone = models.CharField(max_length=20, blank=True, null=True)
     
     # Address
-    address = models.TextField()
-    city = models.CharField(max_length=100)
-    province = models.CharField(max_length=100)
+    address = models.TextField(blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    province = models.CharField(max_length=100, blank=True, null=True)
     postal_code = models.CharField(max_length=20, blank=True, null=True)
     
     # Additional Info

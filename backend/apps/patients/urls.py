@@ -2,20 +2,22 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     PatientViewSet, IntakeFormViewSet, PortalBookingDiaryView,
-    ServiceCategoryViewSet, PortalServiceViewSet,    # ✅ PortalServiceViewSet
+    ServiceCategoryViewSet, PortalServiceViewSet,
     PortalLinkViewSet, PortalBookingAdminViewSet,
     PublicPortalView, PublicPortalBookView, PublicAvailableSlotsView,
     PublicPortalConsentCreateView,
     PublicClientFormView, PublicClientFormVerifyView, PublicClientFormSubmitView,
+    PatientCaseViewSet,
 )
 
 router = DefaultRouter()
 router.register(r'patients',           PatientViewSet,           basename='patient')
 router.register(r'intake-forms',       IntakeFormViewSet,        basename='intake-form')
 router.register(r'service-categories', ServiceCategoryViewSet,   basename='service-category')
-router.register(r'portal-services',    PortalServiceViewSet,     basename='portal-service')  # ✅
+router.register(r'portal-services',    PortalServiceViewSet,     basename='portal-service')
 router.register(r'portal-links',       PortalLinkViewSet,        basename='portal-link')
 router.register(r'portal-bookings',    PortalBookingAdminViewSet, basename='portal-booking')
+router.register(r'patient-cases',      PatientCaseViewSet,       basename='patient-case')
 
 urlpatterns = [
     path('', include(router.urls)),

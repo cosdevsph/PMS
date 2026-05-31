@@ -160,7 +160,7 @@ export const ResetPasswordPage: React.FC = () => {
 
         {/* Footer */}
         <div className="relative z-10 text-blue-200 text-sm">
-          © 2026 Malasakit EMR Solutions
+          © 2026 Malasakit
         </div>
       </div>
 

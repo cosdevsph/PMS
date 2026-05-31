@@ -74,25 +74,48 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     ),
     [practitioners],
   );
-  const { services, loading: loadingServices } = useAppointmentServices();
+  // Derive discipline from the selected practitioner (handles locked practitioner case)
+  const selectedPractitionerObj = useMemo(
+    () => practitioners.find(p => p.id == formData.practitioner) ?? null,
+    [practitioners, formData.practitioner],
+  );
+
+  // Compute effective discipline for service filtering.
+  // Priority: locked practitioner's discipline > selected practitioner's discipline.
+  // This ensures discipline filtering works even while practitioners are still loading.
+  const effectiveDiscipline = useMemo(() => {
+    if (defaultPractitionerId) {
+      // Use loose equality to handle string/number ID mismatch from API
+      const lockedPrac = practitioners.find(p => p.id == defaultPractitionerId);
+      if (lockedPrac?.discipline) return lockedPrac.discipline;
+    }
+    return selectedPractitionerObj?.discipline ?? null;
+  }, [defaultPractitionerId, practitioners, selectedPractitionerObj]);
+
+  // Load all services, then filter locally by discipline (same pattern as Patient Portal)
+  const { services: allServices, loading: loadingServices } = useAppointmentServices();
+
+  const filteredServices = useMemo(() => {
+    if (!effectiveDiscipline) return allServices;
+    return allServices.filter(s => s.discipline === effectiveDiscipline);
+  }, [allServices, effectiveDiscipline]);
+
+  const selectedService   = filteredServices.find(s => s.id === Number(formData.service));
+  const effectiveDuration = selectedService?.duration_minutes ?? selectedSlot?.duration ?? 60;
 
   // Resolve branch name for display
   const { branches } = useClinicBranches();
   const selectedBranchName = branches.find(b => b.id === selectedClinicBranchId)?.name ?? null;
 
-  const selectedService   = services.find(s => s.id === Number(formData.service));
-  const effectiveDuration = selectedService?.duration_minutes ?? selectedSlot?.duration ?? 60;
-
-  // True when the practitioner was auto-filled from the calendar filter and is
-  // confirmed to exist in the current branch list. The field is read-only in this state.
+  // Locked practitioner (auto-assigned from calendar filter)
   const isPractitionerLocked = useMemo(() => {
     if (!defaultPractitionerId) return false;
     if (loadingPractitioners) return false;
-    return practitioners.some(p => p.id === defaultPractitionerId);
+    return practitioners.some(p => p.id == defaultPractitionerId);
   }, [defaultPractitionerId, practitioners, loadingPractitioners]);
 
   const lockedPractitioner = useMemo(
-    () => (isPractitionerLocked ? practitioners.find(p => p.id === defaultPractitionerId) ?? null : null),
+    () => (isPractitionerLocked ? practitioners.find(p => p.id == defaultPractitionerId) ?? null : null),
     [isPractitionerLocked, practitioners, defaultPractitionerId],
   );
 
@@ -125,6 +148,23 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
+
+    if (name === 'practitioner' && formData.service) {
+      const newPracId = value === '' ? null : Number(value);
+      const newPractitioner = practitioners.find(p => p.id == newPracId);
+      const currentService = allServices.find(s => s.id === Number(formData.service));
+      if (
+        newPractitioner &&
+        currentService &&
+        newPractitioner.discipline !== undefined &&
+        currentService.discipline !== newPractitioner.discipline
+      ) {
+        setFormData(prev => ({ ...prev, [name]: value, service: '' }));
+        setErrors(prev => ({ ...prev, service: '' }));
+        return;
+      }
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
@@ -152,12 +192,12 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       // ── Derive clinic/branch from selected practitioner first,
       //    then fall back to the active diary branch tab,
       //    then fall back to user's own clinic. ──────────────────────────────
-      const selectedPractitionerObj = formData.practitioner
-        ? practitioners.find(p => p.id === Number(formData.practitioner))
+      const selectedPractitionerForSubmit = formData.practitioner
+        ? practitioners.find(p => p.id == formData.practitioner)
         : null;
 
       const clinicId =
-        selectedPractitionerObj?.clinic_branch_id   // practitioner's assigned branch
+        selectedPractitionerForSubmit?.clinic_branch_id   // practitioner's assigned branch
         ?? selectedClinicBranchId                   // active diary tab branch
         ?? user.clinic;                             // user's clinic fallback
 
@@ -298,7 +338,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Service / Consultation Type <span className="text-red-500">*</span>
                 </label>
-                {services.length === 0 && !loadingServices ? (
+                {filteredServices.length === 0 && !loadingServices ? (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -310,7 +350,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   </div>
                 ) : (
                   <ServiceSelector
-                    services={services}
+                    services={filteredServices}
                     value={formData.service}
                     onChange={(id) => {
                       setFormData(prev => ({ ...prev, service: id }));
@@ -458,7 +498,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={saving || services.length === 0 || patients.length === 0}
+              disabled={saving || filteredServices.length === 0 || patients.length === 0}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (

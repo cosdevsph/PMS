@@ -5,7 +5,7 @@ from .models import (
     Patient, IntakeForm,
     ServiceCategory, PortalService,
     PortalLink, PortalBooking, PatientConsent,
-    ClientFormRequest,
+    ClientFormRequest, PatientCase,
 )
 
 
@@ -207,7 +207,6 @@ class PortalClinicServiceSerializer(serializers.ModelSerializer):
     image_url     = serializers.SerializerMethodField()
     category      = serializers.SerializerMethodField()
     category_name = serializers.SerializerMethodField()
-    assigned_practitioner_ids = serializers.SerializerMethodField()
     sort_order    = serializers.IntegerField()
 
     class Meta:
@@ -216,7 +215,7 @@ class PortalClinicServiceSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'duration_minutes',
             'price', 'image_url', 'is_active',
             'category', 'category_name', 'color_hex', 'sort_order',
-            'assigned_practitioner_ids',
+            'discipline',
         ]
 
     def get_image_url(self, obj) -> str | None:
@@ -230,12 +229,6 @@ class PortalClinicServiceSerializer(serializers.ModelSerializer):
 
     def get_category_name(self, obj):
         return None
-
-    def get_assigned_practitioner_ids(self, obj) -> list:
-        # Returns empty list when no specific practitioners are assigned (= any practitioner)
-        return list(
-            getattr(obj, 'prefetched_assigned', obj.assigned_practitioners.values_list('id', flat=True))
-        )
 
 
 class PortalBranchSerializer(serializers.Serializer):
@@ -311,18 +304,13 @@ class PortalLinkPublicSerializer(serializers.ModelSerializer):
             is_active=True,
             show_in_portal=True,
             is_deleted=False,
-        ).prefetch_related('assigned_practitioners').order_by('name')
+        ).order_by('discipline', 'name')
 
         if not services.exists():
             return []
 
-        # Attach prefetched M2M as a list of ids for the serializer
-        services_list = list(services)
-        for svc in services_list:
-            svc.prefetched_assigned = list(svc.assigned_practitioners.values_list('id', flat=True))
-
         serialized = PortalClinicServiceSerializer(
-            services_list, many=True, context=self.context
+            list(services), many=True, context=self.context
         ).data
 
         return [
@@ -630,3 +618,23 @@ class PublicClientFormSubmitSerializer(serializers.Serializer):
                     raise serializers.ValidationError(errors)
 
         return attrs
+
+
+class PatientCaseSerializer(serializers.ModelSerializer):
+    patient_name = serializers.CharField(source='patient.get_full_name', read_only=True)
+    primary_practitioner_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PatientCase
+        fields = [
+            'id', 'patient', 'patient_name', 'title', 'description',
+            'status', 'primary_practitioner', 'primary_practitioner_name',
+            'payer', 'alert_notes',
+            'referred_by', 'referral_info', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_primary_practitioner_name(self, obj) -> str | None:
+        if obj.primary_practitioner and obj.primary_practitioner.user:
+            return obj.primary_practitioner.user.get_full_name()
+        return None

@@ -4,20 +4,25 @@ import toast from 'react-hot-toast';
 import { getPatient } from '../patient.api';
 import { getAppointments } from '@/features/appointments/appointment.api';
 import { getNotes } from '@/features/clinical-template/clinical-templates.api';
+import { getPatientCases } from '../patientCases.api';
 import type { Patient, Appointment } from '@/types';
 import type { ClinicalNote } from '@/types/clinicalTemplate';
+import type { PatientCase } from '@/types/patient';
 
 interface PatientProfileContextValue {
   patientId: number;
   patient: Patient | null;
   appointments: Appointment[];
   clinicalNotes: ClinicalNote[];
+  cases: PatientCase[];
   loadingPatient: boolean;
   loadingAppointments: boolean;
   loadingNotes: boolean;
+  loadingCases: boolean;
   refreshPatient: () => Promise<void>;
   refreshAppointments: () => Promise<void>;
   refreshClinicalNotes: () => Promise<void>;
+  refreshCases: () => Promise<void>;
 }
 
 const PatientProfileContext = React.createContext<PatientProfileContextValue | undefined>(undefined);
@@ -33,10 +38,12 @@ export const PatientProfileProvider: React.FC<PatientProfileProviderProps> = ({ 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clinicalNotes, setClinicalNotes] = useState<ClinicalNote[]>([]);
+  const [cases, setCases] = useState<PatientCase[]>([]);
 
   const [loadingPatient, setLoadingPatient] = useState(true);
   const [loadingAppointments, setLoadingAppointments] = useState(true);
   const [loadingNotes, setLoadingNotes] = useState(true);
+  const [loadingCases, setLoadingCases] = useState(true);
 
   const refreshPatient = useCallback(async () => {
     setLoadingPatient(true);
@@ -78,34 +85,53 @@ export const PatientProfileProvider: React.FC<PatientProfileProviderProps> = ({ 
     }
   }, [patientId]);
 
+  const refreshCases = useCallback(async () => {
+    setLoadingCases(true);
+    try {
+      const data = await getPatientCases(patientId);
+      setCases(data);
+    } catch {
+      toast.error('Failed to load patient cases');
+    } finally {
+      setLoadingCases(false);
+    }
+  }, [patientId]);
+
   useEffect(() => {
     void refreshPatient();
     void refreshAppointments();
     void refreshClinicalNotes();
-  }, [refreshPatient, refreshAppointments, refreshClinicalNotes]);
+    void refreshCases();
+  }, [refreshPatient, refreshAppointments, refreshClinicalNotes, refreshCases]);
 
   const contextValue = useMemo<PatientProfileContextValue>(() => ({
     patientId,
     patient,
     appointments,
     clinicalNotes,
+    cases,
     loadingPatient,
     loadingAppointments,
     loadingNotes,
+    loadingCases,
     refreshPatient,
     refreshAppointments,
     refreshClinicalNotes,
+    refreshCases,
   }), [
     patientId,
     patient,
     appointments,
     clinicalNotes,
+    cases,
     loadingPatient,
     loadingAppointments,
     loadingNotes,
+    loadingCases,
     refreshPatient,
     refreshAppointments,
     refreshClinicalNotes,
+    refreshCases,
   ]);
 
   return (

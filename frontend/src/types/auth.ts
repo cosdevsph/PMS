@@ -1,6 +1,6 @@
 export type AccessLevel = 'none' | 'view' | 'edit';
 
-export type UserRole = 'ADMIN' | 'ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE';
+export type UserRole = 'ADMIN' | 'ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'READ_ONLY';
 
 export type FeatureKey =
   | 'dashboard'

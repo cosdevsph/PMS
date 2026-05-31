@@ -23,6 +23,47 @@ class IsAdminOnly(BasePermission):
         return 'ADMIN' in request.user.get_effective_roles()
 
 
+class IsNotReadOnly(BasePermission):
+    """
+    Blocks state-changing requests (POST/PUT/PATCH/DELETE) for users whose
+    ONLY role is READ_ONLY.  Safe methods (GET/HEAD/OPTIONS) are always allowed.
+
+    Attach to any ViewSet that must enforce read-only restrictions:
+        permission_classes = [IsAuthenticated, IsNotReadOnly]
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        # Safe methods are always allowed for READ_ONLY users
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return True
+        effective = request.user.get_effective_roles()
+        # Block if the user's ONLY role is READ_ONLY
+        if effective == ['READ_ONLY'] or set(effective) == {'READ_ONLY'}:
+            return False
+        return True
+
+
+class HasRoleIn(BasePermission):
+    """
+    Allow access only if the user has at least one of the roles listed in
+    ``view.rbac_allowed_roles``.
+
+    Usage:
+        class MyViewSet(viewsets.ModelViewSet):
+            permission_classes  = [IsAuthenticated, HasRoleIn]
+            rbac_allowed_roles  = ['ADMIN', 'ADMIN_ASSISTANT']
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        allowed   = set(getattr(view, 'rbac_allowed_roles', []))
+        effective = set(request.user.get_effective_roles())
+        return bool(effective & allowed)
+
+
 class HasFeaturePermission(BasePermission):
     """
     Dynamic permission class for RBAC feature-level access.
