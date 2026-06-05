@@ -5,15 +5,18 @@ import type { CalendarNote } from '@/types';
 import toast from 'react-hot-toast';
 
 interface UseNotesParams {
-  startDate:      Date;
-  endDate:        Date;
+  startDate:       Date;
+  endDate:         Date;
   clinicBranchId?: number | null;
+  /** When set, only fetch notes belonging to this practitioner (or clinic-wide null notes). */
+  practitionerId?: number | null;
 }
 
 export const useNotes = ({
   startDate,
   endDate,
   clinicBranchId = null,
+  practitionerId = null,
 }: UseNotesParams) => {
   const [notes,   setNotes]   = useState<CalendarNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,11 +29,12 @@ export const useNotes = ({
     setLoading(true);
     setError(null);
     try {
-      const params: { start_date: string; end_date: string; clinic_branch?: number } = {
+      const params: { start_date: string; end_date: string; clinic_branch?: number; practitioner?: number } = {
         start_date: startDateStr,
         end_date:   endDateStr,
       };
-      if (clinicBranchId !== null) params.clinic_branch = clinicBranchId;
+      if (clinicBranchId  !== null) params.clinic_branch = clinicBranchId;
+      if (practitionerId  !== null) params.practitioner  = practitionerId;
 
       const data = await getCalendarNotes(params);
       setNotes(data);
@@ -42,7 +46,7 @@ export const useNotes = ({
     } finally {
       setLoading(false);
     }
-  }, [startDateStr, endDateStr, clinicBranchId]);
+  }, [startDateStr, endDateStr, clinicBranchId, practitionerId]);
 
   useEffect(() => {
     fetchNotes();

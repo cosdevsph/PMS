@@ -399,9 +399,11 @@ export const getBanking = async (
 // ─── Ageing Debts Report ──────────────────────────────────────────────────────
 
 export interface AgeingDebtItem {
-  invoice_id:     number;
+  id?:             number;
+  source?:         'invoice' | 'debt_entry';
+  invoice_id:     number | null;
   invoice_number: string;
-  invoice_date:   string;
+  invoice_date:   string | null;
   due_date:       string | null;
   patient_id:     number;
   patient_name:   string;
@@ -411,7 +413,10 @@ export interface AgeingDebtItem {
   balance_due:    number;
   status:         string;
   days_overdue:   number;
-  bucket:         '0_30' | '31_60' | '61_90' | '90_plus';
+  bucket:         'CURRENT' | '0_30' | '31_60' | '61_90' | '90_plus';
+  category?:      string;
+  notes?:         string;
+  CURRENT:        number;
   '0_30':         number;
   '31_60':        number;
   '61_90':        number;
@@ -422,6 +427,7 @@ export interface AgeingDebtsSummary {
   total_outstanding: number;
   total_invoices:    number;
   bucket_totals: {
+    CURRENT:   number;
     '0_30':    number;
     '31_60':   number;
     '61_90':   number;
@@ -447,6 +453,112 @@ export const getAgeingDebts = async (
   params?: AgeingDebtsParams
 ): Promise<AgeingDebtsResponse> => {
   const response = await axiosInstance.get('/reports/ageing_debts/', { params });
+  return response.data;
+};
+
+// ─── Ageing Debt Entries (Manual) ───────────────────────────────────────────
+
+export interface AgeingDebtEntryItem {
+  id:             number;
+  source:         'debt_entry';
+  patient_id:     number;
+  patient_name:   string;
+  patient_number: string;
+  invoice_number: string;
+  invoice_date:   string | null;
+  due_date:       string | null;
+  total_amount:   number;
+  amount_paid:    number;
+  balance_due:    number;
+  category:       string;
+  category_display: string;
+  status:         string;
+  status_display: string;
+  bucket:         string;
+  bucket_display: string;
+  notes:          string;
+  created_by_name: string | null;
+  paid_by_name:   string | null;
+  paid_at:        string | null;
+  created_at:     string;
+  updated_at:     string;
+}
+
+export interface AgeingDebtEntryCreateInput {
+  patient:        number;
+  invoice_number: string;
+  invoice_date:   string;
+  due_date:       string;
+  total_amount:   number;
+  category:       string;
+  notes?:         string;
+}
+
+export interface AgeingDebtEntryUpdateInput {
+  invoice_number?: string;
+  invoice_date?:   string;
+  due_date?:       string;
+  total_amount?:   number;
+  category?:       string;
+  status?:         string;
+  notes?:         string;
+}
+
+export interface AgeingDebtEntrySummary {
+  total_outstanding: number;
+  by_status: { status: string; count: number; total: number }[];
+  by_bucket: { bucket: string; count: number; total: number }[];
+}
+
+export const getAgeingDebtEntries = async (): Promise<AgeingDebtEntryItem[]> => {
+  const response = await axiosInstance.get('/ageing-debt-entries/');
+  return response.data.results ?? response.data;
+};
+
+export const getAgeingDebtEntry = async (id: number): Promise<AgeingDebtEntryItem> => {
+  const response = await axiosInstance.get(`/ageing-debt-entries/${id}/`);
+  return response.data;
+};
+
+export const createAgeingDebtEntry = async (
+  data: AgeingDebtEntryCreateInput
+): Promise<AgeingDebtEntryItem> => {
+  const response = await axiosInstance.post('/ageing-debt-entries/', data);
+  return response.data;
+};
+
+export const updateAgeingDebtEntry = async (
+  id: number,
+  data: AgeingDebtEntryUpdateInput
+): Promise<AgeingDebtEntryItem> => {
+  const response = await axiosInstance.patch(`/ageing-debt-entries/${id}/`, data);
+  return response.data;
+};
+
+export const deleteAgeingDebtEntry = async (id: number): Promise<void> => {
+  await axiosInstance.delete(`/ageing-debt-entries/${id}/`);
+};
+
+export const recordDebtPayment = async (
+  id: number,
+  data: { amount: number }
+): Promise<AgeingDebtEntryItem> => {
+  const response = await axiosInstance.post(`/ageing-debt-entries/${id}/record-payment/`, data);
+  return response.data;
+};
+
+export const markDebtEntryPaid = async (id: number): Promise<AgeingDebtEntryItem> => {
+  const response = await axiosInstance.post(`/ageing-debt-entries/${id}/mark-paid/`);
+  return response.data;
+};
+
+export const writeOffDebtEntry = async (id: number): Promise<AgeingDebtEntryItem> => {
+  const response = await axiosInstance.post(`/ageing-debt-entries/${id}/write-off/`);
+  return response.data;
+};
+
+export const getAgeingDebtEntrySummary = async (): Promise<AgeingDebtEntrySummary> => {
+  const response = await axiosInstance.get('/ageing-debt-entries/summary/');
   return response.data;
 };
 

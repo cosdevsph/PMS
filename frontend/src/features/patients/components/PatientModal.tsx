@@ -124,16 +124,38 @@ export const PatientModal: React.FC<PatientModalProps> = ({
 
   const isMinor = (computeAge(formData.date_of_birth) ?? 18) < 18;
 
+  /**
+   * Validates an email value and returns a specific error message, or null if valid.
+   * Checks are ordered from most-specific to most-general so the user sees the
+   * most actionable message first.
+   */
+  const validateEmail = (email: string): string | null => {
+    if (!email.trim()) return 'Email address is required.';
+    if (/\s/.test(email)) return 'Email must not contain spaces.';
+    if (!email.includes('@')) return 'Email must contain @';
+    const [localPart, domain] = email.split('@');
+    if (!localPart) return 'Please enter a valid email address.';
+    if (!domain || !domain.includes('.')) return 'Email must include a valid domain (e.g., .com)';
+    const domainParts = domain.split('.');
+    if (domainParts[domainParts.length - 1].length < 2) return 'Please enter a valid email address.';
+    return null;
+  };
+
   const validate = (): Record<string, string> => {
     const newErrors: Record<string, string> = {};
-    if (!formData.first_name.trim())   newErrors.first_name   = 'First name is required';
-    if (!formData.last_name.trim())    newErrors.last_name    = 'Last name is required';
-    if (!formData.date_of_birth)       newErrors.date_of_birth = 'Date of birth is required';
-    if (!formData.phone.trim())        newErrors.phone        = 'Phone number is required';
-    else if (!isValidPHPhone(formData.phone)) newErrors.phone = 'Enter a valid Philippine mobile number';
-    if (!formData.address.trim())      newErrors.address      = 'Address is required';
-    if (!formData.city.trim())         newErrors.city         = 'City is required';
-    if (!formData.province.trim())     newErrors.province     = 'Province is required';
+    if (!formData.first_name.trim())   newErrors.first_name   = 'First name is required.';
+    if (!formData.last_name.trim())    newErrors.last_name    = 'Last name is required.';
+    if (!formData.date_of_birth)       newErrors.date_of_birth = 'Date of birth is required.';
+    if (!formData.phone.trim())        newErrors.phone        = 'Phone number is required.';
+    else if (!isValidPHPhone(formData.phone)) newErrors.phone = 'Enter a valid Philippine mobile number.';
+    if (!formData.address.trim())      newErrors.address      = 'Address is required.';
+    if (!formData.city.trim())         newErrors.city         = 'City is required.';
+    if (!formData.province.trim())     newErrors.province     = 'Province is required.';
+
+    // Email is always required.
+    const emailError = validateEmail(formData.email ?? '');
+    if (emailError) newErrors.email = emailError;
+
     // Emergency contact is required only for minors (age < 18).
     const age = computeAge(formData.date_of_birth);
     const minor = age !== null && age < 18;
@@ -143,17 +165,15 @@ export const PatientModal: React.FC<PatientModalProps> = ({
       if (!formData.emergency_contact_phone?.trim())
         newErrors.emergency_contact_phone = 'Emergency contact phone is required for minor patients.';
       else if (!isValidPHPhone(formData.emergency_contact_phone))
-        newErrors.emergency_contact_phone = 'Enter a valid Philippine mobile number';
+        newErrors.emergency_contact_phone = 'Enter a valid Philippine mobile number.';
       if (!formData.emergency_contact_relationship?.trim())
         newErrors.emergency_contact_relationship = 'Relationship is required for minor patients.';
     } else if (formData.emergency_contact_phone?.trim() && !isValidPHPhone(formData.emergency_contact_phone)) {
       // Still validate format when provided voluntarily by adult patients.
-      newErrors.emergency_contact_phone = 'Enter a valid Philippine mobile number';
+      newErrors.emergency_contact_phone = 'Enter a valid Philippine mobile number.';
     }
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
-      newErrors.email = 'Invalid email format';
     if (formData.date_of_birth && new Date(formData.date_of_birth) > new Date())
-      newErrors.date_of_birth = 'Date of birth cannot be in the future';
+      newErrors.date_of_birth = 'Date of birth cannot be in the future.';
     setErrors(newErrors);
     return newErrors;
   };
@@ -305,11 +325,12 @@ export const PatientModal: React.FC<PatientModalProps> = ({
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className={labelBase}>Email</label>
+                      <label className={labelBase}>Email <span className="text-red-500">*</span></label>
                       <input
                         type="email" name="email" value={formData.email}
                         onChange={handleChange} placeholder="john.doe@example.com"
                         className={`${inputBase} ${errors.email ? inputError : ''}`}
+                        autoComplete="email"
                       />
                       {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                     </div>

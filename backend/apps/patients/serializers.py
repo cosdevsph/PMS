@@ -15,6 +15,8 @@ class PatientSerializer(serializers.ModelSerializer):
     archived_by_name = serializers.SerializerMethodField()
     phone                   = serializers.CharField(max_length=20)
     emergency_contact_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    # Email is required for all new patient records.
+    email = serializers.EmailField(required=True)
 
     class Meta:
         model  = Patient
@@ -44,10 +46,23 @@ class PatientSerializer(serializers.ModelSerializer):
         return normalize_ph_phone(value) if value else value
 
     def validate_email(self, value):
-        """Normalize patient email to lowercase for consistent storage."""
-        if value:
-            return value.strip().lower()
-        return value
+        """Normalize patient email to lowercase and enforce required + format rules."""
+        if not value or not value.strip():
+            raise serializers.ValidationError('Email address is required.')
+        value = value.strip()
+        if ' ' in value:
+            raise serializers.ValidationError('Email must not contain spaces.')
+        if '@' not in value:
+            raise serializers.ValidationError('Email must contain @')
+        local, _, domain = value.partition('@')
+        if not local:
+            raise serializers.ValidationError('Please enter a valid email address.')
+        if not domain or '.' not in domain:
+            raise serializers.ValidationError('Email must include a valid domain (e.g., .com)')
+        tld = domain.rsplit('.', 1)[-1]
+        if len(tld) < 2:
+            raise serializers.ValidationError('Please enter a valid email address.')
+        return value.lower()
 
     def validate(self, attrs):
         """Enforce emergency contact only for minor patients (age < 18)."""
@@ -87,6 +102,18 @@ class PatientSerializer(serializers.ModelSerializer):
                     )
                 if errors:
                     raise serializers.ValidationError(errors)
+
+        # Prevent duplicate emails within the same clinic.
+        email = attrs.get('email')
+        clinic = attrs.get('clinic') or (self.instance.clinic if self.instance else None)
+        if email and clinic:
+            qs = Patient.objects.filter(clinic=clinic, email__iexact=email)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {'email': 'A patient with this email address already exists in this clinic.'}
+                )
 
         return attrs
 

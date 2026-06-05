@@ -1,5 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from .views import (
+    AgeingDebtEntryViewSet,
     InvoiceViewSet,
     InvoiceItemViewSet,
     PaymentViewSet,
@@ -12,6 +13,7 @@ from .views import (
 )
 
 router = DefaultRouter()
+router.register(r'ageing-debt-entries', AgeingDebtEntryViewSet, basename='ageing-debt-entries')
 router.register(r'invoices',           InvoiceViewSet,          basename='invoices')
 router.register(r'invoice-items',      InvoiceItemViewSet,      basename='invoice-items')
 router.register(r'payments',           PaymentViewSet,          basename='payments')

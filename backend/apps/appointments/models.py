@@ -477,11 +477,11 @@ class CalendarNote(TimeStampedModel):
     message = models.TextField(help_text='Note content displayed on the calendar')
 
     practitioner = models.ForeignKey(
-        'accounts.User',
+        'clinics.Practitioner',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='calendar_notes_practitioner',
+        related_name='calendar_notes',
         help_text='Practitioner this note is scoped to (null = clinic-wide)',
     )
 

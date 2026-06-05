@@ -15,9 +15,12 @@ from apps.appointments.models import Appointment
 from .authentication import QueryParamJWTAuthentication
 from .bulk_invoice_service import preview_bulk_invoice, run_bulk_invoice
 from .filters import AppointmentPrintFilter, InvoiceBatchFilter, InvoiceFilter
-from .models import Invoice, InvoiceItem, InvoiceBatch, InvoicePrintSettings, Payment, Service
+from .models import Invoice, InvoiceItem, InvoiceBatch, InvoicePrintSettings, Payment, Service, AgeingDebtEntry
 from .print_service import build_print_payload
 from .serializers import (
+    AgeingDebtEntrySerializer,
+    AgeingDebtEntryCreateSerializer,
+    AgeingDebtPaymentSerializer,
     AppointmentPrintSerializer,
     BulkInvoiceRequestSerializer,
     InvoiceBatchSerializer,
@@ -838,6 +841,146 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(received_by=self.request.user)
+
+
+# ── Ageing Debt Entry ─────────────────────────────────────────────────────────
+
+class AgeingDebtEntryViewSet(viewsets.ModelViewSet):
+    """Full CRUD for ageing debt entries + payment recording."""
+    lookup_field = 'pk'
+    lookup_value_regex = r'[0-9]+'
+
+    queryset = AgeingDebtEntry.objects.filter(is_deleted=False).select_related(
+        'clinic', 'patient', 'created_by', 'paid_by',
+    )
+
+    serializer_class = AgeingDebtEntrySerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'category', 'bucket', 'patient']
+    search_fields = ['invoice_number', 'patient__first_name', 'patient__last_name']
+    ordering_fields = ['invoice_date', 'due_date', 'total_amount', 'balance_due', 'created_at']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.clinic:
+            return self.queryset.none()
+
+        main_clinic = user.clinic.main_clinic
+        all_branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
+        return self.queryset.filter(clinic_id__in=all_branch_ids)
+
+    def perform_create(self, serializer):
+        clinic = self.request.user.clinic
+        serializer.save(clinic=clinic, created_by=self.request.user)
+
+    @action(detail=True, methods=['post'], url_path='record-payment', url_name='record-payment')
+    def record_payment(self, request, pk=None):
+        """POST /api/debt-entries/{id}/record-payment/ — Record a payment against a debt entry."""
+        entry = self.get_object()
+
+        if entry.status == 'PAID':
+            return Response(
+                {'detail': 'Debt entry is already fully paid.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        ser = AgeingDebtPaymentSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        amount = ser.validated_data['amount']
+
+        remaining = Decimal(str(entry.balance_due))
+        if amount > remaining:
+            return Response(
+                {'detail': f'Payment amount (₱{amount}) exceeds remaining balance (₱{remaining}).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        entry.record_payment(amount, user=request.user)
+
+        logger.info(
+            "Payment ₱%s recorded against debt entry %s by %s",
+            amount, entry.pk, request.user.email,
+        )
+
+        fresh = AgeingDebtEntry.objects.get(pk=entry.pk)
+        return Response(AgeingDebtEntrySerializer(fresh).data)
+
+    @action(detail=True, methods=['post'], url_path='mark-paid', url_name='mark-paid')
+    def mark_paid(self, request, pk=None):
+        """POST /api/debt-entries/{id}/mark-paid/ — Mark debt entry as fully paid."""
+        entry = self.get_object()
+
+        if entry.status == 'PAID':
+            return Response(
+                {'detail': 'Debt entry is already marked as paid.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        entry.amount_paid = Decimal(str(entry.total_amount))
+        entry.balance_due = Decimal('0')
+        entry.status = 'PAID'
+        entry.paid_by = request.user
+        from django.utils import timezone
+        entry.paid_at = timezone.now()
+        entry.save()
+
+        logger.info("Debt entry %s marked as paid by %s", entry.pk, request.user.email)
+
+        fresh = AgeingDebtEntry.objects.get(pk=entry.pk)
+        return Response(AgeingDebtEntrySerializer(fresh).data)
+
+    @action(detail=True, methods=['post'], url_path='write-off', url_name='write-off')
+    def write_off(self, request, pk=None):
+        """POST /api/debt-entries/{id}/write-off/ — Write off a debt entry."""
+        entry = self.get_object()
+
+        if entry.status == 'WRITTEN_OFF':
+            return Response(
+                {'detail': 'Debt entry is already written off.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        entry.status = 'WRITTEN_OFF'
+        entry.balance_due = Decimal('0')
+        entry.save()
+
+        logger.info("Debt entry %s written off by %s", entry.pk, request.user.email)
+
+        fresh = AgeingDebtEntry.objects.get(pk=entry.pk)
+        return Response(AgeingDebtEntrySerializer(fresh).data)
+
+    @action(detail=False, methods=['get'], url_path='summary', url_name='summary')
+    def summary(self, request):
+        """GET /api/debt-entries/summary/ — Get summary totals for dashboard cards."""
+        qs = self.filter_queryset(self.get_queryset())
+
+        by_status = qs.values('status').annotate(
+            count=Count('id'),
+            total=Sum('balance_due'),
+        ).order_by('status')
+
+        by_bucket = qs.values('bucket').annotate(
+            count=Count('id'),
+            total=Sum('balance_due'),
+        ).order_by('bucket')
+
+        total_outstanding = qs.exclude(status__in=['PAID', 'WRITTEN_OFF']).aggregate(
+            total=Sum('balance_due')
+        )['total'] or Decimal('0')
+
+        return Response({
+            'total_outstanding': float(total_outstanding),
+            'by_status': [
+                {'status': r['status'], 'count': r['count'], 'total': float(r['total'] or 0)}
+                for r in by_status
+            ],
+            'by_bucket': [
+                {'bucket': r['bucket'], 'count': r['count'], 'total': float(r['total'] or 0)}
+                for r in by_bucket
+            ],
+        })
 
 
 # ── Service catalog ───────────────────────────────────────────────────────────

@@ -75,11 +75,18 @@ export const AppointmentHoverCard: React.FC<AppointmentHoverCardProps> = ({
   const isPortal = apt.booking_source === 'portal' ||
     (apt.created_by === null && !!apt.notes?.startsWith('Created from portal booking'));
 
-  // ── Override color when practitioner has arrived ──────────────────────────────
+  // ── Override color when practitioner has arrived or is DNA ──────────────────
   const isArrived = apt.arrival_status === 'ARRIVED';
-  // Portal gets mint green header; arrived gets purple; otherwise service color.
-  const cardBackground = isArrived ? '#0575E6' : isPortal ? '#0575E6' : (apt.service_color ?? null);
-  const cardTextColor  = isArrived ? '#fff' : isPortal ? '#ffffff' : undefined;
+  const isDNA = apt.arrival_status === 'DNA' || apt.status === 'DNA';
+  // Priority: DNA (red) > Arrived (purple) > Portal (blue) > service color
+  const cardBackground = isDNA
+    ? '#DC2626'
+    : isArrived
+    ? '#8B5CF6'
+    : isPortal
+    ? '#0575E6'
+    : (apt.service_color ?? null);
+  const cardTextColor = isDNA || isArrived || isPortal ? '#ffffff' : undefined;
 
   // Fetch upcoming appointments for this patient
   const { data: upcomingAppointments = [] } = useQuery({
@@ -137,14 +144,18 @@ export const AppointmentHoverCard: React.FC<AppointmentHoverCardProps> = ({
             {/* Status badge */}
             <span
               className={`flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border
-                ${(apt.service_color && !isPortal)
+                ${(apt.service_color && !isPortal && !isArrived && !isDNA)
                   ? 'bg-white/20 text-white border-white/40'
                   : isPortal
                   ? 'bg-emerald-700/20 text-emerald-900 border-emerald-400/40'
                   : `${statusColors.bg} ${statusColors.text} ${statusColors.border}`
                 }`}
             >
-              {STATUS_LABELS[apt.status] ?? apt.status}
+              {apt.arrival_status !== 'NO_STATUS'
+                ? apt.arrival_status === 'ARRIVED' ? 'Arrived'
+                : apt.arrival_status === 'DNA' ? 'DNA'
+                : apt.arrival_status
+                : STATUS_LABELS[apt.status] ?? apt.status}
             </span>
           </div>
         </div>

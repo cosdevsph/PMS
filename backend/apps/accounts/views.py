@@ -1430,28 +1430,56 @@ class UserViewSet(viewsets.ModelViewSet):
         had_practitioner = 'PRACTITIONER' in (instance.roles or [old_role])
         has_practitioner = 'PRACTITIONER' in new_roles
 
-        if has_practitioner and not Practitioner.objects.filter(user=instance, is_deleted=False).exists():
-            # PRACTITIONER role added — ensure profile exists
-            _, practitioner_created = Practitioner.objects.get_or_create(
-                user=instance,
-                defaults={
+        if has_practitioner:
+            # ── Ensure an active Practitioner profile exists ──────────────
+            # Three sub-cases handled here:
+            #   (a) Profile never existed             → create it fresh
+            #   (b) Profile exists, is_deleted=False  → no-op (leave intact)
+            #   (c) Profile exists, is_deleted=True   → restore it
+            #
+            # The old get_or_create(user=instance) without is_deleted=False
+            # would find a soft-deleted profile in case (c) and return it
+            # unchanged — leaving is_deleted=True and the user invisible in
+            # the Diary/Calendar practitioner list even after the role was
+            # re-added.  We now restore soft-deleted records explicitly first.
+
+            restored_count = Practitioner.objects.filter(
+                user=instance, is_deleted=True
+            ).update(is_deleted=False, deleted_at=None)
+
+            if restored_count:
+                # Profile was soft-deleted and has now been restored.
+                practitioner_created = True
+                # Refresh the clinic assignment in case the user was reassigned
+                # while the profile was dormant.
+                Practitioner.objects.filter(user=instance).update(
+                    clinic=instance.clinic_branch or instance.clinic or request.user.clinic,
+                )
+                logger.info(
+                    "Practitioner profile restored (un-soft-deleted) for: %s by %s",
+                    instance.email, request.user.email,
+                )
+            elif not Practitioner.objects.filter(user=instance, is_deleted=False).exists():
+                # No profile at all — create a fresh one.
+                Practitioner.objects.create(
+                    user=instance,
                     # Prefer the user's specific branch over the main clinic so
                     # branch-assigned Admin+Practitioner users are scoped correctly.
-                    'clinic':                 instance.clinic_branch or instance.clinic or request.user.clinic,
+                    clinic=instance.clinic_branch or instance.clinic or request.user.clinic,
+                    license_number='',
+                    specialization='',
+                    discipline=request.data.get('discipline', 'OCCUPATIONAL_THERAPY'),
+                    consultation_fee=0,
+                    is_accepting_patients=True,
+                    duty_days=request.data.get('duty_days', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']),
+                    duty_start_time=request.data.get('duty_start_time', '08:00'),
+                    duty_end_time=request.data.get('duty_end_time', '17:00'),
+                    lunch_start_time=request.data.get('lunch_start_time', '12:00'),
+                    lunch_end_time=request.data.get('lunch_end_time', '13:00'),
+                    duty_schedule=request.data.get('duty_schedule', None),
+                )
+                practitioner_created = True
 
-                    'license_number':         '',
-                    'specialization':         '',
-                    'discipline':             request.data.get('discipline', 'OCCUPATIONAL_THERAPY'),
-                    'consultation_fee':       0,
-                    'is_accepting_patients':  True,
-                    'duty_days':             request.data.get('duty_days', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']),
-                    'duty_start_time':       request.data.get('duty_start_time', '08:00'),
-                    'duty_end_time':         request.data.get('duty_end_time', '17:00'),
-                    'lunch_start_time':      request.data.get('lunch_start_time', '12:00'),
-                    'lunch_end_time':        request.data.get('lunch_end_time', '13:00'),
-                    'duty_schedule':         request.data.get('duty_schedule', None),
-                },
-            )
             if practitioner_created:
                 # Mirror discipline on the User model so to_representation always has
                 # a non-empty fallback for ADMIN+PRACTITIONER users.
@@ -1459,7 +1487,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 if new_discipline:
                     User.objects.filter(pk=instance.pk).update(discipline=new_discipline)
                 logger.info(
-                    "Practitioner profile created on role change for: %s by %s",
+                    "Practitioner profile created/restored on role change for: %s by %s",
                     instance.email, request.user.email,
                 )
 

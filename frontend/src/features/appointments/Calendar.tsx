@@ -422,6 +422,25 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   const PORTAL_MINT_HEX = '#0575E6';
 
   const getBlockColors = (apt: Appointment): BlockColors => {
+    // ── DNA → RED (highest-priority visual override) ──────────────────────
+    // Business rule: DNA is never a soft marker. Both arrival_status=DNA and
+    // status=DNA must display RED so staff immediately spot missed appointments
+    // across all calendar and diary views.
+    if (apt.arrival_status === 'DNA' || apt.status === 'DNA') {
+      const dnaRed = '#DC2626';
+      return {
+        useHex: true,
+        hex:    dnaRed,
+        bgStyle: {
+          backgroundColor: dnaRed,
+          borderColor:     '#B91C1C',
+          boxShadow:       '0 1px 4px rgba(185,28,28,0.35)',
+        },
+        textColor:    '#ffffff',
+        subTextColor: '#fecaca',
+        label: apt.service_name ?? apt.chief_complaint ?? null,
+      };
+    }
     // Check if appointment has an invoice - use orange color
     if (apt.has_invoice) {
       const orangeHex = '#f97316';
@@ -1146,7 +1165,9 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   const handleDoubleClick = (date: Date, slot: CalendarSlot) => {
     if (dragState.isDragging || dragState.isHolding || blockDragState.isDragging || blockDragState.isHolding || noteDragState.isDragging || isResizing) return;
     if (onSlotAction) {
-      onSlotAction({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15 });
+      // Pass the currently selected practitioner so that note/block/appointment creation
+      // from the Week View inherits the active practitioner filter (fixes note ownership).
+      onSlotAction({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15, practitionerId: numericPractitionerId });
       return;
     }
     openModal({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15 });
@@ -1472,6 +1493,14 @@ const CalendarComponent: React.FC<CalendarProps> = ({
         onUpdated={(updated) => {
           updateAppointmentInState(updated);
           setSelectedAppointment(updated);
+          // When arrival_status changes (e.g. DNA → Arrived / No Status),
+          // force a full refetch so every card in every view reflects the new
+          // color immediately — the optimistic update handles the current render,
+          // the refetch reconciles any other cached or stale data.
+          const prev = appointments.find(a => a.id === updated.id);
+          if (prev && prev.arrival_status !== updated.arrival_status) {
+            refetch();
+          }
         }}
         onRecurringCreated={onRecurringCreated}
         onRebook={onRebook}
@@ -2059,7 +2088,9 @@ const CalendarComponent: React.FC<CalendarProps> = ({
             onClick={(e) => {
               e.stopPropagation();
               if (onSlotAction) {
-                onSlotAction({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15 });
+                // Include the active practitioner filter so note/event creation
+                // from the occupied-slot strip also inherits practitioner ownership.
+                onSlotAction({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15, practitionerId: numericPractitionerId });
               } else {
                 openModal({ date, time: slot.time, hour: slot.hour, minutes: slot.minutes, duration: 15 });
               }
@@ -2226,11 +2257,17 @@ const CalendarComponent: React.FC<CalendarProps> = ({
       );
       // Blocks scoped to a practitioner only appear in that practitioner's column;
       // clinic-wide blocks (practitioner_id === null) appear in every column.
+      // Participant blocks also appear in a practitioner's column when their
+      // practitioner ID is in participant_practitioner_ids.
       const colABlocks = dayBlocks.filter(b =>
-        b.practitioner_id === null || b.practitioner_id === comparePractitionerIdA
+        b.practitioner_id === null ||
+        b.practitioner_id === comparePractitionerIdA ||
+        (comparePractitionerIdA != null && b.participant_practitioner_ids?.includes(comparePractitionerIdA))
       );
       const colBBlocks = dayBlocks.filter(b =>
-        b.practitioner_id === null || b.practitioner_id === comparePractitionerIdB
+        b.practitioner_id === null ||
+        b.practitioner_id === comparePractitionerIdB ||
+        (comparePractitionerIdB != null && b.participant_practitioner_ids?.includes(comparePractitionerIdB))
       );
 
       return (
@@ -2484,8 +2521,11 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                   );
                   // Blocks scoped to a practitioner only appear in that practitioner's column;
                   // clinic-wide blocks (practitioner_id === null) appear in every column.
+                  // Participant blocks also appear when the practitioner is a participant.
                   const colBlocks = dayBlocks.filter(b =>
-                    b.practitioner_id === null || b.practitioner_id === practId
+                    b.practitioner_id === null ||
+                    b.practitioner_id === practId ||
+                    (practId != null && b.participant_practitioner_ids?.includes(practId))
                   );
                   const { aptStyles, blockStyles, noteStyles } = computeColumnLayout(colAppts, colBlocks, colNotes);
                   return (
@@ -2687,11 +2727,33 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                   const dayStr = format(day, 'yyyy-MM-dd');
                   const dayAppts  = getAppointmentsForDate(day);
                   const dayBlocks = getBlockAppointmentsForDate(day);
+                  const dayNotes  = getNotesForDate(day);
                   const colAAppts = dayAppts.filter(a =>
                     comparePractitionerIdA != null ? a.practitioner === comparePractitionerIdA : true
                   );
                   const colBAppts = dayAppts.filter(a =>
                     comparePractitionerIdB != null ? a.practitioner === comparePractitionerIdB : true
+                  );
+                  // Blocks: clinic-wide (practitioner_id===null) appear in every column;
+                  // practitioner-scoped blocks appear only in the matching column.
+                  // Participant blocks also appear when the practitioner is a participant.
+                  const colABlocks = dayBlocks.filter(b =>
+                    b.practitioner_id === null ||
+                    b.practitioner_id === comparePractitionerIdA ||
+                    (comparePractitionerIdA != null && b.participant_practitioner_ids?.includes(comparePractitionerIdA))
+                  );
+                  const colBBlocks = dayBlocks.filter(b =>
+                    b.practitioner_id === null ||
+                    b.practitioner_id === comparePractitionerIdB ||
+                    (comparePractitionerIdB != null && b.participant_practitioner_ids?.includes(comparePractitionerIdB))
+                  );
+                  // Notes: clinic-wide (practitioner===null) appear in every column;
+                  // practitioner-scoped notes appear only in the matching column.
+                  const colANotes = dayNotes.filter(n =>
+                    n.practitioner === null || n.practitioner === undefined || n.practitioner === comparePractitionerIdA
+                  );
+                  const colBNotes = dayNotes.filter(n =>
+                    n.practitioner === null || n.practitioner === undefined || n.practitioner === comparePractitionerIdB
                   );
                   return (
                     <React.Fragment key={day.toISOString()}>
@@ -2699,29 +2761,31 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                       <div className="border-l border-gray-200 relative">
                         {timeSlots.map((slot, i) => {
                           const slotMin = slot.hour * 60 + slot.minutes;
-                          const occupied = [...colAAppts, ...dayBlocks].some(ev => {
+                          const occupied = [...colAAppts, ...colABlocks, ...colANotes].some(ev => {
                             const [sh, sm] = ev.start_time.split(':').map(Number);
                             const [eh, em] = ev.end_time.split(':').map(Number);
                             return sh * 60 + sm < slotMin + 15 && eh * 60 + em > slotMin;
                           });
                           return renderTimeSlotCompare(slot, day, i, compareAvailabilityA, `a-${dayStr}`, occupied);
                         })}
-                        {colAAppts.map(apt => renderTimelineCard(apt, true))}
-                        {dayBlocks.map(block => renderBlockTimelineCard(block, true))}
+                        {colAAppts.map(apt   => renderTimelineCard(apt, true))}
+                        {colABlocks.map(block => renderBlockTimelineCard(block, true))}
+                        {colANotes.map(note   => renderNoteTimelineCard(note, true))}
                       </div>
                       {/* Prac B sub-column */}
                       <div className="border-l border-gray-200 relative">
                         {timeSlots.map((slot, i) => {
                           const slotMin = slot.hour * 60 + slot.minutes;
-                          const occupied = [...colBAppts, ...dayBlocks].some(ev => {
+                          const occupied = [...colBAppts, ...colBBlocks, ...colBNotes].some(ev => {
                             const [sh, sm] = ev.start_time.split(':').map(Number);
                             const [eh, em] = ev.end_time.split(':').map(Number);
                             return sh * 60 + sm < slotMin + 15 && eh * 60 + em > slotMin;
                           });
                           return renderTimeSlotCompare(slot, day, i, compareAvailabilityB, `b-${dayStr}`, occupied);
                         })}
-                        {colBAppts.map(apt => renderTimelineCard(apt, true))}
-                        {dayBlocks.map(block => renderBlockTimelineCard(block, true))}
+                        {colBAppts.map(apt   => renderTimelineCard(apt, true))}
+                        {colBBlocks.map(block => renderBlockTimelineCard(block, true))}
+                        {colBNotes.map(note   => renderNoteTimelineCard(note, true))}
                       </div>
                     </React.Fragment>
                   );
@@ -2782,8 +2846,28 @@ const CalendarComponent: React.FC<CalendarProps> = ({
               {/* Day columns — cards auto-offset when overlapping */}
               {weekDays.map(day => {
                 const dayAppts  = getAppointmentsForDate(day);
-                const dayBlocks = getBlockAppointmentsForDate(day);
-                const dayNotes  = getNotesForDate(day);
+                const allDayBlocks = getBlockAppointmentsForDate(day);
+                const allDayNotes  = getNotesForDate(day);
+
+                // Practitioner-scoping: when a specific practitioner is selected,
+                // only show blocks/notes belonging to that practitioner or clinic-wide
+                // (practitioner_id === null). This mirrors the Day View multi-prac
+                // column isolation logic (lines 2509-2516).
+                // Also include blocks where the practitioner is a participant.
+                const dayBlocks = numericPractitionerId !== null
+                  ? allDayBlocks.filter(b =>
+                      b.practitioner_id === null ||
+                      b.practitioner_id === numericPractitionerId ||
+                      b.participant_practitioner_ids?.includes(numericPractitionerId)
+                    )
+                  : allDayBlocks;
+                const dayNotes = numericPractitionerId !== null
+                  ? allDayNotes.filter(n =>
+                      n.practitioner === null || n.practitioner === undefined ||
+                      n.practitioner === numericPractitionerId
+                    )
+                  : allDayNotes;
+
                 const { aptStyles, blockStyles, noteStyles } = computeColumnLayout(dayAppts, dayBlocks, dayNotes);
                 return (
                   <div key={day.toISOString()} className="border-l border-gray-200 relative">

@@ -192,9 +192,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Capture old arrival_status before any changes for transition detection
+        old_arrival_status = appointment.arrival_status
+
         # Handle arrival_status change - set arrival_time when status is 'ARRIVED'
         new_arrival_status = filtered_data.get('arrival_status')
-        if new_arrival_status == 'ARRIVED' and appointment.arrival_status != 'ARRIVED':
+        if new_arrival_status == 'ARRIVED' and old_arrival_status != 'ARRIVED':
             # Setting arrival to ARRIVED - capture the timestamp
             appointment.arrival_time = timezone.now()
         elif new_arrival_status and new_arrival_status != 'ARRIVED':
@@ -203,14 +206,53 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         serializer = AppointmentEditSerializer(appointment, data=filtered_data, partial=True)
         serializer.is_valid(raise_exception=True)
-        
+
         # Save appointment with updated arrival_time if set
-        if new_arrival_status == 'ARRIVED' and appointment.arrival_status != 'ARRIVED':
+        if new_arrival_status == 'ARRIVED' and old_arrival_status != 'ARRIVED':
             serializer.save(updated_by=request.user)
             appointment.arrival_time = timezone.now()
             appointment.save(update_fields=['arrival_time', 'updated_at'])
         else:
             serializer.save(updated_by=request.user)
+
+        # ── DNA hard-sync: arrival_status=DNA → status=DNA ───────────────────
+        # Business rule: DNA is never a soft marker.  When a patient is marked
+        # as Did Not Arrive, the top-level appointment status must also become
+        # DNA so the calendar, diary, reporting and analytics are consistent.
+        if new_arrival_status == 'DNA' and old_arrival_status != 'DNA':
+            appointment.status = 'DNA'
+            appointment.save(update_fields=['status', 'updated_at'])
+            logger.info(
+                "Appointment #%s status hard-synced to DNA (arrival_status transition %s → DNA)",
+                appointment.id, old_arrival_status,
+            )
+
+            # ── Trigger DNA follow-up notification (non-blocking) ─────────────
+            try:
+                from apps.notifications.services.communication_service import send_dna_followup
+                send_dna_followup(appointment)
+            except Exception as exc:
+                logger.warning(
+                    "DNA follow-up notification failed for appointment #%s: %s",
+                    appointment.id, exc,
+                )
+
+        # ── Reverse DNA sync: arrival_status transitioning FROM DNA ───────────
+        # When arrival_status is cleared from DNA (back to ARRIVED or NO_STATUS),
+        # also reset the top-level status from DNA → SCHEDULED so every color
+        # check (getBlockColors in Calendar.tsx, isDNA in AppointmentView.tsx)
+        # clears correctly without requiring a page refresh.
+        elif (
+            old_arrival_status == 'DNA'
+            and new_arrival_status in ('ARRIVED', 'NO_STATUS')
+            and appointment.status == 'DNA'
+        ):
+            appointment.status = 'SCHEDULED'
+            appointment.save(update_fields=['status', 'updated_at'])
+            logger.info(
+                "Appointment #%s status reset DNA → SCHEDULED (arrival_status transition DNA → %s)",
+                appointment.id, new_arrival_status,
+            )
 
         # Refresh from DB so related objects (service, practitioner) reflect
         # the newly-committed FK values — not the stale in-memory cache.
@@ -969,6 +1011,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             clinic_id__in=all_branch_ids,
             user__is_active=True,
             user__is_deleted=False,
+            # Exclude soft-deleted Practitioner profiles — this covers the case
+            # where an Admin+Practitioner user has their PRACTITIONER role removed
+            # (the profile is soft-deleted in UserViewSet.update) but the User row
+            # still exists.  Without this filter those stale profiles would be
+            # returned and the user would keep appearing in the Diary filter.
+            is_deleted=False,
         ).select_related('user', 'clinic', 'user__clinic_branch')
 
         if clinic_branch_param:

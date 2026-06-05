@@ -35,6 +35,9 @@ export const useCalendarData = ({
     startDate,
     endDate,
     clinicBranchId: blockClinicBranchId ?? clinicBranchId,
+    // Scope note fetching to the selected practitioner so only that practitioner's
+    // notes (plus clinic-wide null notes from the backend) are loaded.
+    practitionerId,
   });
 
   return useMemo(() => ({

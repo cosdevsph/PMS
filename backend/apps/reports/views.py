@@ -1205,12 +1205,15 @@ class ReportViewSet(viewsets.ModelViewSet):
     def ageing_debts(self, request):
         """
         GET /api/reports/ageing_debts/
-        Unpaid / partially-paid invoices grouped into aging buckets.
+        Unpaid / partially-paid invoices grouped into aging buckets,
+        combined with manual ageing debt entries.
 
         Query params:
             branch_id       (int)   optional
             practitioner_id (int)   optional
         """
+        from apps.billing.models import AgeingDebtEntry
+
         clinic, main_clinic, all_branch_ids = self._get_clinic_and_branch_ids(request)
         today = timezone.now().date()
 
@@ -1238,14 +1241,17 @@ class ReportViewSet(viewsets.ModelViewSet):
             except (ValueError, TypeError):
                 pass
 
-        bucket_totals = {'0_30': 0.0, '31_60': 0.0, '61_90': 0.0, '90_plus': 0.0}
+        bucket_totals = {'CURRENT': 0.0, '0_30': 0.0, '31_60': 0.0, '61_90': 0.0, '90_plus': 0.0}
         items = []
+        source_type = 'invoice'
 
         for inv in qs:
             days_overdue = (today - inv.invoice_date).days
             balance      = float(inv.balance_due)
 
-            if days_overdue <= 30:
+            if days_overdue <= 0:
+                bucket = 'CURRENT'
+            elif days_overdue <= 30:
                 bucket = '0_30'
             elif days_overdue <= 60:
                 bucket = '31_60'
@@ -1257,6 +1263,8 @@ class ReportViewSet(viewsets.ModelViewSet):
             bucket_totals[bucket] = round(bucket_totals[bucket] + balance, 2)
 
             items.append({
+                'id':             inv.id,
+                'source':         'invoice',
                 'invoice_id':     inv.id,
                 'invoice_number': inv.invoice_number,
                 'invoice_date':   str(inv.invoice_date),
@@ -1270,6 +1278,50 @@ class ReportViewSet(viewsets.ModelViewSet):
                 'status':         inv.status,
                 'days_overdue':   days_overdue,
                 'bucket':         bucket,
+                'CURRENT':        balance if bucket == 'CURRENT' else 0.0,
+                '0_30':           balance if bucket == '0_30'    else 0.0,
+                '31_60':          balance if bucket == '31_60'   else 0.0,
+                '61_90':          balance if bucket == '61_90'   else 0.0,
+                '90_plus':        balance if bucket == '90_plus' else 0.0,
+            })
+
+        debt_entries = (
+            AgeingDebtEntry.objects
+            .filter(
+                clinic_id__in=all_branch_ids,
+                is_deleted=False,
+            )
+            .exclude(status__in=['PAID', 'WRITTEN_OFF'])
+            .select_related('patient')
+            .order_by('due_date', 'invoice_number')
+        )
+
+        for entry in debt_entries:
+            balance = float(entry.balance_due)
+            bucket = entry.bucket or 'CURRENT'
+            if bucket not in bucket_totals:
+                bucket_totals[bucket] = 0.0
+            bucket_totals[bucket] = round(bucket_totals[bucket] + balance, 2)
+
+            items.append({
+                'id':             entry.id,
+                'source':         'debt_entry',
+                'invoice_id':     None,
+                'invoice_number': entry.invoice_number or f'DE-{entry.id:06d}',
+                'invoice_date':   str(entry.invoice_date) if entry.invoice_date else None,
+                'due_date':       str(entry.due_date) if entry.due_date else None,
+                'patient_id':     entry.patient_id,
+                'patient_name':   entry.patient.get_full_name() if entry.patient else '',
+                'patient_number': entry.patient.patient_number if entry.patient else '',
+                'total_amount':   float(entry.total_amount),
+                'amount_paid':    float(entry.amount_paid),
+                'balance_due':    balance,
+                'status':         entry.status,
+                'days_overdue':   max(0, (today - entry.due_date).days) if entry.due_date else 0,
+                'bucket':         bucket,
+                'category':       entry.category,
+                'notes':          entry.notes,
+                'CURRENT':        balance if bucket == 'CURRENT' else 0.0,
                 '0_30':           balance if bucket == '0_30'    else 0.0,
                 '31_60':          balance if bucket == '31_60'   else 0.0,
                 '61_90':          balance if bucket == '61_90'   else 0.0,
@@ -1289,7 +1341,7 @@ class ReportViewSet(viewsets.ModelViewSet):
             'summary': {
                 'total_outstanding': grand_total,
                 'total_invoices':    len(items),
-                'bucket_totals':     bucket_totals,
+                'bucket_totals':    bucket_totals,
             },
             'debts': items,
         })

@@ -1,8 +1,9 @@
+from decimal import Decimal
 from rest_framework import serializers
 from apps.appointments.models import Appointment
 from apps.clinics.models import Clinic
 from apps.patients.models import Patient
-from .models import Invoice, InvoiceItem, Payment, Service, InvoiceBatch
+from .models import Invoice, InvoiceItem, Payment, Service, InvoiceBatch, AgeingDebtEntry
 
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
@@ -191,3 +192,43 @@ class AppointmentPrintSerializer(serializers.ModelSerializer):
 
     def get_has_invoice(self, obj) -> bool:
         return obj.billing_invoices.filter(is_deleted=False).exists()
+
+
+class AgeingDebtEntrySerializer(serializers.ModelSerializer):
+    patient_name   = serializers.CharField(source='patient.get_full_name', read_only=True)
+    patient_number = serializers.CharField(source='patient.patient_number', read_only=True)
+    clinic_name    = serializers.CharField(source='clinic.name', read_only=True)
+    created_by_name = serializers.SerializerMethodField()
+    paid_by_name   = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    bucket_display = serializers.CharField(source='get_bucket_display', read_only=True)
+
+    class Meta:
+        model            = AgeingDebtEntry
+        fields           = '__all__'
+        read_only_fields = ['id', 'balance_due', 'bucket', 'created_at', 'updated_at']
+
+    def get_created_by_name(self, obj) -> str | None:
+        return obj.created_by.get_full_name() if obj.created_by else None
+
+    def get_paid_by_name(self, obj) -> str | None:
+        return obj.paid_by.get_full_name() if obj.paid_by else None
+
+
+class AgeingDebtEntryCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = AgeingDebtEntry
+        fields = [
+            'patient', 'invoice_number', 'invoice_date', 'due_date',
+            'total_amount', 'category', 'notes',
+        ]
+
+    def validate_total_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Total amount must be greater than zero.")
+        return value
+
+
+class AgeingDebtPaymentSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))

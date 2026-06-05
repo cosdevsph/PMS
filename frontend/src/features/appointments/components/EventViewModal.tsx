@@ -22,7 +22,7 @@ interface FormData {
   start_time: string;
   end_time: string;
   notes: string;
-  visibility_type: 'ALL' | 'SELECTED' | 'SELF';
+  visibility_type: 'ALL' | 'SELECTED' | 'SELF' | null;
   visible_to_user_ids: number[];
 }
 
@@ -92,7 +92,8 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
       start_time: normalizeTimeValue(event.start_time),
       end_time: normalizeTimeValue(event.end_time),
       notes: event.notes || '',
-      visibility_type: event.visibility_type || 'ALL',
+      // Map SELF → null so no radio is pre-selected (empty = practitioner-owned)
+      visibility_type: event.visibility_type === 'SELF' ? null : (event.visibility_type || 'ALL'),
       visible_to_user_ids: event.visible_to_user_ids || [],
     };
   };
@@ -108,7 +109,8 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
         start_time: normalizeTimeValue(event.start_time),
         end_time: normalizeTimeValue(event.end_time),
         notes: event.notes || '',
-        visibility_type: event.visibility_type || 'ALL',
+        // Map SELF → null so no radio is pre-selected (empty = practitioner-owned)
+        visibility_type: event.visibility_type === 'SELF' ? null : (event.visibility_type || 'ALL'),
         visible_to_user_ids: event.visible_to_user_ids || [],
       });
       setIsEditing(false);
@@ -167,11 +169,11 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
         start_time: formData.start_time,
         end_time: formData.end_time,
         notes: formData.notes,
-        visibility_type: formData.visibility_type,
+        // null (no selection) → SELF (practitioner-owned)
+        visibility_type: formData.visibility_type ?? 'SELF',
       };
 
-      // Only include visible_to_user_ids if visibility_type is SELECTED
-      if (formData.visibility_type === 'SELECTED') {
+      if ((formData.visibility_type ?? 'SELF') === 'SELECTED') {
         payload.visible_to_user_ids = formData.visible_to_user_ids;
       }
 
@@ -422,6 +424,11 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                   User Selection
                 </h3>
 
+                {/* Helper text */}
+                <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
+                  Leave User Selection empty to create a practitioner-specific block out.
+                </div>
+
                 {/* Visibility Controls */}
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-gray-700">
@@ -437,7 +444,7 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                         value="ALL"
                         checked={formData.visibility_type === 'ALL'}
                         onChange={() => {
-                          setFormData(prev => ({ ...prev, visibility_type: 'ALL' as const }));
+                          setFormData(prev => ({ ...prev, visibility_type: 'ALL' as const, visible_to_user_ids: [] }));
                           if (errors.visible_to_user_ids) {
                             setErrors(prev => ({ ...prev, visible_to_user_ids: '' }));
                           }
@@ -473,35 +480,6 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
                           Only specific users can see this block event
-                        </p>
-                      </div>
-                    </label>
-
-                    <label className="flex items-start gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer hover:border-purple-200 hover:bg-purple-50 transition-colors">
-                      <input
-                        type="radio"
-                        name="visibility_type"
-                        value="SELF"
-                        checked={formData.visibility_type === 'SELF'}
-                        onChange={() => {
-                          setFormData(prev => ({ 
-                            ...prev, 
-                            visibility_type: 'SELF' as const,
-                            visible_to_user_ids: [] // Clear selected users
-                          }));
-                          if (errors.visible_to_user_ids) {
-                            setErrors(prev => ({ ...prev, visible_to_user_ids: '' }));
-                          }
-                        }}
-                        className="mt-0.5 w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-gray-600" />
-                          <span className="text-sm font-medium text-gray-900">Myself Only</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Only you can see this block event (private)
                         </p>
                       </div>
                     </label>
@@ -659,7 +637,7 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                           {event.visibility_type === 'ALL' 
                             ? 'All Users' 
                             : event.visibility_type === 'SELF'
-                            ? 'Myself Only'
+                            ? 'Practitioner Only'
                             : `Selected Users (${event.visible_to_user_names?.length || 0})`
                           }
                         </p>
@@ -670,7 +648,7 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                           ${event.visibility_type === 'SELF' ? 'bg-purple-100 text-purple-700' : ''}
                           ${event.visibility_type === 'SELECTED' ? 'bg-amber-100 text-amber-700' : ''}
                         `}>
-                          {event.visibility_type === 'SELF' && '👤 Private'}
+                          {event.visibility_type === 'SELF' && '🔒 Practitioner'}
                           {event.visibility_type === 'ALL' && '👥 Public'}
                           {event.visibility_type === 'SELECTED' && `👥 ${event.visible_to_user_names?.length || 0}`}
                         </span>

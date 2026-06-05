@@ -17,7 +17,12 @@ export const useStaffManagement = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Re-fetch whenever another admin changes a user's roles (WS-driven)
-  const permissionsVersion = useAuthStore(s => s.permissionsVersion);
+  const permissionsVersion   = useAuthStore(s => s.permissionsVersion);
+  // Needed to detect when the logged-in user is editing their own account
+  const currentUser          = useAuthStore(s => s.user);
+  // Refreshes the Zustand user object from /auth/me/ so role + practitioner_id
+  // changes are reflected immediately in Diary/Calendar without a logout cycle.
+  const refreshPermissions   = useAuthStore(s => s.refreshPermissions);
 
   // Invalidating ['practitioners'] causes Diary/Calendar to refetch with fresh
   // branch data whenever a staff member's branch or role is changed.
@@ -77,6 +82,15 @@ export const useStaffManagement = () => {
       // Invalidate practitioners so Diary/Calendar refetch with the updated
       // branch assignment — prevents stale branch scope in scheduling views.
       queryClient.invalidateQueries({ queryKey: ['practitioners'] });
+      // If the logged-in user just updated their own account (e.g. gained or
+      // lost the PRACTITIONER role), refresh the Zustand auth store so that
+      // Diary.tsx immediately sees the new roles[] and practitioner_id without
+      // requiring a logout/login cycle.  Without this, isPractitioner stays
+      // false until the next page load and the user never appears in the
+      // practitioner filter / duty-schedule overlay.
+      if (id === currentUser?.id) {
+        await refreshPermissions();
+      }
       toast.success('Staff member updated successfully!');
       return updated;
     } catch (err: any) {

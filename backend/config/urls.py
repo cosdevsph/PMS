@@ -11,6 +11,7 @@ from apps.clinics.views import ClinicViewSet, PractitionerViewSet, LocationViewS
 from apps.appointments.views import AppointmentViewSet, PractitionerScheduleViewSet, AppointmentReminderViewSet, BlockAppointmentViewSet, CalendarNoteViewSet, PublicRebookingLinkView, PublicAppointmentConfirmView
 from apps.records.views import ClinicalNoteViewSet, NoteTemplateViewSet, OutcomeMeasureViewSet, AttachmentViewSet
 from apps.billing.views import (
+    AgeingDebtEntryViewSet,
     InvoiceViewSet, InvoiceItemViewSet, PaymentViewSet,
     ServiceViewSet, InvoiceBatchViewSet, AppointmentPrintViewSet,
 )
@@ -61,6 +62,7 @@ router.register(r'outcome-measures', OutcomeMeasureViewSet, basename='outcome-me
 router.register(r'attachments',      AttachmentViewSet,     basename='attachments')
 
 # Billing
+router.register(r'ageing-debt-entries', AgeingDebtEntryViewSet, basename='ageing-debt-entries')
 router.register(r'invoices',             InvoiceViewSet,          basename='invoices')
 router.register(r'invoice-items',        InvoiceItemViewSet,      basename='invoice-items')
 router.register(r'payments',             PaymentViewSet,          basename='payments')

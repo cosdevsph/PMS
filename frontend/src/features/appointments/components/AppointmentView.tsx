@@ -254,6 +254,7 @@ const ClinicalCaseWorkspace = React.forwardRef<
     onDirtyChange:        (dirty: boolean) => void;
   }
 >(({ appointment, patientCases, practitioners, loadingPractitioners, onCasesChanged, onDirtyChange }, ref) => {
+  const queryClient = useQueryClient();
   const [selectedCaseId,  setSelectedCaseId]  = useState<string>(patientCases[0]?.id ? String(patientCases[0].id) : '');
   const [editPayer,       setEditPayer]        = useState<string>(patientCases[0]?.payer ?? '');
   const [editStatus,      setEditStatus]       = useState<PatientCaseStatus>(patientCases[0]?.status ?? 'OPEN');
@@ -335,6 +336,7 @@ const ClinicalCaseWorkspace = React.forwardRef<
       toast.success('Case created');
       setShowCreateModal(false);
       setSelectedCaseId(String(created.id));
+      queryClient.invalidateQueries({ queryKey: ['patient-cases', appointment.patient] });
       onCasesChanged();
     });
   };
@@ -355,6 +357,7 @@ const ClinicalCaseWorkspace = React.forwardRef<
       setEditStatus(data.status);
       toast.success('Case updated');
       setShowEditModal(false);
+      queryClient.invalidateQueries({ queryKey: ['patient-cases', appointment.patient] });
       onCasesChanged();
     });
   };
@@ -544,7 +547,7 @@ const InlineAppointmentCard = React.forwardRef<
   { save(): Promise<void> },
   {
     appointment:          Appointment;
-    practitioners:        { id: number | string; name: string; specialization: string | null; role?: string; roles?: string[] }[];
+    practitioners:        { id: number | string; name: string; specialization: string | null; role?: string; roles?: string[]; discipline?: string | null }[];
     loadingPractitioners: boolean;
     isTerminal:           boolean;
     onSaved:              (updated: Appointment) => void;
@@ -552,9 +555,18 @@ const InlineAppointmentCard = React.forwardRef<
     onDirtyChange:        (dirty: boolean) => void;
   }
 >(({ appointment, practitioners, loadingPractitioners, isTerminal, onSaved, queryClient, onDirtyChange }, ref) => {
-  const { services, loading: loadingServices } = useAppointmentServices();
   const [editService,      setEditService]      = useState<number | ''>(appointment.service ?? '');
   const [editPractitioner, setEditPractitioner] = useState<number | ''>(appointment.practitioner ?? '');
+
+  // Derive the currently-selected practitioner's discipline for service filtering
+  const selectedPractitionerDiscipline = editPractitioner !== ''
+    ? (practitioners.find(p => String(p.id) === String(editPractitioner))?.discipline ?? null)
+    : null;
+
+  const { services, loading: loadingServices } = useAppointmentServices(
+    selectedPractitionerDiscipline ? { discipline: selectedPractitionerDiscipline } : undefined
+  );
+
   const [editStartTime,    setEditStartTime]    = useState(appointment.start_time.slice(0, 5));
   const [editEndTime,      setEditEndTime]      = useState(appointment.end_time.slice(0, 5));
   const [editNotes,        setEditNotes]        = useState(appointment.notes || '');
@@ -568,6 +580,16 @@ const InlineAppointmentCard = React.forwardRef<
     setEditNotes(appointment.notes || '');
     setSaveError(null);
   }, [appointment.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When the practitioner changes and their discipline no longer covers the
+  // currently-selected service, clear the selection to avoid an invalid state.
+  useEffect(() => {
+    if (editService === '' || services.length === 0) return;
+    const stillValid = services.some(s => s.id === Number(editService));
+    if (!stillValid) {
+      setEditService('');
+    }
+  }, [services]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const computeDuration = (start: string, end: string): number => {
@@ -1201,10 +1223,13 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
       lastAppointmentIdRef.current = null;
       return;
     }
-    if (initialAppointment.id !== lastAppointmentIdRef.current) {
-      setAppointment(initialAppointment);
-      lastAppointmentIdRef.current = initialAppointment.id;
-    }
+    // Always sync the latest initialAppointment into local state.
+    // The previous guard (id !== lastId) blocked updates when the SAME appointment's
+    // fields changed (e.g. arrival_status: DNA → ARRIVED after onUpdated), causing
+    // the modal to show stale data. We now accept all updates unconditionally so
+    // the Status tab, badges, and DNA banner always reflect the current backend value.
+    setAppointment(initialAppointment);
+    lastAppointmentIdRef.current = initialAppointment.id;
   }, [initialAppointment]);
 
   const {
@@ -1260,7 +1285,8 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
 
   if (!isOpen || !appointment) return null;
 
-  const statusColors  = APPOINTMENT_STATUS_COLORS[appointment.status];
+  const statusColors  = APPOINTMENT_STATUS_COLORS[appointment.status]
+    ?? APPOINTMENT_STATUS_COLORS['CANCELLED']; // safe fallback for any unknown status
 
   const typeLabel = appointment.service_name
     ?? APPOINTMENT_TYPE_LABELS[appointment.appointment_type]
@@ -1272,6 +1298,7 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
   const formattedTime = `${fmt12(appointment.start_time)} - ${fmt12(appointment.end_time)}`;
   const isCancelled   = appointment.status === 'CANCELLED';
   const isCompleted   = appointment.status === 'COMPLETED';
+  const isDNA         = appointment.arrival_status === 'DNA' || appointment.status === 'DNA';
   const isTerminal    = isCancelled || isCompleted;
 
 const caseMetrics: Record<string, { noteCount: number; lastUpdated: string }> = {};
@@ -1858,21 +1885,30 @@ const caseMetrics: Record<string, { noteCount: number; lastUpdated: string }> = 
                         value={appointment.arrival_status || 'NO_STATUS'}
                         onChange={async (e) => {
                           const newStatus = e.target.value as 'NO_STATUS' | 'ARRIVED' | 'DNA';
+                          // Optimistic UI: immediately show the new selection in the dropdown
+                          // so there's no visual lag while the API call is in flight.
                           try {
-                            const { editAppointment } = await import('@/features/appointments/appointment.api');
-                            const updated = await editAppointment(appointment.id, { arrival_status: newStatus });
+                            const updated = await apiEditAppointment(appointment.id, { arrival_status: newStatus });
+                            // 1. Update local AppointmentView state so badge, banner, and
+                            //    DNA section reflect the new value immediately.
                             setAppointment(updated);
+                            // 2. Propagate to Calendar's updateAppointmentInState so every
+                            //    card (Day/Week/Month) re-renders with the correct color.
                             onUpdated?.(updated);
-                            // Invalidate today's arrivals to refresh the list in real-time
-                            // Use exact key matching to ensure proper invalidation
+                            // 3. Invalidate React-Query caches so any query-based consumers
+                            //    (arrivals list, appointment detail queries) refetch fresh data.
                             queryClient.invalidateQueries({ queryKey: ['today-arrivals'] });
-                            
-                            // Show success notification
-                            const statusLabel = newStatus === 'ARRIVED' ? 'Arrived' : newStatus === 'DNA' ? 'Did Not Arrive' : 'No Status';
-                            toast.success(`Appointment status successfully changed to ${statusLabel}`);
+                            // Broad invalidation: covers any cached appointment list that may
+                            // have been fetched via useQuery (e.g. patient appointment history).
+                            queryClient.invalidateQueries({ queryKey: ['appointments'] });
+
+                            const statusLabel = newStatus === 'ARRIVED' ? 'Arrived'
+                              : newStatus === 'DNA' ? 'Did Not Arrive'
+                              : 'No Status';
+                            toast.success(`Arrival status updated → ${statusLabel}`);
                           } catch (err) {
                             console.error('Failed to update arrival status:', err);
-                            toast.error('Failed to update arrival status');
+                            toast.error('Failed to update arrival status. Please try again.');
                           }
                         }}
                         className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -1904,6 +1940,35 @@ const caseMetrics: Record<string, { noteCount: number; lastUpdated: string }> = 
                     )}
                   </div>
                 </div>
+                {/* ── DNA Banner ── */}
+                {isDNA && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                      <p className="text-sm font-semibold text-red-700">Did Not Arrive (DNA)</p>
+                    </div>
+                    <p className="text-xs text-red-600 pl-6">
+                      This appointment was marked as Did Not Arrive.
+                      The calendar block and diary view are displayed in red.
+                    </p>
+                    {appointment.dna_followup_sent ? (
+                      <div className="flex items-center gap-1.5 pl-6">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
+                        <p className="text-xs text-green-700 font-medium">
+                          Reschedule notification sent to patient
+                          {appointment.dna_followup_sent_at
+                            ? ` on ${format(new Date(appointment.dna_followup_sent_at), 'MMM d, yyyy h:mm a')}`
+                            : ''}.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 pl-6">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-400" />
+                        <p className="text-xs text-gray-500">No follow-up notification sent.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {isCancelled && (
                   <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
                     <div className="flex items-center gap-2">

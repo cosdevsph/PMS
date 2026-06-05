@@ -106,7 +106,25 @@ export const Diary: React.FC = () => {
         return p.role === 'STAFF' && maybeUserId === user?.id;
       });
     }
-    if (!own) return;
+    if (!own) {
+      // Own practitioner record no longer exists in the list — either the
+      // PRACTITIONER role was removed or the profile was soft-deleted.
+      // Reset all own-practitioner cached state so the UI stops treating
+      // this user as a practitioner (availability overlay, "My Schedule"
+      // label, compare-mode eligibility, etc.).
+      if (cachedOwnId != null) {
+        setCachedOwnAvailability(null);
+        setCachedOwnBranchId(null);
+        setCachedOwnId(null);
+        hasAutoSelectedBranch.current = false;
+        // If the calendar was filtering on our (now-removed) practitioner
+        // id, clear that filter so no stale schedule is shown.
+        setSelectedPractitioner(prev =>
+          prev === cachedOwnId ? null : prev
+        );
+      }
+      return;
+    }
 
     if (own.availability) setCachedOwnAvailability(own.availability);
     if (cachedOwnId == null) setCachedOwnId(own.id);
@@ -140,6 +158,29 @@ export const Diary: React.FC = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPractitioner, isStaff, user?.practitioner_id, user?.id, practitioners]);
+
+  // ── Stale-selection guard ──────────────────────────────────────────────────
+  // After every practitioners list change (e.g. post-refetch following a role
+  // removal), check whether the currently selected practitioner is still in the
+  // list.  If they've been removed (PRACTITIONER role revoked) clear the filter
+  // immediately so the calendar doesn't keep rendering stale duty-hour shading.
+  //
+  // IMPORTANT: exempt the logged-in practitioner's own ID (cachedOwnId) from
+  // being cleared here.  When a branch tab is selected, usePractitioners refetches
+  // for that branch and the own practitioner may temporarily be absent from the
+  // list (e.g. Admin+Practitioner with no branch, or slow network).  The main
+  // useEffect above will always restore the correct selection; clearing it here
+  // causes a race that leaves the filter stuck on "Show All".
+  useEffect(() => {
+    if (selectedPractitioner == null) return;
+    // Never auto-clear the logged-in practitioner's own entry — the primary
+    // init effect owns that state and will correct it if needed.
+    if (cachedOwnId != null && selectedPractitioner === cachedOwnId) return;
+    const stillPresent = practitioners.some(p => p.id === selectedPractitioner);
+    if (!stillPresent) {
+      setSelectedPractitioner(null);
+    }
+  }, [practitioners, selectedPractitioner, cachedOwnId]);
 
   // True when the currently selected branch tab is the user's "own" clinic:
   // - Branch-assigned practitioner/staff: their home branch tab is active.
@@ -252,9 +293,11 @@ export const Diary: React.FC = () => {
       setView('day');
       // Entering Day View from mini-calendar: clear practitioner filter so
       // divided columns are the primary display on a specific branch.
-      if (selectedClinicBranch !== null) setSelectedPractitioner(null);
+      // Exception: preserve the logged-in practitioner's own filter — they
+      // always view their own schedule regardless of Day View split mode.
+      if (selectedClinicBranch !== null && !cachedOwnId) setSelectedPractitioner(null);
     }
-  }, [view, selectedClinicBranch]);
+  }, [view, selectedClinicBranch, cachedOwnId]);
 
   const handlePractitionerSelect = (practitionerId: number | string | null) => {
     setSelectedPractitioner(practitionerId);
@@ -388,6 +431,24 @@ export const Diary: React.FC = () => {
     setAppointmentRefreshKey(prev => prev + 1);
   }, []);
 
+  // ── Force Calendar refetch when appointment count changes (add/remove) ──────
+  // Note: arrival_status changes are handled directly in Calendar.tsx's onUpdated
+  // callback, which calls refetch() immediately when arrival_status differs.
+  // This effect now only triggers a refetch for count changes (added/deleted
+  // appointments), avoiding a double-refetch race condition for status updates.
+  const prevCalendarAppointmentsRef = useRef<Appointment[]>([]);
+  useEffect(() => {
+    const prev = prevCalendarAppointmentsRef.current;
+    // Only refetch when the count changes (an appointment was added or removed).
+    // Status/color changes are handled by Calendar's onUpdated handler directly.
+    const countChanged = calendarAppointments.length !== prev.length;
+
+    if (countChanged && prev.length > 0) {
+      setAppointmentRefreshKey((k) => k + 1);
+    }
+    prevCalendarAppointmentsRef.current = calendarAppointments;
+  }, [calendarAppointments]);
+
   // ── Slot action (double-click or drag-select) → SelectOptionModal ──────
   // Available to all users: Admin, Practitioner, Staff
   const handleSlotAction = useCallback((slot: {
@@ -440,6 +501,30 @@ export const Diary: React.FC = () => {
       toast.error(detail ?? 'Failed to rebook appointment');
     }
   };
+
+  // ── Effective Practitioner ID for Week View ──────────────────────────────────
+  // When a PRACTITIONER is logged in and no filter is applied in Week View,
+  // ownership should automatically default to the logged-in practitioner rather
+  // than falling back to branch-wide (null).  Admin and Day View are unaffected.
+  //
+  //   Priority 1: selectedPractitioner (explicit filter dropdown choice)
+  //   Priority 2: cachedOwnId          (logged-in practitioner, Week View only)
+  //   Fallback:   null                 (branch-wide — Admin / Staff / no prac)
+  const loggedInPractitionerNumericId: number | null =
+    isPractitioner && typeof cachedOwnId === 'number' ? cachedOwnId : null;
+
+  const effectivePractitionerId: number | null = useMemo(() => {
+    // If an explicit filter is active, respect it regardless of view.
+    if (selectedPractitioner != null) {
+      return typeof selectedPractitioner === 'number' ? selectedPractitioner : null;
+    }
+    // In Week View, a PRACTITIONER with no filter selected defaults to themselves.
+    if (view === 'week' && loggedInPractitionerNumericId != null) {
+      return loggedInPractitionerNumericId;
+    }
+    // Admin / Staff / Month / Day View — keep null (branch-wide or slot-column-based).
+    return null;
+  }, [selectedPractitioner, view, loggedInPractitionerNumericId]);
 
   const calendarCompareMode = useMemo(
     () => (isAdmin || isPractitioner || isStaff) && compareMode && !isDuplicateComparePractitioner && (view === 'day' || view === 'week'),
@@ -632,8 +717,9 @@ export const Diary: React.FC = () => {
                           <Filter className="w-4 h-4" />
                           {loadingPractitioners
                             ? 'Loading...'
-                            : selectedPractitionerName
-                              || ((isPractitioner || isStaff) && isOwnAssignedClinic ? 'My Schedule' : 'All Practitioners')
+                            : selectedPractitioner
+                              ? practitioners.find(p => p.id === selectedPractitioner)?.name || 'Practitioner'
+                              : 'Show All'
                           }
                         </button>
 
@@ -650,40 +736,48 @@ export const Diary: React.FC = () => {
                                 </div>
                               )}
 
-                              {/* Default option: "My Schedule" for practitioners in own clinic,
-                                  "All in [Branch]" or "All Practitioners" otherwise */}
+                              {/* Show All option — displays all practitioners in current branch */}
                               <button
-                                onClick={() => handlePractitionerSelect(
-                                  (isPractitioner || isStaff) && isOwnAssignedClinic && cachedOwnId
-                                    ? cachedOwnId
-                                    : null
-                                )}
+                                onClick={() => handlePractitionerSelect(null)}
                                 className={`
                                   w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors
-                                  ${(isPractitioner || isStaff) && isOwnAssignedClinic
-                                    ? selectedPractitioner === cachedOwnId ? 'bg-care-blue/10 text-care-blue font-semibold' : 'text-gray-700'
-                                    : selectedPractitioner === null ? 'bg-care-blue/10 text-care-blue font-semibold' : 'text-gray-700'
+                                  ${selectedPractitioner === null
+                                    ? 'bg-care-blue/10 text-care-blue font-semibold'
+                                    : 'text-gray-700'
                                   }
                                 `}
                               >
                                 <div className="flex items-center justify-between">
-                                  <span>
-                                    {(isPractitioner || isStaff) && isOwnAssignedClinic
-                                      ? 'My Schedule'
-                                      : selectedClinicBranch
-                                        ? `All in ${selectedBranchName}`
-                                        : 'All Practitioners'
-                                    }
-                                  </span>
-                                  {((isPractitioner || isStaff) && isOwnAssignedClinic
-                                    ? selectedPractitioner === cachedOwnId
-                                    : selectedPractitioner === null) && (
+                                  <span>Show All</span>
+                                  {selectedPractitioner === null && (
                                     <span className="text-care-blue text-base">✓</span>
                                   )}
                                 </div>
                               </button>
 
-                              <div className="border-t border-gray-200" />
+                              {/* My Schedule option — for practitioners viewing their own clinic */}
+                              {(isPractitioner || isStaff) && isOwnAssignedClinic && cachedOwnId && (
+                                <>
+                                  <div className="border-t border-gray-200" />
+                                  <button
+                                    onClick={() => handlePractitionerSelect(cachedOwnId)}
+                                    className={`
+                                      w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors
+                                      ${selectedPractitioner === cachedOwnId
+                                        ? 'bg-care-blue/10 text-care-blue font-semibold'
+                                        : 'text-gray-700'
+                                      }
+                                    `}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span>My Schedule</span>
+                                      {selectedPractitioner === cachedOwnId && (
+                                        <span className="text-care-blue text-base">✓</span>
+                                      )}
+                                    </div>
+                                  </button>
+                                </>
+                              )}
 
                               {practitionerOptions.length === 0 ? (
                                 <div className="px-4 py-6 text-sm text-gray-500 text-center">
@@ -836,34 +930,18 @@ export const Diary: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Clear single filter:
-                        - Day View + specific branch: always show 'Show All' → restores divided columns
-                        - Other views: hide when practitioner is viewing their own default schedule */}
-                    {!compareMode && selectedPractitioner !== null &&
-                      (
-                        // Day View + specific branch: always offer escape back to divided columns
-                        (view === 'day' && selectedClinicBranch !== null) ||
-                        // Week / Month: suppress when already on own default schedule
-                        !((isPractitioner || isStaff) && isOwnAssignedClinic && selectedPractitioner === cachedOwnId)
-                      ) && (
+                    {/* Clear/Show All button outside dropdown:
+                        - Day View + specific branch: show 'Show All' to restore divided columns
+                        - Week/Month View: hidden since "Show All" is now in dropdown */}
+                    {!compareMode && selectedPractitioner !== null && view === 'day' && selectedClinicBranch !== null && (
                       <button
                         onClick={() => {
-                          if (view === 'day' && selectedClinicBranch !== null) {
-                            // Day View: always clear to null → restores divided practitioner columns
-                            setSelectedPractitioner(null);
-                          } else if ((isPractitioner || isStaff) && isOwnAssignedClinic && cachedOwnId) {
-                            setSelectedPractitioner(cachedOwnId);
-                          } else {
-                            setSelectedPractitioner(null);
-                          }
+                          setSelectedPractitioner(null);
                           setShowFilterDropdown(false);
                         }}
                         className="text-xs text-care-blue hover:text-trust-harbor font-medium"
                       >
-                        {view === 'day' && selectedClinicBranch !== null
-                          ? 'Show All'
-                          : ((isPractitioner || isStaff) && isOwnAssignedClinic ? 'My Schedule' : 'Clear filter')
-                        }
+                        Show All
                       </button>
                     )}
                   </div>
@@ -879,7 +957,10 @@ export const Diary: React.FC = () => {
                         if (v === 'month') handleSetCompareMode(false);
                         // Entering Day View: clear practitioner filter so divided
                         // columns are the primary display on a specific branch.
-                        if (v === 'day' && selectedClinicBranch !== null) setSelectedPractitioner(null);
+                        // Entering Day View: clear practitioner filter to enable split-column
+                        // mode for admins.  Preserve the logged-in practitioner's own filter
+                        // so they always see their own schedule (not the split-column layout).
+                        if (v === 'day' && selectedClinicBranch !== null && !cachedOwnId) setSelectedPractitioner(null);
                       }}
                       className={`
                         px-4 py-2 text-sm font-medium rounded-md transition-all capitalize
@@ -973,9 +1054,19 @@ export const Diary: React.FC = () => {
               selectedSlot={pendingSlot}
               selectedClinicBranchId={selectedClinicBranch}
               defaultPractitionerId={
+                // Priority 1: slot-column practitionerId (Day View split columns)
                 pendingSlot?.practitionerId !== undefined
                   ? pendingSlot.practitionerId
-                  : (typeof selectedPractitioner === 'number' ? selectedPractitioner : null)
+                  // Priority 2: effectivePractitionerId encodes:
+                  //   - explicit filter when active (any view)
+                  //   - logged-in practitioner in Week View (no filter selected)
+                  //   - null otherwise
+                  // Priority 3: loggedInPractitionerNumericId covers Month View and
+                  //   Day View (no split) where effectivePractitionerId is null but
+                  //   the calendar still displays the logged-in practitioner's schedule.
+                  //   null for admins who are not practitioners — their Show All
+                  //   behavior (empty practitioner field) is preserved.
+                  : (effectivePractitionerId ?? loggedInPractitionerNumericId)
               }
             />
 
@@ -1002,7 +1093,12 @@ export const Diary: React.FC = () => {
                   initialTime={pendingSlot ? `${startH}:${startM}` : undefined}
                   initialEndTime={pendingSlot ? `${endH}:${endMm}` : undefined}
                   appointments={calendarAppointments}
-                  practitionerId={pendingSlot?.practitionerId ?? null}
+                  practitionerId={
+                    // Slot-column practitionerId takes first priority (Day View split columns).
+                    // Fall back to effectivePractitionerId which handles Week View
+                    // practitioner-identity-from-logged-in-user when filter is empty.
+                    pendingSlot?.practitionerId ?? effectivePractitionerId
+                  }
                 />
               );
             })()}
@@ -1029,7 +1125,12 @@ export const Diary: React.FC = () => {
                   initialDate={pendingSlot?.date}
                   initialTime={pendingSlot ? `${startH}:${startM}` : undefined}
                   initialEndTime={pendingSlot ? `${endH}:${endMm}` : undefined}
-                  practitionerId={pendingSlot?.practitionerId ?? null}
+                  practitionerId={
+                    // Slot-column practitionerId takes first priority (Day View split columns).
+                    // Fall back to effectivePractitionerId which handles Week View
+                    // practitioner-identity-from-logged-in-user when filter is empty.
+                    pendingSlot?.practitionerId ?? effectivePractitionerId
+                  }
                 />
               );
             })()}

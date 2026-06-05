@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, XCircle, AlertCircle, Layers } from 'lucide-react';
+import { Save, XCircle, AlertTriangle, AlertCircle, Layers } from 'lucide-react';
 import type { Appointment } from '@/types';
 import type { AppointmentEditPayload } from '../appointment.api';
 import { useAppointmentServices } from '../hooks/useAppointmentServices';
@@ -52,7 +52,7 @@ export const AppointmentEditForm: React.FC<AppointmentEditFormProps> = ({
     setNotes(appointment.notes || '');
     setPatientNotes(appointment.patient_notes || '');
     setArrivalStatus(appointment.arrival_status || 'NO_STATUS');
-  }, [appointment.id]);
+  }, [appointment.id, appointment.arrival_status]);
 
   const selectedService = services.find(s => s.id === Number(service));
 
@@ -230,12 +230,22 @@ export const AppointmentEditForm: React.FC<AppointmentEditFormProps> = ({
         <select
           value={arrivalStatus}
           onChange={e => { setArrivalStatus(e.target.value as 'NO_STATUS' | 'ARRIVED' | 'DNA'); onMarkDirty(); }}
-          className={inputBase}
+          className={`${inputBase} ${arrivalStatus === 'DNA' ? 'border-red-400 focus:ring-red-400' : ''}`}
         >
           <option value="NO_STATUS">No Status</option>
           <option value="ARRIVED">Arrived</option>
           <option value="DNA">Did Not Arrive (DNA)</option>
         </select>
+        {arrivalStatus === 'DNA' && (
+          <div className="flex items-start gap-1.5 mt-2 p-2.5 bg-red-50 border border-red-200 rounded-lg">
+            <AlertTriangle className="w-3.5 h-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-red-700">
+              <span className="font-semibold">DNA will be recorded.</span>{' '}
+              Appointment status will change to DNA and a reschedule notification
+              will be sent to the patient (if enabled in clinic settings).
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Actions ── */}

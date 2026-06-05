@@ -371,6 +371,8 @@ export interface CalendarNoteFilters {
   start_date?: string;
   end_date?: string;
   clinic_branch?: number;
+  /** Filter notes to a specific practitioner (matches backend ?practitioner=<id> param). */
+  practitioner?: number;
 }
 
 export const getCalendarNotes = async (
@@ -382,6 +384,7 @@ export const getCalendarNotes = async (
   if (filters?.start_date)    params.append('start_date',    filters.start_date);
   if (filters?.end_date)      params.append('end_date',      filters.end_date);
   if (filters?.clinic_branch) params.append('clinic_branch', String(filters.clinic_branch));
+  if (filters?.practitioner)  params.append('practitioner',  String(filters.practitioner));
 
   const response = await axiosInstance.get<
     CalendarNote[] | { count: number; results: CalendarNote[] }

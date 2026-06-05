@@ -25,7 +25,7 @@ class Patient(TimeStampedModel, SoftDeleteModel):
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
 
-    email       = models.EmailField(blank=True)
+    email       = models.EmailField()  # required — enforced at serializer and model level
     phone       = models.CharField(max_length=15, validators=[validate_ph_phone])
     address     = models.TextField()
     city        = models.CharField(max_length=100)

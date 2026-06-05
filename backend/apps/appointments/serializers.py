@@ -22,7 +22,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     # Include arrival_status and arrival_time in the response
     arrival_status = serializers.CharField(read_only=True)
-    arrival_time = serializers.DateTimeField(read_only=True)
+    arrival_time   = serializers.DateTimeField(read_only=True)
+
+    # ── DNA follow-up tracking ────────────────────────────────────────────────
+    dna_followup_sent    = serializers.BooleanField(read_only=True)
+    dna_followup_sent_at = serializers.DateTimeField(read_only=True, allow_null=True)
 
     # ── Has invoice ───────────────────────────────────────────────────────────
     has_invoice = serializers.SerializerMethodField()
@@ -39,6 +43,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'date', 'start_time', 'end_time', 'duration_minutes',
             'chief_complaint', 'notes', 'patient_notes',
             'reminder_sent', 'reminder_sent_at', 'has_invoice',
+            'dna_followup_sent', 'dna_followup_sent_at',
             'created_by', 'created_by_name',
             'updated_by', 'updated_by_name',
             'cancelled_by', 'cancellation_reason', 'cancelled_at',
@@ -311,6 +316,7 @@ class BlockAppointmentSerializer(serializers.ModelSerializer):
         allow_empty=True
     )
     visible_to_user_names = serializers.SerializerMethodField()
+    participant_practitioner_ids = serializers.SerializerMethodField()
 
     class Meta:
         model = BlockAppointment
@@ -334,17 +340,38 @@ class BlockAppointmentSerializer(serializers.ModelSerializer):
             'visibility_type',
             'visible_to_user_ids',
             'visible_to_user_names',
+            'participant_practitioner_ids',
             'created_at',
             'updated_at',
         ]
         read_only_fields = [
             'id', 'event_type', 'created_by_name', 'modified_by_name',
-            'visible_to_user_names', 'created_at', 'updated_at'
+            'visible_to_user_names', 'participant_practitioner_ids',
+            'created_at', 'updated_at',
         ]
 
     def get_visible_to_user_names(self, obj):
         """Get names of users who can see this block"""
         return [user.get_full_name() for user in obj.visible_to_users.all()]
+
+    def get_participant_practitioner_ids(self, obj):
+        """Map visible_to_users (User IDs) → Practitioner IDs.
+
+        The participant selector works with User IDs but the calendar columns
+        filter by Practitioner IDs.  This bridging field lets the frontend
+        check whether a practitioner column should display a block event
+        because the practitioner's user is in the participant list.
+        """
+        from apps.clinics.models import Practitioner
+        user_ids = obj.visible_to_users.values_list('id', flat=True)
+        if not user_ids:
+            return []
+        return list(
+            Practitioner.objects.filter(
+                user_id__in=user_ids,
+                is_deleted=False,
+            ).values_list('id', flat=True)
+        )
 
     def validate(self, data):
         start_time = data.get('start_time')

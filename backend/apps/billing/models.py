@@ -469,3 +469,147 @@ class InvoicePrintSettings(TimeStampedModel):
             return cls.objects.get(clinic=clinic)
         except cls.DoesNotExist:
             return cls(clinic=clinic)
+
+
+class AgeingDebtEntry(TimeStampedModel, SoftDeleteModel):
+    """
+    Manually created or adjusted ageing debt entries.
+    Provides full debt management capability on top of Invoice records.
+    """
+
+    CATEGORY_CHOICES = [
+        ('CONSULTATION',    'Consultation'),
+        ('TREATMENT',       'Treatment'),
+        ('INVOICE',         'Invoice'),
+        ('INSURANCE',       'Insurance'),
+        ('CORPORATE',       'Corporate Account'),
+        ('OTHER',           'Other'),
+    ]
+
+    STATUS_CHOICES = [
+        ('OPEN',            'Open'),
+        ('PARTIALLY_PAID',  'Partially Paid'),
+        ('PAID',            'Paid'),
+        ('WRITTEN_OFF',     'Written Off'),
+    ]
+
+    BUCKET_CHOICES = [
+        ('CURRENT',  'Current'),
+        ('0_30',     '1-30 Days'),
+        ('31_60',    '31-60 Days'),
+        ('61_90',    '61-90 Days'),
+        ('90_PLUS',  '90+ Days'),
+    ]
+
+    clinic = models.ForeignKey(
+        'clinics.Clinic',
+        on_delete=models.CASCADE,
+        related_name='ageing_debt_entries',
+    )
+
+    patient = models.ForeignKey(
+        'patients.Patient',
+        on_delete=models.CASCADE,
+        related_name='ageing_debt_entries',
+    )
+
+    invoice_number = models.CharField(max_length=50, blank=True, default='')
+    invoice_date   = models.DateField(null=True, blank=True)
+    due_date       = models.DateField(null=True, blank=True)
+
+    total_amount   = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    amount_paid    = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    balance_due    = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    category = models.CharField(
+        max_length=20,
+        choices=CATEGORY_CHOICES,
+        default='INVOICE',
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='OPEN',
+        db_index=True,
+    )
+
+    bucket = models.CharField(
+        max_length=10,
+        choices=BUCKET_CHOICES,
+        default='CURRENT',
+        db_index=True,
+    )
+
+    notes = models.TextField(blank=True, default='')
+
+    created_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_debt_entries',
+    )
+
+    paid_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='paid_debt_entries',
+    )
+
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'ageing_debt_entries'
+        ordering = ['-created_at']
+        indexes  = [
+            models.Index(fields=['clinic', 'status']),
+            models.Index(fields=['patient', 'status']),
+            models.Index(fields=['bucket']),
+            models.Index(fields=['due_date']),
+        ]
+
+    def __str__(self):
+        return f"DebtEntry {self.id} — {self.patient.get_full_name()} — ₱{self.balance_due} ({self.status})"
+
+    def save(self, *args, **kwargs):
+        self.balance_due = max(Decimal(str(self.total_amount or 0)) - Decimal(str(self.amount_paid or 0)), Decimal('0'))
+
+        if self.due_date:
+            from django.utils import timezone
+            today = timezone.now().date()
+            days_overdue = (today - self.due_date).days
+
+            if days_overdue <= 0:
+                self.bucket = 'CURRENT'
+            elif days_overdue <= 30:
+                self.bucket = '0_30'
+            elif days_overdue <= 60:
+                self.bucket = '31_60'
+            elif days_overdue <= 90:
+                self.bucket = '61_90'
+            else:
+                self.bucket = '90_PLUS'
+        else:
+            self.bucket = 'CURRENT'
+
+        if self.balance_due <= 0 and self.amount_paid > 0:
+            self.status = 'PAID'
+        elif self.amount_paid > 0 and self.balance_due > 0:
+            self.status = 'PARTIALLY_PAID'
+
+        super().save(*args, **kwargs)
+
+    def record_payment(self, amount, user=None):
+        """Record a payment against this debt entry."""
+        from decimal import Decimal
+        from django.utils import timezone
+
+        amount = Decimal(str(amount))
+        self.amount_paid = Decimal(str(self.amount_paid or 0)) + amount
+        self.paid_by = user
+        self.paid_at = timezone.now()
+        self.save()
+        return self

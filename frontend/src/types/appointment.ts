@@ -31,6 +31,9 @@ export interface Appointment {
   reminder_sent_at: string | null;
   has_invoice:      boolean; // Whether this appointment has an invoice
 
+  dna_followup_sent:    boolean;
+  dna_followup_sent_at: string | null;
+
   created_by:      number | null;
   created_by_name: string | null;
   updated_by:      number | null;
@@ -106,6 +109,7 @@ export interface BlockAppointment {
   visibility_type: 'ALL' | 'SELECTED' | 'SELF';
   visible_to_user_ids: number[];
   visible_to_user_names: string[];
+  participant_practitioner_ids: number[];
   created_at: string;
   updated_at: string;
 }
@@ -152,12 +156,13 @@ export interface CreateCalendarNoteData {
 
 export const APPOINTMENT_STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   SCHEDULED:   { bg: 'bg-blue-500',   text: 'text-white',   border: 'border-blue-600'   },
-  CONFIRMED:   { bg: 'bg-green-500',  text: 'text-white',  border: 'border-green-600'  },
-  CHECKED_IN:  { bg: 'bg-purple-500', text: 'text-white', border: 'border-purple-600' },
-  IN_PROGRESS: { bg: 'bg-amber-500',  text: 'text-white', border: 'border-amber-600' },
+  CONFIRMED:   { bg: 'bg-green-500',  text: 'text-white',   border: 'border-green-600'  },
+  CHECKED_IN:  { bg: 'bg-purple-500', text: 'text-white',   border: 'border-purple-600' },
+  IN_PROGRESS: { bg: 'bg-amber-500',  text: 'text-white',   border: 'border-amber-600'  },
   COMPLETED:   { bg: 'bg-gray-500',   text: 'text-white',   border: 'border-gray-600'   },
-  CANCELLED:   { bg: 'bg-red-500',    text: 'text-white',    border: 'border-red-600'    },
-  NO_SHOW:     { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600' },
+  CANCELLED:   { bg: 'bg-red-500',    text: 'text-white',   border: 'border-red-600'    },
+  NO_SHOW:     { bg: 'bg-orange-500', text: 'text-white',   border: 'border-orange-600' },
+  DNA:         { bg: 'bg-red-600',    text: 'text-white',   border: 'border-red-700'    },
 };
 
 export const APPOINTMENT_TYPE_LABELS: Record<string, string> = {

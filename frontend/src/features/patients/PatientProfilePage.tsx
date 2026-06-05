@@ -96,6 +96,8 @@ export const PatientProfilePage = () => {
     cases,
     loadingPatient,
     refreshPatient,
+    appointments,
+    patient,
   } = usePatientProfileContext();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
