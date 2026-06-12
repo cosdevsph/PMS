@@ -124,3 +124,13 @@ export const GENDER_OPTIONS: { value: GenderType; label: string }[] = [
   { value: 'Other', label: 'Other' },
   { value: 'Prefer not to say', label: 'Prefer not to say' },
 ];
+
+// ── Practitioner Role Removal Impact ─────────────────────────────────────────
+
+export interface PractitionerRoleImpact {
+  practitioner_id: number | null;
+  future_appointments: number;
+  future_blockouts: number;
+  future_calendar_events: number;
+  has_impact: boolean;
+}

@@ -1491,12 +1491,38 @@ class UserViewSet(viewsets.ModelViewSet):
                     instance.email, request.user.email,
                 )
 
-        elif not has_practitioner and Practitioner.objects.filter(user=instance, is_deleted=False).exists():
-            # PRACTITIONER role removed — soft-delete profile
-            Practitioner.objects.filter(user=instance).update(is_deleted=True)
+        elif not has_practitioner and had_practitioner:
+            # ── PRACTITIONER role removed — run deactivation workflow ─────
+            from apps.accounts.services.practitioner_deactivation import (
+                get_practitioner_removal_impact,
+                execute_practitioner_removal,
+            )
+
+            confirm_removal = request.data.get('confirm_practitioner_removal', False)
+
+            if not confirm_removal:
+                # Return 409 Conflict with impact counts so the frontend can
+                # show a confirmation modal before proceeding.
+                impact = get_practitioner_removal_impact(instance.pk)
+                if impact.get('has_impact'):
+                    return Response(
+                        {
+                            'detail': 'Practitioner role removal requires confirmation.',
+                            'practitioner_removal_required': True,
+                            **impact,
+                        },
+                        status=status.HTTP_409_CONFLICT,
+                    )
+                # No future data to clean — safe to proceed without confirmation
+
+            # Either confirmed or no impact — execute the removal
+            removal_result = execute_practitioner_removal(
+                user_id=instance.pk,
+                performed_by=request.user,
+            )
             logger.info(
-                "Practitioner profile soft-deleted on role change for: %s by %s",
-                instance.email, request.user.email,
+                "Practitioner role removal executed for: %s by %s — %s",
+                instance.email, request.user.email, removal_result,
             )
 
         logger.info(
@@ -1515,6 +1541,43 @@ class UserViewSet(viewsets.ModelViewSet):
             **response_data,
             **({'practitioner_profile_created': True} if practitioner_created else {}),
         })
+
+    @action(
+        detail=True,
+        methods=['get'],
+        url_path='practitioner-role-impact',
+        permission_classes=[IsAuthenticated, IsAdminOrStaffOnly],
+    )
+    def practitioner_role_impact(self, request, pk=None):
+        """
+        GET /users/{id}/practitioner-role-impact/
+
+        Returns counts of future operational data (appointments, block-outs,
+        calendar events) that would be deleted if the PRACTITIONER role is
+        removed from this user.
+
+        Used by the frontend to populate the confirmation modal before the
+        admin commits to the role change.
+        """
+        target = self.get_object()
+
+        # Only meaningful if the user currently has the PRACTITIONER role
+        if 'PRACTITIONER' not in target.get_effective_roles():
+            return Response(
+                {
+                    'practitioner_id': None,
+                    'future_appointments': 0,
+                    'future_blockouts': 0,
+                    'future_calendar_events': 0,
+                    'has_impact': False,
+                }
+            )
+
+        from apps.accounts.services.practitioner_deactivation import (
+            get_practitioner_removal_impact,
+        )
+        impact = get_practitioner_removal_impact(target.pk)
+        return Response(impact)
 
     def destroy(self, request, *args, **kwargs):
         """Soft delete user — with Owner protection."""
@@ -1733,8 +1796,31 @@ class UserViewSet(viewsets.ModelViewSet):
                 logger.info('Practitioner profile created for %s via roles update', target.email)
 
             elif 'PRACTITIONER' not in new_roles and 'PRACTITIONER' in old_roles:
-                Practitioner.objects.filter(user=target).update(is_deleted=True)
-                logger.info('Practitioner profile soft-deleted for %s via roles update', target.email)
+                # ── PRACTITIONER removal via roles endpoint ───────────────
+                from apps.accounts.services.practitioner_deactivation import (
+                    get_practitioner_removal_impact,
+                    execute_practitioner_removal,
+                )
+
+                confirm_removal = request.data.get('confirm_practitioner_removal', False)
+
+                if not confirm_removal:
+                    impact = get_practitioner_removal_impact(target.pk)
+                    if impact.get('has_impact'):
+                        return Response(
+                            {
+                                'detail': 'Practitioner role removal requires confirmation.',
+                                'practitioner_removal_required': True,
+                                **impact,
+                            },
+                            status=status.HTTP_409_CONFLICT,
+                        )
+
+                execute_practitioner_removal(
+                    user_id=target.pk,
+                    performed_by=request.user,
+                )
+                logger.info('Practitioner deactivation executed for %s via roles update', target.email)
 
             # ── Audit log ─────────────────────────────────────────────────
             added   = set(new_roles) - set(old_roles)

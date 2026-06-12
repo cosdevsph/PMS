@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2, Check, ShieldCheck, Stethoscope, Users, DollarSign, Crown, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { CreateStaffData, StaffFormErrors, StaffMember } from '../../types/staff.types';
+import type { CreateStaffData, StaffFormErrors, StaffMember, PractitionerRoleImpact } from '../../types/staff.types';
 import type { DutySchedule, DutyDay } from '@/features/clinics/clinic.api';
 import { TITLE_OPTIONS, GENDER_OPTIONS } from '../../types/staff.types';
 import { useDisciplineOptions } from '../../hooks/useDisciplineOptions';
@@ -9,6 +9,9 @@ import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';
 import { formatPHPhone, normalizePHPhone } from '@/utils/phoneFormatter';
 import { validateEmailDetailed, validatePHPhoneDetailed } from '@/utils/validation';
 import { usePermissions } from '@/hooks/usePermissions';
+import { PractitionerRemovalModal } from './PractitionerRemovalModal';
+import { getPractitionerRoleImpact } from '../../services/StaffService';
+import { emitPractitionerRemoved } from '@/events/practitionerEvents';
 
 // ── Clinical Role Cards ──────────────────────────────────────────────────────
 
@@ -192,6 +195,15 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   const [errors, setErrors]     = useState<StaffFormErrors>({});
   const [loading, setLoading]   = useState(false);
 
+  // ── Practitioner removal confirmation state ────────────────────────────────
+  // When the admin removes the PRACTITIONER role we intercept the submit,
+  // fetch the impact counts, and surface a confirmation modal.  The pending
+  // payload is stored here so we can re-fire it once confirmed.
+  const [showRemovalModal, setShowRemovalModal]   = useState(false);
+  const [removalImpact, setRemovalImpact]         = useState<PractitionerRoleImpact | null>(null);
+  const [removalLoading, setRemovalLoading]       = useState(false);
+  const pendingPayloadRef = useRef<(CreateStaffData & { confirm_practitioner_removal?: boolean }) | null>(null);
+
   // ── Discipline create-inline state ─────────────────────────────────────────
   const [showCreateDiscipline, setShowCreateDiscipline] = useState(false);
   const [newDisciplineLabel, setNewDisciplineLabel]     = useState('');
@@ -308,30 +320,12 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) {
-      toast.error('Please fix the highlighted errors before submitting.', { id: 'staff-validation' });
-      return;
-    }
-    setLoading(true);
-    setErrors({});
+  // ── Core submit helper (shared by direct submit & confirmed removal) ────────
+  const executeSubmit = async (
+    payload: CreateStaffData & { confirm_practitioner_removal?: boolean }
+  ) => {
     try {
-      // Rebuild the full roles array: preserve non-clinical roles that aren't
-      // selectable in the card UI (none currently), then add all selected
-      // clinical roles. ADMIN is now a selectable card so it flows through
-      // the standard clinical-roles path.
-      const preservedRoles = originalRolesRef.current.filter(
-        r => !CLINICAL_ROLE_VALUES.includes(r as ClinicalRoleValue)
-      );
-      const finalRoles = [...preservedRoles, ...(formData.roles ?? ['STAFF'])];
-
-      const payload: CreateStaffData = {
-        ...formData,
-        phone: normalizePHPhone(formData.phone),
-        roles: finalRoles as CreateStaffData['roles'],
-      };
-      await onSubmit(payload);
+      await onSubmit(payload as CreateStaffData);
       handleClose();
     } catch (err: any) {
       const data = err?.response?.data as Record<string, string | string[]> | undefined;
@@ -356,9 +350,101 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
         setErrors({ general: msg });
         toast.error(msg);
       }
+      throw err; // re-throw so callers can reset loading state
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) {
+      toast.error('Please fix the highlighted errors before submitting.', { id: 'staff-validation' });
+      return;
+    }
+
+    // Rebuild the full roles array: preserve non-clinical roles that aren't
+    // selectable in the card UI (none currently), then add all selected
+    // clinical roles. ADMIN is now a selectable card so it flows through
+    // the standard clinical-roles path.
+    const preservedRoles = originalRolesRef.current.filter(
+      r => !CLINICAL_ROLE_VALUES.includes(r as ClinicalRoleValue)
+    );
+    const finalRoles = [...preservedRoles, ...(formData.roles ?? ['STAFF'])];
+
+    const payload: CreateStaffData & { confirm_practitioner_removal?: boolean } = {
+      ...formData,
+      phone: normalizePHPhone(formData.phone),
+      roles: finalRoles as CreateStaffData['roles'],
+    };
+
+    // ── Detect PRACTITIONER role removal ─────────────────────────────────────
+    // If we are in edit mode and PRACTITIONER was in the original roles but
+    // is NOT in the new roles, we must confirm before submitting because the
+    // backend will delete future scheduling data.
+    const hadPractitioner  = originalRolesRef.current.includes('PRACTITIONER');
+    const hasPractitioner  = finalRoles.includes('PRACTITIONER');
+    const removingPractitioner = isEditMode && hadPractitioner && !hasPractitioner;
+
+    if (removingPractitioner && editingStaff) {
+      setLoading(true);
+      try {
+        const impact = await getPractitionerRoleImpact(editingStaff.id);
+        if (impact.has_impact) {
+          // Store payload for the confirmed re-submit and surface the modal
+          pendingPayloadRef.current = payload;
+          setRemovalImpact(impact);
+          setShowRemovalModal(true);
+          return; // don't submit yet — wait for confirmation
+        }
+        // No future data to clean up — proceed immediately (no modal needed)
+        await executeSubmit(payload);
+      } catch (err: any) {
+        // If the impact check itself fails, fall through to a normal submit
+        // attempt so the user isn't silently blocked.
+        console.warn('[CreateStaffAccountModal] impact check failed, proceeding:', err);
+        await executeSubmit(payload);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Normal (non-practitioner-removal) submit path
+    setLoading(true);
+    setErrors({});
+    try {
+      await executeSubmit(payload);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Called when the admin confirms in the PractitionerRemovalModal
+  const handleRemovalConfirm = async () => {
+    const payload = pendingPayloadRef.current;
+    if (!payload) return;
+    setRemovalLoading(true);
+    try {
+      await executeSubmit({ ...payload, confirm_practitioner_removal: true });
+      setShowRemovalModal(false);
+      pendingPayloadRef.current = null;
+
+      // Notify Calendar / Diary to immediately refetch all scheduling data.
+      // This clears appointments, block-outs and notes for the former
+      // practitioner from the live calendar view without a page reload.
+      const userId = editingStaff?.id ?? null;
+      const practitionerId = removalImpact?.practitioner_id ?? null;
+      if (userId !== null) {
+        emitPractitionerRemoved(userId, practitionerId);
+      }
+    } finally {
+      setRemovalLoading(false);
+    }
+  };
+
+  const handleRemovalCancel = () => {
+    setShowRemovalModal(false);
+    pendingPayloadRef.current = null;
+    setRemovalImpact(null);
   };
 
   const handleClose = () => {
@@ -435,6 +521,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   if (!isOpen) return null;
 
   return (
+    <>
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div
@@ -1002,5 +1089,22 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
         </div>
       </div>
     </div>
+
+      {/* ── Practitioner Removal Confirmation Modal ───────────────────────── */}
+      {removalImpact && (
+        <PractitionerRemovalModal
+          isOpen={showRemovalModal}
+          onClose={handleRemovalCancel}
+          onConfirm={handleRemovalConfirm}
+          loading={removalLoading}
+          impact={removalImpact}
+          practitionerName={
+            editingStaff
+              ? `${editingStaff.first_name} ${editingStaff.last_name}`.trim()
+              : ''
+          }
+        />
+      )}
+    </>
   );
 };

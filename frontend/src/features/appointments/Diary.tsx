@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout';
 import { ChevronLeft, ChevronRight, Filter, Building2 } from 'lucide-react';
 import { Calendar } from './Calendar';
@@ -18,12 +19,14 @@ import { useRebookMode } from './hooks/useRebookMode';
 import { createAppointment } from './appointment.api';
 import type { CreateAppointmentData } from '@/types';
 import toast from 'react-hot-toast';
+import { PRACTITIONER_REMOVED_EVENT } from '@/events/practitionerEvents';
 
 type CalendarView = 'day' | 'week' | 'month';
 
 export const Diary: React.FC = () => {
   // Get user info early for role-based logic
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const effectiveRoles = (user?.roles && user.roles.length > 0) ? user.roles : (user?.role ? [user.role] : []);
   const isAdmin        = effectiveRoles.includes('ADMIN');
   const isPractitioner = effectiveRoles.includes('PRACTITIONER');
@@ -430,6 +433,28 @@ export const Diary: React.FC = () => {
   const handleRecurringCreated = useCallback(() => {
     setAppointmentRefreshKey(prev => prev + 1);
   }, []);
+
+  // ── Practitioner removal → force immediate calendar refetch ───────────────────────
+  // CreateStaffAccountModal emits PRACTITIONER_REMOVED_EVENT after the admin
+  // confirms the role removal.  We increment both refresh keys here so
+  // Calendar.tsx immediately calls refetch() + refetchBlockAppointments(),
+  // clearing all stale appointment/block-out/note data from the calendar view
+  // without requiring a page reload.
+  useEffect(() => {
+    const handlePractitionerRemoved = () => {
+      // Invalidate ALL practitioner-related queries (any branchId)
+      queryClient.invalidateQueries({ queryKey: ['practitioners'] });
+      // Force immediate refetch of all practitioner queries
+      queryClient.refetchQueries({ queryKey: ['practitioners'] });
+      // Force-refetch appointments and block-outs
+      setAppointmentRefreshKey(prev => prev + 1);
+      setEventRefreshKey(prev => prev + 1);
+    };
+    window.addEventListener(PRACTITIONER_REMOVED_EVENT, handlePractitionerRemoved);
+    return () => {
+      window.removeEventListener(PRACTITIONER_REMOVED_EVENT, handlePractitionerRemoved);
+    };
+  }, [queryClient]);
 
   // ── Force Calendar refetch when appointment count changes (add/remove) ──────
   // Note: arrival_status changes are handled directly in Calendar.tsx's onUpdated

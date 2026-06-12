@@ -1,5 +1,5 @@
 import { axiosInstance } from '@/lib/axios';
-import type { StaffMember, CreateStaffData } from '../types/staff.types';
+import type { StaffMember, CreateStaffData, PractitionerRoleImpact } from '../types/staff.types';
 
 /**
  * Get all staff members for the current clinic
@@ -61,5 +61,20 @@ export const toggleStaffStatus = async (
   const response = await axiosInstance.patch<StaffMember>(`/users/${id}/`, {
     is_active: isActive,
   });
+  return response.data;
+};
+
+/**
+ * Get practitioner role removal impact counts.
+ *
+ * Returns the number of future appointments, block-outs, and calendar events
+ * that would be deleted if the PRACTITIONER role is removed from this user.
+ */
+export const getPractitionerRoleImpact = async (
+  userId: number
+): Promise<PractitionerRoleImpact> => {
+  const response = await axiosInstance.get<PractitionerRoleImpact>(
+    `/users/${userId}/practitioner-role-impact/`
+  );
   return response.data;
 };

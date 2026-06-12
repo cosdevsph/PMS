@@ -102,6 +102,29 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(practitioner_id=int(practitioner_param))
             except (ValueError, TypeError):
                 pass
+        else:
+            # FIX: Only apply active-practitioner filtering for Calendar/Diary queries.
+            # Calendar queries filter by date range (start_date/end_date) but NOT by patient.
+            # Patient Profile queries filter by patient ID - those should return ALL
+            # appointments regardless of practitioner role status.
+            patient_param = self.request.query_params.get('patient')
+            if not patient_param:
+                # Calendar/Diary query - filter by active practitioners only
+                from apps.clinics.models import Practitioner
+                active_practitioner_ids = list(
+                    Practitioner.objects.filter(
+                        clinic_id__in=all_branch_ids,
+                        is_deleted=False,
+                        user__is_active=True,
+                        user__is_deleted=False,
+                        user__roles__contains=['PRACTITIONER'],
+                    ).values_list('id', flat=True)
+                )
+                # Only filter if there are active practitioners; otherwise show all
+                # (to handle edge case where all practitioners were removed)
+                if active_practitioner_ids:
+                    queryset = queryset.filter(practitioner_id__in=active_practitioner_ids)
+            # else: Patient Profile query - show all appointments (don't filter)
 
         # Filter by date range
         start_date = (
@@ -1024,7 +1047,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             # still exists.  Without this filter those stale profiles would be
             # returned and the user would keep appearing in the Diary filter.
             is_deleted=False,
+            # FIX: Also ensure the user still has PRACTITIONER in their roles.
+            # This is the authoritative check - even if the Practitioner profile
+            # exists, if the user no longer has PRACTITIONER role, don't show them.
+            user__roles__contains=['PRACTITIONER'],
         ).select_related('user', 'clinic', 'user__clinic_branch')
+        
+        # DEBUG: Log what's being returned
+        logger.info(f'[PRACTITIONER FILTER] base_qs count: {base_qs.count()}')
+        for p in base_qs:
+            logger.info(f'[PRACTITIONER FILTER] - id:{p.id} user:{p.user.email} roles:{p.user.roles}')
 
         if clinic_branch_param:
             try:
@@ -1076,6 +1108,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         ).exclude(
             # Exclude users already listed as PRACTITIONERs to avoid duplicates
             roles__contains=['PRACTITIONER'],
+        ).exclude(
+            # FIX: Also exclude users who have a non-soft-deleted Practitioner profile.
+            # When PRACTITIONER role is removed, the user becomes STAFF but their
+            # Practitioner profile is soft-deleted. We must not show them in
+            # the filter as STAFF because they were a practitioner.
+            practitioner_profile__isnull=False,
+            practitioner_profile__is_deleted=False,
         ).select_related('clinic_branch', 'clinic')
 
         if clinic_branch_param:

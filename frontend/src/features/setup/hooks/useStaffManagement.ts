@@ -72,16 +72,27 @@ export const useStaffManagement = () => {
     }
   };
 
-  const handleUpdateStaff = async (id: number, data: Partial<CreateStaffData>) => {
+  const handleUpdateStaff = async (id: number, data: Partial<CreateStaffData> & { confirm_practitioner_removal?: boolean }) => {
     try {
       console.log('[useStaffManagement] handleUpdateStaff called', { id, data });
-      const updated = await updateStaff(id, data);
+      const updated = await updateStaff(id, data as Partial<CreateStaffData>);
       console.log('[useStaffManagement] Updated staff received:', updated);
       console.log('[useStaffManagement] Updated availability:', updated.availability);
       setStaff((prev) => prev.map((s) => (s.id === id ? updated : s)));
       // Invalidate practitioners so Diary/Calendar refetch with the updated
       // branch assignment — prevents stale branch scope in scheduling views.
       queryClient.invalidateQueries({ queryKey: ['practitioners'] });
+
+      // When a practitioner role was removed the backend deleted future
+      // appointments, block-outs, and calendar notes.  Invalidate those query
+      // caches so Diary/Calendar immediately reflect the clean state.
+      if ((data as any).confirm_practitioner_removal) {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['block-appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['calendar-notes'] });
+        queryClient.invalidateQueries({ queryKey: ['blocks'] });
+      }
+
       // If the logged-in user just updated their own account (e.g. gained or
       // lost the PRACTITIONER role), refresh the Zustand auth store so that
       // Diary.tsx immediately sees the new roles[] and practitioner_id without
