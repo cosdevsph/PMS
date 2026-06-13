@@ -258,9 +258,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
             # ── Trigger DNA follow-up notification (non-blocking) ─────────────
+            logger.info(f"[EDIT] Triggering DNA follow-up for appointment #{appointment.id}")
             try:
                 from apps.notifications.services.communication_service import send_dna_followup
-                send_dna_followup(appointment)
+                result = send_dna_followup(appointment)
+                logger.info(f"[EDIT] DNA follow-up result: {result}")
             except Exception as exc:
                 logger.warning(
                     "DNA follow-up notification failed for appointment #%s: %s",
@@ -1593,6 +1595,178 @@ class CalendarNoteViewSet(viewsets.ModelViewSet):
 
 # ── Public Rebooking Views (no auth required) ─────────────────────────────────
 
+class PublicRebookingSlotsView(APIView):
+    """
+    GET /api/appointments/rebook/<uuid:token>/slots/?date=YYYY-MM-DD — return available slots.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def _get_valid_link(self, token):
+        """Return RebookingLink or None if invalid."""
+        try:
+            link = RebookingLink.objects.select_related(
+                'patient', 'appointment__practitioner__user',
+                'appointment__clinic', 'appointment__service',
+            ).get(token=token)
+        except RebookingLink.DoesNotExist:
+            return None, Response(
+                {'detail': 'Invalid rebooking link.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if link.is_used:
+            return None, Response(
+                {'detail': 'This rebooking link has already been used.', 'code': 'used'},
+                status=status.HTTP_410_GONE,
+            )
+        if link.is_expired:
+            return None, Response(
+                {'detail': 'This rebooking link has expired.', 'code': 'expired'},
+                status=status.HTTP_410_GONE,
+            )
+        return link, None
+
+    def get(self, request, token: str):
+        """GET /api/appointments/rebook/<uuid:token>/slots/?date=YYYY-MM-DD — return available slots."""
+        from datetime import date as date_type, time
+        from apps.clinics.models import Practitioner
+        from apps.appointments.models import Appointment, BlockAppointment
+
+        link, err = self._get_valid_link(token)
+        if err:
+            return err
+
+        date_str = request.query_params.get('date')
+        if not date_str:
+            return Response({'detail': 'date query param is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            target_date = date_type.fromisoformat(date_str)
+        except ValueError:
+            return Response({'detail': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if target_date < date_type.today():
+            return Response({'date': date_str, 'slots': []})
+
+        appt = link.appointment
+        clinic = appt.clinic
+        practitioner = appt.practitioner
+        service = appt.service
+        duration = appt.duration_minutes or service.duration_minutes if service else 60
+
+        CLINIC_START = 6 * 60
+        CLINIC_END = 21 * 60
+        WEEKDAY_MAP = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        target_weekday = WEEKDAY_MAP[target_date.weekday()]
+
+        def parse_mins(t: str) -> int:
+            h, m = t.split(':')
+            return int(h) * 60 + int(m)
+
+        def minutes_to_time(m):
+            return time(m // 60, m % 60)
+
+        # Build candidate blocks
+        candidate_blocks: list[tuple[int, int]] = []
+        practitioner_availability = None
+
+        if practitioner:
+            try:
+                practitioner_availability = practitioner.availability
+            except Exception:
+                pass
+
+        # Use practitioner availability only if properly configured
+        if practitioner_availability and practitioner_availability.get('duty_days'):
+            duty_days = practitioner_availability.get('duty_days', [])
+            # Only restrict by duty days if explicitly set
+            if duty_days and target_weekday not in duty_days:
+                return Response({'date': date_str, 'slots': []})
+
+            duty_schedule = practitioner_availability.get('duty_schedule')
+            lunch_start_min = parse_mins(practitioner_availability.get('lunch_start_time', '12:00'))
+            lunch_end_min = parse_mins(practitioner_availability.get('lunch_end_time', '13:00'))
+
+            if duty_schedule and target_weekday in duty_schedule:
+                for block in duty_schedule[target_weekday]:
+                    b_start = parse_mins(block['start'])
+                    b_end = parse_mins(block['end'])
+                    if b_end <= lunch_start_min or b_start >= lunch_end_min:
+                        candidate_blocks.append((b_start, b_end))
+                    else:
+                        if b_start < lunch_start_min:
+                            candidate_blocks.append((b_start, lunch_start_min))
+                        if b_end > lunch_end_min:
+                            candidate_blocks.append((lunch_end_min, b_end))
+            elif duty_days:  # Only use legacy duty hours if duty_days is set
+                duty_start_min = parse_mins(practitioner_availability.get('duty_start_time', '08:00'))
+                duty_end_min = parse_mins(practitioner_availability.get('duty_end_time', '17:00'))
+                if duty_end_min <= lunch_start_min or duty_start_min >= lunch_end_min:
+                    candidate_blocks.append((duty_start_min, duty_end_min))
+                else:
+                    if duty_start_min < lunch_start_min:
+                        candidate_blocks.append((duty_start_min, lunch_start_min))
+                    if duty_end_min > lunch_end_min:
+                        candidate_blocks.append((lunch_end_min, duty_end_min))
+
+        # Fall back to clinic hours if no practitioner or no availability configured
+        if not candidate_blocks:
+            LUNCH_START = 12 * 60
+            LUNCH_END = 13 * 60
+            candidate_blocks.append((CLINIC_START, LUNCH_START))
+            candidate_blocks.append((LUNCH_END, CLINIC_END))
+
+        # Generate candidate slots
+        candidate_slots = []
+        SLOT_INTERVAL = 15
+        for (b_start, b_end) in candidate_blocks:
+            m = b_start
+            while m + duration <= b_end:
+                candidate_slots.append(minutes_to_time(m))
+                m += SLOT_INTERVAL
+
+        # Filter out booked appointments
+        booked_ranges = []
+        diary_qs = Appointment.objects.filter(
+            date=target_date,
+            clinic=clinic,
+            practitioner=practitioner,
+            status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'],
+            is_deleted=False,
+            patient__is_archived=False,
+        )
+        for existing in diary_qs:
+            booked_ranges.append((
+                parse_mins(existing.start_time.strftime('%H:%M')),
+                parse_mins(existing.end_time.strftime('%H:%M')),
+            ))
+
+        # Filter out blocked times
+        block_qs = BlockAppointment.objects.filter(clinic=clinic, date=target_date)
+        for block in block_qs:
+            booked_ranges.append((
+                parse_mins(block.start_time.strftime('%H:%M')),
+                parse_mins(block.end_time.strftime('%H:%M')),
+            ))
+
+        available = []
+        for slot_time in candidate_slots:
+            slot_start = parse_mins(slot_time.strftime('%H:%M'))
+            slot_end = slot_start + duration
+
+            if slot_end > CLINIC_END:
+                continue
+
+            overlaps = any(
+                slot_start < booked_end and slot_end > booked_start
+                for booked_start, booked_end in booked_ranges
+            )
+            if not overlaps:
+                available.append(slot_time.strftime('%H:%M'))
+
+        return Response({'date': date_str, 'slots': available})
+
+
 class PublicRebookingLinkView(APIView):
     """
     GET  /api/appointments/rebook/<uuid:token>/  — validate token & return prefill data
@@ -1634,13 +1808,17 @@ class PublicRebookingLinkView(APIView):
         return Response({
             'patient_first_name': link.patient.first_name,
             'service_name':       appt.service.name if appt.service else appt.appointment_type,
+            'service_id':        appt.service_id,
             'practitioner_name':  (
                 appt.practitioner.user.get_full_name()
                 if appt.practitioner else 'Any Available'
             ),
+            'practitioner_id':  appt.practitioner_id,
             'clinic_name':        appt.clinic.name if appt.clinic else '',
+            'clinic_id':         appt.clinic_id,
             'original_date':      str(appt.date),
             'original_start_time': appt.start_time.strftime('%H:%M'),
+            'duration_minutes':  appt.duration_minutes,
             'expires_at':         link.expires_at.isoformat(),
         })
 
@@ -1713,6 +1891,45 @@ class PublicRebookingLinkView(APIView):
             'start_time': new_appt.start_time.strftime('%H:%M'),
             'end_time': new_appt.end_time.strftime('%H:%M'),
         }, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, token):
+        """
+        DELETE /api/appointments/rebook/<uuid:token>/
+        Patient cancels the original appointment via the rebook link.
+        """
+        link, err = self._get_valid_link(token)
+        if err:
+            return err
+
+        original = link.appointment
+
+        # Only allow cancel if appointment is not already cancelled/completed
+        if original.status in ('CANCELLED', 'COMPLETED', 'DNA'):
+            return Response(
+                {'detail': f'Cannot cancel — appointment is already {original.status.lower()}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Mark the original appointment as cancelled
+        original.status = 'CANCELLED'
+        original.cancellation_reason = 'Cancelled by patient via rebook link'
+        original.cancelled_at = timezone.now()
+        original.save(update_fields=['status', 'cancellation_reason', 'cancelled_at', 'updated_at'])
+
+        # Mark the rebook link as used
+        link.is_used = True
+        link.used_at = timezone.now()
+        link.save(update_fields=['is_used', 'used_at'])
+
+        logger.info(
+            "Appointment #%s cancelled by patient (rebook link).",
+            original.id,
+        )
+
+        return Response({
+            'detail': 'Your appointment has been cancelled.',
+            'appointment_id': original.id,
+        }, status=status.HTTP_200_OK)
 
 
 class PublicAppointmentConfirmView(APIView):

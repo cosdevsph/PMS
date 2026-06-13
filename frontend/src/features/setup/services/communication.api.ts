@@ -12,6 +12,7 @@ export interface CommunicationSettings {
   profile_creation_method: 'EMAIL' | 'SMS' | 'BOTH';
   // Timing
   reminder_hours_before: number;
+  dna_followup_delay_hours: number;
   no_rebook_followup_days: number;
   inactive_patient_months: number;
   // Feature toggles

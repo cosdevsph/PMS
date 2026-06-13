@@ -398,7 +398,7 @@ class BlockAppointment(TimeStampedModel, SoftDeleteModel):
 # ── Rebooking Link ────────────────────────────────────────────────────────────
 
 def _default_rebooking_expires():
-    return timezone.now() + timedelta(hours=72)
+    return timezone.now() + timedelta(hours=24)
 
 
 class RebookingLink(TimeStampedModel):

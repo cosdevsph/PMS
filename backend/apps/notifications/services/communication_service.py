@@ -476,22 +476,33 @@ def send_appointment_reminder_with_reply(appointment) -> dict:
 def send_dna_followup(appointment) -> dict:
     """
     Send follow-up message after patient replies N or is marked DNA.
-    Generates a patient-specific secure rebooking token link (72-hour expiry,
+    Generates a patient-specific secure rebooking token link (24-hour expiry,
     one-time use) and includes it in the email/SMS.
     """
     patient = appointment.patient
     clinic  = appointment.clinic
     settings_obj = ClinicCommunicationSettings.get_for_clinic(clinic)
 
+    logger.info(f"[DNA_FOLLOWUP] Starting for appointment #{appointment.id}, patient {patient.email}, clinic {clinic.id}")
+
     if not settings_obj.dna_followup_enabled:
+        logger.warning(f"[DNA_FOLLOWUP] Skipped: dna_followup_enabled=False for clinic {clinic.id}")
         return {'skipped': True, 'reason': 'DNA follow-up disabled'}
 
     if appointment.dna_followup_sent:
+        logger.warning(f"[DNA_FOLLOWUP] Skipped: dna_followup_sent=True for appointment #{appointment.id}")
         return {'skipped': True, 'reason': 'DNA follow-up already sent'}
 
     channel = settings_obj.dna_followup_method
+    logger.info(f"[DNA_FOLLOWUP] Channel: {channel}, clinic email_notifications_enabled: {clinic.email_notifications_enabled}, patient.send_email_notifications: {getattr(patient, 'send_email_notifications', 'NOT_SET')}")
+
     if not _should_send(clinic, patient, channel):
-        return {'skipped': True, 'reason': 'Notifications disabled'}
+        if channel == 'SMS' and _should_send(clinic, patient, 'EMAIL'):
+            logger.warning(f"[DNA_FOLLOWUP] SMS disabled, falling back to EMAIL for clinic {clinic.id}, patient {patient.id}")
+            channel = 'EMAIL'
+        else:
+            logger.warning(f"[DNA_FOLLOWUP] Skipped: _should_send=False for clinic {clinic.id}, patient {patient.id}")
+            return {'skipped': True, 'reason': 'Notifications disabled'}
 
     # ── Generate secure rebooking token ────────────────────────────────────
     from apps.appointments.models import RebookingLink
@@ -518,7 +529,7 @@ def send_dna_followup(appointment) -> dict:
         f"Thanks for letting us know. We understand plans change.\n\n"
         f"To reschedule your appointment, please click:\n"
         f"{booking_url}\n\n"
-        f"(Link expires in 72 hours)\n"
+        f"(Link expires in 24 hours)\n"
         f"– {clinic.name}"
     )
 
@@ -531,10 +542,13 @@ def send_dna_followup(appointment) -> dict:
         sms_body=sms_body,
     )
 
+    logger.info(f"[DNA_FOLLOWUP] Dispatch result: {result}")
+
     appointment.dna_followup_sent = True
     appointment.dna_followup_sent_at = timezone.now()
     appointment.save(update_fields=['dna_followup_sent', 'dna_followup_sent_at'])
 
+    logger.info(f"[DNA_FOLLOWUP] Completed for appointment #{appointment.id}, marked as sent")
     return result
 
 

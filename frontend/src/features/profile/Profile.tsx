@@ -4,7 +4,6 @@ import { ProfileHeader }        from './components/ProfileHeader';
 import { ProfileAvatarUpload }  from './components/ProfileAvatarUpload';
 import { ProfileInfoCard }      from './components/ProfileInfoCard';
 import { AccountSettingsCard }  from './components/AccountSettingsCard';
-import { ProfileRolesCard }     from './components/ProfileRolesCard';
 import { useProfile }           from './hooks/useProfile';
 import { useAuth }              from '@/hooks/useAuth';
 import { Loader2 }              from 'lucide-react';
@@ -38,14 +37,7 @@ export const Profile: React.FC = () => {
     }
   };
 
-  const handleRolesUpdate = (updatedUser: User) => {
-    syncUser(updatedUser);
-  };
 
-  // Whether the current viewer is an admin (can edit roles)
-  const viewerIsAdmin = authUser
-    ? (authUser.roles ?? [authUser.role]).includes('ADMIN')
-    : false;
 
   if (!user) {
     return (
@@ -135,11 +127,6 @@ export const Profile: React.FC = () => {
                   isSaving={isSaving}
                   onSave={saveProfile}
                   onEditingChange={handleEditingChange}
-                />
-                <ProfileRolesCard
-                  user={user}
-                  canEdit={viewerIsAdmin}
-                  onRolesUpdate={handleRolesUpdate}
                 />
                 <AccountSettingsCard
                   currentRotation={user.password_rotation ?? 'none'}

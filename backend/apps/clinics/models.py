@@ -409,6 +409,10 @@ class ClinicCommunicationSettings(TimeStampedModel):
         default=True,
         help_text='Send follow-up after DNA / patient declines.',
     )
+    dna_followup_delay_hours = models.PositiveIntegerField(
+        default=0,
+        help_text='Hours to wait after DNA before sending follow-up (0 = immediate).',
+    )
     rebook_followup_enabled = models.BooleanField(
         default=True,
         help_text='Send delayed rebook follow-up if patient hasn\'t rescheduled.',

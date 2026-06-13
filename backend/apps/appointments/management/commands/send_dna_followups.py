@@ -7,9 +7,11 @@ import logging
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from datetime import timedelta
 
 from apps.appointments.models import Appointment
 from apps.notifications.services.communication_service import send_dna_followup
+from apps.clinics.models import ClinicCommunicationSettings
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,20 @@ class Command(BaseCommand):
 
         for appt in combined:
             patient_name = appt.patient.get_full_name()
+
+            # Check DNA follow-up delay setting
+            settings = ClinicCommunicationSettings.get_for_clinic(appt.clinic)
+            delay_hours = getattr(settings, 'dna_followup_delay_hours', 0) or 0
+            if delay_hours > 0:
+                # Only send if enough time has passed since DNA status was set
+                # Use updated_at as proxy for when status changed to DNA
+                if appt.updated_at:
+                    elapsed = timezone.now() - appt.updated_at
+                    if elapsed < timedelta(hours=delay_hours):
+                        self.stdout.write(f"    WAIT  {patient_name}: delay not reached ({elapsed.total_seconds()/3600:.1f}h < {delay_hours}h)")
+                        skipped += 1
+                        continue
+
             if dry_run:
                 self.stdout.write(f"    [DRY] {patient_name} — {appt.date}")
                 skipped += 1

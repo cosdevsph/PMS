@@ -6,7 +6,7 @@ import {
   RefreshCw, ChevronDown, Building2, Edit3, Trash2,
   Save, XCircle, Search, UserCircle, ClipboardList,
   ExternalLink, Repeat, List, Stethoscope, Repeat2,
-  Phone, Mail, Home, ShieldCheck, AlertTriangle,
+  Phone, Mail, Home, ShieldCheck, AlertTriangle, Mailbox,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -86,7 +86,7 @@ const INVOICE_STATUS_STYLES: Record<string, string> = {
   CANCELLED:      'bg-gray-100 text-gray-400 border-gray-200',
 };
 
-type Tab = 'client' | 'appointment' | 'status' | 'clinical_notes' | 'invoice';
+type Tab = 'client' | 'appointment' | 'status' | 'clinical_notes' | 'invoice' | 'communications';
 
 interface AppointmentViewProps {
   isOpen:      boolean;
@@ -1458,6 +1458,7 @@ const caseMetrics: Record<string, { noteCount: number; lastUpdated: string }> = 
               { key: 'status', label: 'Status', icon: ClipboardList },
               { key: 'clinical_notes', label: 'Clinical Notes', icon: FileText },
               { key: 'invoice', label: hasInvoice ? 'View Invoice' : 'Generate Invoice', icon: Receipt },
+              { key: 'communications', label: 'Communications', icon: Mailbox },
             ] as { key: Tab; label: string; icon: React.ElementType; isDropdown?: boolean }[]).map(tab => (
               <div key={tab.key} className="relative" ref={tab.isDropdown ? appointmentDropdownRef : null}>
                 <button
@@ -2037,6 +2038,29 @@ const caseMetrics: Record<string, { noteCount: number; lastUpdated: string }> = 
                     )}
                   </div>
                 )}
+
+                {/* ── Communication History for this appointment ── */}
+                {appointment.dna_followup_sent && (
+                  <div className="bg-white border border-gray-200 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                      Communication History
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        <span className="text-gray-600">
+                          DNA Follow-up sent
+                          {appointment.dna_followup_sent_at
+                            ? ` on ${format(new Date(appointment.dna_followup_sent_at), 'MMM d, yyyy h:mm a')}`
+                            : ''}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 pl-4">
+                        Patient received rebooking link with 24-hour expiry
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2049,6 +2073,58 @@ const caseMetrics: Record<string, { noteCount: number; lastUpdated: string }> = 
             {activeTab === 'clinical_notes' && (
               <div className="flex items-center justify-center py-8">
                 <p className="text-sm text-gray-500">Redirecting to Clinical Notes...</p>
+              </div>
+            )}
+
+            {/* ── Communications Tab ── */}
+            {activeTab === 'communications' && (
+              <div className="space-y-4">
+                <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide mb-3">
+                    Appointment Communications
+                  </p>
+                  <div className="space-y-3">
+                    {/* Confirmation */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Confirmation Sent</span>
+                      {appointment.confirmation_sent ? (
+                        <span className="text-xs text-green-600 font-medium">Yes</span>
+                      ) : (
+                        <span className="text-xs text-gray-400">No</span>
+                      )}
+                    </div>
+                    {/* Reminder */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Reminder Sent</span>
+                      {appointment.reminder_sent ? (
+                        <span className="text-xs text-green-600 font-medium">Yes</span>
+                      ) : (
+                        <span className="text-xs text-gray-400">No</span>
+                      )}
+                    </div>
+                    {/* DNA Follow-up */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">DNA Follow-up Sent</span>
+                      {appointment.dna_followup_sent ? (
+                        <span className="text-xs text-green-600 font-medium">Yes</span>
+                      ) : (
+                        <span className="text-xs text-gray-400">No</span>
+                      )}
+                    </div>
+                    {/* Rebook Follow-up */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Rebook Follow-up Sent</span>
+                      {appointment.rebook_followup_sent ? (
+                        <span className="text-xs text-green-600 font-medium">Yes</span>
+                      ) : (
+                        <span className="text-xs text-gray-400">No</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400">
+                  For detailed communication logs, visit the Communications section in Manage.
+                </p>
               </div>
             )}
           </div>

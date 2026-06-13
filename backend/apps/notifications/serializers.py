@@ -103,6 +103,7 @@ class ClinicCommunicationSettingsSerializer(serializers.ModelSerializer):
             'profile_creation_method',
             # Timing
             'reminder_hours_before',
+            'dna_followup_delay_hours',
             'no_rebook_followup_days',
             'inactive_patient_months',
             # Feature toggles
