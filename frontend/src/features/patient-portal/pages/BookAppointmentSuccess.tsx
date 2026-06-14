@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, Calendar, User, Stethoscope, MapPin } from 'lucide-react';
 import type { BookingConfirmation } from '../types/portal';
+import malasakitLogo from '@/assets/malasakit/PrimaryLogo-Colored.svg';
 
 const fmt12 = (time: string) => {
   const [h, m] = time.split(':').map(Number);
@@ -50,13 +51,11 @@ export const BookAppointmentSuccess: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-md overflow-hidden">
 
         {/* Brand Logo */}
-        <div className="bg-white px-6 pt-6 pb-4 flex justify-center">
-          <img
-            src="/assets/malasakit/Primary Logo - Colored.svg"
-            alt="Malasakit Logo"
-            className="h-10 w-auto object-contain"
-          />
-        </div>
+        <img
+          src={malasakitLogo}
+          alt="Malasakit Logo"
+          className="h-10 w-auto object-contain block mx-auto mt-6 mb-4"
+        />
 
         {/* Header */}
         <div className="bg-primary-gradient px-6 py-8 text-center">

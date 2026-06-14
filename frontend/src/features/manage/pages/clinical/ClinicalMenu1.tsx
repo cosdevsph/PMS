@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import { axiosInstance as apiClient } from '@/lib/axios';
 
 // ── Bundled logo (Vite resolves this at build time) ──────────────────────────
-import malasakitLogo from '@/assets/malasakit/Primary Logo - Colored.png';
+import malasakitLogo from '@/assets/malasakit/PrimaryLogo-Colored.svg';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

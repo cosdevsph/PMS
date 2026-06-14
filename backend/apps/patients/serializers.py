@@ -398,7 +398,11 @@ class PortalLinkPublicSerializer(serializers.ModelSerializer):
         }
 
         # Attach prefetched services for use in get_services()
-        practitioners_list = list(practitioners)
+        # Only include practitioners who still have the PRACTITIONER role
+        practitioners_list = [
+            p for p in practitioners
+            if 'PRACTITIONER' in (p.user.roles or [p.user.role])
+        ]
         for p in practitioners_list:
             p.prefetched_services = list(p.services.filter(is_deleted=False, is_active=True))
 
