@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import MESLogo from '@/assets/malasakit/PrimaryLogo-Colored.svg';
 
 export const Navbar: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,7 +21,6 @@ export const Navbar: React.FC = () => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
-      setIsMobileMenuOpen(false);
     }
   };
 
@@ -27,8 +28,27 @@ export const Navbar: React.FC = () => {
     { label: 'About', id: 'about' },
     { label: 'Features', id: 'features' },
     { label: 'Pricing', id: 'plans' },
-    { label: 'FAQ', id: 'faq' }
+    { label: 'FAQ', id: 'faq' },
+    { label: 'User Manual', path: '/user-manual' }
   ];
+
+  const handleNavLinkClick = (link: { label: string; id?: string; path?: string }) => {
+    setIsMobileMenuOpen(false);
+    
+    if (link.path) {
+      navigate(link.path);
+    } else if (link.id) {
+      if (location.pathname !== '/') {
+        navigate('/');
+        // Small delay to ensure the DOM updates before scrolling
+        setTimeout(() => {
+          scrollToSection(link.id as string);
+        }, 100);
+      } else {
+        scrollToSection(link.id);
+      }
+    }
+  };
 
   return (
     <nav
@@ -52,8 +72,8 @@ export const Navbar: React.FC = () => {
           <div className="hidden md:flex items-center space-x-1">
             {navLinks.map((link) => (
               <button
-                key={link.id}
-                onClick={() => scrollToSection(link.id)}
+                key={link.label}
+                onClick={() => handleNavLinkClick(link)}
                 className="px-4 py-2 text-base font-medium text-trust-harbor hover:text-care-blue hover:bg-clinical-cloud rounded-lg transition-all flex items-center font-body"
               >
                 {link.label}
@@ -97,12 +117,12 @@ export const Navbar: React.FC = () => {
           <div className="px-4 py-6 space-y-4">
             {navLinks.map((link) => (
               <button
-                key={link.id}
-                onClick={() => scrollToSection(link.id)}
+                key={link.label}
+                onClick={() => handleNavLinkClick(link)}
                 className="block w-full text-left px-4 py-3 text-base font-medium text-trust-harbor hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-between font-body"
               >
                 {link.label}
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                {!link.path && <ChevronDown className="w-4 h-4 text-gray-400" />}
               </button>
             ))}
             <div className="pt-4 space-y-3 border-t border-gray-200">

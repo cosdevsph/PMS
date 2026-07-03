@@ -14,6 +14,7 @@ import { Analytics } from "@vercel/analytics/react";
 
 // Public Pages
 import { LandingPage }            from '@/features/landing/LandingPage';
+import { UserManualPage }         from '@/features/landing/UserManualPage';
 import { Login }                  from '@/features/auth/Login';
 import { AdminRegister }          from '@/features/auth/AdminRegister';
 import { RegisterSuccess }        from '@/features/auth/RegisterSuccess';
@@ -75,7 +76,7 @@ import { FeatureAccessGuard } from '@/components/auth/FeatureAccessGuard';
 import { ClinicSetupPage } from '@/features/clinic-setup/ClinicSetupPage';
 
 // ─── Routes where internal components should NOT appear ────────────────────────────
-const PUBLIC_PATHS = ['/login', '/register', '/portal', '/clinic-setup', '/book', '/client-form', '/public'];
+const PUBLIC_PATHS = ['/login', '/register', '/portal', '/clinic-setup', '/book', '/client-form', '/public', '/user-manual'];
 
 const ClinicMessagesGuard = () => {
   const location = useLocation();
@@ -232,6 +233,7 @@ function App() {
         <Routes>
           {/* ── Public ─────────────────────────────────────────────── */}
           <Route path="/"                 element={<PublicRoute><LandingPage /></PublicRoute>} />
+          <Route path="/user-manual"      element={<PublicRoute><UserManualPage /></PublicRoute>} />
           <Route path="/login"            element={<PublicRoute><Login /></PublicRoute>} />
           <Route path="/register"         element={<PublicRoute><AdminRegister /></PublicRoute>} />
           <Route path="/register/success" element={<PublicRoute><RegisterSuccess /></PublicRoute>} />
