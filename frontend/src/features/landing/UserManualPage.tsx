@@ -39,7 +39,7 @@ export const UserManualPage: React.FC = () => {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="text-center mb-10 pb-8 border-b border-gray-100">
-            <h1 className="text-4xl md:text-5xl font-bold text-trust-harbor font-heading mb-4">Malasakit User Manual</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-trust-harbor font-heading mb-4">Documentation</h1>
             <p className="text-lg md:text-xl text-gray-600 font-body max-w-3xl mx-auto">
               Welcome to the official documentation for the Malasakit System. Here you will find step-by-step guides on how to use and navigate the platform.
             </p>
