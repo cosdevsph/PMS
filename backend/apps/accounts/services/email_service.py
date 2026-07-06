@@ -13,6 +13,10 @@ class EmailService:
     @staticmethod
     def _build_html(*, icon: str, title: str, accent: str, body_html: str) -> str:
         """Shared email HTML wrapper matching the Malasakit PMS design system."""
+        import os
+        backend_url = getattr(settings, 'BACKEND_URL', os.environ.get('BACKEND_URL', 'https://malasakit-webservice.onrender.com')).rstrip('/')
+        logo_url = f"{backend_url}/static/logo/malasakit-logo.png"
+
         return f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>{title}</title>
 <!--[if mso]><style>table,td,div,p,a,span{{font-family:Arial,sans-serif!important;}}</style><![endif]-->
@@ -32,7 +36,11 @@ class EmailService:
 <tr><td style="padding:32px 40px;">{body_html}</td></tr>
 <tr><td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
 <p style="margin:0 0 12px;font-size:12px;color:#9ca3af;line-height:1.5;">This email was generated automatically by Malasakit PMS.<br/>Please do not reply directly to this email.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+<tr><td align="center" style="padding-top:4px;">
+<img src="{logo_url}" alt="Malasakit Logo" style="display:block;margin:0 auto 6px;max-height:16px;width:auto;" />
 <p style="margin:0;font-size:11px;color:#b0b5bc;">Powered by <strong style="color:#6b7280;font-weight:600;">Malasakit PMS</strong></p>
+</td></tr></table>
 </td></tr>
 </table></td></tr></table></body></html>"""
 
