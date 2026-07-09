@@ -82,6 +82,9 @@ router.register(r'hmo-claims',        HMOClaimViewSet,        basename='hmo-clai
 urlpatterns = [
     path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
+    # External Cron Webhook (Must be before router.urls to avoid pk resolution collision)
+    path('api/appointments/trigger-reminders/', TriggerRemindersWebhookView.as_view(), name='trigger-reminders'),
+
     path('api/', include(router.urls)),
 
     path('api/', include('apps.patients.urls')),
@@ -105,8 +108,6 @@ urlpatterns = [
     # Public email confirmation (no auth required)
     path('api/appointments/confirm-email/<uuid:token>/', PublicAppointmentConfirmView.as_view(), name='public-confirm-email'),
 
-    # External Cron Webhook
-    path('api/appointments/trigger-reminders/', TriggerRemindersWebhookView.as_view(), name='trigger-reminders'),
 ]
 
 if settings.DEBUG:
