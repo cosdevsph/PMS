@@ -119,6 +119,7 @@ function DeliveryDots({ status }: { status: string }) {
 function InlineThread({ log }: { log: CommunicationLogEntry }) {
   const confirmed = log.patient_reply === 'Y';
   const declined  = log.patient_reply === 'N';
+  const rescheduled = log.patient_reply === 'RESCHEDULE';
   const isPending = !log.patient_reply && (log.status === 'SENT' || log.status === 'DELIVERED');
 
   return (
@@ -163,6 +164,7 @@ function InlineThread({ log }: { log: CommunicationLogEntry }) {
             <div className={`ml-7 rounded-lg border p-3 ${
               confirmed ? 'bg-emerald-50 border-emerald-200'
               : declined ? 'bg-red-50 border-red-200'
+              : rescheduled ? 'bg-amber-50 border-amber-200'
               : 'bg-gray-50 border-gray-200'
             }`}>
               {confirmed && (
@@ -187,7 +189,18 @@ function InlineThread({ log }: { log: CommunicationLogEntry }) {
                   </div>
                 </div>
               )}
-              {!confirmed && !declined && (
+              {rescheduled && (
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+                    <CalendarDays className="w-3 h-3 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[12px] font-semibold text-amber-800">Needs Rescheduling</p>
+                    <p className="text-[11px] text-amber-600">Patient opted to reschedule</p>
+                  </div>
+                </div>
+              )}
+              {!confirmed && !declined && !rescheduled && (
                 <p className="text-[12px] text-gray-700">
                   Replied: <span className="font-semibold">&quot;{log.patient_reply}&quot;</span>
                 </p>

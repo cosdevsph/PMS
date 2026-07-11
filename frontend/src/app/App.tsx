@@ -28,6 +28,8 @@ import { BookAppointmentSuccess } from '@/features/patient-portal/pages/BookAppo
 import { ClientFormPublicPage }   from '@/features/patients/pages/ClientFormPublicPage';
 import { RebookPage }             from '@/features/appointments/RebookPage';
 import { AppointmentConfirmPage } from '@/features/appointments/AppointmentConfirmPage';
+import { AppointmentCancelPage }  from '@/features/appointments/AppointmentCancelPage';
+
 
 // Footer Pages - Product
 import { Features }  from '@/features/landing/components/footer-pages/Product/Features';
@@ -298,6 +300,7 @@ function App() {
           <Route path="/rebook/:token" element={<RebookPage />} />
           {/* ── Email appointment confirmation ───────────────────────── */}
           <Route path="/confirm/:token" element={<AppointmentConfirmPage />} />
+          <Route path="/cancel/:token" element={<AppointmentCancelPage />} />
           {/* ── Clinic Setup (first-login admin only) ───────────────── */}
           <Route
             path="/clinic-setup"

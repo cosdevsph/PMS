@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.db.models import Q, Prefetch
 from datetime import datetime, timedelta
 import pytz
-from .models import Appointment, PractitionerSchedule, AppointmentReminder, BlockAppointment, RebookingLink, CalendarNote, AppointmentConfirmToken
+from .models import Appointment, PractitionerSchedule, AppointmentReminder, BlockAppointment, RebookingLink, CalendarNote, AppointmentConfirmToken, AppointmentCancelToken
 from .serializers import (
     AppointmentSerializer,
     AppointmentEditSerializer,
@@ -1851,6 +1851,29 @@ class PublicRebookingLinkView(APIView):
                 {'detail': 'This rebooking link has expired.', 'code': 'expired'},
                 status=status.HTTP_410_GONE,
             )
+        appt = link.appointment
+        if appt.confirmation_status == 'CONFIRMED' or appt.status == 'CONFIRMED':
+            return None, Response(
+                {
+                    'detail': 'This appointment has already been confirmed.',
+                    'code': 'already_confirmed',
+                    'clinic_email': appt.clinic.email if appt.clinic else '',
+                    'clinic_phone': appt.clinic.phone if appt.clinic else ''
+                },
+                status=status.HTTP_410_GONE,
+            )
+            
+        if appt.confirmation_status == 'CANCELLED' or appt.status == 'CANCELLED':
+            return None, Response(
+                {
+                    'detail': 'This appointment was already cancelled.',
+                    'code': 'already_cancelled',
+                    'clinic_email': appt.clinic.email if appt.clinic else '',
+                    'clinic_phone': appt.clinic.phone if appt.clinic else ''
+                },
+                status=status.HTTP_410_GONE,
+            )
+
         return link, None
 
     def get(self, request, token):
@@ -2023,6 +2046,17 @@ class PublicAppointmentConfirmView(APIView):
 
         appt = ct.appointment
 
+        if appt.confirmation_status == 'CANCELLED' or appt.status == 'CANCELLED':
+            return Response(
+                {
+                    'detail': 'This appointment was already cancelled.',
+                    'code': 'already_cancelled',
+                    'clinic_email': appt.clinic.email if appt.clinic else '',
+                    'clinic_phone': appt.clinic.phone if appt.clinic else ''
+                },
+                status=status.HTTP_410_GONE,
+            )
+
         # Mark token used
         ct.is_used = True
         ct.used_at = timezone.now()
@@ -2060,6 +2094,157 @@ class PublicAppointmentConfirmView(APIView):
 
         return Response({
             'detail': 'Your appointment has been confirmed!',
+            'appointment_id': appt.id,
+            'appointment_date': str(appt.date),
+            'appointment_time': appt.start_time.strftime('%H:%M'),
+            'clinic_name': appt.clinic.name if appt.clinic else '',
+            'patient_name': appt.patient.get_full_name() if appt.patient else '',
+        }, status=status.HTTP_200_OK)
+
+
+class PublicAppointmentCancelView(APIView):
+    """
+    POST /api/appointments/cancel-email/<uuid:token>/
+
+    Called by the frontend /cancel/<token> page (no auth required).
+    Validates the one-time cancel token and marks the appointment CANCELLED.
+    Logs the cancellation in CommunicationLog.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, token):
+        try:
+            ct = AppointmentCancelToken.objects.select_related(
+                'appointment__patient',
+                'appointment__clinic',
+            ).get(token=token)
+        except AppointmentCancelToken.DoesNotExist:
+            return Response(
+                {'detail': 'Invalid cancellation token.', 'code': 'invalid'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if ct.is_used:
+            appt = ct.appointment
+            return Response(
+                {
+                    'detail': 'This cancellation link has already been used.',
+                    'code': 'used',
+                    'clinic_email': appt.clinic.email if appt.clinic else '',
+                    'clinic_phone': appt.clinic.phone if appt.clinic else ''
+                },
+                status=status.HTTP_410_GONE,
+            )
+
+        if ct.is_expired:
+            return Response(
+                {'detail': 'This cancellation link has expired.', 'code': 'expired'},
+                status=status.HTTP_410_GONE,
+            )
+
+        appt = ct.appointment
+
+        if appt.confirmation_status == 'CONFIRMED' or appt.status == 'CONFIRMED':
+            return Response(
+                {
+                    'detail': 'This appointment has already been confirmed.',
+                    'code': 'already_confirmed',
+                    'clinic_email': appt.clinic.email if appt.clinic else '',
+                    'clinic_phone': appt.clinic.phone if appt.clinic else ''
+                },
+                status=status.HTTP_410_GONE,
+            )
+
+        return Response({
+            'detail': 'Appointment details fetched successfully.',
+            'appointment_id': appt.id,
+            'appointment_date': str(appt.date),
+            'appointment_time': appt.start_time.strftime('%H:%M'),
+            'clinic_name': appt.clinic.name if appt.clinic else '',
+            'patient_name': appt.patient.get_full_name() if appt.patient else '',
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, token):
+        try:
+            ct = AppointmentCancelToken.objects.select_related(
+                'appointment__patient',
+                'appointment__clinic',
+            ).get(token=token)
+        except AppointmentCancelToken.DoesNotExist:
+            return Response(
+                {'detail': 'Invalid cancellation token.', 'code': 'invalid'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if ct.is_used:
+            appt = ct.appointment
+            return Response(
+                {
+                    'detail': 'This cancellation link has already been used.',
+                    'code': 'used',
+                    'clinic_email': appt.clinic.email if appt.clinic else '',
+                    'clinic_phone': appt.clinic.phone if appt.clinic else ''
+                },
+                status=status.HTTP_410_GONE,
+            )
+
+        if ct.is_expired:
+            return Response(
+                {'detail': 'This cancellation link has expired.', 'code': 'expired'},
+                status=status.HTTP_410_GONE,
+            )
+
+        appt = ct.appointment
+
+        if appt.confirmation_status == 'CONFIRMED' or appt.status == 'CONFIRMED':
+            return Response(
+                {
+                    'detail': 'This appointment has already been confirmed.',
+                    'code': 'already_confirmed',
+                    'clinic_email': appt.clinic.email if appt.clinic else '',
+                    'clinic_phone': appt.clinic.phone if appt.clinic else ''
+                },
+                status=status.HTTP_410_GONE,
+            )
+
+        # Mark token used
+        ct.is_used = True
+        ct.used_at = timezone.now()
+        ct.save(update_fields=['is_used', 'used_at'])
+
+        # Cancel the appointment
+        if appt.status in ['SCHEDULED', 'CONFIRMED']:
+            appt.status = 'CANCELLED'
+        appt.confirmation_status = 'CANCELLED'
+        appt.patient_reply = 'N'
+        appt.patient_reply_at = timezone.now()
+        appt.save(update_fields=[
+            'status', 'confirmation_status', 'patient_reply', 'patient_reply_at',
+        ])
+
+        # Update the most recent APPOINTMENT_REMINDER communication log for this appointment
+        try:
+            from apps.notifications.models import CommunicationLog
+            CommunicationLog.objects.filter(
+                appointment=appt,
+                comm_type='APPOINTMENT_REMINDER',
+                status='SENT',
+            ).order_by('-created_at').update(
+                status='REPLIED',
+                patient_reply='N',
+                replied_at=timezone.now(),
+            )
+        except Exception as e:
+            logger.warning('Failed to update CommunicationLog for cancel token #%s: %s', ct.id, e)
+
+        logger.info(
+            'Appointment #%s cancelled via email link by patient %s',
+            appt.id, appt.patient_id,
+        )
+
+        return Response({
+            'detail': 'Your appointment has been successfully cancelled.',
             'appointment_id': appt.id,
             'appointment_date': str(appt.date),
             'appointment_time': appt.start_time.strftime('%H:%M'),

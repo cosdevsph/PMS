@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import {
   MapPin, Plus, Building2, Phone, Mail, Star, Edit,
   MoreVertical, CheckCircle, XCircle, Globe, Loader2,
-  Hash,
+  Hash, Trash2, AlertCircle
 } from 'lucide-react';
 import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';
-import { createClinicBranch, updateClinicBranch } from '@/features/clinics/clinic.api';
+import { createClinicBranch, updateClinicBranch, deleteClinicBranch } from '@/features/clinics/clinic.api';
 import { invalidateClinicSettingsCache } from '@/hooks/useClinicSettings';
 import { CreateBranchModal } from './components/CreateBranchModal';
 import type { ClinicBranch, CreateBranchData } from '@/types/clinic';
@@ -24,10 +24,10 @@ const deduplicateName = (name: string): string => {
 
 interface BranchCardProps {
   branch: ClinicBranch;
-  onEdit: (branch: ClinicBranch) => void;
+  onAction: (action: 'edit' | 'delete', branch: ClinicBranch) => void;
 }
 
-const BranchCard: React.FC<BranchCardProps> = ({ branch, onEdit }) => {
+const BranchCard: React.FC<BranchCardProps> = ({ branch, onAction }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -75,14 +75,27 @@ const BranchCard: React.FC<BranchCardProps> = ({ branch, onEdit }) => {
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[130px]">
+                <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[150px]">
                   <button
-                    onClick={() => { onEdit(branch); setMenuOpen(false); }}
+                    onClick={() => { onAction('edit', branch); setMenuOpen(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                   >
-                    <Edit className="w-3.5 h-3.5 text-sky-500" />
-                    Edit
+                    <Edit className="w-4 h-4 text-sky-500" />
+                    Edit Details
                   </button>
+                  
+                  {!branch.is_main_branch && (
+                    <>
+                      <div className="h-px bg-gray-100 my-1" />
+                      <button
+                        onClick={() => { onAction('delete', branch); setMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                        Delete Branch
+                      </button>
+                    </>
+                  )}
                 </div>
               </>
             )}
@@ -136,7 +149,7 @@ const BranchCard: React.FC<BranchCardProps> = ({ branch, onEdit }) => {
       {/* Footer */}
       <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-end">
         <button
-          onClick={() => onEdit(branch)}
+          onClick={() => onAction('edit', branch)}
           className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-600 hover:text-sky-700 transition-colors"
         >
           <Edit className="w-3.5 h-3.5" />
@@ -155,6 +168,9 @@ export const PracticeOption1: React.FC = () => {
   const [modalOpen, setModalOpen]         = useState(false);
   const [editingBranch, setEditingBranch] = useState<ClinicBranch | null>(null);
   const [saving, setSaving]               = useState(false);
+  
+  const [confirmModal, setConfirmModal]   = useState<{ action: 'delete' | null; branch: ClinicBranch | null }>({ action: null, branch: null });
+  const [isConfirming, setIsConfirming]   = useState(false);
 
   const mainClinic     = branches.find((b) => b.is_main_branch);
   const mainClinicName = deduplicateName(mainClinic?.name ?? '');
@@ -164,7 +180,15 @@ export const PracticeOption1: React.FC = () => {
   const inactive = branches.filter((b) => !b.is_active).length;
 
   const handleOpenCreate = () => { setEditingBranch(null); setModalOpen(true); };
-  const handleOpenEdit   = (branch: ClinicBranch) => { setEditingBranch(branch); setModalOpen(true); };
+  
+  const handleAction = (action: 'edit' | 'delete', branch: ClinicBranch) => {
+    if (action === 'edit') {
+      setEditingBranch(branch);
+      setModalOpen(true);
+    } else {
+      setConfirmModal({ action, branch });
+    }
+  };
 
   const handleSave = async (data: CreateBranchData) => {
     setSaving(true);
@@ -201,6 +225,24 @@ export const PracticeOption1: React.FC = () => {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmModal.branch || !confirmModal.action) return;
+    const { branch, action } = confirmModal;
+    setIsConfirming(true);
+    try {
+      if (action === 'delete') {
+        await deleteClinicBranch(branch.id);
+        toast.success('Branch deleted successfully');
+      }
+      await refetch();
+      setConfirmModal({ action: null, branch: null });
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || `Failed to ${action} branch`);
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -270,7 +312,7 @@ export const PracticeOption1: React.FC = () => {
             {[...branches]
               .sort((a, b) => Number(b.is_main_branch) - Number(a.is_main_branch))
               .map((branch) => (
-                <BranchCard key={branch.id} branch={branch} onEdit={handleOpenEdit} />
+                <BranchCard key={branch.id} branch={branch} onAction={handleAction} />
               ))}
           </div>
         )}
@@ -286,6 +328,51 @@ export const PracticeOption1: React.FC = () => {
         saving={saving}
         mainClinicName={mainClinicName}
       />
+
+      {/* Confirmation Modal */}
+      {confirmModal.action && confirmModal.branch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setConfirmModal({ action: null, branch: null })} />
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 mb-2">
+                Delete Branch
+              </h2>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to permanently delete <strong>{deduplicateName(confirmModal.branch.name)}</strong>? 
+                <br /><br />
+                This will delete the clinic branch and all users (staff, practitioners, managers) exclusively associated with it. 
+                <strong> Patient and client records will NOT be deleted.</strong>
+                <br /><br />
+                This action cannot be undone.
+              </p>
+              
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal({ action: null, branch: null })}
+                  disabled={isConfirming}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmAction}
+                  disabled={isConfirming}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors bg-red-600 hover:bg-red-700"
+                >
+                  {isConfirming && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Yes, Delete Branch
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

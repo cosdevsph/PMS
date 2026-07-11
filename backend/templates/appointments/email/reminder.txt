@@ -16,8 +16,13 @@ Chief Complaint: {{ chief_complaint }}
 {% endif %}{% if notes_for_patient %}
 Notes: {{ notes_for_patient }}
 {% endif %}
-We look forward to seeing you. If you need to reschedule or cancel,
-please contact us as soon as possible.
+Will you proceed with your appointment as scheduled?
+
+  Yes, I will proceed: {{ confirm_url }}
+  No, I will Reschedule: {{ rebook_url }}
+  No, I will cancel: {{ cancel_url }}
+
+If you have any questions, please contact the clinic directly.
 
 {{ clinic_name }}
 {% if clinic_phone %}Phone: {{ clinic_phone }}{% endif %}

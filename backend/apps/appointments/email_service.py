@@ -67,6 +67,38 @@ def send_appointment_reminder_email(appointment) -> tuple[bool, str]:
         else clinic.name
     )
 
+    # Generate action tokens for email buttons
+    frontend_base = getattr(settings, 'FRONTEND_URL', 'https://app.mespms.com').rstrip('/')
+    confirm_url = ''
+    cancel_url = ''
+    rebook_url = ''
+    
+    try:
+        from apps.appointments.models import AppointmentConfirmToken, AppointmentCancelToken, RebookingLink
+        
+        # 1. Confirm Token
+        AppointmentConfirmToken.objects.filter(
+            appointment=appointment, is_used=False
+        ).update(is_used=True, used_at=timezone.now())
+        confirm_token = AppointmentConfirmToken.objects.create(appointment=appointment)
+        confirm_url = f"{frontend_base}/confirm/{confirm_token.token}"
+        
+        # 2. Cancel Token
+        AppointmentCancelToken.objects.filter(
+            appointment=appointment, is_used=False
+        ).update(is_used=True, used_at=timezone.now())
+        cancel_token = AppointmentCancelToken.objects.create(appointment=appointment)
+        cancel_url = f"{frontend_base}/cancel/{cancel_token.token}"
+        
+        # 3. Rebook Token
+        RebookingLink.objects.filter(
+            appointment=appointment, is_used=False
+        ).update(is_used=True, used_at=timezone.now())
+        rebook_token = RebookingLink.objects.create(patient=patient, appointment=appointment)
+        rebook_url = f"{frontend_base}/rebook/{rebook_token.token}"
+    except Exception as e:
+        logger.warning("Could not create email tokens for appt #%s: %s", appointment.id, e)
+
     context = {
         'patient_first_name':  patient.first_name,
         'patient_full_name':   patient.get_full_name(),
@@ -83,6 +115,9 @@ def send_appointment_reminder_email(appointment) -> tuple[bool, str]:
         'chief_complaint':     appointment.chief_complaint or '',
         'notes_for_patient':   appointment.patient_notes or '',
         'appointment_id':      appointment.id,
+        'confirm_url':         confirm_url,
+        'cancel_url':          cancel_url,
+        'rebook_url':          rebook_url,
     }
 
     try:

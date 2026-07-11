@@ -55,6 +55,59 @@ class ClinicViewSet(viewsets.ModelViewSet):
             
         return self.queryset.filter(id=user.clinic_id) if user.clinic else self.queryset.none()
 
+    def perform_update(self, serializer):
+        # Save the updated clinic
+        clinic = serializer.save()
+        # Invalidate the cache so the updated branch appears immediately
+        user = self.request.user
+        if clinic.main_clinic:
+            cache.delete(f'clinic_branches_{clinic.main_clinic.id}_user_{user.id}')
+        else:
+            cache.delete(f'clinic_branches_{clinic.id}_user_{user.id}')
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.is_main_branch:
+            return Response(
+                {"detail": "Cannot delete the main clinic branch."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().destroy(request, *args, **kwargs)
+
+    def perform_destroy(self, instance):
+        main_clinic = instance.main_clinic
+        user = self.request.user
+        
+        # Permanently delete all users specifically assigned to this branch
+        from apps.accounts.models import User
+        users_to_delete = User.objects.filter(clinic_branch=instance)
+        for u in users_to_delete:
+            u.delete()
+
+        # Handle appointments: delete future, preserve past
+        from apps.appointments.models import Appointment
+        from django.utils import timezone
+        
+        now = timezone.now()
+        today = now.date()
+        
+        # Hard delete future appointments
+        future_appointments = Appointment.objects.filter(clinic=instance, date__gt=today)
+        future_appointments.delete()
+
+        # Reassign past/today appointments to the main clinic so they survive the CASCADE deletion
+        past_appointments = Appointment.objects.filter(clinic=instance, date__lte=today)
+        past_appointments.update(clinic=main_clinic)
+            
+        # Perform hard delete of the branch
+        instance.delete()
+        
+        # Invalidate cache
+        if main_clinic:
+            cache.delete(f'clinic_branches_{main_clinic.id}_user_{user.id}')
+        else:
+            cache.delete(f'clinic_branches_{instance.id}_user_{user.id}')
+
     # ── GET /api/clinics/branches/ ────────────────────────────────────────────
     @action(detail=False, methods=['get'])
     def branches(self, request):
@@ -113,8 +166,8 @@ class ClinicViewSet(viewsets.ModelViewSet):
         serializer = ClinicSerializer(data=branch_data)
         if serializer.is_valid():
             serializer.save()
-            # Invalidate branch cache for this clinic family
-            cache.delete(f'clinic_branches_{main_clinic.id}')
+            # Invalidate branch cache for this clinic family (at least for the user making the change)
+            cache.delete(f'clinic_branches_{main_clinic.id}_user_{request.user.id}')
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -158,7 +211,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
         serializer.save(setup_complete=True)
 
         # Invalidate branch cache since profile data is included in branch responses
-        cache.delete(f'clinic_branches_{clinic.main_clinic.id}')
+        cache.delete(f'clinic_branches_{clinic.main_clinic.id}_user_{request.user.id}')
 
         logger.info(
             "Clinic profile setup completed for '%s' by %s",

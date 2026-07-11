@@ -586,3 +586,53 @@ class AppointmentConfirmToken(TimeStampedModel):
     @property
     def is_valid(self) -> bool:
         return not self.is_used and not self.is_expired
+
+
+# ── Appointment Cancel Token ──────────────────────────────────────────────────
+
+class AppointmentCancelToken(TimeStampedModel):
+    """
+    Secure one-time token embedded in appointment reminder emails.
+
+    When a patient clicks "No, Cancel" in the reminder email,
+    their browser opens the frontend /cancel/{token} page which calls
+    POST /api/appointments/cancel-email/{token}/ to cancel the appointment.
+    """
+
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name='cancel_tokens',
+        help_text='The appointment this token is for.',
+    )
+    token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        editable=False,
+    )
+    expires_at = models.DateTimeField(default=_default_confirm_expires)
+    is_used = models.BooleanField(
+        default=False,
+        help_text='True once the patient has clicked Cancel.',
+    )
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'appointment_cancel_tokens'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['token']),
+            models.Index(fields=['appointment', 'is_used']),
+        ]
+
+    def __str__(self):
+        return f"CancelToken {self.token} — appointment {self.appointment_id}"
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() > self.expires_at
+
+    @property
+    def is_valid(self) -> bool:
+        return not self.is_used and not self.is_expired

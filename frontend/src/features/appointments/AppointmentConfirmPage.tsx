@@ -6,7 +6,9 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-type PageState = 'loading' | 'success' | 'expired' | 'used' | 'error';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+
+type PageState = 'loading' | 'success' | 'expired' | 'used' | 'error' | 'already_cancelled';
 
 interface ConfirmResponse {
   detail: string;
@@ -17,10 +19,18 @@ interface ConfirmResponse {
   patient_name: string;
 }
 
+interface ErrorData {
+  code?: string;
+  detail?: string;
+  clinic_email?: string;
+  clinic_phone?: string;
+}
+
 export function AppointmentConfirmPage() {
   const { token } = useParams<{ token: string }>();
   const [pageState, setPageState] = useState<PageState>('loading');
   const [data, setData] = useState<ConfirmResponse | null>(null);
+  const [errorData, setErrorData] = useState<ErrorData | null>(null);
 
   useEffect(() => {
     if (!token) { setPageState('error'); return; }
@@ -28,7 +38,7 @@ export function AppointmentConfirmPage() {
     const controller = new AbortController();
 
     axios
-      .post(`/api/appointments/confirm-email/${token}/`, {}, { signal: controller.signal })
+      .post(`${API_BASE_URL}/appointments/confirm-email/${token}/`, {}, { signal: controller.signal })
       .then(res => {
         setData(res.data as ConfirmResponse);
         setPageState('success');
@@ -36,8 +46,11 @@ export function AppointmentConfirmPage() {
       .catch(err => {
         if (axios.isCancel(err)) return;
         if (axios.isAxiosError(err) && err.response?.status === 410) {
-          const code = err.response.data?.code;
-          setPageState(code === 'used' ? 'used' : 'expired');
+          const resData = err.response.data as ErrorData;
+          setErrorData(resData);
+          const code = resData.code;
+          if (code === 'already_cancelled') setPageState('already_cancelled');
+          else setPageState(code === 'used' ? 'used' : 'expired');
         } else {
           setPageState('error');
         }
@@ -58,8 +71,8 @@ export function AppointmentConfirmPage() {
     );
   }
 
-  // ── Terminal states: expired / used / error ────────────────────────────────
-  if (pageState === 'expired' || pageState === 'used' || pageState === 'error') {
+  // ── Terminal states: expired / used / error / already_cancelled ────────────
+  if (pageState === 'expired' || pageState === 'used' || pageState === 'error' || pageState === 'already_cancelled') {
     const configs = {
       expired: {
         icon: <AlertTriangle className="w-12 h-12 text-amber-500" />,
@@ -76,14 +89,37 @@ export function AppointmentConfirmPage() {
         title: 'Invalid Link',
         message: 'This confirmation link is invalid or could not be found. Please contact the clinic.',
       },
+      already_cancelled: {
+        icon: <AlertTriangle className="w-12 h-12 text-amber-500" />,
+        title: 'Appointment Cancelled',
+        message: 'This appointment was already cancelled. You cannot confirm it. Please contact the clinic for assistance.',
+      },
     };
-    const cfg = configs[pageState];
+    const cfg = configs[pageState as keyof typeof configs];
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-md p-8 max-w-md w-full text-center">
           <div className="flex justify-center mb-4">{cfg.icon}</div>
           <h1 className="text-xl font-bold text-gray-900 mb-2">{cfg.title}</h1>
-          <p className="text-gray-500 text-sm leading-relaxed">{cfg.message}</p>
+          <p className="text-gray-500 text-sm leading-relaxed mb-4">{cfg.message}</p>
+          
+          {(errorData?.clinic_email || errorData?.clinic_phone) && (
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-sm text-gray-600 space-y-2 mt-4 text-left">
+              <h3 className="font-medium text-gray-900 mb-2 border-b pb-2">Clinic Contact Info</h3>
+              {errorData.clinic_email && (
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-500">Email:</span>
+                  <a href={`mailto:${errorData.clinic_email}`} className="text-indigo-600 hover:text-indigo-700">{errorData.clinic_email}</a>
+                </div>
+              )}
+              {errorData.clinic_phone && (
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-500">Phone:</span>
+                  <a href={`tel:${errorData.clinic_phone}`} className="text-indigo-600 hover:text-indigo-700">{errorData.clinic_phone}</a>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -101,7 +137,7 @@ export function AppointmentConfirmPage() {
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Appointment Confirmed!</h1>
         <p className="text-sm text-gray-500 mb-6">
-          Thanks{data?.patient_name ? `, ${data.patient_name.split(' ')[0]}` : ''}! We look forward to seeing you.
+          Thank you for your confirmation. We look forward to seeing you at {data?.clinic_name || 'the clinic'}.
         </p>
 
         {data && (

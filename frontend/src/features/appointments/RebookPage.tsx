@@ -10,7 +10,7 @@ import {
 import { RebookCalendar } from '@/features/appointments/components/RebookCalendar';
 import axios from 'axios';
 
-type PageState = 'loading' | 'form' | 'success' | 'cancelled' | 'expired' | 'used' | 'error';
+type PageState = 'loading' | 'form' | 'success' | 'cancelled' | 'expired' | 'used' | 'error' | 'already_confirmed' | 'already_cancelled';
 
 export function RebookPage() {
   const { token } = useParams<{ token: string }>();
@@ -18,14 +18,26 @@ export function RebookPage() {
   const [details, setDetails] = useState<RebookingDetails | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
+  interface ErrorData {
+    code?: string;
+    detail?: string;
+    clinic_email?: string;
+    clinic_phone?: string;
+  }
+  const [errorData, setErrorData] = useState<ErrorData | null>(null);
+
   useEffect(() => {
     if (!token) { setPageState('error'); return; }
     getRebookingDetails(token)
       .then(d => { setDetails(d); setPageState('form'); })
       .catch(err => {
         if (axios.isAxiosError(err) && err.response?.status === 410) {
-          const code = err.response.data?.code;
-          setPageState(code === 'used' ? 'used' : 'expired');
+          const resData = err.response.data as ErrorData;
+          setErrorData(resData);
+          const code = resData.code;
+          if (code === 'already_confirmed') setPageState('already_confirmed');
+          else if (code === 'already_cancelled') setPageState('already_cancelled');
+          else setPageState(code === 'used' ? 'used' : 'expired');
         } else {
           setPageState('error');
         }
@@ -81,7 +93,7 @@ export function RebookPage() {
     );
   }
 
-  if (pageState === 'expired' || pageState === 'used' || pageState === 'error' || pageState === 'cancelled') {
+  if (pageState === 'expired' || pageState === 'used' || pageState === 'error' || pageState === 'cancelled' || pageState === 'already_confirmed' || pageState === 'already_cancelled') {
     const configs = {
       expired: {
         icon: <AlertTriangle className="w-10 h-10 sm:w-12 sm:h-12 text-amber-500" />,
@@ -98,23 +110,53 @@ export function RebookPage() {
       error: {
         icon: <AlertTriangle className="w-12 h-12 text-red-500" />,
         title: 'Invalid Link',
-        message: 'This rebooking link is invalid or could not be found. Please contact the clinic.',
+        message: 'This link is invalid or could not be found. Please contact the clinic.',
         color: 'red',
       },
       cancelled: {
-        icon: <XCircle className="w-12 h-12 text-gray-500" />,
+        icon: <XCircle className="w-12 h-12 text-red-500" />,
         title: 'Appointment Cancelled',
-        message: 'Your appointment has been cancelled. Please contact the clinic if you need to reschedule.',
-        color: 'gray',
+        message: 'Your appointment was cancelled successfully.',
+        color: 'red',
+      },
+      already_confirmed: {
+        icon: <AlertTriangle className="w-12 h-12 text-amber-500" />,
+        title: 'Appointment Already Confirmed',
+        message: 'You have already confirmed this appointment. You cannot reschedule it online. Please contact the clinic directly for assistance.',
+        color: 'amber',
+      },
+      already_cancelled: {
+        icon: <AlertTriangle className="w-12 h-12 text-amber-500" />,
+        title: 'Appointment Cancelled',
+        message: 'This appointment was already cancelled. You cannot reschedule it. Please contact the clinic for assistance.',
+        color: 'amber',
       },
     };
-    const cfg = configs[pageState];
+    const cfg = configs[pageState as keyof typeof configs];
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-2 sm:px-4">
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-md p-6 sm:p-8 max-w-md w-full text-center">
           <div className="flex justify-center mb-4">{cfg.icon}</div>
-          <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{cfg.title}</h1>
-          <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">{cfg.message}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{cfg.title}</h1>
+          <p className="text-gray-500 text-sm sm:text-base leading-relaxed mb-4">{cfg.message}</p>
+          
+          {(errorData?.clinic_email || errorData?.clinic_phone) && (
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-sm text-gray-600 space-y-2 mt-4 text-left max-w-sm mx-auto">
+              <h3 className="font-medium text-gray-900 mb-2 border-b pb-2">Clinic Contact Info</h3>
+              {errorData.clinic_email && (
+                <div className="flex justify-between items-center gap-4">
+                  <span className="font-medium text-gray-500">Email:</span>
+                  <a href={`mailto:${errorData.clinic_email}`} className="text-[#0575E6] hover:underline break-all">{errorData.clinic_email}</a>
+                </div>
+              )}
+              {errorData.clinic_phone && (
+                <div className="flex justify-between items-center gap-4">
+                  <span className="font-medium text-gray-500">Phone:</span>
+                  <a href={`tel:${errorData.clinic_phone}`} className="text-[#0575E6] hover:underline whitespace-nowrap">{errorData.clinic_phone}</a>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

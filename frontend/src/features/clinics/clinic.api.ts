@@ -150,6 +150,10 @@ export const updateClinicBranch = async (
   return response.data;
 };
 
+export const deleteClinicBranch = async (id: number): Promise<void> => {
+  await api.delete(`/clinics/${id}/`);
+};
+
 // ── NEW functions ─────────────────────────────────────────────────────────────
 
 /**

@@ -66,18 +66,30 @@
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
         <tr>
           {% if confirm_url %}
-          <td style="padding:0 8px 0 0;">
+          <td style="padding:0 8px 12px 0;">
             <a href="{{ confirm_url }}"
-               style="display:inline-block;padding:10px 22px;background-color:#16a34a;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;border-radius:6px;letter-spacing:0.01em;">
-              ✅ &nbsp;Confirm Appointment
+               style="display:inline-block;padding:10px 22px;background-color:#16a34a;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;border-radius:6px;letter-spacing:0.01em;width:100%;text-align:center;">
+              ✅ &nbsp;Yes, I will proceed
             </a>
           </td>
           {% endif %}
+        </tr>
+        <tr>
           {% if reschedule_url %}
-          <td style="padding:0 0 0 8px;">
+          <td style="padding:0 8px 12px 0;">
             <a href="{{ reschedule_url }}"
-               style="display:inline-block;padding:10px 22px;background-color:#dc2626;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;border-radius:6px;letter-spacing:0.01em;">
-              ❌ &nbsp;Cannot Attend / Reschedule
+               style="display:inline-block;padding:10px 22px;background-color:#f3f4f6;color:#374151;font-size:13px;font-weight:700;text-decoration:none;border-radius:6px;letter-spacing:0.01em;border:1px solid #d1d5db;width:100%;text-align:center;">
+              📅 &nbsp;No, I will Reschedule
+            </a>
+          </td>
+          {% endif %}
+        </tr>
+        <tr>
+          {% if cancel_url %}
+          <td style="padding:0 8px 0 0;">
+            <a href="{{ cancel_url }}"
+               style="display:inline-block;padding:10px 22px;background-color:#dc2626;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;border-radius:6px;letter-spacing:0.01em;width:100%;text-align:center;">
+              ❌ &nbsp;No, I will cancel
             </a>
           </td>
           {% endif %}

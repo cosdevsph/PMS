@@ -14,8 +14,13 @@ Service:      {{ appointment_type }}
 
 Please confirm your attendance:
 
+{% if confirm_url %}  Yes, I will proceed: {{ confirm_url }}
+{% endif %}{% if reschedule_url %}  No, I will Reschedule: {{ reschedule_url }}
+{% endif %}{% if cancel_url %}  No, I will cancel: {{ cancel_url }}
+{% endif %}{% if not confirm_url and not reschedule_url %}
   Reply Y – to confirm
   Reply N – if you cannot attend
+{% endif %}
 
 If you need to reschedule, please contact us as soon as possible.
 

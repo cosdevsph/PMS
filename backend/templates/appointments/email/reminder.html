@@ -77,8 +77,34 @@
 </table>
 {% endif %}
 
-<p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0;">
-  We look forward to seeing you. If you need to reschedule or cancel,
-  please contact us as soon as possible.
+<!-- Interactive Action Buttons -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:24px;text-align:center;">
+  <tr>
+    <td style="padding:24px 20px;">
+      <p style="font-size:15px;font-weight:600;color:#111827;margin:0 0 20px;">Will you proceed with your appointment as scheduled?</p>
+      
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td align="center" style="padding-bottom:12px;">
+            <a href="{{ confirm_url }}" style="display:inline-block;background-color:#16a34a;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:6px;width:80%;max-width:240px;text-align:center;border:1px solid #16a34a;">Yes, I will proceed</a>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-bottom:12px;">
+            <a href="{{ rebook_url }}" style="display:inline-block;background-color:#f3f4f6;color:#374151;font-size:14px;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:6px;width:80%;max-width:240px;text-align:center;border:1px solid #d1d5db;">No, I will Reschedule</a>
+          </td>
+        </tr>
+        <tr>
+          <td align="center">
+            <a href="{{ cancel_url }}" style="display:inline-block;background-color:#fef2f2;color:#dc2626;font-size:14px;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:6px;width:80%;max-width:240px;text-align:center;border:1px solid #fecaca;">No, I will cancel</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<p style="font-size:14px;color:#6b7280;line-height:1.6;margin:0;text-align:center;">
+  If you have any questions, please contact the clinic directly.
 </p>
 {% endblock %}
