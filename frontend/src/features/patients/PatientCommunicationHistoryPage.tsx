@@ -121,7 +121,6 @@ function InlineThread({ log }: { log: CommunicationLogEntry }) {
   const declined  = log.patient_reply === 'N';
   const rescheduled = log.patient_reply === 'RESCHEDULE';
   const isPending = !log.patient_reply && (log.status === 'SENT' || log.status === 'DELIVERED');
-  const bgStyle = log.appointment_color ? { backgroundColor: log.appointment_color } : {};
   
   // Use the appointment color as a subtle left border AND a very light background tint
   const borderStyle = log.appointment_color 
