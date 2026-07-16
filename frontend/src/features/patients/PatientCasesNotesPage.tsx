@@ -450,8 +450,10 @@ export const PatientCasesNotesPage = () => {
   }, [location, navigate]);
 
   useEffect(() => {
+    if (loadingCases) return; // Wait for cases to finish loading before validating
+
     if (cases.length === 0) {
-      setSelectedCaseId(null);
+      if (selectedCaseId !== null) setSelectedCaseId(null);
       return;
     }
 
@@ -459,7 +461,7 @@ export const PatientCasesNotesPage = () => {
     if (!selectedExists) {
       setSelectedCaseId(cases[0].id);
     }
-  }, [cases, selectedCaseId]);
+  }, [cases, selectedCaseId, loadingCases]);
 
   // Defensive check: if they try to auto-open note creation but have no cases
   useEffect(() => {
@@ -847,6 +849,7 @@ export const PatientCasesNotesPage = () => {
             setCreateNoteAppointmentId(undefined);
           }}
           appointmentId={createNoteAppointmentId}
+          patientCaseId={selectedCase.id}
           patientId={patient.id}
           patientName={patient.full_name}
           existingNotes={clinicalNotes

@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, FileText, Loader2, Save, Calendar, ClipboardList, Plus } from 'lucide-react';
-import { getActiveTemplates, createNote } from '../clinical-templates.api';
+import { X, FileText, Loader2, Save, Calendar, ClipboardList, Plus, History } from 'lucide-react';
+import { getActiveTemplates, createNote, getNotes } from '../clinical-templates.api';
+import { getLinkedCaseId } from '@/features/patients/patientCases.storage';
+import type { ClinicalNote } from '@/types/clinicalTemplate';
+import { PreviewPreviousNoteModal } from './PreviewPreviousNoteModal';
 import { getAppointments } from '@/features/appointments/appointment.api';
+import { getPatientCases } from '@/features/patients/patientCases.api';
 import { DynamicFormRenderer } from './DynamicFormRenderer';
 import type { ClinicalTemplate, CreateClinicalNoteData, TemplateSection, TemplateField } from '@/types/clinicalTemplate';
+import type { PatientCase } from '@/types/patient';
 import type { Appointment } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -14,6 +19,7 @@ interface CreateClinicalNoteModalProps {
   patientId: number;
   patientName: string;
   appointmentId?: number;
+  patientCaseId?: number;
   onSuccess?: () => void;
   existingNotes?: { appointment: number }[]; // Array of appointments that already have notes
 }
@@ -44,6 +50,7 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
   patientId,
   patientName,
   appointmentId: initialAppointmentId,
+  patientCaseId,
   onSuccess,
   existingNotes = [],
 }) => {
@@ -56,6 +63,26 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
   const [content, setContent] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [previousNote, setPreviousNote] = useState<ClinicalNote | null>(null);
+  const [allNotes, setAllNotes] = useState<ClinicalNote[]>([]);
+  const [patientCases, setPatientCases] = useState<PatientCase[]>([]);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+
+  const previousNoteCaseTitle = useMemo(() => {
+    if (!previousNote || !patientCases.length) return '';
+    let matchedCaseId: number | null = previousNote.patient_case || previousNote.patient_case_id || null;
+    
+    if (!matchedCaseId && previousNote.appointment) {
+      const linked = getLinkedCaseId(previousNote.appointment);
+      if (linked) matchedCaseId = Number(linked);
+    }
+    
+    if (matchedCaseId) {
+      const foundCase = patientCases.find(c => c.id === matchedCaseId);
+      return foundCase?.title || '';
+    }
+    return '';
+  }, [previousNote, patientCases]);
 
   const navigate = useNavigate();
 
@@ -69,17 +96,35 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
     setLoading(true);
     try {
       // Fetch both templates and patient's appointments in parallel
-      // Get all appointments for the patient (not just completed)
-      const [templatesData, appointmentsData] = await Promise.all([
+      // Fetch templates, appointments, patient's previous notes, and cases
+      const [templatesData, appointmentsData, notesData, casesData] = await Promise.all([
         getActiveTemplates(),
         getAppointments({ patient: patientId, page_size: 100 }),
+        getNotes({ patient: patientId, is_draft: false }),
+        getPatientCases(patientId),
       ]);
       
-      console.log('[CreateClinicalNoteModal] API response - templates:', templatesData);
-      console.log('[CreateClinicalNoteModal] API response - appointments:', appointmentsData);
-      console.log('[CreateClinicalNoteModal] API response - appointments results:', appointmentsData.results);
-      
       setTemplates(templatesData);
+      setPatientCases(casesData);
+      setAllNotes(notesData || []);
+      
+      // Grab the most recent signed note for the copy feature
+      if (notesData && notesData.length > 0) {
+        if (patientCaseId) {
+          // Look for note in the same case first (check DB fields and local storage links)
+          const caseNote = notesData.find(n => {
+            if (n.patient_case === patientCaseId || n.patient_case_id === patientCaseId) return true;
+            if (n.appointment && Number(getLinkedCaseId(n.appointment)) === patientCaseId) return true;
+            return false;
+          });
+          setPreviousNote(caseNote || notesData[0]);
+        } else {
+          setPreviousNote(notesData[0]);
+        }
+      } else {
+        setPreviousNote(null);
+      }
+      
       // Sort appointments by date (newest first)
       const sortedAppointments = (appointmentsData.results || []).sort((a, b) => 
         new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -156,6 +201,23 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
     }
     setContent(initialContent);
     setStep('form');
+  };
+
+  const handleCopyPreviousSession = (reconstructedContent: Record<string, unknown>) => {
+    if (previousNote?.template) {
+      const templateToUse = templates.find(t => t.id === previousNote.template);
+      if (templateToUse) {
+        setSelectedTemplate(templateToUse);
+        setContent(reconstructedContent);
+        setStep('form');
+        setIsPreviewModalOpen(false);
+        toast.success('Successfully copied previous session content.');
+        return;
+      }
+    }
+    
+    // Fallback if template was deleted
+    toast.error('The template used in the previous session is no longer available.');
   };
 
   const handleSave = async () => {
@@ -274,13 +336,24 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
                   <FileText className="w-5 h-5 text-sky-600" />
                   <h3 className="text-sm font-semibold text-gray-700">Select a Template</h3>
                 </div>
-                <button
-                  onClick={handleGoToTemplates}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-lg hover:bg-sky-100 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Create New Template
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleGoToTemplates}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-lg hover:bg-sky-100 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create New Template
+                  </button>
+                  {previousNote && (
+                    <button
+                      onClick={() => setIsPreviewModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
+                    >
+                      <History className="w-4 h-4" />
+                      Copy Previous Session
+                    </button>
+                  )}
+                </div>
               </div>
               
               {templates.length === 0 ? (
@@ -475,6 +548,21 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
           )}
         </div>
       </div>
+
+      {/* Preview Previous Session Modal */}
+      {previousNote && (
+        <PreviewPreviousNoteModal
+          isOpen={isPreviewModalOpen}
+          onClose={() => setIsPreviewModalOpen(false)}
+          sourceNote={previousNote}
+          sourceNoteCaseTitle={previousNoteCaseTitle}
+          templateStructure={templates.find(t => t.id === previousNote.template)?.structure}
+          onCopy={handleCopyPreviousSession}
+          allNotes={allNotes}
+          onSelectNote={(note) => setPreviousNote(note)}
+          patientCases={patientCases}
+        />
+      )}
     </div>
   );
 };
