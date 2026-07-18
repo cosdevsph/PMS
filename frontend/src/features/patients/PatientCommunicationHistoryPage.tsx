@@ -9,6 +9,7 @@ import {
   communicationApi,
   type CommunicationLogEntry,
 } from '@/features/setup/services/communication.api';
+import { SystemBranding } from '@/config/branding';
 
 const PAGE_SIZE = 20;
 
@@ -140,7 +141,7 @@ function InlineThread({ log }: { log: CommunicationLogEntry }) {
             <div className="w-5 h-5 rounded-full bg-linear-to-br from-sky-500 to-sky-700 flex items-center justify-center shrink-0 shadow-sm border border-white/20">
               <Building2 className="w-2.5 h-2.5 text-white" />
             </div>
-            <span className="text-[11.5px] font-semibold text-gray-800">Malasakit PMS</span>
+            <span className="text-[11.5px] font-semibold text-gray-800">{SystemBranding.companyName}</span>
             <span className="text-[11.5px] text-gray-500">→ {log.recipient}</span>
             <span className="text-[11px] text-gray-400 ml-auto">{formatFull(log.created_at)}</span>
           </div>

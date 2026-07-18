@@ -9,6 +9,7 @@ import {
   type CommunicationLogEntry,
   type CommunicationLogSummary,
 } from '../../services/communication.api';
+import { SystemBranding } from '@/config/branding';
 
 const PAGE_SIZE = 20;
 
@@ -364,7 +365,7 @@ function ThreadView({ log }: { log: CommunicationLogEntry }) {
             <div className="w-6 h-6 rounded-full bg-linear-to-br from-sky-500 to-sky-700 flex items-center justify-center shrink-0">
               <Building2 className="w-3 h-3 text-white" />
             </div>
-            <span className="text-[12px] font-semibold text-gray-700">Malasakit PMS</span>
+            <span className="text-[12px] font-semibold text-gray-700">{SystemBranding.companyName}</span>
             <span className="text-[11px] text-gray-400">→ {log.recipient}</span>
             <span className="text-[11px] text-gray-400 ml-auto">{formatFull(log.created_at)}</span>
           </div>

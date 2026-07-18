@@ -21,9 +21,6 @@ import type { Invoice } from '@/types/billing';
 import {
   getCaseNoteCount,
   getCaseNotes,
-  getLinkedCaseId,
-  setLinkedCaseId,
-  clearLinkedCase,
 } from '@/features/patients/patientCases.storage';
 import {
   getPatientCases,
@@ -254,7 +251,9 @@ const ClinicalCaseWorkspace = React.forwardRef<
   }
 >(({ appointment, patientCases, practitioners, loadingPractitioners, onCasesChanged, onDirtyChange }, ref) => {
   const queryClient = useQueryClient();
-  const [selectedCaseId,  setSelectedCaseId]  = useState<string>(patientCases[0]?.id ? String(patientCases[0].id) : '');
+  const [selectedCaseId,  setSelectedCaseId]  = useState<string>(
+    appointment.patient_case ? String(appointment.patient_case) : ''
+  );
   const [editPayer,       setEditPayer]        = useState<PatientCasePayer | ''>(patientCases[0]?.payer ?? '');
   const [editStatus,      setEditStatus]       = useState<PatientCaseStatus>(patientCases[0]?.status ?? 'OPEN');
   const [editAlertNotes,  setEditAlertNotes]   = useState<string>(patientCases[0]?.alert_notes ?? '');
@@ -282,7 +281,7 @@ const ClinicalCaseWorkspace = React.forwardRef<
 
   // Reset to the appointment's linked case (or blank) when a different appointment is opened
   useEffect(() => {
-    setSelectedCaseId(getLinkedCaseId(appointment.id) ?? '');
+    setSelectedCaseId(appointment.patient_case ? String(appointment.patient_case) : '');
     setSaveError(null);
     setSavedOk(false);
   }, [appointment.id]);
@@ -292,7 +291,6 @@ const ClinicalCaseWorkspace = React.forwardRef<
   useEffect(() => {
     if (selectedCaseId !== '' && !patientCases.some(c => String(c.id) === selectedCaseId)) {
       setSelectedCaseId('');
-      clearLinkedCase(appointment.id);
     }
   }, [patientCases]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -330,8 +328,13 @@ const ClinicalCaseWorkspace = React.forwardRef<
       alert_notes:  data.alertNotes || undefined,
       referred_by:  data.referredBy || undefined,
       referral_info: data.referralInfo || undefined,
-    }).then((created) => {
-      setLinkedCaseId(appointment.id, String(created.id)); // explicitly link to this appointment
+    }).then(async (created) => {
+      try {
+        await apiEditAppointment(appointment.id, { patient_case: created.id });
+        if (onDirtyChange) onDirtyChange(true);
+      } catch (err) {
+        toast.error('Created case but failed to assign to appointment');
+      }
       toast.success('Case created');
       setShowCreateModal(false);
       setSelectedCaseId(String(created.id));
@@ -391,16 +394,20 @@ const ClinicalCaseWorkspace = React.forwardRef<
           <div className="flex items-center gap-2">
             <select
               value={selectedCaseId}
-              onChange={e => {
+              onChange={async e => {
                 if (e.target.value === '__create__') {
                   setShowCreateModal(true);
                 } else {
                   const newId = e.target.value;
                   setSelectedCaseId(newId);
-                  if (newId) {
-                    setLinkedCaseId(appointment.id, newId);
-                  } else {
-                    clearLinkedCase(appointment.id);
+                  try {
+                    await apiEditAppointment(appointment.id, {
+                      patient_case: newId ? parseInt(newId, 10) : null
+                    });
+                    if (onDirtyChange) onDirtyChange(true);
+                    toast.success('Case assigned to appointment');
+                  } catch (error) {
+                    toast.error('Failed to assign case');
                   }
                 }
               }}
@@ -1481,14 +1488,14 @@ const caseMetrics: Record<string, { noteCount: number; lastUpdated: string }> = 
                       if (existingNote) {
                         navigate(`/patients/${appointment.patient}/cases`, { 
                           state: { 
-                            preselectedCaseId: getLinkedCaseId(appointment.id)
+                            preselectedCaseId: appointment.patient_case ? String(appointment.patient_case) : undefined
                           } 
                         });
                       } else {
                         navigate(`/patients/${appointment.patient}/cases`, { 
                           state: { 
                             openCreateNoteForAppointment: appointment.id,
-                            preselectedCaseId: getLinkedCaseId(appointment.id)
+                            preselectedCaseId: appointment.patient_case ? String(appointment.patient_case) : undefined
                           } 
                         });
                       }

@@ -153,6 +153,7 @@ export interface PrintNoteResponse {
   patient_number: string;
   patient_email: string;
   clinic_name: string;
+  clinic_logo?: string;
   clinic_address: string;
   clinic_phone: string;
   clinic_email: string;

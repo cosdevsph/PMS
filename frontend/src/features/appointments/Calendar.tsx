@@ -1710,6 +1710,14 @@ const CalendarComponent: React.FC<CalendarProps> = ({
               <span className={!col.useHex ? 'text-white/80' : ''}>{col.label}</span>
             </div>
           )}
+          {apt.case_remaining_sessions !== null && !compact && (
+            <div
+              className={`text-[9px] truncate mt-0.5 font-semibold ${apt.case_remaining_sessions === 0 ? 'text-red-300' : (!col.useHex ? 'text-white/80' : '')}`}
+              style={col.useHex && apt.case_remaining_sessions > 0 ? { color: col.textColor } : {}}
+            >
+              {apt.case_remaining_sessions === 0 ? 'Session Allocation Exhausted' : `${apt.case_remaining_sessions} Sessions Remaining`}
+            </div>
+          )}
           {!compact && isPortalBooking(apt) && (
             <div
               className="flex items-center gap-0.5 mt-1"

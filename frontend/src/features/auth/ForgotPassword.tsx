@@ -5,6 +5,7 @@ import { Mail, AlertCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import MalasakitWhiteLogo from '@/assets/malasakit/Primary Logo - White.svg';
 import MalasakitColoredLogo from '@/assets/malasakit/PrimaryLogo-Colored.svg';
 import toast from 'react-hot-toast';
+import { SystemBranding } from '@/config/branding';
 
 /**
  * ForgotPassword — Step 1 of the OTP-based password recovery flow.
@@ -99,7 +100,7 @@ export const ForgotPassword: React.FC = () => {
         </div>
 
         <div className="relative z-10 text-blue-200 text-sm">
-          © 2026 Malasakit
+          {SystemBranding.copyright}
         </div>
       </div>
 

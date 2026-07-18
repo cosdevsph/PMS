@@ -16,6 +16,7 @@ import MalasakitColoredLogo from '@/assets/malasakit/PrimaryLogo-Colored.svg';
 import type { AdminRegisterData, AuthError } from '@/types/auth';
 import toast from 'react-hot-toast';
 import { OTPVerificationModal } from './components/OTPVerificationModal';
+import { SystemBranding } from '@/config/branding';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -319,7 +320,7 @@ export const AdminRegister: React.FC = () => {
 
         {/* Footer */}
         <div className="relative z-10 text-white/60 text-sm">
-          © 2026 Malasakit
+          {SystemBranding.copyright}
         </div>
       </div>
 

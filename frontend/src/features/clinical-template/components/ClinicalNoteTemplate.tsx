@@ -1,6 +1,8 @@
 import { forwardRef } from 'react';
 import type { PrintNoteResponse } from '../clinical-templates.api';
-import { DocumentFooter as DocumentBrandingFooter } from '@/components/DocumentFooter';
+import { DocumentFooter as DocumentBrandingFooter } from '@/components/documents/DocumentFooter';
+import { DocumentHeader } from '@/components/documents/DocumentHeader';
+import type { ClinicBranch } from '@/types/clinic';
 
 export interface ClinicalNoteTemplateProps {
   data: PrintNoteResponse;
@@ -55,49 +57,28 @@ export const ClinicalNoteTemplate = forwardRef<HTMLDivElement, ClinicalNoteTempl
         }}
       >
         {/* ── CLINIC HEADER ──────────────────────────────────────────────── */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            paddingBottom: '10px',
-            marginBottom: '10px',
-            borderBottom: '2px solid #0284c7',
-          }}
-        >
-          <div>
-            <p style={{ fontSize: '16px', fontWeight: 700, color: '#0369a1', margin: 0 }}>
-              {data.clinic_name}
-            </p>
-            {data.clinic_address && (
-              <p style={{ fontSize: '10px', color: '#6b7280', margin: '2px 0 0' }}>{data.clinic_address}</p>
-            )}
-            <p style={{ fontSize: '10px', color: '#6b7280', margin: '2px 0 0' }}>
-              {[data.clinic_phone, data.clinic_email].filter(Boolean).join(' · ')}
-            </p>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
-              Generated
-            </p>
-            <p style={{ fontSize: '10px', color: '#374151', margin: '2px 0 0' }}>{generatedOn}</p>
-          </div>
-        </div>
+        <DocumentHeader 
+          clinic={{
+            id: 0,
+            name: data.clinic_name,
+            address: data.clinic_address,
+            phone: data.clinic_phone,
+            email: data.clinic_email,
+            logo: data.clinic_logo,
+            is_main_branch: true,
+            is_branch: false,
+            parent_clinic: null,
+            parent_name: null,
+            is_active: true,
+            branch_code: '',
+            city: '',
+            province: '',
+          } as ClinicBranch}
+          title="Clinical Note Report"
+          subtitle={`Generated ${generatedOn}`}
+        />
 
-        {/* ── DOCUMENT TITLE ─────────────────────────────────────────────── */}
-        <p
-          style={{
-            textAlign: 'center',
-            fontSize: '12px',
-            fontWeight: 700,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: '#374151',
-            margin: '0 0 12px',
-          }}
-        >
-          Clinical Note Report
-        </p>
+
 
         {/* ── PRACTITIONER CARD ──────────────────────────────────────────── */}
         <div
@@ -310,7 +291,7 @@ export const ClinicalNoteTemplate = forwardRef<HTMLDivElement, ClinicalNoteTempl
           ))}
         </div>
 
-        {/* ── SIGNATURE / FOOTER ─────────────────────────────────────────── */}
+        {/* ── SIGNATURE ─────────────────────────────────────────── */}
         <div
           style={{
             marginTop: '12px',
@@ -342,20 +323,13 @@ export const ClinicalNoteTemplate = forwardRef<HTMLDivElement, ClinicalNoteTempl
               </>
             )}
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '9px', color: '#9ca3af', margin: 0 }}>
-              Prepared by: {data.practitioner_name}
-            </p>
-            <p style={{ fontSize: '9px', color: '#9ca3af', margin: '2px 0 0' }}>
-              Generated: {generatedOn}
-            </p>
-          </div>
         </div>
 
         {/* ── Malasakit Branding ─────────────────────────────────────────── */}
-        <div style={{ marginTop: '20px', paddingTop: '12px', borderTop: '1px solid #e5e7eb', textAlign: 'center' }}>
-          <DocumentBrandingFooter />
-        </div>
+        <DocumentBrandingFooter 
+          preparedBy={data.practitioner_name} 
+          generatedDate={generatedOn} 
+        />
       </div>
     );
   }

@@ -29,5 +29,5 @@ If you need to reschedule, please contact us as soon as possible.
 {% if clinic_email %}Email: {{ clinic_email }}{% endif %}
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email.

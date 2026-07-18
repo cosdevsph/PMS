@@ -7,6 +7,7 @@ import MalasakitWhiteLogo from '@/assets/malasakit/Primary Logo - White.svg';
 import MalasakitColoredLogo from '@/assets/malasakit/PrimaryLogo-Colored.svg';
 import type { LoginCredentials, AuthError } from '@/types/auth';
 import toast from 'react-hot-toast';
+import { SystemBranding } from '@/config/branding';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -131,7 +132,7 @@ export const Login: React.FC = () => {
 
         {/* Footer */}
         <div className="relative z-10 text-blue-200 text-sm">
-          © 2026 Malasakit
+          {SystemBranding.copyright}
         </div>
       </div>
 

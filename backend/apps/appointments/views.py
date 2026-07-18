@@ -241,13 +241,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
 
         # ── service added to editable fields ────────────────────────────────
-        allowed_fields = {'practitioner', 'service', 'chief_complaint', 'notes', 'patient_notes', 'arrival_status'}
+        allowed_fields = {'practitioner', 'service', 'chief_complaint', 'notes', 'patient_notes', 'arrival_status', 'patient_case'}
         filtered_data  = {k: v for k, v in request.data.items() if k in allowed_fields}
 
         if not filtered_data:
             return Response(
                 {'detail': 'No editable fields provided. '
-                           'Allowed: practitioner, service, chief_complaint, notes, patient_notes, arrival_status'},
+                           'Allowed: practitioner, service, chief_complaint, notes, patient_notes, arrival_status, patient_case'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

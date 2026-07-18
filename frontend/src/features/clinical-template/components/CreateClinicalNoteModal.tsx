@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, FileText, Loader2, Save, Calendar, ClipboardList, Plus, History } from 'lucide-react';
 import { getActiveTemplates, createNote, getNotes } from '../clinical-templates.api';
-import { getLinkedCaseId } from '@/features/patients/patientCases.storage';
 import type { ClinicalNote } from '@/types/clinicalTemplate';
 import { PreviewPreviousNoteModal } from './PreviewPreviousNoteModal';
 import { getAppointments } from '@/features/appointments/appointment.api';
@@ -72,11 +71,6 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
     if (!previousNote || !patientCases.length) return '';
     let matchedCaseId: number | null = previousNote.patient_case || previousNote.patient_case_id || null;
     
-    if (!matchedCaseId && previousNote.appointment) {
-      const linked = getLinkedCaseId(previousNote.appointment);
-      if (linked) matchedCaseId = Number(linked);
-    }
-    
     if (matchedCaseId) {
       const foundCase = patientCases.find(c => c.id === matchedCaseId);
       return foundCase?.title || '';
@@ -114,7 +108,6 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
           // Look for note in the same case first (check DB fields and local storage links)
           const caseNote = notesData.find(n => {
             if (n.patient_case === patientCaseId || n.patient_case_id === patientCaseId) return true;
-            if (n.appointment && Number(getLinkedCaseId(n.appointment)) === patientCaseId) return true;
             return false;
           });
           setPreviousNote(caseNote || notesData[0]);

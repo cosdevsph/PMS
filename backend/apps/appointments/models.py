@@ -61,6 +61,14 @@ class Appointment(TimeStampedModel, SoftDeleteModel):
         on_delete=models.CASCADE,
         related_name='appointments'
     )
+    patient_case = models.ForeignKey(
+        'patients.PatientCase',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='case_appointments',
+        help_text='The patient case this appointment is linked to.'
+    )
     practitioner = models.ForeignKey(
         'clinics.Practitioner',
         on_delete=models.CASCADE,

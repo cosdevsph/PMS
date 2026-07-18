@@ -7,6 +7,7 @@ from .models import (
     PortalLink, PortalBooking, PatientConsent,
     ClientFormRequest, PatientCase,
     PatientConsentDocument,
+    PatientCaseSessionLog,
 )
 
 
@@ -661,19 +662,66 @@ class PublicClientFormSubmitSerializer(serializers.Serializer):
         return attrs
 
 
+class PatientCaseSessionLogSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+
+    class Meta:
+        model = PatientCaseSessionLog
+        fields = [
+            'id', 'patient_case', 'user', 'user_name',
+            'action', 'amount', 'previous_limit', 'new_limit',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
 class PatientCaseSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source='patient.get_full_name', read_only=True)
     primary_practitioner_name = serializers.SerializerMethodField()
+    
+    completed_sessions = serializers.SerializerMethodField()
+    remaining_sessions = serializers.SerializerMethodField()
+    progress_text = serializers.SerializerMethodField()
 
     class Meta:
         model = PatientCase
         fields = [
             'id', 'patient', 'patient_name', 'title', 'description',
             'status', 'primary_practitioner', 'primary_practitioner_name',
-            'payer', 'alert_notes',
+            'payer', 'alert_notes', 'approved_sessions',
+            'completed_sessions', 'remaining_sessions', 'progress_text',
             'referred_by', 'referral_info', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'completed_sessions', 'remaining_sessions', 'progress_text']
+
+    def _get_stats(self, obj):
+        if not hasattr(obj, '_session_stats'):
+            from apps.patients.services.session_engine import SessionEngine
+            obj._session_stats = SessionEngine.get_session_stats(obj)
+        return obj._session_stats
+
+    def get_completed_sessions(self, obj) -> int:
+        return self._get_stats(obj).get('completed_sessions', 0)
+
+    def get_remaining_sessions(self, obj) -> int | None:
+        return self._get_stats(obj).get('remaining_sessions')
+
+    def get_progress_text(self, obj) -> str:
+        return self._get_stats(obj).get('progress_text', '')
+
+    def validate(self, attrs):
+        approved = attrs.get('approved_sessions', getattr(self.instance, 'approved_sessions', None) if self.instance else None)
+        
+        if approved is not None and approved < 0:
+            raise serializers.ValidationError({'approved_sessions': 'Approved sessions cannot be negative.'})
+            
+        if self.instance and approved is not None:
+            completed = self.get_completed_sessions(self.instance)
+            if approved < completed:
+                raise serializers.ValidationError(
+                    {'approved_sessions': f'Cannot reduce approved sessions below completed sessions ({completed}).'}
+                )
+        return attrs
 
     def get_primary_practitioner_name(self, obj) -> str | None:
         if obj.primary_practitioner and obj.primary_practitioner.user:

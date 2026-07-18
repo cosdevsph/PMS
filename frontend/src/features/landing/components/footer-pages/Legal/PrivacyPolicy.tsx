@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { SystemBranding } from '@/config/branding';
 
 export const PrivacyPolicy: React.FC = () => {
   return (
@@ -23,7 +24,7 @@ export const PrivacyPolicy: React.FC = () => {
           <section>
             <h2 className="text-2xl font-bold text-healing-mint mb-4">1. Introduction</h2>
             <p>
-              Malasakit Solutions ("we," "us," "our," or "Company") is committed to protecting your privacy. 
+              {SystemBranding.companyName} ("we," "us," "our," or "Company") is committed to protecting your privacy. 
               This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use 
               our website and services.
             </p>
@@ -127,7 +128,7 @@ export const PrivacyPolicy: React.FC = () => {
               If you have questions about this Privacy Policy or our privacy practices, please contact us at:
             </p>
             <div className="mt-4 bg-gray-800/50 p-6 rounded-lg border border-white/10">
-              <p className="font-bold text-healing-mint">Malasakit Solutions</p>
+              <p className="font-bold text-healing-mint">{SystemBranding.companyName}</p>
               <p>Email: privacy@malasakit.com</p>
               <p>Phone: +63 9457 123 456</p>
               <p>Address: Bacolod City, Negros Occidental, Philippines</p>

@@ -582,6 +582,7 @@ class ClinicalNoteViewSet(viewsets.ModelViewSet):
             'patient_number': patient.patient_number,
             'patient_email': getattr(patient, 'email', '') or '',
             'clinic_name': clinic.name,
+            'clinic_logo': getattr(clinic, 'logo', None) and clinic.logo.url or '',
             'clinic_address': getattr(clinic, 'address', ''),
             'clinic_phone': getattr(clinic, 'phone', ''),
             'clinic_email': getattr(clinic, 'email', ''),

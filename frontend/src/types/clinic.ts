@@ -18,6 +18,7 @@ export interface ClinicBranch {
   custom_location?: string;
   latitude?: string | null;
   longitude?: string | null;
+  logo?: string | null;
   email_notifications_enabled?: boolean;
   sms_notifications_enabled?: boolean;
 }

@@ -58,8 +58,22 @@ export interface IntakeForm {
 }
 
 export type PatientCaseStatus = 'OPEN' | 'MONITORING' | 'DISCHARGED' | 'CLOSED';
-
 export type PatientCasePayer = 'PRIVATE' | 'HMO' | 'INSURANCE' | 'CORPORATE' | '';
+
+export interface PatientCaseSessionLog {
+  id: number;
+  patient_case: number;
+  user: number | null;
+  user_name: string;
+  action: 'ADDED_SESSIONS' | 'REMOVED_SESSIONS' | 'REMOVED_LIMIT';
+  amount: number | null;
+  previous_limit: number | null;
+  new_limit: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+
 
 export interface PatientCase {
   id: number;
@@ -72,6 +86,10 @@ export interface PatientCase {
   primary_practitioner_name: string | null;
   payer: PatientCasePayer;
   alert_notes: string;
+  approved_sessions: number | null;
+  completed_sessions: number;
+  remaining_sessions: number | null;
+  progress_text: string;
   referred_by: string;
   referral_info: string;
   created_at: string;

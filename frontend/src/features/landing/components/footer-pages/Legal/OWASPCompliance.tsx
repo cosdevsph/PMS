@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Shield, CheckCircle } from 'lucide-react';
+import { SystemBranding } from '@/config/branding';
 
 export const OWASPCompliance: React.FC = () => {
   const standards = [
@@ -80,7 +81,7 @@ export const OWASPCompliance: React.FC = () => {
             security of software. The OWASP Top 10 is a standard list of the most critical web application security risks.
           </p>
           <p className="text-white/80">
-            Malasakit Solutions is fully compliant with OWASP Top 10 standards. Our development process includes 
+            {SystemBranding.companyName} is fully compliant with OWASP Top 10 standards. Our development process includes 
             security reviews, code analysis, and penetration testing to ensure protection against these vulnerabilities.
           </p>
         </div>

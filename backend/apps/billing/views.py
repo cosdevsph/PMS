@@ -31,7 +31,9 @@ from .serializers import (
     ServiceSerializer,
 )
 from io import BytesIO
+import logging
 
+from apps.common.branding import SYSTEM_BRANDING
 logger = logging.getLogger(__name__)
 
 
@@ -412,6 +414,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         computed_balance_due = max(computed_total - amount_paid - philhealth - hmo, Decimal('0'))
 
         context = {
+            'system_branding':      SYSTEM_BRANDING,
             'invoice':              invoice,
             'items':                items,
             'payments':             payments,
@@ -479,6 +482,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 computed_balance_due = max(computed_total - amount_paid, Decimal('0'))
 
                 context = {
+                    'system_branding':      SYSTEM_BRANDING,
                     'invoice':              invoice,
                     'items':                items,
                     'payments':             payments,
@@ -528,6 +532,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 computed_total       = computed_items_total - discount_amount + tax_amount
                 computed_balance_due = max(computed_total - amount_paid, Decimal('0'))
                 context = {
+                    'system_branding':      SYSTEM_BRANDING,
                     'invoice':              invoice,
                     'items':                items,
                     'payments':             payments,
@@ -681,6 +686,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                     computed_balance_due = max(computed_total - amount_paid, Decimal('0'))
 
                     context = {
+                        'system_branding':      SYSTEM_BRANDING,
                         'invoice':              invoice,
                         'items':                items,
                         'payments':             payments,

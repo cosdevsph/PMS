@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import Appointment, PractitionerSchedule, AppointmentReminder, BlockAppointment, CalendarNote
 from apps.clinics.services.models import Service
 from apps.accounts.models import User
+from apps.patients.models import PatientCase
 
 
 class AppointmentSerializer(serializers.ModelSerializer):
@@ -30,6 +31,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     # ── Has invoice ───────────────────────────────────────────────────────────
     has_invoice = serializers.SerializerMethodField()
+    
+    patient_case = serializers.PrimaryKeyRelatedField(
+        queryset=PatientCase.objects.all(), required=False, allow_null=True
+    )
+    case_remaining_sessions = serializers.SerializerMethodField()
 
     class Meta:
         model  = Appointment
@@ -38,7 +44,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'practitioner', 'practitioner_name', 'practitioner_avatar',
             'location', 'location_name',
             'service', 'service_name', 'service_color', 'service_duration',
-            'appointment_type',
+            'appointment_type', 'patient_case', 'case_remaining_sessions',
             'status', 'arrival_status', 'arrival_time',
             'date', 'start_time', 'end_time', 'duration_minutes',
             'chief_complaint', 'notes', 'patient_notes',
@@ -57,6 +63,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'id', 'branch_id', 'patient_name', 'practitioner_name', 'practitioner_avatar', 'location_name',
             'service_name', 'service_color', 'service_duration',
             'created_by_name', 'updated_by_name', 'has_invoice',
+            'patient_case', 'case_remaining_sessions',
             'created_at', 'updated_at',
         ]
 
@@ -68,6 +75,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
         if active_invoices is not None:
             return len(active_invoices) > 0
         return obj.billing_invoices.filter(is_deleted=False).exists()
+
+    def get_case_remaining_sessions(self, obj) -> int | None:
+        if obj.patient_case_id:
+            # Check cached from prefetch if available, otherwise hit DB
+            from apps.patients.services.session_engine import SessionEngine
+            stats = SessionEngine.get_session_stats(obj.patient_case)
+            return stats.get('remaining_sessions')
+        return None
 
     def get_practitioner_avatar(self, obj) -> str | None:
         """Get practitioner avatar URL from user model with full absolute URL."""
@@ -163,6 +178,7 @@ class AppointmentEditSerializer(serializers.ModelSerializer):
             # ── writable ──────────────────────────────────────────────────
             'practitioner',
             'service',
+            'patient_case',
             'chief_complaint',
             'notes',
             'patient_notes',

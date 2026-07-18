@@ -50,3 +50,23 @@ export const deletePatientCase = async (caseId: number): Promise<void> => {
 export const assignNoteToCase = async (noteId: number, caseId: number): Promise<void> => {
   await axiosInstance.patch(`/clinical-templates/notes/${noteId}/`, { patient_case: caseId });
 };
+
+export const addCaseSessions = async (caseId: number, amount: number): Promise<PatientCase> => {
+  const response = await axiosInstance.post(`${BASE_URL}${caseId}/add_sessions/`, { amount });
+  return response.data;
+};
+
+export const removeCaseSessionLimit = async (caseId: number): Promise<PatientCase> => {
+  const response = await axiosInstance.post(`${BASE_URL}${caseId}/remove_limit/`);
+  return response.data;
+};
+
+export const removeCaseSessions = async (caseId: number, amount: number): Promise<PatientCase> => {
+  const response = await axiosInstance.post(`${BASE_URL}${caseId}/remove_sessions/`, { amount });
+  return response.data;
+};
+
+export const getCaseSessionLogs = async (caseId: number): Promise<any[]> => {
+  const response = await axiosInstance.get(`${BASE_URL}${caseId}/session_logs/`);
+  return response.data;
+};

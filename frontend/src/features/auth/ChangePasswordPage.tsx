@@ -19,6 +19,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { authService } from '@/services/authService';
 import MalasakitWhiteLogo  from '@/assets/malasakit/Primary Logo - White.svg';
 import MalasakitColoredLogo from '@/assets/malasakit/PrimaryLogo-Colored.svg';
+import { SystemBranding } from '@/config/branding';
 
 // ── Password strength rules ───────────────────────────────────────────────────
 
@@ -156,7 +157,7 @@ export const ChangePasswordPage: React.FC = () => {
           </ul>
         </div>
 
-        <div className="relative z-10 text-blue-200 text-sm">© 2026 Malasakit</div>
+        <div className="relative z-10 text-blue-200 text-sm">{SystemBranding.copyright}</div>
       </div>
 
       {/* ── Right form panel ────────────────────────────────────────────── */}

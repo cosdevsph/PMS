@@ -2,8 +2,6 @@ import React, { useMemo } from 'react';
 import { X, Calendar, User, FileText, CheckCircle2, History } from 'lucide-react';
 import type { ClinicalNote } from '@/types/clinicalTemplate';
 import { DynamicFormRenderer } from './DynamicFormRenderer';
-
-import { getLinkedCaseId } from '@/features/patients/patientCases.storage';
 import type { PatientCase } from '@/types/patient';
 
 interface PreviewPreviousNoteModalProps {
@@ -78,10 +76,7 @@ export const PreviewPreviousNoteModal: React.FC<PreviewPreviousNoteModalProps> =
                     {allNotes.map(note => {
                       let caseName = 'No Case';
                       let caseId = note.patient_case || note.patient_case_id;
-                      if (!caseId && note.appointment) {
-                        const linked = getLinkedCaseId(note.appointment);
-                        if (linked) caseId = Number(linked);
-                      }
+
                       if (caseId) {
                         const c = patientCases.find(pc => pc.id === caseId);
                         if (c) caseName = c.title;

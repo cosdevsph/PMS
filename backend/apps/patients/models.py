@@ -511,6 +511,11 @@ class PatientCase(TimeStampedModel):
         default='',
         help_text='Insurance or payment type for this case.'
     )
+    approved_sessions = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='Maximum number of approved sessions for this case. Null = unlimited.'
+    )
     alert_notes = models.TextField(
         blank=True,
         default='',
@@ -529,6 +534,52 @@ class PatientCase(TimeStampedModel):
 
     def __str__(self):
         return f"{self.title} - {self.patient.get_full_name()}"
+
+
+class PatientCaseSessionLog(TimeStampedModel):
+    """Audit log for changes to a patient case's session allocation limits."""
+    
+    ACTION_CHOICES = [
+        ('ADDED_SESSIONS', 'Added Sessions'),
+        ('REMOVED_SESSIONS', 'Removed Sessions'),
+        ('REMOVED_LIMIT', 'Removed Limit'),
+    ]
+
+    patient_case = models.ForeignKey(
+        PatientCase,
+        on_delete=models.CASCADE,
+        related_name='session_logs'
+    )
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text='User who made the change'
+    )
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    amount = models.IntegerField(
+        null=True, 
+        blank=True,
+        help_text='Number of sessions added or removed. Null if limit was removed.'
+    )
+    previous_limit = models.IntegerField(
+        null=True, 
+        blank=True,
+        help_text='The approved_sessions limit before this action'
+    )
+    new_limit = models.IntegerField(
+        null=True, 
+        blank=True,
+        help_text='The approved_sessions limit after this action'
+    )
+
+    class Meta:
+        db_table = 'patient_case_session_logs'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.action}] Case {self.patient_case_id} by User {self.user_id}"
 
 
 class PatientConsentDocument(TimeStampedModel):

@@ -30,5 +30,5 @@ If you have any questions, please contact the clinic directly.
 {% if clinic_address %}Address: {{ clinic_address }}{% endif %}
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email.

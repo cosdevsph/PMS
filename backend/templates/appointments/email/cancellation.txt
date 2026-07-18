@@ -29,5 +29,5 @@ please contact us at your earliest convenience.
 {% if clinic_address %}Address: {{ clinic_address }}{% endif %}
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email.

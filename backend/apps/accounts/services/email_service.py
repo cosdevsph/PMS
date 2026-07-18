@@ -12,7 +12,8 @@ class EmailService:
 
     @staticmethod
     def _build_html(*, icon: str, title: str, accent: str, body_html: str) -> str:
-        """Shared email HTML wrapper matching the Malasakit PMS design system."""
+        """Shared email HTML wrapper matching the Malasakit Medical Systems design system."""
+        from apps.common.branding import SYSTEM_BRANDING
         import os
         backend_url = getattr(settings, 'BACKEND_URL', os.environ.get('BACKEND_URL', 'https://malasakit-webservice.onrender.com')).rstrip('/')
         logo_url = f"{backend_url}/static/logo/malasakit-logo.png"
@@ -31,15 +32,15 @@ class EmailService:
 <td align="center" style="width:40px;height:40px;background:{accent}15;border-radius:8px;text-align:center;vertical-align:middle;">
 <span style="font-size:18px;line-height:40px;">{icon}</span></td></tr></table>
 <h1 style="margin:0;font-size:20px;font-weight:700;color:{accent};line-height:1.3;">{title}</h1>
-<p style="margin:6px 0 0;font-size:13px;color:#6b7280;">Malasakit</p>
+<p style="margin:6px 0 0;font-size:13px;color:#6b7280;">{SYSTEM_BRANDING['short_name']}</p>
 </td></tr></table></td></tr>
 <tr><td style="padding:32px 40px;">{body_html}</td></tr>
 <tr><td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
-<p style="margin:0 0 12px;font-size:12px;color:#9ca3af;line-height:1.5;">This email was generated automatically by Malasakit PMS.<br/>Please do not reply directly to this email.</p>
+<p style="margin:0 0 12px;font-size:12px;color:#9ca3af;line-height:1.5;">This email was generated automatically by {SYSTEM_BRANDING['company_name']}.<br/>Please do not reply directly to this email.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
 <tr><td align="center" style="padding-top:4px;">
-<img src="{logo_url}" alt="Malasakit Logo" style="display:block;margin:0 auto 6px;max-height:16px;width:auto;" />
-<p style="margin:0;font-size:11px;color:#b0b5bc;">Powered by <strong style="color:#6b7280;font-weight:600;">Malasakit PMS</strong></p>
+<img src="{logo_url}" alt="{SYSTEM_BRANDING['company_name']} Logo" height="16" style="display:block;margin:0 auto 6px;height:16px;max-width:100%;object-fit:contain;" />
+<p style="margin:0;font-size:11px;color:#b0b5bc;">Powered by <strong style="color:#6b7280;font-weight:600;">{SYSTEM_BRANDING['company_name']}</strong></p>
 </td></tr></table>
 </td></tr>
 </table></td></tr></table></body></html>"""
@@ -98,7 +99,7 @@ Best regards,
 Malasakit Team
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email."""
             
             # Create email with explicit encoding
@@ -171,7 +172,7 @@ Best regards,
 Malasakit Team
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email."""
 
             email = EmailMultiAlternatives(
@@ -229,7 +230,7 @@ Best regards,
 Malasakit Team
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email."""
 
             email = EmailMultiAlternatives(
@@ -280,7 +281,7 @@ Best regards,
 Malasakit Team
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email."""
 
             email = EmailMultiAlternatives(
@@ -347,7 +348,7 @@ Best regards,
 Malasakit Team
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email."""
 
             email = EmailMultiAlternatives(
@@ -433,7 +434,7 @@ Best regards,
 Malasakit Team
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email."""
 
             email = EmailMultiAlternatives(
@@ -549,7 +550,7 @@ Best regards,
 Malasakit Team
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email."""
 
             email_msg = EmailMultiAlternatives(
@@ -664,7 +665,7 @@ Best regards,
 Malasakit Team
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email."""
 
             email_msg = EmailMultiAlternatives(
@@ -755,7 +756,7 @@ Best regards,
 Malasakit Team
 
 ---
-This email was generated automatically by Malasakit PMS.
+This email was generated automatically by Malasakit Medical Systems.
 Please do not reply directly to this email."""
 
             email_msg = EmailMultiAlternatives(

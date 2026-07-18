@@ -6,6 +6,7 @@ import { Eye, EyeOff, Lock, CheckCircle, XCircle, AlertCircle } from 'lucide-rea
 import MalasakitWhiteLogo from '@/assets/malasakit/Primary Logo - White.svg';
 import MalasakitColoredLogo from '@/assets/malasakit/PrimaryLogo-Colored.svg';
 import toast from 'react-hot-toast';
+import { SystemBranding } from '@/config/branding';
 
 /**
  * ResetPasswordPage — Step 3 of the OTP-based password recovery flow.
@@ -160,7 +161,7 @@ export const ResetPasswordPage: React.FC = () => {
 
         {/* Footer */}
         <div className="relative z-10 text-blue-200 text-sm">
-          © 2026 Malasakit
+          {SystemBranding.copyright}
         </div>
       </div>
 

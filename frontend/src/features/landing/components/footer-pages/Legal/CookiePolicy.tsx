@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { SystemBranding } from '@/config/branding';
 
 export const CookiePolicy: React.FC = () => {
   return (
@@ -158,7 +159,7 @@ export const CookiePolicy: React.FC = () => {
               If you have questions about our use of cookies, please contact us at:
             </p>
             <div className="mt-4 bg-gray-800/50 p-6 rounded-lg border border-white/10">
-              <p className="font-bold text-healing-mint">Malasakit Solutions</p>
+              <p className="font-bold text-healing-mint">{SystemBranding.companyName}</p>
               <p>Email: privacy@malasakit.com</p>
               <p>Phone: +63 9457 123 456</p>
               <p>Address: Bacolod City, Negros Occidental, Philippines</p>

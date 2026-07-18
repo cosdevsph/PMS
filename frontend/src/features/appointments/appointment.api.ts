@@ -29,6 +29,7 @@ export interface AppointmentFilters {
 export interface AppointmentEditPayload {
   practitioner?:    number | null;
   service?:         number | null;    // ← NEW
+  patient_case?:    number | null;
   chief_complaint?: string;
   notes?:           string;
   patient_notes?:   string;

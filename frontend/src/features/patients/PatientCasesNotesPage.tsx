@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, FileText, FolderKanban, History, Loader2, Mail, Pencil, Plus, Printer, Search, Trash2 } from 'lucide-react';
+import { CheckCircle, ChevronRight, FileText, FolderKanban, History, Loader2, Mail, Pencil, Plus, Printer, Search, Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createRoot } from 'react-dom/client';
 import { getNotes, getNote, getPrintNote } from '@/features/clinical-template/clinical-templates.api';
@@ -13,12 +13,19 @@ import { useClinicSettings } from '@/hooks/useClinicSettings';
 import { getPractitioners } from '@/features/clinics/clinic.api';
 import type { Practitioner } from '@/features/clinics/clinic.api';
 import { CaseModal, type CaseFormData } from './CaseModal';
+import { AddCaseSessionModal } from './components/AddCaseSessionModal';
+import { RemoveCaseSessionModal } from './components/RemoveCaseSessionModal';
+import { CaseSessionHistoryModal } from './components/CaseSessionHistoryModal';
+import { RemoveLimitModal } from './components/RemoveLimitModal';
 import { usePatientProfileContext } from './context/PatientProfileContext';
 import {
     createPatientCase as apiCreatePatientCase,
   updatePatientCase as apiUpdatePatientCase,
   deletePatientCase as apiDeletePatientCase,
   assignNoteToCase,
+  addCaseSessions,
+  removeCaseSessions,
+  removeCaseSessionLimit,
 } from './patientCases.api';
 import { formatDate } from './patientProfile.utils.tsx';
 import type { ClinicalNote, ClinicalTemplate, TemplateSection, TemplateField } from '@/types/clinicalTemplate';
@@ -414,9 +421,14 @@ export const PatientCasesNotesPage = () => {
   const [page, setPage] = useState(1);
 
   const [isCreateCaseOpen, setIsCreateCaseOpen] = useState(false);
-  const [editingCase, setEditingCase] = useState<PatientCase | null>(null);
+  const [editingCase, setEditingCase] = useState<PatientCase | undefined>();
   const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
   const [loadingPractitioners, setLoadingPractitioners] = useState(false);
+  
+  const [addSessionCaseId, setAddSessionCaseId] = useState<number | null>(null);
+  const [removeSessionCaseId, setRemoveSessionCaseId] = useState<number | null>(null);
+  const [removeLimitCaseId, setRemoveLimitCaseId] = useState<number | null>(null);
+  const [historyCaseId, setHistoryCaseId] = useState<number | null>(null);
 
   const [isCreateNoteOpen, setIsCreateNoteOpen] = useState(false);
   const [createNoteAppointmentId, setCreateNoteAppointmentId] = useState<number | undefined>(undefined);
@@ -592,7 +604,7 @@ export const PatientCasesNotesPage = () => {
       });
 
       toast.success('Case updated successfully');
-      setEditingCase(null);
+      setEditingCase(undefined);
       await refreshCases();
     } catch {
       toast.error('Failed to update case');
@@ -606,6 +618,47 @@ export const PatientCasesNotesPage = () => {
       await refreshCases();
     } catch {
       toast.error('Failed to update case status');
+    }
+  };
+
+  const handleAddSessions = (caseId: number) => {
+    setAddSessionCaseId(caseId);
+  };
+
+  const handleSaveSessions = async (amount: number) => {
+    if (!addSessionCaseId) return;
+    await addCaseSessions(addSessionCaseId, amount);
+    toast.success(`Added ${amount} sessions successfully`);
+    await refreshCases();
+  };
+
+  const handleRemoveSessions = (caseId: number) => {
+    setRemoveSessionCaseId(caseId);
+  };
+
+  const handleSaveRemoveSessions = async (amount: number) => {
+    if (!removeSessionCaseId) return;
+    await removeCaseSessions(removeSessionCaseId, amount);
+    toast.success(`Removed ${amount} sessions successfully`);
+    await refreshCases();
+  };
+
+  const handleOpenHistory = (caseId: number) => {
+    setHistoryCaseId(caseId);
+  };
+
+  const handleRemoveSessionLimit = (caseId: number) => {
+    setRemoveLimitCaseId(caseId);
+  };
+
+  const handleSaveRemoveSessionLimit = async () => {
+    if (!removeLimitCaseId) return;
+    try {
+      await removeCaseSessionLimit(removeLimitCaseId);
+      toast.success('Session limit removed successfully');
+      await refreshCases();
+    } catch {
+      toast.error('Failed to remove session limit');
     }
   };
 
@@ -778,6 +831,100 @@ export const PatientCasesNotesPage = () => {
               {selectedCase?.referred_by && (
                 <p className="text-xs text-gray-500 mt-0.5">Referral: {selectedCase.referred_by}</p>
               )}
+
+              {/* Session Tracking UI */}
+              {selectedCase && (
+                <div className="mt-5 p-4 bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-sky-100/50 flex flex-col gap-3 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-sky-500" />
+                  
+                  <div className="flex flex-col gap-4">
+                    {/* Row 1: Title & Buttons */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2 min-w-max">
+                        <History className="w-4 h-4 text-sky-500" />
+                        Session Tracking
+                      </h3>
+                      
+                      <div className="flex flex-wrap gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleAddSessions(selectedCase.id)}
+                          className="text-[10px] px-2 py-1.5 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:text-sky-800 rounded-md font-medium transition-colors border border-sky-100 uppercase tracking-wide"
+                        >
+                          + Add
+                        </button>
+                        {selectedCase.approved_sessions !== null && selectedCase.approved_sessions > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSessions(selectedCase.id)}
+                            className="text-[10px] px-2 py-1.5 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 rounded-md font-medium transition-colors border border-orange-100 uppercase tracking-wide"
+                          >
+                            - Remove
+                          </button>
+                        )}
+                        {selectedCase.approved_sessions !== null && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSessionLimit(selectedCase.id)}
+                            className="text-[10px] px-2 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-md font-medium transition-colors border border-red-100 uppercase tracking-wide"
+                          >
+                            No Limit
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenHistory(selectedCase.id)}
+                          className="text-[10px] px-2 py-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-800 rounded-md font-medium transition-colors border border-slate-200 flex items-center gap-1 uppercase tracking-wide"
+                        >
+                          <History className="w-3 h-3" />
+                          Logs
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Statuses */}
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-gray-50/50 p-2.5 rounded-lg border border-gray-100 w-fit">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">Completed</span>
+                        <span className="text-base font-bold text-gray-900 leading-none">{selectedCase.completed_sessions}</span>
+                      </div>
+                      
+                      {selectedCase.approved_sessions !== null && (
+                        <>
+                          <div className="h-3 w-px bg-gray-200" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">Approved</span>
+                            <span className="text-base font-bold text-gray-900 leading-none">{selectedCase.approved_sessions}</span>
+                          </div>
+                          <div className="h-3 w-px bg-gray-200" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">Remaining</span>
+                            <span className={`text-base font-bold leading-none ${selectedCase.remaining_sessions === 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                              {selectedCase.remaining_sessions}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedCase.remaining_sessions === 0 && selectedCase.approved_sessions !== null && (
+                    <div className="flex items-center gap-1.5 bg-red-50 text-red-700 text-xs py-1.5 px-3 rounded-lg font-medium inline-flex self-start mt-1 border border-red-200 shadow-sm">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Session Allocation Exhausted
+                    </div>
+                  )}
+
+                  {selectedCase.approved_sessions !== null && selectedCase.approved_sessions > 0 && (
+                    <div className="w-full bg-gray-100 rounded-full h-2 mt-2 overflow-hidden shadow-inner">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${selectedCase.remaining_sessions === 0 ? 'bg-red-500' : 'bg-gradient-to-r from-sky-400 to-sky-500'}`}
+                        style={{ width: `${Math.min(100, (selectedCase.completed_sessions / selectedCase.approved_sessions) * 100)}%` }}
+                      ></div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {selectedCase && (
@@ -833,7 +980,7 @@ export const PatientCasesNotesPage = () => {
       <CaseModal
         key={editingCase?.id ?? 'edit-case'}
         isOpen={Boolean(editingCase)}
-        onClose={() => setEditingCase(null)}
+        onClose={() => setEditingCase(undefined)}
         mode="edit"
         initialValues={editingCase ?? undefined}
         onSave={handleSaveEditCase}
@@ -893,6 +1040,42 @@ export const PatientCasesNotesPage = () => {
             setEditingNoteId(null);
             void refreshClinicalNotes();
           }}
+        />
+      )}
+
+      {addSessionCaseId && (
+        <AddCaseSessionModal
+          isOpen={addSessionCaseId !== null}
+          onClose={() => setAddSessionCaseId(null)}
+          caseTitle={cases.find(c => c.id === addSessionCaseId)?.title || ''}
+          onSave={handleSaveSessions}
+        />
+      )}
+
+      {removeSessionCaseId && (
+        <RemoveCaseSessionModal
+          isOpen={removeSessionCaseId !== null}
+          onClose={() => setRemoveSessionCaseId(null)}
+          caseTitle={cases.find(c => c.id === removeSessionCaseId)?.title || ''}
+          onRemove={handleSaveRemoveSessions}
+        />
+      )}
+
+      {removeLimitCaseId && (
+        <RemoveLimitModal
+          isOpen={removeLimitCaseId !== null}
+          onClose={() => setRemoveLimitCaseId(null)}
+          caseTitle={cases.find(c => c.id === removeLimitCaseId)?.title || ''}
+          onConfirm={handleSaveRemoveSessionLimit}
+        />
+      )}
+
+      {historyCaseId && (
+        <CaseSessionHistoryModal
+          isOpen={historyCaseId !== null}
+          onClose={() => setHistoryCaseId(null)}
+          caseId={historyCaseId}
+          caseTitle={cases.find(c => c.id === historyCaseId)?.title || ''}
         />
       )}
     </>

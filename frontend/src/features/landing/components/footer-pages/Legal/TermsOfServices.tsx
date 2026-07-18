@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { SystemBranding } from '@/config/branding';
 
 export const TermsOfServices: React.FC = () => {
   return (
@@ -23,7 +24,7 @@ export const TermsOfServices: React.FC = () => {
           <section>
             <h2 className="text-2xl font-bold text-healing-mint mb-4">1. Acceptance of Terms</h2>
             <p>
-              By accessing and using Malasakit Solutions ("Service"), you accept and agree to be bound by the terms 
+              By accessing and using {SystemBranding.companyName} ("Service"), you accept and agree to be bound by the terms 
               and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
             </p>
           </section>
@@ -68,7 +69,7 @@ export const TermsOfServices: React.FC = () => {
             <h2 className="text-2xl font-bold text-healing-mint mb-4">5. Intellectual Property</h2>
             <p>
               All content, features, and functionality of the Service (including code, design, and text) are owned by 
-              Malasakit Solutions and are protected by copyright, trademark, and other intellectual property laws.
+              {SystemBranding.companyName} and are protected by copyright, trademark, and other intellectual property laws.
             </p>
             <p className="mt-4">
               You may not reproduce, modify, distribute, or transmit any content without our prior written permission.
@@ -112,7 +113,7 @@ export const TermsOfServices: React.FC = () => {
           <section>
             <h2 className="text-2xl font-bold text-healing-mint mb-4">9. Indemnification</h2>
             <p>
-              You agree to indemnify and hold harmless Malasakit Solutions and its officers, directors, and employees 
+              You agree to indemnify and hold harmless {SystemBranding.companyName} and its officers, directors, and employees 
               from any claims, damages, or costs arising from your use of the Service or violation of these Terms.
             </p>
           </section>
@@ -139,7 +140,7 @@ export const TermsOfServices: React.FC = () => {
               If you have questions about these Terms, please contact us at:
             </p>
             <div className="mt-4 bg-gray-800/50 p-6 rounded-lg border border-white/10">
-              <p className="font-bold text-healing-mint">Malasakit Solutions</p>
+              <p className="font-bold text-healing-mint">{SystemBranding.companyName}</p>
               <p>Email: legal@malasakit.com</p>
               <p>Phone: +63 9457 123 456</p>
               <p>Address: Bacolod City, Negros Occidental, Philippines</p>
