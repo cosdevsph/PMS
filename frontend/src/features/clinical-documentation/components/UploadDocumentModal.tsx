@@ -7,6 +7,7 @@ import type { PatientCase } from '@/types/patient';
 interface UploadDocumentModalProps {
   patientId: string | number;
   cases: PatientCase[];
+  preSelectedCaseId?: number;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -23,11 +24,11 @@ const CATEGORIES = [
   { value: 'OTHER', label: 'Other' },
 ];
 
-export const UploadDocumentModal = ({ patientId, cases, onClose, onSuccess }: UploadDocumentModalProps) => {
+export const UploadDocumentModal = ({ patientId, cases, preSelectedCaseId, onClose, onSuccess }: UploadDocumentModalProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('OTHER');
-  const [patientCaseId, setPatientCaseId] = useState<number | ''>('');
+  const [patientCaseId, setPatientCaseId] = useState<number | ''>(preSelectedCaseId || '');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

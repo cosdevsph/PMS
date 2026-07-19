@@ -1,35 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, FileText, FolderKanban, History, Loader2, Mail, Pencil, Plus, Printer, Search, Trash2, AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
+import { FileText, Loader2, Plus, Pencil, History, CheckCircle, Mail, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createRoot } from 'react-dom/client';
-import { getNotes, getNote, getPrintNote } from '@/features/clinical-template/clinical-templates.api';
+import { getNote, getPrintNote } from '@/features/clinical-template/clinical-templates.api';
 import { ClinicalNoteTemplate } from '@/features/clinical-template/components/ClinicalNoteTemplate';
 import { CreateClinicalNoteModal } from '@/features/clinical-template/components/CreateClinicalNoteModal';
 import { EditClinicalNoteModal } from '@/features/clinical-template/components/EditClinicalNoteModal';
 import { SendClinicalNoteModal } from '@/features/clinical-template/components/SendClinicalNoteModal';
 import { ClinicalNoteHistoryModal } from '@/features/clinical-template/components/ClinicalNoteHistoryModal';
 import { useClinicSettings } from '@/hooks/useClinicSettings';
-import { getPractitioners } from '@/features/clinics/clinic.api';
-import type { Practitioner } from '@/features/clinics/clinic.api';
-import { CaseModal, type CaseFormData } from '@/features/patients/CaseModal';
-import { AddCaseSessionModal } from '@/features/patients/components/AddCaseSessionModal';
-import { RemoveCaseSessionModal } from '@/features/patients/components/RemoveCaseSessionModal';
-import { CaseSessionHistoryModal } from '@/features/patients/components/CaseSessionHistoryModal';
-import { RemoveLimitModal } from '@/features/patients/components/RemoveLimitModal';
 import { usePatientProfileContext } from '@/features/patients/context/PatientProfileContext';
-import {
-    createPatientCase as apiCreatePatientCase,
-  updatePatientCase as apiUpdatePatientCase,
-  deletePatientCase as apiDeletePatientCase,
-  assignNoteToCase,
-  addCaseSessions,
-  removeCaseSessions,
-  removeCaseSessionLimit,
-} from '@/features/patients/patientCases.api';
 import { formatDate } from '@/features/patients/patientProfile.utils.tsx';
 import type { ClinicalNote, ClinicalTemplate, TemplateSection, TemplateField } from '@/types/clinicalTemplate';
-import type { PatientCase, PatientCaseStatus } from '@/types/patient';
+import type { ClinicalWorkspaceContext } from '../ClinicalDocumentationWorkspace';
 
 const getInitials = (name: string): string => {
   if (!name) return '?';
@@ -38,6 +22,7 @@ const getInitials = (name: string): string => {
     ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
     : name.substring(0, 2).toUpperCase();
 };
+
 
 const formatTime = (time: string): string => {
   if (!time) return '';
@@ -345,61 +330,9 @@ const NoteDetailCard = ({ note, onEdit }: NoteDetailCardProps) => {
   );
 };
 
-const STATUS_CONFIG: Record<PatientCaseStatus, { label: string; className: string }> = {
-  OPEN:       { label: 'Open',       className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  MONITORING: { label: 'Monitoring', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  DISCHARGED: { label: 'Discharged', className: 'bg-purple-50 text-purple-700 border-purple-200' },
-  CLOSED:     { label: 'Closed',     className: 'bg-gray-100 text-gray-500 border-gray-200' },
-};
 
-const CASES_PER_PAGE = 5;
 
-interface PaginationProps {
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-}
 
-const Pagination = ({ currentPage, totalPages, onPageChange }: PaginationProps) => {
-  if (totalPages <= 1) return null;
-
-  return (
-    <div className="pt-3 border-t border-gray-200 flex items-center justify-between gap-2">
-      <button
-        type="button"
-        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-        disabled={currentPage === 1}
-        className="px-2.5 py-1.5 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Previous
-      </button>
-
-      <span className="text-xs text-gray-600">
-        Page {currentPage} / {totalPages}
-      </span>
-
-      <button
-        type="button"
-        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-        disabled={currentPage === totalPages}
-        className="px-2.5 py-1.5 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Next
-      </button>
-    </div>
-  );
-};
-
-const getMonthLabel = (monthValue: string): string => {
-  const [year, month] = monthValue.split('-').map(Number);
-  if (!year || !month) return monthValue;
-
-  const date = new Date(year, month - 1, 1);
-  return date.toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  });
-};
 
 export const NotesTab = () => {
   const {
@@ -408,28 +341,12 @@ export const NotesTab = () => {
     cases,
     loadingPatient,
     loadingNotes,
-    loadingCases,
     refreshClinicalNotes,
-    refreshCases,
   } = usePatientProfileContext();
 
-  const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
+  const { selectedCaseId } = useOutletContext<ClinicalWorkspaceContext>();
+
   const [notes, setNotes] = useState<ClinicalNote[]>([]);
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [page, setPage] = useState(1);
-
-  const [isCreateCaseOpen, setIsCreateCaseOpen] = useState(false);
-  const [editingCase, setEditingCase] = useState<PatientCase | undefined>();
-  const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
-  const [loadingPractitioners, setLoadingPractitioners] = useState(false);
-  
-  const [addSessionCaseId, setAddSessionCaseId] = useState<number | null>(null);
-  const [removeSessionCaseId, setRemoveSessionCaseId] = useState<number | null>(null);
-  const [removeLimitCaseId, setRemoveLimitCaseId] = useState<number | null>(null);
-  const [historyCaseId, setHistoryCaseId] = useState<number | null>(null);
-
   const [isCreateNoteOpen, setIsCreateNoteOpen] = useState(false);
   const [createNoteAppointmentId, setCreateNoteAppointmentId] = useState<number | undefined>(undefined);
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
@@ -438,13 +355,8 @@ export const NotesTab = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const state = location.state as { openCreateNoteForAppointment?: number; openNoteId?: number; preselectedCaseId?: string } | null;
+    const state = location.state as { openCreateNoteForAppointment?: number; openNoteId?: number } | null;
     let shouldClearState = false;
-
-    if (state?.preselectedCaseId) {
-      setSelectedCaseId(Number(state.preselectedCaseId));
-      shouldClearState = true;
-    }
 
     if (state?.openCreateNoteForAppointment) {
       setCreateNoteAppointmentId(state.openCreateNoteForAppointment);
@@ -462,531 +374,67 @@ export const NotesTab = () => {
   }, [location, navigate]);
 
   useEffect(() => {
-    if (loadingCases) return; // Wait for cases to finish loading before validating
-
-    if (cases.length === 0) {
-      if (selectedCaseId !== null) setSelectedCaseId(null);
-      return;
-    }
-
-    const selectedExists = selectedCaseId && cases.some((caseItem) => caseItem.id === selectedCaseId);
-    if (!selectedExists) {
-      setSelectedCaseId(cases[0].id);
-    }
-  }, [cases, selectedCaseId, loadingCases]);
-
-  // Defensive check: if they try to auto-open note creation but have no cases
-  useEffect(() => {
-    if (!loadingCases && cases.length === 0 && isCreateNoteOpen) {
-      toast.error('Please create a case first before adding a clinical note.');
-      setIsCreateNoteOpen(false);
-      setCreateNoteAppointmentId(undefined);
-    }
-  }, [loadingCases, cases.length, isCreateNoteOpen]);
-
-  const monthOptions = useMemo(() => {
-    const values = new Set<string>();
-    cases.forEach((caseItem) => {
-      values.add(caseItem.created_at.slice(0, 7));
-    });
-
-    return Array.from(values).sort((a, b) => b.localeCompare(a));
-  }, [cases]);
-
-  const filteredCases = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-
-    return cases.filter((caseItem) => {
-      const titleMatch = caseItem.title.toLowerCase().includes(normalizedSearch);
-      const monthMatch = selectedMonth ? caseItem.created_at.startsWith(selectedMonth) : true;
-      return titleMatch && monthMatch;
-    });
-  }, [cases, searchTerm, selectedMonth]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredCases.length / CASES_PER_PAGE));
-
-  const paginatedCases = useMemo(() => {
-    const startIndex = (page - 1) * CASES_PER_PAGE;
-    return filteredCases.slice(startIndex, startIndex + CASES_PER_PAGE);
-  }, [filteredCases, page]);
-
-  const selectedCase = useMemo(
-    () => cases.find((caseItem) => caseItem.id === selectedCaseId) ?? null,
-    [cases, selectedCaseId]
-  );
-
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, selectedMonth]);
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
-
-  useEffect(() => {
-    if (!patient || !selectedCase) {
+    if (!patient || !selectedCaseId) {
       setNotes([]);
       return;
     }
 
-    setNotes(clinicalNotes.filter((note) => note.patient_case === selectedCase.id));
-  }, [patient, selectedCase, clinicalNotes]);
+    setNotes(clinicalNotes.filter((note) => note.patient_case === selectedCaseId));
+  }, [patient, selectedCaseId, clinicalNotes]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      setLoadingPractitioners(true);
-      try {
-        const { practitioners: list } = await getPractitioners();
-        if (!cancelled) setPractitioners(list);
-      } catch {
-        // Non-critical — practitioners list is optional
-      } finally {
-        if (!cancelled) setLoadingPractitioners(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const handleCreateCase = async (data: CaseFormData) => {
-    if (!patient) return;
-
-    try {
-      const createdCase = await apiCreatePatientCase({
-        patient: patient.id,
-        title: data.title,
-        description: data.description,
-        status: data.status,
-        primary_practitioner: data.primaryPractitionerId ? Number(data.primaryPractitionerId) : undefined,
-        primary_practitioner_name: data.primaryPractitionerName || undefined,
-        referred_by: data.referredBy || undefined,
-        referral_info: data.referralInfo || undefined,
-      });
-
-      toast.success('Case created successfully');
-      setIsCreateCaseOpen(false);
-      await refreshCases();
-      setSelectedCaseId(createdCase.id);
-    } catch {
-      toast.error('Failed to create case');
-    }
-  };
-
-  const handleDeleteCase = async (caseId: number, title: string) => {
-    if (!patient) return;
-
-    const confirmed = window.confirm(`Delete case "${title}"? This will remove note-to-case links.`);
-    if (!confirmed) return;
-
-    try {
-      await apiDeletePatientCase(caseId);
-      toast.success('Case deleted');
-      await refreshCases();
-    } catch {
-      toast.error('Failed to delete case');
-    }
-  };
-
-  const handleSaveEditCase = async (data: CaseFormData) => {
-    if (!patient || !editingCase) return;
-
-    try {
-      await apiUpdatePatientCase(editingCase.id, {
-        title: data.title,
-        description: data.description,
-        status: data.status,
-        primary_practitioner: data.primaryPractitionerId ? Number(data.primaryPractitionerId) : undefined,
-        primary_practitioner_name: data.primaryPractitionerName || undefined,
-        referred_by: data.referredBy || undefined,
-        referral_info: data.referralInfo || undefined,
-      });
-
-      toast.success('Case updated successfully');
-      setEditingCase(undefined);
-      await refreshCases();
-    } catch {
-      toast.error('Failed to update case');
-    }
-  };
-
-  const handleStatusChange = async (caseId: number, status: PatientCaseStatus) => {
-    if (!patient) return;
-    try {
-      await apiUpdatePatientCase(caseId, { status });
-      await refreshCases();
-    } catch {
-      toast.error('Failed to update case status');
-    }
-  };
-
-  const handleAddSessions = (caseId: number) => {
-    setAddSessionCaseId(caseId);
-  };
-
-  const handleSaveSessions = async (amount: number) => {
-    if (!addSessionCaseId) return;
-    await addCaseSessions(addSessionCaseId, amount);
-    toast.success(`Added ${amount} sessions successfully`);
-    await refreshCases();
-  };
-
-  const handleRemoveSessions = (caseId: number) => {
-    setRemoveSessionCaseId(caseId);
-  };
-
-  const handleSaveRemoveSessions = async (amount: number) => {
-    if (!removeSessionCaseId) return;
-    await removeCaseSessions(removeSessionCaseId, amount);
-    toast.success(`Removed ${amount} sessions successfully`);
-    await refreshCases();
-  };
-
-  const handleOpenHistory = (caseId: number) => {
-    setHistoryCaseId(caseId);
-  };
-
-  const handleRemoveSessionLimit = (caseId: number) => {
-    setRemoveLimitCaseId(caseId);
-  };
-
-  const handleSaveRemoveSessionLimit = async () => {
-    if (!removeLimitCaseId) return;
-    try {
-      await removeCaseSessionLimit(removeLimitCaseId);
-      toast.success('Session limit removed successfully');
-      await refreshCases();
-    } catch {
-      toast.error('Failed to remove session limit');
-    }
-  };
+  const selectedCase = cases.find(c => c.id === selectedCaseId);
 
   if (loadingPatient || !patient) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50 rounded-2xl border border-gray-200">
-        <p className="text-sm text-gray-500">Loading patient cases...</p>
-      </div>
-    );
-  }
-
-  if (loadingCases) {
-    return (
-      <div className="h-full flex items-center justify-center bg-gray-50 rounded-2xl border border-gray-200">
-        <Loader2 className="w-5 h-5 text-sky-400 animate-spin" />
+      <div className="p-6 flex items-center justify-center">
+        <p className="text-sm text-gray-500">Loading patient details...</p>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="h-full min-h-0 flex gap-6">
-        <div className="w-[320px] bg-white rounded-2xl shadow p-4 flex flex-col min-h-0">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Cases</h2>
-            <button
-              type="button"
-              onClick={() => setIsCreateCaseOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              New Case
-            </button>
-          </div>
-
-          <div className="space-y-2 mb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search case..."
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
-
-            <select
-              value={selectedMonth}
-              onChange={(event) => setSelectedMonth(event.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
-            >
-              <option value="">Filter by Month</option>
-              {monthOptions.map((monthValue) => (
-                <option key={monthValue} value={monthValue}>
-                  {getMonthLabel(monthValue)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
-            {filteredCases.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                <FolderKanban className="w-8 h-8 text-gray-300 mb-2" />
-                <p className="text-sm text-gray-500">No cases found</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Try a different search or create a new case.
-                </p>
-              </div>
-            ) : (
-              paginatedCases.map((caseItem) => {
-                const isActive = selectedCase?.id === caseItem.id;
-                const statusCfg = STATUS_CONFIG[caseItem.status];
-                const noteCount = clinicalNotes.filter((note) => note.patient_case === caseItem.id).length;
-
-                return (
-                  <div
-                    key={caseItem.id}
-                    onClick={() => setSelectedCaseId(caseItem.id)}
-                    className={`p-3 rounded-xl border cursor-pointer transition-colors ${
-                      isActive ? 'bg-sky-50 border-sky-400' : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-sm text-gray-900 truncate flex-1">{caseItem.title}</p>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setEditingCase(caseItem);
-                          }}
-                          className="p-1 text-gray-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
-                          title="Edit case"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleDeleteCase(caseItem.id, caseItem.title);
-                          }}
-                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete case"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                        <ChevronRight className={`w-4 h-4 transition-colors ${
-                          isActive ? 'text-sky-500' : 'text-gray-300'
-                        }`} />
-                      </div>
-                    </div>
-
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${
-                          statusCfg.className
-                        }`}>
-                          {statusCfg.label}
-                        </span>
-                        {noteCount > 0 && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-600 border border-sky-100">
-                            <FileText className="w-2.5 h-2.5" />
-                            {noteCount}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-gray-400">{formatDate(caseItem.created_at)}</p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
-        </div>
-
-        <div className="flex-1 bg-white rounded-2xl shadow p-6 min-h-0 flex flex-col">
-          <div className="flex justify-between items-start gap-3 mb-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-gray-900 truncate">
-                  {selectedCase ? selectedCase.title : 'Select a Case'}
-                </h2>
-                {selectedCase && (
-                  <select
-                    value={selectedCase.status}
-                    onChange={(event) => handleStatusChange(selectedCase.id, event.target.value as PatientCaseStatus)}
-                    onClick={(event) => event.stopPropagation()}
-                    className={`text-xs border rounded-full px-2 py-0.5 font-medium focus:outline-none focus:ring-2 focus:ring-sky-400 cursor-pointer ${
-                      STATUS_CONFIG[selectedCase.status].className
-                    }`}
-                  >
-                    <option value="OPEN">Open</option>
-                    <option value="MONITORING">Monitoring</option>
-                    <option value="DISCHARGED">Discharged</option>
-                    <option value="CLOSED">Closed</option>
-                  </select>
-                )}
-              </div>
-              {selectedCase?.primary_practitioner_name && (
-                <p className="text-xs text-gray-500 mt-0.5">Primary: {selectedCase.primary_practitioner_name}</p>
-              )}
-              {selectedCase?.description && (
-                <p className="text-xs text-gray-500 mt-0.5 truncate">{selectedCase.description}</p>
-              )}
-              {selectedCase?.referred_by && (
-                <p className="text-xs text-gray-500 mt-0.5">Referral: {selectedCase.referred_by}</p>
-              )}
-
-              {/* Session Tracking UI */}
-              {selectedCase && (
-                <div className="mt-5 p-4 bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-sky-100/50 flex flex-col gap-3 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-sky-500" />
-                  
-                  <div className="flex flex-col gap-4">
-                    {/* Row 1: Title & Buttons */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2 min-w-max">
-                        <History className="w-4 h-4 text-sky-500" />
-                        Session Tracking
-                      </h3>
-                      
-                      <div className="flex flex-wrap gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleAddSessions(selectedCase.id)}
-                          className="text-[10px] px-2 py-1.5 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:text-sky-800 rounded-md font-medium transition-colors border border-sky-100 uppercase tracking-wide"
-                        >
-                          + Add
-                        </button>
-                        {selectedCase.approved_sessions !== null && selectedCase.approved_sessions > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSessions(selectedCase.id)}
-                            className="text-[10px] px-2 py-1.5 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 rounded-md font-medium transition-colors border border-orange-100 uppercase tracking-wide"
-                          >
-                            - Remove
-                          </button>
-                        )}
-                        {selectedCase.approved_sessions !== null && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSessionLimit(selectedCase.id)}
-                            className="text-[10px] px-2 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-md font-medium transition-colors border border-red-100 uppercase tracking-wide"
-                          >
-                            No Limit
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleOpenHistory(selectedCase.id)}
-                          className="text-[10px] px-2 py-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-800 rounded-md font-medium transition-colors border border-slate-200 flex items-center gap-1 uppercase tracking-wide"
-                        >
-                          <History className="w-3 h-3" />
-                          Logs
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Row 2: Statuses */}
-                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-gray-50/50 p-2.5 rounded-lg border border-gray-100 w-fit">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">Completed</span>
-                        <span className="text-base font-bold text-gray-900 leading-none">{selectedCase.completed_sessions}</span>
-                      </div>
-                      
-                      {selectedCase.approved_sessions !== null && (
-                        <>
-                          <div className="h-3 w-px bg-gray-200" />
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">Approved</span>
-                            <span className="text-base font-bold text-gray-900 leading-none">{selectedCase.approved_sessions}</span>
-                          </div>
-                          <div className="h-3 w-px bg-gray-200" />
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">Remaining</span>
-                            <span className={`text-base font-bold leading-none ${selectedCase.remaining_sessions === 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                              {selectedCase.remaining_sessions}
-                            </span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {selectedCase.remaining_sessions === 0 && selectedCase.approved_sessions !== null && (
-                    <div className="flex items-center gap-1.5 bg-red-50 text-red-700 text-xs py-1.5 px-3 rounded-lg font-medium inline-flex self-start mt-1 border border-red-200 shadow-sm">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      Session Allocation Exhausted
-                    </div>
-                  )}
-
-                  {selectedCase.approved_sessions !== null && selectedCase.approved_sessions > 0 && (
-                    <div className="w-full bg-gray-100 rounded-full h-2 mt-2 overflow-hidden shadow-inner">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${selectedCase.remaining_sessions === 0 ? 'bg-red-500' : 'bg-gradient-to-r from-sky-400 to-sky-500'}`}
-                        style={{ width: `${Math.min(100, (selectedCase.completed_sessions / selectedCase.approved_sessions) * 100)}%` }}
-                      ></div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {selectedCase && (
-              <button
-                type="button"
-                onClick={() => setIsCreateNoteOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                Add Clinical Note
-              </button>
-            )}
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-            {!selectedCase ? (
-              <div className="text-gray-400 text-center mt-20">Select a case to view clinical notes</div>
-            ) : loadingNotes ? (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-7 h-7 text-sky-400 animate-spin" />
-              </div>
-            ) : notes.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <FileText className="w-10 h-10 text-gray-300 mb-3" />
-                <p className="text-sm font-medium text-gray-500">No clinical notes for this case yet</p>
-                <p className="text-xs text-gray-400 mt-1">Add a note to start documenting case progress.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {notes.map((note) => (
-                  <NoteDetailCard
-                    key={note.id}
-                    note={note}
-                    onEdit={() => setEditingNoteId(note.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+    <div className="p-6 h-full flex flex-col min-h-0">
+      <div className="flex justify-between items-center mb-6 shrink-0">
+        <h2 className="text-lg font-semibold text-gray-900">Clinical Notes</h2>
+        {selectedCaseId && (
+          <button
+            type="button"
+            onClick={() => setIsCreateNoteOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            Add Clinical Note
+          </button>
+        )}
       </div>
 
-      <CaseModal
-        key="create-case"
-        isOpen={isCreateCaseOpen}
-        onClose={() => setIsCreateCaseOpen(false)}
-        mode="create"
-        onSave={handleCreateCase}
-        practitioners={practitioners}
-        loadingPractitioners={loadingPractitioners}
-      />
-
-      <CaseModal
-        key={editingCase?.id ?? 'edit-case'}
-        isOpen={Boolean(editingCase)}
-        onClose={() => setEditingCase(undefined)}
-        mode="edit"
-        initialValues={editingCase ?? undefined}
-        onSave={handleSaveEditCase}
-        practitioners={practitioners}
-        loadingPractitioners={loadingPractitioners}
-      />
+      <div className="flex-1 min-h-0 overflow-y-auto pr-2">
+        {!selectedCaseId ? (
+          <div className="text-gray-400 text-center mt-20 bg-white p-8 rounded-xl border border-slate-200">
+            Select a case to view clinical notes
+          </div>
+        ) : loadingNotes ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-7 h-7 text-sky-400 animate-spin" />
+          </div>
+        ) : notes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center text-center bg-white p-12 rounded-xl border border-slate-200 mt-4">
+            <FileText className="w-10 h-10 text-gray-300 mb-3" />
+            <p className="text-sm font-medium text-gray-500">No clinical notes for this case yet</p>
+            <p className="text-xs text-gray-400 mt-1">Add a note to start documenting case progress.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {notes.map((note) => (
+              <NoteDetailCard
+                key={note.id}
+                note={note}
+                onEdit={() => setEditingNoteId(note.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {selectedCase && (
         <CreateClinicalNoteModal
@@ -1003,28 +451,8 @@ export const NotesTab = () => {
             .filter((note) => note.appointment !== null)
             .map((note) => ({ appointment: note.appointment as number }))}
           onSuccess={() => {
-            const beforeNoteIds = new Set(clinicalNotes.map((note) => note.id));
-            const selectedCaseAtSave = selectedCase.id;
-
-            void (async () => {
-              try {
-                const latestNotes = await getNotes({ patient: patient.id });
-                const newNoteIds = latestNotes
-                  .map((note) => note.id)
-                  .filter((noteId) => !beforeNoteIds.has(noteId));
-
-                if (newNoteIds.length > 0) {
-                  for (const noteId of newNoteIds) {
-                    await assignNoteToCase(noteId, selectedCaseAtSave);
-                  }
-                  toast.success('Clinical note assigned to selected case');
-                }
-              } catch {
-                // Ignore assignment errors and still refresh notes in the UI.
-              } finally {
-                await refreshClinicalNotes();
-              }
-            })();
+            setIsCreateNoteOpen(false);
+            void refreshClinicalNotes();
           }}
         />
       )}
@@ -1042,43 +470,7 @@ export const NotesTab = () => {
           }}
         />
       )}
-
-      {addSessionCaseId && (
-        <AddCaseSessionModal
-          isOpen={addSessionCaseId !== null}
-          onClose={() => setAddSessionCaseId(null)}
-          caseTitle={cases.find(c => c.id === addSessionCaseId)?.title || ''}
-          onSave={handleSaveSessions}
-        />
-      )}
-
-      {removeSessionCaseId && (
-        <RemoveCaseSessionModal
-          isOpen={removeSessionCaseId !== null}
-          onClose={() => setRemoveSessionCaseId(null)}
-          caseTitle={cases.find(c => c.id === removeSessionCaseId)?.title || ''}
-          onRemove={handleSaveRemoveSessions}
-        />
-      )}
-
-      {removeLimitCaseId && (
-        <RemoveLimitModal
-          isOpen={removeLimitCaseId !== null}
-          onClose={() => setRemoveLimitCaseId(null)}
-          caseTitle={cases.find(c => c.id === removeLimitCaseId)?.title || ''}
-          onConfirm={handleSaveRemoveSessionLimit}
-        />
-      )}
-
-      {historyCaseId && (
-        <CaseSessionHistoryModal
-          isOpen={historyCaseId !== null}
-          onClose={() => setHistoryCaseId(null)}
-          caseId={historyCaseId}
-          caseTitle={cases.find(c => c.id === historyCaseId)?.title || ''}
-        />
-      )}
-    </>
+    </div>
   );
 };
 

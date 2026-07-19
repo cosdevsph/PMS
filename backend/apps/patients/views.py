@@ -263,6 +263,123 @@ class PatientViewSet(viewsets.ModelViewSet):
 
         return base_qs
 
+    
+    @action(detail=True, methods=['get'], url_path='activity_timeline')
+    def activity_timeline(self, request, pk=None):
+        """
+        GET /api/patients/{id}/activity_timeline/
+        Returns a chronologically ordered list of all clinical activities for the patient.
+        Activities include: Notes, Letters, Documents, and Case Session Changes.
+        """
+        from django.db.models import F, Value, CharField
+        from apps.clinical_template.models import ClinicalNote
+        from apps.letters.models import Letter
+        from apps.case_documents.models import CaseDocument
+        from .models import PatientCaseSessionLog
+        from itertools import chain
+        
+        patient = self.get_object()
+        
+        # We can pass an optional case_id to filter
+        case_id = request.query_params.get('case_id')
+        
+        activities = []
+        
+        # 1. Notes
+        notes_qs = ClinicalNote.objects.filter(patient=patient)
+        if case_id:
+            notes_qs = notes_qs.filter(patient_case_id=case_id)
+            
+        for note in notes_qs.select_related('template'):
+            activities.append({
+                'id': f"note_{note.id}",
+                'type': 'NOTE',
+                'title': note.template.name if note.template else 'Clinical Note',
+                'description': f"Note {'locked' if note.is_locked else 'drafted'} by {note.created_by.get_full_name() if note.created_by else 'Unknown'}",
+                'date': note.updated_at or note.created_at,
+                'case_id': note.patient_case_id,
+                'metadata': {
+                    'note_id': note.id,
+                    'is_locked': note.is_locked,
+                }
+            })
+            
+        # 2. Letters
+        letters_qs = Letter.objects.filter(patient=patient)
+        if case_id:
+            letters_qs = letters_qs.filter(patient_case_id=case_id)
+            
+        for letter in letters_qs.select_related('template'):
+            activities.append({
+                'id': f"letter_{letter.id}",
+                'type': 'LETTER',
+                'title': letter.subject or (letter.template.name if letter.template else 'Letter'),
+                'description': f"Letter generated ({letter.status})",
+                'date': letter.created_at,
+                'case_id': letter.patient_case_id,
+                'metadata': {
+                    'letter_id': letter.id,
+                    'status': letter.status,
+                }
+            })
+            
+        # 3. Documents
+        docs_qs = CaseDocument.objects.filter(patient=patient)
+        if case_id:
+            docs_qs = docs_qs.filter(patient_case_id=case_id)
+            
+        for doc in docs_qs:
+            activities.append({
+                'id': f"doc_{doc.id}",
+                'type': 'DOCUMENT',
+                'title': doc.title,
+                'description': f"Uploaded document ({doc.get_category_display()})",
+                'date': doc.created_at,
+                'case_id': doc.patient_case_id,
+                'metadata': {
+                    'document_id': doc.id,
+                    'file_name': doc.file_name,
+                }
+            })
+            
+        # 4. Case Session Logs
+        logs_qs = PatientCaseSessionLog.objects.filter(patient_case__patient=patient)
+        if case_id:
+            logs_qs = logs_qs.filter(patient_case_id=case_id)
+            
+        for log in logs_qs.select_related('patient_case', 'recorded_by'):
+            action_desc = "Session tracking updated"
+            if log.action == 'ADD_LIMIT':
+                action_desc = f"Added {log.amount} approved sessions"
+            elif log.action == 'REMOVE_LIMIT':
+                action_desc = f"Removed {log.amount} approved sessions"
+            elif log.action == 'CLEAR_LIMIT':
+                action_desc = "Removed session limit"
+            elif log.action == 'COMPLETE_SESSION':
+                action_desc = f"Completed {log.amount} session(s)"
+            
+            if log.reason:
+                action_desc += f" - {log.reason}"
+                
+            activities.append({
+                'id': f"log_{log.id}",
+                'type': 'SESSION_LOG',
+                'title': log.patient_case.title,
+                'description': action_desc,
+                'date': log.created_at,
+                'case_id': log.patient_case_id,
+                'metadata': {
+                    'log_id': log.id,
+                    'action': log.action,
+                    'recorded_by': log.recorded_by.get_full_name() if log.recorded_by else 'System'
+                }
+            })
+            
+        # Sort chronologically, descending (newest first)
+        activities.sort(key=lambda x: x['date'], reverse=True)
+        
+        return Response(activities)
+
     def perform_create(self, serializer):
         user = self.request.user
         kwargs = {}

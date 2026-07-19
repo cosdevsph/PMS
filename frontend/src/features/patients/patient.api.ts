@@ -219,3 +219,18 @@ export const getPatientConsentDocuments = async (patientId: number): Promise<Pat
   );
   return response.data;
 };
+export interface ActivityTimelineItem {
+  id: string;
+  type: 'NOTE' | 'LETTER' | 'DOCUMENT' | 'SESSION_LOG';
+  title: string;
+  description: string;
+  date: string;
+  case_id: number | null;
+  metadata: any;
+}
+
+export const getPatientActivityTimeline = async (patientId: string | number, caseId?: number): Promise<ActivityTimelineItem[]> => {
+  const params = caseId ? { case_id: caseId } : {};
+  const response = await axiosInstance.get(`/patients/${patientId}/activity_timeline/`, { params });
+  return response.data;
+};

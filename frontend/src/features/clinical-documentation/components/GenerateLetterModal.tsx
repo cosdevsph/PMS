@@ -8,17 +8,26 @@ import type { PatientCase } from '@/types/patient';
 interface GenerateLetterModalProps {
   patientId: string | number;
   cases: PatientCase[];
+  preSelectedTemplateId?: number;
+  preSelectedCaseId?: number;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export const GenerateLetterModal = ({ patientId, cases, onClose, onSuccess }: GenerateLetterModalProps) => {
+export const GenerateLetterModal = ({ 
+  patientId, 
+  cases, 
+  preSelectedTemplateId,
+  preSelectedCaseId,
+  onClose, 
+  onSuccess 
+}: GenerateLetterModalProps) => {
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
 
-  const [selectedTemplate, setSelectedTemplate] = useState<number | ''>('');
+  const [selectedTemplate, setSelectedTemplate] = useState<number | ''>(preSelectedTemplateId || '');
   const [subject, setSubject] = useState('');
-  const [patientCaseId, setPatientCaseId] = useState<number | ''>('');
+  const [patientCaseId, setPatientCaseId] = useState<number | ''>(preSelectedCaseId || '');
   
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -27,6 +36,10 @@ export const GenerateLetterModal = ({ patientId, cases, onClose, onSuccess }: Ge
       try {
         const data = await getActiveLetterTemplates();
         setTemplates(data);
+        if (preSelectedTemplateId) {
+          const t = data.find(t => t.id === preSelectedTemplateId);
+          if (t) setSubject(t.name);
+        }
       } catch (error) {
         toast.error('Failed to load letter templates');
       } finally {
