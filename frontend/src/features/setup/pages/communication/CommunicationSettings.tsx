@@ -444,6 +444,7 @@ export default function CommunicationSettingsPage() {
         isOpen={isPairModalOpen}
         onClose={() => setIsPairModalOpen(false)}
         onSuccess={async () => {
+          setIsPairModalOpen(false);
           await fetchDevice();
         }}
         onInstallClick={() => {

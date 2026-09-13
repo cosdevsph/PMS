@@ -151,6 +151,7 @@ export const SMSGatewayDevicePage: React.FC = () => {
         isOpen={isPairModalOpen}
         onClose={() => setIsPairModalOpen(false)}
         onSuccess={async () => {
+          setIsPairModalOpen(false);
           await fetchDevice(true);
         }}
         onInstallClick={() => {

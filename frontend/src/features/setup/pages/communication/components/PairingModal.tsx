@@ -42,9 +42,12 @@ export const PairingModal: React.FC<PairingModalProps> = ({
 
   const pollTimerRef = useRef<any>(null);
   const countdownTimerRef = useRef<any>(null);
+  const isOpenRef = useRef(false);
+  const isClaimedRef = useRef(false);
 
   // Initialize or fetch new pairing session
   const initSession = useCallback(async () => {
+    if (isClaimedRef.current) return;
     try {
       setLoading(true);
       setError(null);
@@ -52,9 +55,11 @@ export const PairingModal: React.FC<PairingModalProps> = ({
       setClaimedDevice(null);
 
       const data = await gatewayApi.createPairingSession(clinicId);
+      if (isClaimedRef.current) return;
       setSession(data);
       setTimeRemaining(data.time_remaining_seconds || 600);
     } catch (err: any) {
+      if (isClaimedRef.current) return;
       console.error('Failed to create pairing session:', err);
       const msg = err.response?.data?.error || 'Failed to generate pairing QR code.';
       setError(msg);
@@ -63,16 +68,29 @@ export const PairingModal: React.FC<PairingModalProps> = ({
     }
   }, [clinicId]);
 
-  // Open modal handler
+  // Open modal handler - only initialize when modal transitions from closed to open
   useEffect(() => {
     if (isOpen) {
-      initSession();
+      if (!isOpenRef.current) {
+        isOpenRef.current = true;
+        isClaimedRef.current = false;
+        initSession();
+      }
     } else {
+      isOpenRef.current = false;
+      isClaimedRef.current = false;
       // Clean up timers on close
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
       setSession(null);
       setPairSuccess(false);
+      setClaimedDevice(null);
     }
   }, [isOpen, initSession]);
 
@@ -91,30 +109,45 @@ export const PairingModal: React.FC<PairingModalProps> = ({
     }, 1000);
 
     return () => {
-      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
     };
   }, [session, pairSuccess]);
 
   // Status polling every 2 seconds
   useEffect(() => {
-    if (!session || pairSuccess || timeRemaining <= 0) return;
+    if (!session?.id || pairSuccess) return;
+
+    const sessionId = session.id;
 
     const pollStatus = async () => {
+      if (isClaimedRef.current) return;
       try {
-        const res = await gatewayApi.getPairingStatus(session.id);
-        if (res.status === 'CLAIMED') {
-          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        const res = await gatewayApi.getPairingStatus(sessionId);
+        if (res.status === 'CLAIMED' && !isClaimedRef.current) {
+          isClaimedRef.current = true;
+          if (pollTimerRef.current) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+          }
+          if (countdownTimerRef.current) {
+            clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
+          }
           setPairSuccess(true);
           setClaimedDevice(res.claimed_by_device);
           toast.success('Malasakit Clinic App successfully paired!');
 
-          // Wait 1.8s for visual confirmation, then trigger parent callback
-          setTimeout(() => {
-            onSuccess(res.claimed_by_device);
-            onClose();
-          }, 1800);
+          // Immediately close modal and notify parent
+          onSuccess(res.claimed_by_device);
+          onClose();
         } else if (res.status === 'EXPIRED' || res.is_expired) {
-          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          if (pollTimerRef.current) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+          }
           setTimeRemaining(0);
         }
       } catch (err) {
@@ -125,9 +158,12 @@ export const PairingModal: React.FC<PairingModalProps> = ({
     pollTimerRef.current = setInterval(pollStatus, 2000);
 
     return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
     };
-  }, [session, pairSuccess, timeRemaining, onSuccess, onClose]);
+  }, [session?.id, pairSuccess, onSuccess, onClose]);
 
   // Handle cancel & close
   const handleClose = async () => {
