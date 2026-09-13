@@ -41,6 +41,15 @@ class SMSMessage(models.Model):
     sender_id = models.CharField(max_length=50, blank=True, null=True)
     body = models.TextField()
 
+    clinic = models.ForeignKey(
+        'clinics.Clinic',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='sms_messages',
+        help_text="The clinic that originated this SMS message."
+    )
+
     # Provider/device assignment
     provider = models.ForeignKey(Provider, on_delete=models.SET_NULL, null=True, blank=True)
     gateway_device = models.ForeignKey(
@@ -73,6 +82,7 @@ class SMSMessage(models.Model):
         indexes = [
             models.Index(fields=['status', 'scheduled_time']),
             models.Index(fields=['recipient_number']),
+            models.Index(fields=['clinic', 'status']),
         ]
 
     def mark_sending(self, gateway_device=None):
@@ -132,6 +142,14 @@ class InboundSMS(models.Model):
     sender_number = models.CharField(max_length=20)
     recipient_number = models.CharField(max_length=20)
     body = models.TextField()
+    clinic = models.ForeignKey(
+        'clinics.Clinic',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='inbound_sms',
+        help_text="The clinic associated with this inbound message."
+    )
     provider = models.ForeignKey(Provider, on_delete=models.SET_NULL, null=True, blank=True)
     gateway_device = models.ForeignKey(GatewayDevice, on_delete=models.SET_NULL, null=True, blank=True)
     provider_message_id = models.CharField(max_length=255, db_index=True)

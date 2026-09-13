@@ -138,6 +138,7 @@ def send_appointment_reminder_sms(appointment) -> tuple[bool, str]:
         from apps.smsgateway.tasks import dispatch_sms_task
 
         sms_message = SMSMessage.objects.create(
+            clinic=clinic,
             recipient_number=to_number,
             body=body,
             status=SMSMessage.STATUS_QUEUED
@@ -169,11 +170,15 @@ def send_appointment_reminder_sms(appointment) -> tuple[bool, str]:
                 practitioner=appointment.practitioner,
                 comm_type='APPOINTMENT_REMINDER',
                 channel='SMS',
-                status='SENT',
+                status='QUEUED',
                 recipient=to_number,
                 subject='SMS Appointment Reminder',
                 body_preview=body[:2000] if body else '',
                 full_body=body,
+                message_id=str(sms_message.id),
+                event_metadata={
+                    'sms_message_id': str(sms_message.id),
+                }
             )
             broadcast_communication_log_updated(new_log)
         except Exception as comm_e:

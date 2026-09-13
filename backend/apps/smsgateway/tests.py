@@ -9,12 +9,13 @@ Tests for:
   - Rate limiting
 """
 from rest_framework.test import APITestCase
-from rest_framework.authtoken.models import Token
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from apps.smsgateway.models import SMSMessage, SMSTemplate
 from unittest.mock import patch
+
+User = get_user_model()
 
 
 # ==============================================================================
@@ -33,7 +34,7 @@ class AuthenticationTests(APITestCase):
 
     def test_send_sms_invalid_token_rejected(self):
         """A fabricated/invalid token must return 401."""
-        self.client.credentials(HTTP_AUTHORIZATION='Token invalid-token-xyz')
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer invalid-token-xyz')
         response = self.client.post(self.url, {'to': self.valid_phone, 'message': 'Test'})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -44,11 +45,10 @@ class AuthenticationTests(APITestCase):
 
 class SendSMSTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='testuser', password='password123')
-        self.token = Token.objects.create(user=self.user)
+        self.user = User.objects.create_user(email='testuser@example.com', password='password123', role='ADMIN', roles=['ADMIN'])
         self.url = reverse('messaging:send-sms')
         self.valid_phone = '+639085608811'
-        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
+        self.client.force_authenticate(user=self.user)
 
     def test_send_sms_valid_e164(self):
         """Valid E.164 phone number → 202 ACCEPTED, message QUEUED."""
@@ -105,7 +105,7 @@ class SendSMSTests(APITestCase):
         self.assertEqual(SMSMessage.objects.count(), 1)
         msg = SMSMessage.objects.first()
         self.assertEqual(msg.recipient_number, '+639085608811')
-        self.assertEqual(msg.body, 'Persist test')
+        self.assertEqual(msg.body, '[Malasakit] Persist test')
 
 
 # ==============================================================================
@@ -114,10 +114,9 @@ class SendSMSTests(APITestCase):
 
 class SMSStatusLifecycleTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='lifecycle_user', password='pass123')
-        self.token = Token.objects.create(user=self.user)
+        self.user = User.objects.create_user(email='lifecycle_user@example.com', password='pass123', role='ADMIN', roles=['ADMIN'])
         self.url = reverse('messaging:send-sms')
-        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
+        self.client.force_authenticate(user=self.user)
 
     def test_new_sms_starts_as_queued(self):
         """Newly created SMS enters the lifecycle at QUEUED.
@@ -223,9 +222,8 @@ class SMSStatusLifecycleTests(APITestCase):
 
 class MessageDetailTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='testuser2', password='password123')
-        self.token = Token.objects.create(user=self.user)
-        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
+        self.user = User.objects.create_user(email='testuser2@example.com', password='password123', role='ADMIN', roles=['ADMIN'])
+        self.client.force_authenticate(user=self.user)
         self.message = SMSMessage.objects.create(
             recipient_number='+639085608811',
             body='Detail test',
@@ -243,7 +241,7 @@ class MessageDetailTests(APITestCase):
         self.assertEqual(len(response.data['delivery_events']), 0)
 
     def test_message_detail_requires_auth(self):
-        self.client.credentials()
+        self.client.force_authenticate(user=None)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -254,9 +252,8 @@ class MessageDetailTests(APITestCase):
 
 class SMSTemplateTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='testuser3', password='password123')
-        self.token = Token.objects.create(user=self.user)
-        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
+        self.user = User.objects.create_user(email='testuser3@example.com', password='password123', role='ADMIN', roles=['ADMIN'])
+        self.client.force_authenticate(user=self.user)
         self.template = SMSTemplate.objects.create(
             name="Appointment Reminder",
             content="Hi {{ name }}, your appointment is at {{ time }}."
@@ -273,7 +270,7 @@ class SMSTemplateTests(APITestCase):
         response = self.client.post(self.send_url, payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         message = SMSMessage.objects.latest('created_at')
-        self.assertEqual(message.body, "Hi John Doe, your appointment is at 2:00 PM.")
+        self.assertEqual(message.body, "[Malasakit] Hi John Doe, your appointment is at 2:00 PM.")
 
     def test_send_sms_with_template_and_message_fails(self):
         """Cannot provide both message and template_id."""
@@ -302,11 +299,12 @@ class SMSTemplateTests(APITestCase):
 
 class RateLimitingTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='testuser4', password='password123')
-        self.token = Token.objects.create(user=self.user)
+        from django.core.cache import cache
+        cache.clear()
+        self.user = User.objects.create_user(email='testuser4@example.com', password='password123', role='ADMIN', roles=['ADMIN'])
         self.send_url = reverse('messaging:send-sms')
         self.valid_phone = '+639085608811'
-        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
+        self.client.force_authenticate(user=self.user)
 
     @patch('rest_framework.throttling.ScopedRateThrottle.get_rate', return_value='2/min')
     def test_send_sms_rate_limit(self, mock_get_rate):

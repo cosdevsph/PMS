@@ -17,58 +17,73 @@ def normalize_phone(value):
     return value
 
 def migrate_phones_forward(apps, schema_editor):
-    User = apps.get_model('accounts', 'User')
-    for user in User.objects.exclude(phone=''):
-        new_phone = normalize_phone(user.phone)
-        if new_phone != user.phone:
-            user.phone = new_phone
-            user.save(update_fields=['phone'])
+    try:
+        User = apps.get_model('accounts', 'User')
+        for user in User.objects.exclude(phone=''):
+            new_phone = normalize_phone(user.phone)
+            if new_phone != user.phone:
+                user.phone = new_phone
+                user.save(update_fields=['phone'])
+    except LookupError:
+        pass
             
-    Clinic = apps.get_model('clinics', 'Clinic')
-    for clinic in Clinic.objects.exclude(phone=''):
-        new_phone = normalize_phone(clinic.phone)
-        if new_phone != clinic.phone:
-            clinic.phone = new_phone
-            clinic.save(update_fields=['phone'])
+    try:
+        Clinic = apps.get_model('clinics', 'Clinic')
+        for clinic in Clinic.objects.exclude(phone=''):
+            new_phone = normalize_phone(clinic.phone)
+            if new_phone != clinic.phone:
+                clinic.phone = new_phone
+                clinic.save(update_fields=['phone'])
+    except LookupError:
+        pass
             
-    Location = apps.get_model('clinics', 'Location')
-    for loc in Location.objects.exclude(phone=''):
-        new_phone = normalize_phone(loc.phone)
-        if new_phone != loc.phone:
-            loc.phone = new_phone
-            loc.save(update_fields=['phone'])
+    try:
+        Location = apps.get_model('clinics', 'Location')
+        for loc in Location.objects.exclude(phone=''):
+            new_phone = normalize_phone(loc.phone)
+            if new_phone != loc.phone:
+                loc.phone = new_phone
+                loc.save(update_fields=['phone'])
+    except LookupError:
+        pass
             
-    Patient = apps.get_model('patients', 'Patient')
-    for patient in Patient.objects.all():
-        updated = False
-        if patient.phone:
-            new_phone = normalize_phone(patient.phone)
-            if new_phone != patient.phone:
-                patient.phone = new_phone
-                updated = True
-        if patient.emergency_contact_phone:
-            new_e_phone = normalize_phone(patient.emergency_contact_phone)
-            if new_e_phone != patient.emergency_contact_phone:
-                patient.emergency_contact_phone = new_e_phone
-                updated = True
-        if updated:
-            patient.save(update_fields=['phone', 'emergency_contact_phone'])
+    try:
+        Patient = apps.get_model('patients', 'Patient')
+        for patient in Patient.objects.all():
+            updated = False
+            if patient.phone:
+                new_phone = normalize_phone(patient.phone)
+                if new_phone != patient.phone:
+                    patient.phone = new_phone
+                    updated = True
+            if patient.emergency_contact_phone:
+                new_e_phone = normalize_phone(patient.emergency_contact_phone)
+                if new_e_phone != patient.emergency_contact_phone:
+                    patient.emergency_contact_phone = new_e_phone
+                    updated = True
+            if updated:
+                patient.save(update_fields=['phone', 'emergency_contact_phone'])
+    except LookupError:
+        pass
             
-    Contact = apps.get_model('contacts', 'Contact')
-    for contact in Contact.objects.all():
-        updated = False
-        if contact.phone:
-            new_phone = normalize_phone(contact.phone)
-            if new_phone != contact.phone:
-                contact.phone = new_phone
-                updated = True
-        if contact.alternative_phone:
-            new_alt = normalize_phone(contact.alternative_phone)
-            if new_alt != contact.alternative_phone:
-                contact.alternative_phone = new_alt
-                updated = True
-        if updated:
-            contact.save(update_fields=['phone', 'alternative_phone'])
+    try:
+        Contact = apps.get_model('contacts', 'Contact')
+        for contact in Contact.objects.all():
+            updated = False
+            if contact.phone:
+                new_phone = normalize_phone(contact.phone)
+                if new_phone != contact.phone:
+                    contact.phone = new_phone
+                    updated = True
+            if contact.alternative_phone:
+                new_alt = normalize_phone(contact.alternative_phone)
+                if new_alt != contact.alternative_phone:
+                    contact.alternative_phone = new_alt
+                    updated = True
+            if updated:
+                contact.save(update_fields=['phone', 'alternative_phone'])
+    except LookupError:
+        pass
 
 
 class Migration(migrations.Migration):

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Mail, MessageSquare, Check, X, Loader2, Clock,
   ChevronLeft, ChevronRight, ChevronDown, Search, Send, Reply,
-  Building2, AlertCircle, Inbox,
+  Building2, AlertCircle, Inbox, Smartphone,
 } from 'lucide-react';
 import {
   communicationApi,
@@ -60,6 +60,7 @@ import { PatientAvatar } from '@/features/patients/components/PatientAvatar';
 
 // ── Status Pill ────────────────────────────────────────────────────────────
 const STATUS_CFG: Record<string, { dot: string; pill: string; label: string }> = {
+  QUEUED:    { dot: 'bg-amber-400',   pill: 'bg-amber-50 border-amber-200 text-amber-700',       label: 'Queued' },
   SENT:      { dot: 'bg-sky-400',     pill: 'bg-sky-50 border-sky-200 text-sky-700',             label: 'Sent' },
   DELIVERED: { dot: 'bg-emerald-400', pill: 'bg-emerald-50 border-emerald-200 text-emerald-700', label: 'Delivered' },
   FAILED:    { dot: 'bg-red-400',     pill: 'bg-red-50 border-red-200 text-red-700',             label: 'Failed' },
@@ -363,6 +364,51 @@ function ThreadView({ log }: { log: CommunicationLogEntry }) {
           </p>
           <DeliveryTimeline status={log.status} channel={log.channel} />
         </div>
+
+        {/* SMS Gateway Device Dispatch Details */}
+        {log.channel === 'SMS' && log.event_metadata?.gateway_device && (
+          <div className="ml-8 p-3.5 bg-sky-50/50 border border-sky-100 rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-sky-600" />
+                <span className="text-xs font-bold text-gray-800">
+                  {log.event_metadata.gateway_device.name || 'SMS Gateway Device'}
+                </span>
+                {log.event_metadata.gateway_device.identifier && (
+                  <span className="font-mono text-[10px] text-gray-500 bg-white px-1.5 py-0.5 rounded border border-gray-200">
+                    {log.event_metadata.gateway_device.identifier}
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] font-semibold text-sky-700 bg-sky-100/70 px-2 py-0.5 rounded-full">
+                SIM Dispatch
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-sky-100/80">
+              <div>
+                <span className="text-gray-400">Network Carrier:</span>{' '}
+                <span className="font-medium text-gray-700">
+                  {log.event_metadata.gateway_device.sim_carrier || 'Local Telco'}
+                </span>
+              </div>
+              {log.delivered_at && (
+                <div>
+                  <span className="text-gray-400">Delivered At:</span>{' '}
+                  <span className="font-medium text-gray-700">
+                    {formatFull(log.delivered_at)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {log.event_metadata.carrier_error_code && (
+              <div className="pt-1.5 text-[11px] text-red-600 font-mono">
+                Error Code: {log.event_metadata.carrier_error_code}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 3. Patient reply */}
         {replied && (

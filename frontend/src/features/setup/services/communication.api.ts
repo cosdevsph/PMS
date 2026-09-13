@@ -51,6 +51,8 @@ export interface CommunicationLogEntry {
   error_message: string;
   patient_reply: string;
   replied_at: string | null;
+  delivered_at?: string | null;
+  message_id?: string;
   event_metadata: Record<string, any>;
   created_at: string;
 }

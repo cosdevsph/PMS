@@ -1,10 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bell, Mail, Clock,
   ChevronDown, ChevronRight, AlertCircle, Check, Loader2,
   Phone, Send, UserX, CalendarX, Heart,
 } from 'lucide-react';
 import { communicationApi, type CommunicationSettings } from '../../services/communication.api';
+import { gatewayApi, type ClinicDevice } from '../../services/gateway.api';
+import { SMSGatewayBanner } from './components/SMSGatewayBanner';
+import { PairingModal } from './components/PairingModal';
+import { InstallAppModal } from './components/InstallAppModal';
 
 // ── Toggle Switch ──────────────────────────────────────────────────────────
 function Toggle({
@@ -178,7 +183,12 @@ function NumberSetting({
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function CommunicationSettingsPage() {
+  const navigate = useNavigate();
   const [settings, setSettings] = useState<CommunicationSettings | null>(null);
+  const [device, setDevice] = useState<ClinicDevice | null>(null);
+  const [deviceLoading, setDeviceLoading] = useState(true);
+  const [isPairModalOpen, setIsPairModalOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,9 +207,22 @@ export default function CommunicationSettingsPage() {
     }
   }, []);
 
+  const fetchDevice = useCallback(async () => {
+    try {
+      setDeviceLoading(true);
+      const res = await gatewayApi.getClinicDevice();
+      setDevice(res.has_device ? res.device : null);
+    } catch {
+      // Non-blocking banner
+    } finally {
+      setDeviceLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings]);
+    fetchDevice();
+  }, [fetchSettings, fetchDevice]);
 
   const updateField = async <K extends keyof CommunicationSettings>(
     field: K,
@@ -276,6 +299,15 @@ export default function CommunicationSettingsPage() {
           {error}
         </div>
       )}
+
+      {/* SMS Gateway Device Status Banner */}
+      <SMSGatewayBanner
+        device={device}
+        loading={deviceLoading}
+        onManageClick={() => navigate('/setup?card=communication&option=comm-device')}
+        onPairClick={() => setIsPairModalOpen(true)}
+        onInstallClick={() => setIsInstallModalOpen(true)}
+      />
 
       <div className="space-y-3">
         {/* 1. Booking Confirmations */}
@@ -406,6 +438,26 @@ export default function CommunicationSettingsPage() {
           </div>
         </SettingsSection>
       </div>
+
+      {/* Quick Pairing Modal */}
+      <PairingModal
+        isOpen={isPairModalOpen}
+        onClose={() => setIsPairModalOpen(false)}
+        onSuccess={async () => {
+          await fetchDevice();
+        }}
+        onInstallClick={() => {
+          setIsPairModalOpen(false);
+          setIsInstallModalOpen(true);
+        }}
+        clinicId={device?.clinic_id}
+      />
+
+      <InstallAppModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+        onOpenPairModal={() => setIsPairModalOpen(true)}
+      />
     </div>
   );
 }

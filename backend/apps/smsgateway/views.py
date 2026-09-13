@@ -48,14 +48,50 @@ class SendSMSView(APIView):
         if not body.startswith("[Malasakit]"):
             body = f"[Malasakit] {body}"
 
+        clinic = None
+        user = getattr(request, 'user', None)
+        if user and user.is_authenticated:
+            clinic_id = request.data.get('clinic_id')
+            if clinic_id:
+                from apps.clinics.models import Clinic
+                clinic = Clinic.objects.filter(id=clinic_id).first()
+            if not clinic and getattr(user, 'clinic', None):
+                clinic = getattr(user, 'clinic_branch', None) or user.clinic
+
         sms_message = SMSMessage.objects.create(
+            clinic=clinic,
             recipient_number=recipient,
             sender_id=sender_id,
             body=body,
             status=SMSMessage.STATUS_QUEUED,
             scheduled_time=scheduled_time
         )
-        logger.info("SendSMSView: created SMSMessage %s for %s", sms_message.id, recipient)
+        logger.info("SendSMSView: created SMSMessage %s for %s (clinic=%s)", sms_message.id, recipient, clinic)
+
+        if clinic:
+            try:
+                from apps.notifications.models import CommunicationLog
+                from apps.notifications.services.notification_service import broadcast_communication_log_updated
+                from apps.patients.models import Patient
+                patient = Patient.objects.filter(clinic=clinic, phone=recipient).first()
+                comm_log = CommunicationLog.objects.create(
+                    clinic=clinic,
+                    patient=patient,
+                    comm_type='SYSTEM_NOTIFICATION',
+                    channel='SMS',
+                    status='QUEUED',
+                    recipient=recipient,
+                    subject='Direct SMS',
+                    body_preview=body[:2000] if body else '',
+                    full_body=body,
+                    message_id=str(sms_message.id),
+                    event_metadata={
+                        'sms_message_id': str(sms_message.id),
+                    }
+                )
+                broadcast_communication_log_updated(comm_log)
+            except Exception as comm_err:
+                logger.warning("SendSMSView: Failed to create CommunicationLog: %s", comm_err)
 
         try:
             if scheduled_time:

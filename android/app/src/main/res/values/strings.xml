@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Malasakit Clinic</string>
+    <string name="notification_channel_service">SMS Gateway Service</string>
+    <string name="notification_channel_service_desc">Shows real-time status of the SMS gateway background dispatcher</string>
+    <string name="notification_channel_alerts">Malasakit Critical Alerts</string>
+    <string name="notification_channel_alerts_desc">Alerts for gateway errors, disconnection, or battery critical conditions</string>
+    <string name="service_running_title">Malasakit SMS Gateway Active</string>
+    <string name="service_running_desc">Listening for outgoing clinic SMS dispatch</string>
+
+    <!-- Dashboard Strings -->
+    <string name="title_dashboard">Clinic SMS Gateway</string>
+    <string name="status_unpaired">Not Linked to Clinic</string>
+    <string name="status_paired">Active &amp; Connected</string>
+    <string name="btn_link_clinic">Link to Clinic</string>
+    <string name="btn_scan_qr">Scan QR Code</string>
+    <string name="btn_enter_code">Enter Pairing Code</string>
+    <string name="btn_settings">Settings</string>
+    <string name="btn_disconnect">Unlink Clinic</string>
+
+    <!-- Pairing Strings -->
+    <string name="title_pairing">Pair Device</string>
+    <string name="hint_pairing_code">MAL-XXXX</string>
+    <string name="hint_server_url">https://your-clinic.malasakit.com</string>
+</resources>

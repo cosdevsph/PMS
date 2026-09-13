@@ -16,6 +16,7 @@ import { Staff } from './pages/users/Staff';
 import { Permissions } from './pages/users/Permissions';
 import { Subscription } from './pages/account/Subscription';
 import CommunicationSettings from './pages/communication/CommunicationSettings';
+import SMSGatewayDevicePage from './pages/communication/SMSGatewayDevicePage';
 import CommunicationLogs from './pages/communication/CommunicationLogs';
 import { ConsentFormEditor } from './pages/practice/ConsentFormEditor';
 
@@ -94,6 +95,7 @@ const SETUP_CARDS: SetupCard[] = [
     bgColor: 'bg-sky-50',
     options: [
       { id: 'comm-settings', label: 'Settings', component: CommunicationSettings },
+      { id: 'comm-device', label: 'SMS Gateway Device', component: SMSGatewayDevicePage },
       { id: 'comm-logs', label: 'Logs', component: CommunicationLogs },
     ],
   },
