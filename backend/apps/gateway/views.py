@@ -952,15 +952,22 @@ class DisconnectClinicDeviceView(APIView):
 def _find_gateway_apk():
     """
     Look for the compiled Malasakit Android APK in standard locations:
-    1. Built Gradle output (release or debug)
-    2. Uploaded / deployed media directory
+    1. Static directory bundled in backend repo (production-safe, git tracked)
+    2. App static directory
+    3. Built Gradle output (release or debug)
+    4. Uploaded / deployed media directory
     """
     candidates = [
+        os.path.join(settings.BASE_DIR, 'apps', 'gateway', 'static', 'apk', 'MalasakitGateway.apk'),
+        os.path.join(settings.BASE_DIR, 'static', 'apk', 'MalasakitGateway.apk'),
+        os.path.join(getattr(settings, 'STATIC_ROOT', ''), 'apk', 'MalasakitGateway.apk'),
+        os.path.join(getattr(settings, 'MEDIA_ROOT', ''), 'apk', 'MalasakitGateway.apk'),
         os.path.join(settings.BASE_DIR, '..', 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk'),
         os.path.join(settings.BASE_DIR, '..', 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk'),
-        os.path.join(getattr(settings, 'MEDIA_ROOT', ''), 'apk', 'MalasakitGateway.apk'),
     ]
     for path in candidates:
+        if not path:
+            continue
         normalized = os.path.normpath(path)
         if os.path.isfile(normalized):
             return normalized
@@ -995,6 +1002,9 @@ class DownloadGatewayApkView(APIView):
             filename='MalasakitGateway.apk'
         )
         response['Content-Length'] = os.path.getsize(apk_path)
+        response['Content-Disposition'] = 'attachment; filename="MalasakitGateway.apk"'
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         return response
 
 

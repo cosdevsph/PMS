@@ -22,16 +22,22 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
   onOpenPairModal,
 }) => {
   const [apkInfo, setApkInfo] = useState<ApkInfoResponse | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string>('/api/gateway/download-apk/');
+  const [downloadUrl, setDownloadUrl] = useState<string>(() => gatewayApi.getApkDownloadUrl());
 
   useEffect(() => {
     if (isOpen) {
-      // Resolve download URL based on window location
-      setDownloadUrl(gatewayApi.getApkDownloadUrl());
+      // 1. Initial fallback: resolve download URL using API base configuration
+      const initialUrl = gatewayApi.getApkDownloadUrl();
+      setDownloadUrl(initialUrl);
 
-      // Fetch APK info
+      // 2. Fetch authoritative APK info from backend (provides the absolute download_url)
       gatewayApi.getApkInfo()
-        .then((info) => setApkInfo(info))
+        .then((info) => {
+          setApkInfo(info);
+          if (info?.download_url) {
+            setDownloadUrl(info.download_url);
+          }
+        })
         .catch((err) => {
           console.warn('Could not fetch APK info, using defaults:', err);
         });
@@ -92,6 +98,8 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
             <a
               href={downloadUrl}
               download="MalasakitGateway.apk"
+              target="_blank"
+              rel="noopener noreferrer"
               className="w-full sm:w-auto px-4 py-2 sm:py-2.5 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white text-[11px] sm:text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-xs hover:shadow-md transition-all shrink-0 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />

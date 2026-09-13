@@ -127,11 +127,26 @@ export const gatewayApi = {
 
   /**
    * Get direct download URL for the Malasakit Gateway Android APK.
+   * Resolves against the configured backend API base URL so browsers and QR scans hit Django,
+   * avoiding frontend SPA rewrite fallbacks that serve index.html.
    */
   getApkDownloadUrl: (): string => {
-    // If running in browser, build full absolute URL so mobile devices scanning QR code reach backend
-    const host = window.location.origin;
-    return `${host}/api/gateway/download-apk/`;
+    const envApiBase = import.meta.env.VITE_API_BASE_URL;
+    let base = (envApiBase || '').trim();
+
+    if (!base) {
+      base = typeof window !== 'undefined' && window.location.origin
+        ? `${window.location.origin}/api`
+        : 'http://127.0.0.1:8000/api';
+    }
+
+    const cleanBase = base.replace(/\/+$/, '');
+    if (/^https?:\/\//i.test(cleanBase)) {
+      return `${cleanBase}/gateway/download-apk/`;
+    }
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${origin}${cleanBase.startsWith('/') ? '' : '/'}${cleanBase}/gateway/download-apk/`;
   },
 };
 
