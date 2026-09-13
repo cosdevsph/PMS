@@ -113,8 +113,8 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               <QRCodeSVG
                 value={downloadUrl}
                 size={84}
-                level="M"
-                includeMargin={false}
+                level="L"
+                includeMargin={true}
               />
             </div>
             <div className="space-y-1 text-center sm:text-left">

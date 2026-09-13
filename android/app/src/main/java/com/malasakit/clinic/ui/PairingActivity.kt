@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.google.zxing.BarcodeFormat
+import com.google.zxing.DecodeHintType
 import com.google.zxing.client.android.BeepManager
 import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
@@ -164,6 +165,7 @@ class PairingActivity : AppCompatActivity() {
             if (!url.isNullOrBlank()) {
                 preferences.serverUrl = url
                 NetworkClient.resetClient()
+                binding.etServerUrl.setText(preferences.serverUrl)
             }
 
             executePairing(code, name)
@@ -182,9 +184,24 @@ class PairingActivity : AppCompatActivity() {
     }
 
     private fun setupScanner() {
-        // Restrict scanning to QR_CODE only to eliminate false-positive 1D barcode reads from monitor scanlines
-        val formats = listOf(BarcodeFormat.QR_CODE)
-        binding.barcodeScannerView.barcodeView.decoderFactory = DefaultDecoderFactory(formats)
+        // Restrict scanning to QR_CODE with TRY_HARDER, UTF-8, and both normal/inverted mode
+        val hints = mapOf<DecodeHintType, Any>(
+            DecodeHintType.TRY_HARDER to java.lang.Boolean.TRUE,
+            DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
+            DecodeHintType.CHARACTER_SET to "UTF-8"
+        )
+        binding.barcodeScannerView.barcodeView.decoderFactory = DefaultDecoderFactory(
+            listOf(BarcodeFormat.QR_CODE),
+            hints,
+            "UTF-8",
+            0 // Scan both normal and inverted QR codes
+        )
+
+        // Enable continuous camera autofocus for scanning laptop/desktop LCD screens
+        binding.barcodeScannerView.cameraSettings.apply {
+            isAutoFocusEnabled = true
+            isContinuousFocusEnabled = true
+        }
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             startCameraScanner()
@@ -284,13 +301,30 @@ class PairingActivity : AppCompatActivity() {
     }
 
     private fun extractBaseUrl(endpoint: String): String {
-        val marker = "/gateway/"
-        val index = endpoint.indexOf(marker)
-        return if (index != -1) {
-            endpoint.substring(0, index + 1) // e.g. "http://10.0.2.2:8000/api/"
-        } else {
-            endpoint
+        var ep = endpoint
+        if (ep.contains("malasakit.webservice.onrender.com")) {
+            ep = ep.replace("malasakit.webservice.onrender.com", "malasakit-webservice.onrender.com")
         }
+        val marker = "/gateway/"
+        val index = ep.indexOf(marker)
+        var base = if (index != -1) {
+            ep.substring(0, index + 1) // e.g. "https://malasakit-webservice.onrender.com/api/"
+        } else {
+            ep
+        }
+        val isLocal = base.contains("10.0.2.2") ||
+                base.contains("127.0.0.1") ||
+                base.contains("localhost") ||
+                base.contains("192.168.")
+        if (base.startsWith("http://") && !isLocal) {
+            base = "https://" + base.removePrefix("http://")
+        } else if (!base.startsWith("http://") && !base.startsWith("https://")) {
+            base = if (isLocal) "http://$base" else "https://$base"
+        }
+        if (!base.endsWith("/")) {
+            base = "$base/"
+        }
+        return base
     }
 
     private fun showExpiredDialog() {
@@ -333,9 +367,6 @@ class PairingActivity : AppCompatActivity() {
                 val msg = error.localizedMessage ?: "Connection failed"
                 binding.tvPairingError.text = "Pairing failed: $msg"
                 binding.tvPairingError.visibility = View.VISIBLE
-
-                // If pairing failed, clear input so no invalid codes linger
-                binding.etPairingCode.setText("")
 
                 Toast.makeText(
                     this@PairingActivity,

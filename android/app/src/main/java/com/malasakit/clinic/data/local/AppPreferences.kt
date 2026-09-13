@@ -112,9 +112,27 @@ class AppPreferences(context: Context) {
 
     private fun sanitizeUrl(raw: String): String {
         var clean = raw.trim()
-        if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
-            clean = "http://$clean"
+        if (clean.contains("malasakit.webservice.onrender.com")) {
+            clean = clean.replace("malasakit.webservice.onrender.com", "malasakit-webservice.onrender.com")
         }
+        val isLocalhost = clean.contains("10.0.2.2") ||
+                clean.contains("127.0.0.1") ||
+                clean.contains("localhost") ||
+                clean.startsWith("192.168.") ||
+                clean.startsWith("http://192.168.")
+
+        // Automatically upgrade remote/cloud hosts to https://
+        if (clean.startsWith("http://") && !isLocalhost) {
+            clean = "https://" + clean.removePrefix("http://")
+        } else if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
+            clean = if (isLocalhost) "http://$clean" else "https://$clean"
+        }
+
+        // If user typed domain without /api, ensure /api/ is appended
+        if (!clean.contains("/api")) {
+            clean = clean.trimEnd('/') + "/api/"
+        }
+
         if (!clean.endsWith("/")) {
             clean = "$clean/"
         }
@@ -125,7 +143,7 @@ class AppPreferences(context: Context) {
         private const val TAG = "AppPreferences"
         private const val PREFS_FILENAME = "malasakit_clinic_secure_prefs"
 
-        const val DEFAULT_SERVER_URL = "http://10.0.2.2:8000/api/"
+        const val DEFAULT_SERVER_URL = "https://malasakit-webservice.onrender.com/api/"
 
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_DEVICE_TOKEN = "device_token"

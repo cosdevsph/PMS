@@ -111,6 +111,8 @@ class DevicePairingSessionResponseSerializer(serializers.ModelSerializer):
     def get_qr_payload(self, obj):
         request = self.context.get('request')
         endpoint = request.build_absolute_uri('/api/gateway/devices/pair/') if request else '/api/gateway/devices/pair/'
+        if endpoint.startswith('http://') and not any(h in endpoint for h in ('localhost', '127.0.0.1', '10.0.2.2')):
+            endpoint = 'https://' + endpoint[7:]
         return {
             'v': 1,
             'type': 'malasakit_sms_pairing',

@@ -29,25 +29,37 @@
         android:padding="16dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <!-- Camera Scanner Card -->
+        <!-- Camera Scanner Card (Square GCash / Digital Payment Dimensions) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardScannerContainer"
-            android:layout_width="match_parent"
-            android:layout_height="260dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
-            app:strokeColor="#334155"
-            app:strokeWidth="1dp">
+            android:layout_width="270dp"
+            android:layout_height="270dp"
+            android:layout_gravity="center_horizontal"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="6dp"
+            app:strokeColor="#0284C7"
+            app:strokeWidth="1.5dp">
 
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
 
-                <!-- ZXing BarcodeView -->
+                <!-- ZXing BarcodeView (Configured with square preview) -->
                 <com.journeyapps.barcodescanner.CompoundBarcodeView
                     android:id="@+id/barcodeScannerView"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="match_parent"
+                    app:zxing_framing_rect_width="220dp"
+                    app:zxing_framing_rect_height="220dp"
+                    app:zxing_use_texture_view="true" />
+
+                <!-- GCash-style Square Corner Brackets Overlay -->
+                <ImageView
+                    android:layout_width="210dp"
+                    android:layout_height="210dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_qr_frame"
+                    android:importantForAccessibility="no" />
 
                 <!-- Scan Guidance Overlay -->
                 <TextView
@@ -57,12 +69,12 @@
                     android:layout_marginBottom="12dp"
                     android:background="#B3000000"
                     android:paddingStart="14dp"
-                    android:paddingTop="6dp"
+                    android:paddingTop="5dp"
                     android:paddingEnd="14dp"
-                    android:paddingBottom="6dp"
-                    android:text="Align QR Code on Web Dashboard"
+                    android:paddingBottom="5dp"
+                    android:text="Align QR Code within frame"
                     android:textColor="#FFFFFF"
-                    android:textSize="12sp" />
+                    android:textSize="11sp" />
 
                 <!-- Flashlight Toggle -->
                 <com.google.android.material.button.MaterialButton

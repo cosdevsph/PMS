@@ -236,12 +236,12 @@ export const PairingModal: React.FC<PairingModalProps> = ({
                   {timeRemaining > 0 ? (
                     <QRCodeSVG
                       value={JSON.stringify(session.qr_payload)}
-                      size={210}
-                      level="M"
-                      includeMargin={false}
+                      size={230}
+                      level="L"
+                      includeMargin={true}
                     />
                   ) : (
-                    <div className="w-[210px] h-[210px] flex flex-col items-center justify-center bg-gray-50 rounded-xl text-center p-4">
+                    <div className="w-[230px] h-[230px] flex flex-col items-center justify-center bg-gray-50 rounded-xl text-center p-4">
                       <Clock className="w-8 h-8 text-amber-500 mb-2" />
                       <p className="text-xs font-semibold text-gray-800">QR Code Expired</p>
                       <p className="text-[11px] text-gray-500 mt-0.5 mb-3">
