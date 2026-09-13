@@ -15,9 +15,11 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
+import com.google.zxing.BarcodeFormat
 import com.google.zxing.client.android.BeepManager
 import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
+import com.journeyapps.barcodescanner.DefaultDecoderFactory
 import com.malasakit.clinic.MalasakitApp
 import com.malasakit.clinic.data.api.NetworkClient
 import com.malasakit.clinic.data.api.models.QRPairingPayload
@@ -38,6 +40,7 @@ class PairingActivity : AppCompatActivity() {
 
     private var isPairingInProgress = false
     private var isTorchOn = false
+    private var lastInvalidScanToastTime = 0L
 
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -89,27 +92,59 @@ class PairingActivity : AppCompatActivity() {
         binding.etServerUrl.setText(preferences.serverUrl)
         binding.etDeviceName.setText("${Build.MANUFACTURER} ${Build.MODEL}")
 
-        // Auto-format pairing code (force uppercase, auto-insert hyphen)
+        // Auto-format pairing code (force uppercase, auto-insert hyphen after "MAL", ensure cursor is placed after the hyphen)
         binding.etPairingCode.addTextChangedListener(object : TextWatcher {
             private var isUpdating = false
+            private var isDeleting = false
 
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                isDeleting = count > after
+            }
+
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
 
             override fun afterTextChanged(s: Editable?) {
                 if (isUpdating || s == null) return
 
-                val upper = s.toString().uppercase()
-                if (upper != s.toString()) {
-                    isUpdating = true
-                    s.replace(0, s.length, upper)
-                    isUpdating = false
+                val raw = s.toString().uppercase()
+
+                // If user is deleting and backspaced from MAL- to MAL, delete 'L' as well so user is at MA and not trapped
+                if (isDeleting) {
+                    if (raw == "MAL") {
+                        isUpdating = true
+                        s.replace(0, s.length, "MA")
+                        binding.etPairingCode.setSelection(2)
+                        isUpdating = false
+                        return
+                    }
+                    if (raw != s.toString()) {
+                        isUpdating = true
+                        val sel = binding.etPairingCode.selectionStart
+                        s.replace(0, s.length, raw)
+                        binding.etPairingCode.setSelection(sel.coerceIn(0, s.length))
+                        isUpdating = false
+                    }
+                    return
                 }
 
-                // If user typed 3 chars starting with MAL without hyphen, insert hyphen
-                if (upper.length == 3 && upper.equals("MAL", ignoreCase = true)) {
+                // Strip any characters that are not letters or digits
+                val clean = raw.filter { it.isLetterOrDigit() }
+
+                // Format pairing code
+                val formatted = when {
+                    clean.length < 3 -> clean
+                    clean.startsWith("MAL") -> {
+                        val suffix = clean.substring(3).take(4) // Max 4 alphanumeric chars after MAL-
+                        "MAL-$suffix"
+                    }
+                    else -> clean.take(8)
+                }
+
+                if (formatted != s.toString()) {
                     isUpdating = true
-                    s.append("-")
+                    s.replace(0, s.length, formatted)
+                    // Place cursor immediately after the dash or newly typed character
+                    binding.etPairingCode.setSelection(formatted.length)
                     isUpdating = false
                 }
             }
@@ -147,6 +182,10 @@ class PairingActivity : AppCompatActivity() {
     }
 
     private fun setupScanner() {
+        // Restrict scanning to QR_CODE only to eliminate false-positive 1D barcode reads from monitor scanlines
+        val formats = listOf(BarcodeFormat.QR_CODE)
+        binding.barcodeScannerView.barcodeView.decoderFactory = DefaultDecoderFactory(formats)
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             startCameraScanner()
         } else {
@@ -167,56 +206,79 @@ class PairingActivity : AppCompatActivity() {
     private fun handleScannedData(rawText: String) {
         if (isPairingInProgress) return
 
-        try {
-            // Attempt parsing standard JSON QR format
-            val payload = gson.fromJson(rawText, QRPairingPayload::class.java)
-            val token = payload.getEffectiveToken()
+        val trimmed = rawText.trim()
 
-            if (!token.isNullOrBlank()) {
-                beepManager.playBeepSoundAndVibrate()
+        // 1. Attempt parsing standard JSON QR format from Web Dashboard
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            try {
+                val payload = gson.fromJson(trimmed, QRPairingPayload::class.java)
+                val token = payload.getEffectiveToken()
 
-                // Expiration safeguard check
-                val expiresAt = payload.expiresAtTimestamp
-                if (expiresAt != null && expiresAt > 0) {
-                    val currentSec = System.currentTimeMillis() / 1000
-                    if (expiresAt < currentSec) {
-                        showExpiredDialog()
-                        return
-                    }
-                }
+                if (!token.isNullOrBlank() && (payload.type == "malasakit_sms_pairing" || payload.code != null || payload.token != null)) {
+                    beepManager.playBeepSoundAndVibrate()
 
-                isPairingInProgress = true
-                binding.barcodeScannerView.pause()
-
-                runOnUiThread {
-                    binding.etPairingCode.setText(payload.code ?: token)
-                    // If endpoint provided, extract base URL (remove /gateway/devices/pair/)
-                    val endpoint = payload.endpoint ?: payload.apiLegacy
-                    if (!endpoint.isNullOrBlank()) {
-                        val baseUrl = extractBaseUrl(endpoint)
-                        binding.etServerUrl.setText(baseUrl)
-                        preferences.serverUrl = baseUrl
-                        NetworkClient.resetClient()
+                    // Expiration safeguard check
+                    val expiresAt = payload.expiresAtTimestamp
+                    if (expiresAt != null && expiresAt > 0) {
+                        val currentSec = System.currentTimeMillis() / 1000
+                        if (expiresAt < currentSec) {
+                            showExpiredDialog()
+                            return
+                        }
                     }
 
-                    val deviceName = binding.etDeviceName.text?.toString()?.trim()
-                    executePairing(token, deviceName)
+                    isPairingInProgress = true
+                    binding.barcodeScannerView.pause()
+
+                    runOnUiThread {
+                        binding.etPairingCode.setText(payload.code ?: token)
+                        // If endpoint provided, extract base URL (remove /gateway/devices/pair/)
+                        val endpoint = payload.endpoint ?: payload.apiLegacy
+                        if (!endpoint.isNullOrBlank()) {
+                            val baseUrl = extractBaseUrl(endpoint)
+                            binding.etServerUrl.setText(baseUrl)
+                            preferences.serverUrl = baseUrl
+                            NetworkClient.resetClient()
+                        }
+
+                        val deviceName = binding.etDeviceName.text?.toString()?.trim()
+                        executePairing(token, deviceName)
+                    }
+                    return
                 }
-                return
+            } catch (ignored: Exception) {
+                // Not a valid JSON payload
             }
-        } catch (ignored: Exception) {
-            // Check if raw string is just the 8-char code (e.g. MAL-XXXX)
-            val trimmed = rawText.trim()
-            if (trimmed.startsWith("MAL-", ignoreCase = true) || trimmed.length in 6..12) {
-                beepManager.playBeepSoundAndVibrate()
-                isPairingInProgress = true
-                binding.barcodeScannerView.pause()
+        }
 
-                runOnUiThread {
-                    binding.etPairingCode.setText(trimmed)
-                    val deviceName = binding.etDeviceName.text?.toString()?.trim()
-                    executePairing(trimmed, deviceName)
-                }
+        // 2. Check if raw string is strictly a manual pairing code (e.g. MAL-AB12)
+        val pairingCodeRegex = Regex("^MAL-[A-Z0-9]{4}$", RegexOption.IGNORE_CASE)
+        if (pairingCodeRegex.matches(trimmed)) {
+            beepManager.playBeepSoundAndVibrate()
+            isPairingInProgress = true
+            binding.barcodeScannerView.pause()
+
+            runOnUiThread {
+                val upperCode = trimmed.uppercase()
+                binding.etPairingCode.setText(upperCode)
+                val deviceName = binding.etDeviceName.text?.toString()?.trim()
+                executePairing(upperCode, deviceName)
+            }
+            return
+        }
+
+        // 3. If scanning failed or was not a valid Malasakit pairing payload:
+        // Do NOT auto-fill the pairing code with random numbers; leave it completely blank.
+        // Keep scanner running so user can align the valid QR code.
+        val now = System.currentTimeMillis()
+        if (now - lastInvalidScanToastTime > 3000) {
+            lastInvalidScanToastTime = now
+            runOnUiThread {
+                Toast.makeText(
+                    this,
+                    "Not a Malasakit pairing QR code. Please scan the QR code from the Web Dashboard.",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -271,6 +333,9 @@ class PairingActivity : AppCompatActivity() {
                 val msg = error.localizedMessage ?: "Connection failed"
                 binding.tvPairingError.text = "Pairing failed: $msg"
                 binding.tvPairingError.visibility = View.VISIBLE
+
+                // If pairing failed, clear input so no invalid codes linger
+                binding.etPairingCode.setText("")
 
                 Toast.makeText(
                     this@PairingActivity,
