@@ -86,7 +86,7 @@ class SMSGatewayService : Service() {
         val notification: Notification = NotificationCompat.Builder(this, MalasakitApp.CHANNEL_SERVICE_ID)
             .setContentTitle(getString(R.string.service_running_title))
             .setContentText(preferences.clinicName ?: getString(R.string.service_running_desc))
-            .setSmallIcon(R.drawable.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
