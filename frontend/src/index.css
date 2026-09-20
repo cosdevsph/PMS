@@ -87,6 +87,52 @@ p, span, li, div,
 .animate-notif-enter { animation: notif-enter 0.25s ease-out forwards; }
 .animate-notif-exit  { animation: notif-exit  0.25s ease-in  forwards; }
 
+/* AI Floating Chatbot Launcher Animation */
+@keyframes ai-chat-float {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-7px) scale(1.02);
+  }
+}
+
+@keyframes ai-pulse-aura {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.18;
+  }
+  100% {
+    transform: scale(1.52);
+    opacity: 0;
+  }
+}
+
+@keyframes ai-sheen {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  30%, 100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+.animate-ai-float {
+  animation: ai-chat-float 3.6s ease-in-out infinite;
+}
+
+.animate-ai-aura {
+  animation: ai-pulse-aura 2.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ai-sheen {
+  animation: ai-sheen 4.5s ease-in-out infinite;
+}
+
 /* Logout success progress bar */
 @keyframes shrink {
   from { transform: scaleX(1); }
@@ -97,6 +143,34 @@ p, span, li, div,
 @layer components {  
   .card-base {
     @apply rounded-2xl bg-white shadow-sm border border-gray-100;
+  }
+  /* 3D Bevel, Specular Highlights & Rich Layered Shadows */
+  .ai-chat-btn-bevel {
+    box-shadow: 
+      0 14px 30px -4px rgba(5, 117, 230, 0.45),
+      0 8px 18px -4px rgba(92, 219, 149, 0.35),
+      0 4px 10px rgba(0, 0, 0, 0.18),
+      inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.75),
+      inset 0 3px 5px 0 rgba(255, 255, 255, 0.4),
+      inset 0 -2.5px 3.5px 0 rgba(0, 0, 0, 0.3);
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
+  }
+
+  .ai-chat-btn-bevel:hover {
+    box-shadow: 
+      0 20px 40px -4px rgba(5, 117, 230, 0.6),
+      0 12px 24px -4px rgba(92, 219, 149, 0.5),
+      0 6px 14px rgba(0, 0, 0, 0.22),
+      inset 0 2px 2px 0 rgba(255, 255, 255, 0.9),
+      inset 0 4px 7px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -3px 4px 0 rgba(0, 0, 0, 0.35);
+  }
+
+  .ai-chat-btn-bevel:active {
+    box-shadow: 
+      0 6px 16px rgba(5, 117, 230, 0.4),
+      inset 0 2.5px 4px 0 rgba(0, 0, 0, 0.4),
+      inset 0 -1px 2px 0 rgba(255, 255, 255, 0.2);
   }
   .btn-primary {
     @apply text-white rounded-xl hover:opacity-95 transition-all;

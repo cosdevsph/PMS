@@ -23,6 +23,7 @@ from apps.integrations.views import PhilHealthClaimViewSet, HMOClaimViewSet
 from apps.contacts.views import ContactViewSet
 from apps.clinics.services.views import ServiceViewSet as ClinicServiceViewSet
 from apps.notifications.views_webhook import SMSReplyWebhookView
+from apps.common.views_ai import PublicAIChatView
 
 
 def api_root(request):
@@ -116,6 +117,9 @@ urlpatterns = [
     # Public email confirmation/cancellation (no auth required)
     path('api/appointments/confirm-email/<uuid:token>/', PublicAppointmentConfirmView.as_view(), name='public-confirm-email'),
     path('api/appointments/cancel-email/<uuid:token>/', PublicAppointmentCancelView.as_view(), name='public-cancel-email'),
+
+    # Public AI Assistant Chat (no auth required)
+    path('api/public/ai/chat/', PublicAIChatView.as_view(), name='public-ai-chat'),
 
 ]
 

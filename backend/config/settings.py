@@ -326,6 +326,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'user_sms': '60/min',
+        'public_ai_chat': '15/min',
     }
 }
 

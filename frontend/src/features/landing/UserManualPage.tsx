@@ -41,11 +41,11 @@ export const UserManualPage: React.FC = () => {
 
       {/* Main Content */}
       <main className="flex-1 pt-32 pb-20 w-full px-4 sm:px-6 lg:pl-[22rem] xl:pl-[26rem] lg:pr-12 xl:pr-24">
-        <div className="w-full max-w-5xl">
+        <div className="w-full max-w-5xl mx-auto">
           {/* Header */}
-          <div className="mb-10 pb-8 border-b border-gray-100">
+          <div className="mb-10 pb-8 border-b border-gray-100 text-center lg:text-left">
             <h1 className="text-4xl md:text-5xl font-bold text-trust-harbor font-heading mb-4">Documentation</h1>
-            <p className="text-lg md:text-xl text-gray-600 font-body max-w-3xl">
+            <p className="text-lg md:text-xl text-gray-600 font-body max-w-3xl mx-auto lg:mx-0">
               Welcome to the official documentation for the Malasakit System. Here you will find step-by-step guides on how to use and navigate the platform.
             </p>
           </div>
