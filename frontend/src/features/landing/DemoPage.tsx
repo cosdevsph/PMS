@@ -7,6 +7,7 @@ interface VideoGuide {
   title: string;
   tag: string;
   description: string;
+  videoUrl?: string;
   steps?: { title: string; description: string }[];
 }
 
@@ -32,6 +33,7 @@ const videoGuides: VideoGuide[] = [
     tag: 'Video Guide #1',
     title: 'Getting Started: Sign Up to Clinic Setup',
     description: 'Learn how to register your account, set up administrative credentials, and configure your clinic details.',
+    videoUrl: '/videos/guide-1-setup.mp4',
     steps: [
       { title: 'Signing Up', description: 'Register your new account on the platform and verify your credentials.' },
       { title: 'Creating Owner/Admin Account', description: 'Set up your administrative roles, security settings, and access control.' },
@@ -187,18 +189,28 @@ export const DemoPage: React.FC = () => {
                 
                 {/* Video Player wrapper */}
                 <div className="bg-white rounded-[2rem] p-4 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100 transition-all hover:shadow-[0_8px_40px_rgb(0,0,0,0.12)]">
-                  <div className="aspect-video bg-gray-900 rounded-3xl overflow-hidden relative group">
-                    {/* Placeholder for Video */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white flex-col z-0">
-                      <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 backdrop-blur-sm cursor-pointer">
-                        <PlayCircle className="w-10 h-10 text-white translate-x-0.5" />
+                  <div className="aspect-video bg-gray-900 rounded-3xl overflow-hidden relative group shadow-inner">
+                    {activeVideo.videoUrl ? (
+                      <video
+                        key={activeVideo.videoUrl}
+                        className="w-full h-full object-contain bg-black rounded-2xl relative z-10"
+                        controls
+                        playsInline
+                        preload="metadata"
+                      >
+                        <source src={activeVideo.videoUrl} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                    ) : (
+                      /* Placeholder when video is not yet uploaded */
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white flex-col z-0">
+                        <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 backdrop-blur-sm cursor-pointer">
+                          <PlayCircle className="w-10 h-10 text-white translate-x-0.5" />
+                        </div>
+                        <p className="text-gray-400 font-medium">Video Guide Coming Soon</p>
+                        <span className="text-xs text-gray-500 mt-1">Recording in progress</span>
                       </div>
-                      <p className="text-gray-400 font-medium">Video Guide Upload Placeholder</p>
-                    </div>
-                    <video className="w-full h-full object-cover relative z-10 opacity-0" controls>
-                      <source src="" type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
+                    )}
                   </div>
                   
                   {/* Video Description & Steps */}

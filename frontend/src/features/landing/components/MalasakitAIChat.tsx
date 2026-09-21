@@ -222,7 +222,7 @@ export const MalasakitAIChat: React.FC = () => {
         const serverDetail = err?.response?.data?.error;
         setErrorMessage(
           serverDetail ||
-            "Sorry, I'm having trouble responding right now. Please try again in a moment."
+          "Sorry, I'm having trouble responding right now. Please try again in a moment."
         );
       }
     } finally {
@@ -563,11 +563,10 @@ export const MalasakitAIChat: React.FC = () => {
                         </div>
                       )}
                       <div
-                        className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-xs ${
-                          isUser
-                            ? 'bg-care-blue text-white rounded-tr-none max-w-[82%]'
-                            : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none max-w-[85%]'
-                        }`}
+                        className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-xs ${isUser
+                          ? 'bg-care-blue text-white rounded-tr-none max-w-[82%]'
+                          : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none max-w-[85%]'
+                          }`}
                       >
                         {renderMessageContent(msg.content)}
                       </div>
