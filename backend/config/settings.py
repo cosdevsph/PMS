@@ -170,8 +170,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.254.167:3000",
-    "https://malasakit.cosedevs.com",
-    "https://malasakit.com",
+    "https://malasakitsystems.com",
+    "www.malasakitsystems.com"
 ]
 
 cloudinary.config(
@@ -191,8 +191,8 @@ CLOUDINARY_STORAGE = {
 # Add production frontend URL dynamically
 if not DEBUG:
     CORS_ALLOWED_ORIGINS += [
-        os.getenv('FRONTEND_URL', 'https://malasakit.cosedevs.com'),
-        'https://www.mespms.com',
+        os.getenv('FRONTEND_URL', 'https://malasakitsystems.com'),
+        'https://www.malasakitsystems.com',
     ]
 
 CORS_ALLOW_CREDENTIALS = True
