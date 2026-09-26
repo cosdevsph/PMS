@@ -278,6 +278,7 @@ class GatewayQueueView(APIView):
                 )
                 try:
                     from apps.notifications.models import CommunicationLog
+                    from apps.notifications.services.notification_service import broadcast_communication_log_updated
                     comm_logs = CommunicationLog.objects.filter(message_id__in=[str(m_id) for m_id in message_ids])
                     for cl in comm_logs:
                         cl.status = 'SENT'
@@ -291,6 +292,10 @@ class GatewayQueueView(APIView):
                         }
                         cl.event_metadata = meta
                         cl.save(update_fields=['status', 'event_metadata', 'updated_at'])
+                        try:
+                            broadcast_communication_log_updated(cl)
+                        except Exception as bc_e:
+                            pass
                 except Exception as cl_err:
                     logger.warning("GatewayQueueView: Failed to sync CommunicationLog: %s", cl_err)
 
@@ -549,45 +554,103 @@ class WebhookInboundView(APIView):
                 received_at=timezone.now()
             )
 
-            # ── Log all inbound messages and Auto-Process Y/N Replies ───────
+            # ── Correlate context and Auto-Process Y/N Replies ───────
             reply_text = body.strip().upper()
             try:
-                from apps.patients.models import Patient
-                from apps.appointments.models import Appointment
+                from apps.appointments.models import Appointment, AppointmentCancelToken, RebookingLink
                 from apps.notifications.models import CommunicationLog
                 from apps.notifications.services.notification_service import broadcast_communication_log_updated
+                from apps.gateway.services import (
+                    resolve_interaction_context,
+                    queue_confirmation_sms_on_yes,
+                    queue_options_sms_on_no,
+                )
 
-                # Find patient by phone, scoping by clinic if device is clinic-paired
-                patient_qs = Patient.objects.filter(phone__in=possible_phones)
-                if device.clinic:
-                    patient = patient_qs.filter(clinic=device.clinic).first() or patient_qs.first()
-                else:
-                    patient = patient_qs.first()
-                if patient:
-                    # Find closest upcoming scheduled appointment for linking
-                    appointment = Appointment.objects.filter(
-                        patient=patient,
-                        status__in=['SCHEDULED'],
-                        date__gte=timezone.now().date()
-                    ).order_by('date', 'start_time').first()
+                patient, appointment, clinic, original_reminder_log = resolve_interaction_context(
+                    sender_phone=sender,
+                    device=device
+                )
 
-                    # Process Y/N if applicable
-                    if reply_text in ["Y", "YES", "N", "NO"] and appointment:
-                        if reply_text in ["Y", "YES"]:
+                if clinic and not inbound_sms.clinic:
+                    inbound_sms.clinic = clinic
+                    inbound_sms.save(update_fields=['clinic'])
+
+                is_yes = reply_text in ["Y", "YES"]
+                is_no = reply_text in ["N", "NO"]
+                patient_reply_val = 'CONFIRM' if is_yes else ('CANCEL' if is_no else '')
+
+                if appointment:
+                    if is_yes:
+                        # Mark appointment confirmed if not already
+                        if appointment.status != 'CONFIRMED':
                             appointment.status = 'CONFIRMED'
-                            appointment.save(update_fields=['status', 'updated_at'])
-                        else:
-                            appointment.status = 'CANCELLED'
-                            appointment.cancelled_at = timezone.now()
-                            appointment.save(update_fields=['status', 'cancelled_at', 'updated_at'])
-                            try:
-                                from apps.appointments.email_service import send_appointment_cancellation_email
-                                send_appointment_cancellation_email(appointment, "Patient cancelled via SMS reply")
-                            except Exception as cancel_ex:
-                                logger.warning("Could not send cancellation email for SMS reply: %s", cancel_ex)
+                            appointment.confirmation_status = 'CONFIRMED'
+                            appointment.patient_reply = 'Y'
+                            appointment.patient_reply_at = timezone.now()
+                            appointment.save(update_fields=[
+                                'status', 'confirmation_status', 'patient_reply', 'patient_reply_at', 'updated_at'
+                            ])
 
-                    # Always log the reply, even if it's not Y/N
-                    patient_reply_val = 'CONFIRM' if reply_text in ["Y", "YES"] else ('CANCEL' if reply_text in ["N", "NO"] else '')
+                            # Invalidate unused tokens
+                            RebookingLink.objects.filter(appointment=appointment, is_used=False).update(
+                                is_used=True, used_at=timezone.now()
+                            )
+                            AppointmentCancelToken.objects.filter(appointment=appointment, is_used=False).update(
+                                is_used=True, used_at=timezone.now()
+                            )
+
+                            target_clinic = clinic or appointment.clinic or device.clinic
+                            queue_confirmation_sms_on_yes(
+                                appointment=appointment,
+                                patient=patient,
+                                clinic=target_clinic,
+                                device=device
+                            )
+                        else:
+                            logger.info("Appointment %s is already CONFIRMED; skipping duplicate confirmation SMS", appointment.id)
+
+                    elif is_no:
+                        # DO NOT cancel immediately. Keep appointment SCHEDULED.
+                        appointment.confirmation_status = 'DECLINED'
+                        appointment.patient_reply = 'N'
+                        appointment.patient_reply_at = timezone.now()
+                        appointment.save(update_fields=[
+                            'confirmation_status', 'patient_reply', 'patient_reply_at', 'updated_at'
+                        ])
+
+                        # Check idempotency: avoid spamming options SMS if sent in the last 10 minutes
+                        recent_options_sms = CommunicationLog.objects.filter(
+                            appointment=appointment,
+                            comm_type='CANCELLATION_NOTICE',
+                            channel='SMS',
+                            direction='OUTBOUND',
+                            created_at__gte=timezone.now() - timedelta(minutes=10)
+                        ).exists()
+
+                        if not recent_options_sms:
+                            target_clinic = clinic or appointment.clinic or device.clinic
+                            queue_options_sms_on_no(
+                                appointment=appointment,
+                                patient=patient,
+                                clinic=target_clinic,
+                                device=device
+                            )
+                        else:
+                            logger.info("Options SMS already sent recently for appointment %s; skipping duplicate", appointment.id)
+
+                # Update original reminder log if correlated
+                if original_reminder_log and patient_reply_val:
+                    original_reminder_log.status = 'REPLIED'
+                    original_reminder_log.patient_reply = patient_reply_val
+                    original_reminder_log.replied_at = timezone.now()
+                    original_reminder_log.save(update_fields=['status', 'patient_reply', 'replied_at'])
+                    try:
+                        broadcast_communication_log_updated(original_reminder_log)
+                    except Exception as bc_e:
+                        logger.warning("Failed to broadcast updated reminder log: %s", bc_e)
+
+                # Always log the inbound message to CommunicationLog if patient is identified
+                if patient:
                     meta = {
                         'gateway_device': {
                             'id': str(device.id),
@@ -596,38 +659,44 @@ class WebhookInboundView(APIView):
                             'sim_carrier': device.sim_carrier or '',
                         },
                         'raw_reply': body,
+                        'normalized_sender': normalized_sender,
                     }
+                    if appointment:
+                        meta['appointment_id'] = str(appointment.id)
+                        meta['appointment_status'] = appointment.status
 
-                    new_log = CommunicationLog.objects.create(
-                        clinic=appointment.clinic if appointment else patient.clinic,
-                        patient=patient,
-                        appointment=appointment,
-                        practitioner=appointment.practitioner if appointment else None,
-                        comm_type='PATIENT_RESPONSE',
-                        channel='SMS',
-                        direction='INBOUND',
-                        status='DELIVERED',
-                        recipient=normalized_sender,
-                        subject=f"Patient Reply: {body[:30]}",
-                        body_preview=body[:2000],
-                        full_body=body,
-                        patient_reply=patient_reply_val,
-                        replied_at=timezone.now(),
-                        event_metadata=meta,
-                    )
-                    try:
-                        broadcast_communication_log_updated(new_log)
-                    except Exception as bc_e:
-                        logger.warning("Failed to broadcast patient response log: %s", bc_e)
-                    
-                    # Mark as processed since we successfully logged it to the patient
+                    target_clinic = clinic or (appointment.clinic if appointment else (patient.clinic if patient else device.clinic))
+                    if target_clinic:
+                        new_log = CommunicationLog.objects.create(
+                            clinic=target_clinic,
+                            patient=patient,
+                            appointment=appointment,
+                            practitioner=appointment.practitioner if appointment else None,
+                            comm_type='PATIENT_RESPONSE',
+                            channel='SMS',
+                            direction='INBOUND',
+                            status='DELIVERED',
+                            recipient=normalized_sender,
+                            subject=f"Patient Reply: {body[:30]}",
+                            body_preview=body[:2000],
+                            full_body=body,
+                            patient_reply=patient_reply_val,
+                            replied_at=timezone.now(),
+                            event_metadata=meta,
+                        )
+                        try:
+                            broadcast_communication_log_updated(new_log)
+                        except Exception as bc_e:
+                            logger.warning("Failed to broadcast patient response log: %s", bc_e)
+
                     inbound_sms.processed_status = 'PROCESSED'
                     inbound_sms.save(update_fields=['processed_status'])
                     logger.info("WebhookInboundView: Logged inbound message from %s (appointment %s)", normalized_sender, appointment.id if appointment else "None")
                 else:
                     logger.info("WebhookInboundView: Received inbound SMS from unknown patient %s", normalized_sender)
+
             except Exception as ex:
-                logger.error("WebhookInboundView: Error processing reply: %s", ex)
+                logger.error("WebhookInboundView: Error processing reply: %s", ex, exc_info=True)
 
             logger.info(
                 "WebhookInboundView: device '%s' received inbound SMS from %s (msg_id=%s)",

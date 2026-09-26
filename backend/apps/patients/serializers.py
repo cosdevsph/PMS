@@ -494,6 +494,63 @@ class PortalBookingCreateSerializer(serializers.ModelSerializer):
                         f"The following fields are required for minors: {', '.join(missing_fields)}"
                     )
 
+        # ── Practitioner Availability & Duty End Time Validation ──────────────
+        prac = attrs.get('practitioner')
+        svc = attrs.get('service')
+        appt_date = attrs.get('appointment_date')
+        appt_time = attrs.get('appointment_time')
+        duration = svc.duration_minutes if svc else 60
+
+        if appt_date and appt_time:
+            from apps.appointments.availability_service import is_appointment_within_availability, time_to_minutes
+            is_valid_avail, avail_reason = is_appointment_within_availability(
+                prac, appt_date, appt_time, duration
+            )
+            if not is_valid_avail:
+                raise serializers.ValidationError({'appointment_time': avail_reason})
+
+            start_min = time_to_minutes(appt_time)
+            end_min = start_min + duration
+
+            from apps.appointments.models import Appointment, BlockAppointment
+            from django.db import models
+
+            conflicting_appts = Appointment.objects.filter(
+                date=appt_date,
+                status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'],
+                is_deleted=False,
+                patient__is_archived=False,
+            )
+            if prac:
+                conflicting_appts = conflicting_appts.filter(practitioner=prac)
+            elif portal_link:
+                conflicting_appts = conflicting_appts.filter(clinic=portal_link.clinic)
+
+            for existing in conflicting_appts:
+                e_start = time_to_minutes(existing.start_time)
+                e_end = time_to_minutes(existing.end_time)
+                if start_min < e_end and end_min > e_start:
+                    raise serializers.ValidationError({
+                        'appointment_time': 'The selected time slot is already booked.'
+                    })
+
+            block_qs = BlockAppointment.objects.filter(
+                date=appt_date,
+                is_deleted=False,
+            )
+            if prac:
+                block_qs = block_qs.filter(models.Q(practitioner=prac) | models.Q(practitioner__isnull=True))
+            elif portal_link:
+                block_qs = block_qs.filter(clinic=portal_link.clinic)
+
+            for blk in block_qs:
+                b_start = time_to_minutes(blk.start_time)
+                b_end = time_to_minutes(blk.end_time)
+                if start_min < b_end and end_min > b_start:
+                    raise serializers.ValidationError({
+                        'appointment_time': 'The selected time slot is blocked and unavailable.'
+                    })
+
         return attrs
 
 

@@ -957,21 +957,12 @@ class InboundReplyRoutingTests(APITestCase):
         self.assertEqual(log.status, 'DELIVERED')
         self.assertEqual(log.event_metadata['gateway_device']['name'], 'Clinic Front Desk Phone')
 
-    def test_inbound_cancellation_no_cancels_appointment(self):
-        """Inbound 'NO' reply cancels upcoming appointment, sets cancelled_at, and logs response."""
+    def test_inbound_cancellation_no_queues_options_and_keeps_scheduled(self):
+        """Inbound 'NO' reply keeps appointment SCHEDULED, sets confirmation_status=DECLINED, and queues options SMS."""
         from apps.notifications.models import CommunicationLog
-        payload = {
-            'message_id': 'inbound-no-001',
-            'sender': '+639171234567',
-            'recipient': '+639111222333',
-            'message': 'No, please cancel',
-        }
-        res = self.client.post(self.inbound_url, payload, format='json', HTTP_AUTHORIZATION=self.auth_header)
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        from apps.appointments.models import AppointmentCancelToken, RebookingLink
+        from apps.smsgateway.models import SMSMessage
 
-        self.appointment.refresh_from_db()
-        # Message starts with 'No', but reply_text in ['N', 'NO'] checks exact word; test exact 'NO'
-        # Let's test with exact 'NO'
         payload_exact_no = {
             'message_id': 'inbound-no-002',
             'sender': '+639171234567',
@@ -982,15 +973,121 @@ class InboundReplyRoutingTests(APITestCase):
         self.assertEqual(res2.status_code, status.HTTP_200_OK)
 
         self.appointment.refresh_from_db()
-        self.assertEqual(self.appointment.status, 'CANCELLED')
-        self.assertIsNotNone(self.appointment.cancelled_at)
+        # Appointment remains SCHEDULED (not cancelled immediately)
+        self.assertEqual(self.appointment.status, 'SCHEDULED')
+        self.assertEqual(self.appointment.confirmation_status, 'DECLINED')
+        self.assertEqual(self.appointment.patient_reply, 'N')
+        self.assertIsNotNone(self.appointment.patient_reply_at)
 
+        # Inbound log recorded
         log = CommunicationLog.objects.filter(
             patient=self.patient,
             patient_reply='CANCEL'
         ).first()
         self.assertIsNotNone(log)
         self.assertEqual(log.appointment, self.appointment)
+
+        # Options SMS queued
+        options_sms = SMSMessage.objects.filter(recipient_number='+639171234567').order_by('-created_at').first()
+        self.assertIsNotNone(options_sms)
+        self.assertIn('/rebook/', options_sms.body)
+        self.assertIn('/cancel/', options_sms.body)
+
+        # Rebook and cancel tokens created
+        self.assertTrue(RebookingLink.objects.filter(appointment=self.appointment, is_used=False).exists())
+        self.assertTrue(AppointmentCancelToken.objects.filter(appointment=self.appointment, is_used=False).exists())
+
+    def test_inbound_duplicate_yes_idempotent(self):
+        """Duplicate YES messages do not cause redundant confirmation SMS messages."""
+        from apps.smsgateway.models import SMSMessage
+
+        # First YES
+        res1 = self.client.post(self.inbound_url, {
+            'message_id': 'inbound-dup-yes-1',
+            'sender': '+639171234567',
+            'recipient': '+639111222333',
+            'message': 'YES',
+        }, format='json', HTTP_AUTHORIZATION=self.auth_header)
+        self.assertEqual(res1.status_code, status.HTTP_200_OK)
+        count_first = SMSMessage.objects.filter(recipient_number='+639171234567').count()
+
+        # Second YES
+        res2 = self.client.post(self.inbound_url, {
+            'message_id': 'inbound-dup-yes-2',
+            'sender': '+639171234567',
+            'recipient': '+639111222333',
+            'message': 'YES',
+        }, format='json', HTTP_AUTHORIZATION=self.auth_header)
+        self.assertEqual(res2.status_code, status.HTTP_200_OK)
+        count_second = SMSMessage.objects.filter(recipient_number='+639171234567').count()
+
+        self.assertEqual(count_first, count_second)
+
+    def test_public_cancel_with_declined_status_and_dispatches_sms(self):
+        """A patient who replied NO (status=SCHEDULED, confirmation_status=DECLINED) can cancel via web link and receives SMS."""
+        from apps.appointments.models import AppointmentCancelToken
+        from apps.smsgateway.models import SMSMessage
+        self.appointment.confirmation_status = 'DECLINED'
+        self.appointment.patient_reply = 'N'
+        self.appointment.save()
+
+        token = AppointmentCancelToken.objects.create(appointment=self.appointment)
+        cancel_url = reverse('public-cancel-email', kwargs={'token': str(token.token)})
+
+        # GET details succeeds
+        get_res = self.client.get(cancel_url)
+        self.assertEqual(get_res.status_code, status.HTTP_200_OK)
+
+        # POST cancel succeeds
+        post_res = self.client.post(cancel_url)
+        self.assertEqual(post_res.status_code, status.HTTP_200_OK)
+
+        self.appointment.refresh_from_db()
+        self.assertEqual(self.appointment.status, 'CANCELLED')
+
+        # Cancellation confirmation SMS queued
+        cancel_sms = SMSMessage.objects.filter(clinic=self.clinic, recipient_number='+639171234567').order_by('-created_at').first()
+        self.assertIsNotNone(cancel_sms)
+        self.assertIn('successfully cancelled', cancel_sms.body)
+
+    def test_public_rebook_creates_new_cancels_old_and_dispatches_sms(self):
+        """Rebooking creates new appointment, cancels original, and dispatches reschedule SMS."""
+        from apps.appointments.models import RebookingLink, Appointment
+        from apps.smsgateway.models import SMSMessage
+        from datetime import timedelta
+
+        rebook_link = RebookingLink.objects.create(patient=self.patient, appointment=self.appointment)
+        rebook_url = reverse('public-rebooking', kwargs={'token': str(rebook_link.token)})
+
+        # GET rebook details
+        get_res = self.client.get(rebook_url)
+        self.assertEqual(get_res.status_code, status.HTTP_200_OK)
+
+        # POST rebook to a new slot
+        new_slot_date = (timezone.now() + timedelta(days=5)).date()
+        post_payload = {
+            'date': str(new_slot_date),
+            'start_time': '14:00',
+            'end_time': '14:30',
+        }
+        post_res = self.client.post(rebook_url, post_payload, format='json')
+        self.assertEqual(post_res.status_code, status.HTTP_201_CREATED)
+
+        # Original appointment is cancelled
+        self.appointment.refresh_from_db()
+        self.assertEqual(self.appointment.status, 'CANCELLED')
+        self.assertIn('Rescheduled to', self.appointment.cancellation_reason)
+
+        # New appointment exists and is SCHEDULED
+        new_appt_id = post_res.data['appointment_id']
+        new_appt = Appointment.objects.get(id=new_appt_id)
+        self.assertEqual(new_appt.status, 'SCHEDULED')
+        self.assertEqual(str(new_appt.date), str(new_slot_date))
+
+        # Rebooking confirmation SMS queued
+        rebook_sms = SMSMessage.objects.filter(clinic=self.clinic, recipient_number='+639171234567').order_by('-created_at').first()
+        self.assertIsNotNone(rebook_sms)
+        self.assertIn('successfully rescheduled', rebook_sms.body)
 
     def test_inbound_arbitrary_reply_logged_without_changing_appointment(self):
         """Non-Y/N reply is logged to CommunicationLog while appointment remains SCHEDULED."""
@@ -1388,6 +1485,364 @@ class GatewayApkDownloadTests(APITestCase):
         self.assertEqual(res.headers.get('Content-Type'), 'application/vnd.android.package-archive')
         self.assertIn('attachment; filename="MalasakitGateway.apk"', res.headers.get('Content-Disposition', ''))
         self.assertGreater(int(res.headers.get('Content-Length', 0)), 0)
+
+
+class CommunicationLogMonitoringTests(APITestCase):
+    """
+    Comprehensive tests ensuring that all SMS messages sent (reminders, confirmations,
+    options notices, direct messages) and client responses (YES, NO, inquiries) are
+    accurately logged, updated, and monitored in CommunicationLog.
+    """
+    def setUp(self):
+        from apps.clinics.models import Clinic, Practitioner
+        from apps.patients.models import Patient
+        from apps.appointments.models import Appointment
+        from apps.accounts.models import User
+        from apps.gateway.models import GatewayDevice
+        from datetime import timedelta, time
+        from django.utils import timezone
+
+        self.clinic = Clinic.objects.create(
+            name='Malasakit Monitoring Clinic',
+            email='clinic@monitoring.com',
+            phone='+639171234567',
+            sms_notifications_enabled=True,
+        )
+        self.staff_user = User.objects.create_user(
+            email='staff@monitoring.com',
+            password='StaffPassword123!',
+            clinic=self.clinic,
+            role='STAFF',
+            is_active=True,
+        )
+        self.device = GatewayDevice.objects.create(
+            clinic=self.clinic,
+            name='Monitoring Gateway Phone',
+            device_identifier='HW-MONITOR-001',
+            device_token='token-monitor-001',
+            phone_number='+639111222333',
+            sim_carrier='Globe Telecom',
+            is_active=True,
+            status='ACTIVE',
+        )
+        self.auth_header = 'Bearer token-monitor-001'
+
+        self.patient = Patient.objects.create(
+            clinic=self.clinic,
+            first_name='Maria',
+            last_name='Santos',
+            date_of_birth='1995-03-20',
+            gender='F',
+            email='maria.santos@example.com',
+            phone='+639178889999',
+            sms_notifications_enabled=True,
+        )
+
+        tomorrow = (timezone.now() + timedelta(days=1)).date()
+        self.appointment = Appointment.objects.create(
+            clinic=self.clinic,
+            patient=self.patient,
+            date=tomorrow,
+            start_time=time(10, 0),
+            end_time=time(10, 30),
+            status='SCHEDULED',
+        )
+
+        self.queue_url = reverse('gateway:gateway-queue')
+        self.delivery_url = reverse('gateway:webhook-delivery')
+        self.inbound_url = reverse('gateway:webhook-inbound')
+        self.comm_logs_url = reverse('communication-log-list')
+
+    def test_outbound_sms_reminder_logged_and_monitored(self):
+        """Outbound reminder SMS is logged with QUEUED status and OUTBOUND direction."""
+        from apps.appointments.sms_service import send_appointment_reminder_sms
+        from apps.notifications.models import CommunicationLog
+        from apps.smsgateway.models import SMSMessage
+
+        success, err = send_appointment_reminder_sms(self.appointment)
+        self.assertTrue(success, f"Reminder SMS failed: {err}")
+
+        # SMSMessage queued
+        sms = SMSMessage.objects.filter(clinic=self.clinic, recipient_number='+639178889999').first()
+        self.assertIsNotNone(sms)
+        self.assertEqual(sms.status, SMSMessage.STATUS_QUEUED)
+
+        # CommunicationLog queued
+        log = CommunicationLog.objects.filter(
+            appointment=self.appointment,
+            comm_type='APPOINTMENT_REMINDER'
+        ).first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.direction, 'OUTBOUND')
+        self.assertEqual(log.channel, 'SMS')
+        self.assertEqual(log.status, 'QUEUED')
+        self.assertEqual(log.patient, self.patient)
+        self.assertEqual(log.message_id, str(sms.id))
+        self.assertIn('Reply YES to confirm or NO', log.body_preview)
+
+    def test_gateway_pickup_and_delivery_receipt_synchronization(self):
+        """Gateway polling transitions log to SENT; delivery receipt transitions log to DELIVERED."""
+        from apps.appointments.sms_service import send_appointment_reminder_sms
+        from apps.notifications.models import CommunicationLog
+        from apps.smsgateway.models import SMSMessage
+
+        send_appointment_reminder_sms(self.appointment)
+        sms = SMSMessage.objects.filter(clinic=self.clinic, recipient_number='+639178889999').first()
+        log = CommunicationLog.objects.get(message_id=str(sms.id))
+        self.assertEqual(log.status, 'QUEUED')
+
+        # 1. Gateway pickup (queue claim)
+        res_queue = self.client.get(self.queue_url, HTTP_AUTHORIZATION=self.auth_header)
+        self.assertEqual(res_queue.status_code, status.HTTP_200_OK)
+        log.refresh_from_db()
+        self.assertEqual(log.status, 'SENT')
+        self.assertEqual(log.event_metadata['gateway_device']['identifier'], 'HW-MONITOR-001')
+
+        # 2. Gateway delivery report
+        delivery_payload = {
+            'message_id': str(sms.id),
+            'status': 'DELIVERED',
+            'delivered_at': '2026-09-24T12:00:00Z',
+        }
+        res_del = self.client.post(self.delivery_url, delivery_payload, format='json', HTTP_AUTHORIZATION=self.auth_header)
+        self.assertEqual(res_del.status_code, status.HTTP_200_OK)
+        log.refresh_from_db()
+        self.assertEqual(log.status, 'DELIVERED')
+        self.assertIsNotNone(log.delivered_at)
+
+    def test_inbound_patient_reply_yes_logged_and_monitored(self):
+        """Inbound YES updates original reminder to REPLIED, logs PATIENT_RESPONSE, and logs BOOKING_CONFIRMATION."""
+        from apps.appointments.sms_service import send_appointment_reminder_sms
+        from apps.notifications.models import CommunicationLog
+
+        send_appointment_reminder_sms(self.appointment)
+
+        inbound_payload = {
+            'message_id': 'inbound-msg-yes-123',
+            'sender': '+639178889999',
+            'recipient': '+639111222333',
+            'message': 'YES',
+        }
+        res = self.client.post(self.inbound_url, inbound_payload, format='json', HTTP_AUTHORIZATION=self.auth_header)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Inbound reply log
+        inbound_log = CommunicationLog.objects.filter(
+            patient=self.patient,
+            comm_type='PATIENT_RESPONSE'
+        ).first()
+        self.assertIsNotNone(inbound_log)
+        self.assertEqual(inbound_log.direction, 'INBOUND')
+        self.assertEqual(inbound_log.patient_reply, 'CONFIRM')
+        self.assertEqual(inbound_log.full_body, 'YES')
+
+        # Original reminder log updated to REPLIED
+        reminder_log = CommunicationLog.objects.filter(
+            appointment=self.appointment,
+            comm_type='APPOINTMENT_REMINDER'
+        ).first()
+        self.assertEqual(reminder_log.status, 'REPLIED')
+        self.assertEqual(reminder_log.patient_reply, 'CONFIRM')
+        self.assertIsNotNone(reminder_log.replied_at)
+
+        # Appointment confirmed
+        self.appointment.refresh_from_db()
+        self.assertEqual(self.appointment.status, 'CONFIRMED')
+        self.assertEqual(self.appointment.confirmation_status, 'CONFIRMED')
+
+        # Outbound confirmation SMS logged
+        conf_log = CommunicationLog.objects.filter(
+            appointment=self.appointment,
+            comm_type='BOOKING_CONFIRMATION'
+        ).first()
+        self.assertIsNotNone(conf_log)
+        self.assertEqual(conf_log.direction, 'OUTBOUND')
+        self.assertIn('has been confirmed', conf_log.body_preview)
+
+    def test_inbound_patient_reply_no_logged_and_monitored(self):
+        """Inbound NO updates original reminder, logs PATIENT_RESPONSE, keeps appointment SCHEDULED, and logs CANCELLATION_NOTICE."""
+        from apps.appointments.sms_service import send_appointment_reminder_sms
+        from apps.notifications.models import CommunicationLog
+
+        send_appointment_reminder_sms(self.appointment)
+
+        inbound_payload = {
+            'message_id': 'inbound-msg-no-123',
+            'sender': '+639178889999',
+            'recipient': '+639111222333',
+            'message': 'NO',
+        }
+        res = self.client.post(self.inbound_url, inbound_payload, format='json', HTTP_AUTHORIZATION=self.auth_header)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Inbound reply log
+        inbound_log = CommunicationLog.objects.filter(
+            patient=self.patient,
+            comm_type='PATIENT_RESPONSE'
+        ).first()
+        self.assertIsNotNone(inbound_log)
+        self.assertEqual(inbound_log.direction, 'INBOUND')
+        self.assertEqual(inbound_log.patient_reply, 'CANCEL')
+
+        # Original reminder log updated to REPLIED
+        reminder_log = CommunicationLog.objects.filter(
+            appointment=self.appointment,
+            comm_type='APPOINTMENT_REMINDER'
+        ).first()
+        self.assertEqual(reminder_log.status, 'REPLIED')
+        self.assertEqual(reminder_log.patient_reply, 'CANCEL')
+
+        # Appointment remains SCHEDULED (not cancelled immediately)
+        self.appointment.refresh_from_db()
+        self.assertEqual(self.appointment.status, 'SCHEDULED')
+        self.assertEqual(self.appointment.confirmation_status, 'DECLINED')
+
+        # Outbound options notice logged with rebook & cancel tokens
+        options_log = CommunicationLog.objects.filter(
+            appointment=self.appointment,
+            comm_type='CANCELLATION_NOTICE'
+        ).first()
+        self.assertIsNotNone(options_log)
+        self.assertEqual(options_log.direction, 'OUTBOUND')
+        self.assertIn('/rebook/', options_log.full_body)
+        self.assertIn('/cancel/', options_log.full_body)
+        self.assertIn('rebook_token', options_log.event_metadata)
+        self.assertIn('cancel_token', options_log.event_metadata)
+
+    def test_inbound_arbitrary_client_inquiry_logged_and_monitored(self):
+        """Arbitrary incoming SMS text is logged to CommunicationLog without altering appointment."""
+        from apps.notifications.models import CommunicationLog
+
+        inbound_payload = {
+            'message_id': 'inbound-msg-question-123',
+            'sender': '+639178889999',
+            'recipient': '+639111222333',
+            'message': 'Good day, can I bring my laboratory results from yesterday?',
+        }
+        res = self.client.post(self.inbound_url, inbound_payload, format='json', HTTP_AUTHORIZATION=self.auth_header)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        inbound_log = CommunicationLog.objects.filter(
+            patient=self.patient,
+            comm_type='PATIENT_RESPONSE'
+        ).first()
+        self.assertIsNotNone(inbound_log)
+        self.assertEqual(inbound_log.direction, 'INBOUND')
+        self.assertIn('laboratory results', inbound_log.full_body)
+        self.assertEqual(self.appointment.status, 'SCHEDULED')
+
+    def test_communication_logs_api_filtering_and_retrieval(self):
+        """Staff can query communication logs and filter by direction (INBOUND vs OUTBOUND) or patient."""
+        from apps.notifications.models import CommunicationLog
+
+        # Create 1 Outbound log and 1 Inbound log
+        CommunicationLog.objects.create(
+            clinic=self.clinic,
+            patient=self.patient,
+            comm_type='APPOINTMENT_REMINDER',
+            channel='SMS',
+            direction='OUTBOUND',
+            status='DELIVERED',
+            recipient='+639178889999',
+            subject='Reminder',
+            full_body='Reminder message',
+        )
+        CommunicationLog.objects.create(
+            clinic=self.clinic,
+            patient=self.patient,
+            comm_type='PATIENT_RESPONSE',
+            channel='SMS',
+            direction='INBOUND',
+            status='DELIVERED',
+            recipient='+639178889999',
+            subject='Client Reply',
+            full_body='Yes I will attend',
+            patient_reply='CONFIRM',
+        )
+
+        self.client.force_authenticate(user=self.staff_user)
+
+        # 1. Query all
+        res_all = self.client.get(self.comm_logs_url)
+        self.assertEqual(res_all.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_all.data['count'], 2)
+
+        # 2. Filter by direction=INBOUND
+        res_inbound = self.client.get(self.comm_logs_url, {'direction': 'INBOUND'})
+        self.assertEqual(res_inbound.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_inbound.data['count'], 1)
+        self.assertEqual(res_inbound.data['results'][0]['direction'], 'INBOUND')
+        self.assertEqual(res_inbound.data['results'][0]['patient_reply'], 'CONFIRM')
+
+        # 3. Filter by direction=OUTBOUND
+        res_outbound = self.client.get(self.comm_logs_url, {'direction': 'OUTBOUND'})
+        self.assertEqual(res_outbound.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_outbound.data['count'], 1)
+        self.assertEqual(res_outbound.data['results'][0]['direction'], 'OUTBOUND')
+
+    def test_appointment_reminder_is_responded_boolean_and_value_storage(self):
+        """Verify database persistence of is_responded boolean and normalized value for appointment & communication log."""
+        from apps.appointments.sms_service import send_appointment_reminder_sms
+        from apps.appointments.serializers import AppointmentSerializer
+        from apps.notifications.models import CommunicationLog
+        from apps.notifications.serializers import CommunicationLogSerializer
+
+        # 1. Before response: reminder sent, is_responded is False
+        send_appointment_reminder_sms(self.appointment)
+        self.appointment.refresh_from_db()
+        reminder_log = CommunicationLog.objects.get(appointment=self.appointment, comm_type='APPOINTMENT_REMINDER')
+
+        self.assertFalse(self.appointment.is_responded)
+        self.assertEqual(self.appointment.response_value, '')
+        self.assertFalse(reminder_log.is_responded)
+        self.assertEqual(reminder_log.response_value, '')
+
+        # Serializer representation before reply
+        appt_data = AppointmentSerializer(self.appointment).data
+        self.assertFalse(appt_data['is_responded'])
+        self.assertEqual(appt_data['response_value'], '')
+
+        log_data = CommunicationLogSerializer(reminder_log).data
+        self.assertFalse(log_data['is_responded'])
+        self.assertEqual(log_data['response_value'], '')
+
+        # 2. Patient replies "YES" via gateway
+        inbound_payload = {
+            'message_id': 'inbound-is-responded-001',
+            'sender': '+639178889999',
+            'recipient': '+639111222333',
+            'message': 'YES',
+        }
+        res = self.client.post(self.inbound_url, inbound_payload, format='json', HTTP_AUTHORIZATION=self.auth_header)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # 3. Verify Database Storage after reply
+        self.appointment.refresh_from_db()
+        reminder_log.refresh_from_db()
+
+        # Appointment model verification
+        self.assertTrue(self.appointment.is_responded)
+        self.assertEqual(self.appointment.response_value, 'YES')
+        self.assertEqual(self.appointment.patient_reply, 'Y')
+        self.assertIsNotNone(self.appointment.patient_reply_at)
+        self.assertEqual(self.appointment.confirmation_status, 'CONFIRMED')
+
+        # CommunicationLog model verification
+        self.assertTrue(reminder_log.is_responded)
+        self.assertEqual(reminder_log.response_value, 'YES')
+        self.assertEqual(reminder_log.status, 'REPLIED')
+        self.assertEqual(reminder_log.patient_reply, 'CONFIRM')
+        self.assertIsNotNone(reminder_log.replied_at)
+
+        # Serializer representation after reply
+        appt_data_after = AppointmentSerializer(self.appointment).data
+        self.assertTrue(appt_data_after['is_responded'])
+        self.assertEqual(appt_data_after['response_value'], 'YES')
+
+        log_data_after = CommunicationLogSerializer(reminder_log).data
+        self.assertTrue(log_data_after['is_responded'])
+        self.assertEqual(log_data_after['response_value'], 'YES')
+
 
 
 

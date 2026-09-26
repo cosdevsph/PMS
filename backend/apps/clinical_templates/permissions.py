@@ -25,10 +25,13 @@ class IsAdminOrReadOnly(permissions.BasePermission):
 
 class IsSameClinic(permissions.BasePermission):
     """
-    User can only access resources from their own clinic.
+    User can only access resources from their own clinic,
+    except system templates which are readable by all authenticated users.
     """
     
     def has_object_permission(self, request, view, obj):
+        if getattr(obj, 'is_system_template', False):
+            return request.method in permissions.SAFE_METHODS
         return obj.clinic == request.user.clinic
 
 

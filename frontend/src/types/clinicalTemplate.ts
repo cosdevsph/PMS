@@ -24,8 +24,8 @@ export interface FieldOption {
 
 export interface ClinicalTemplate {
   id: number;
-  clinic: number;
-  created_by: number;
+  clinic: number | null;
+  created_by: number | null;
   created_by_name: string;
   name: string;
   description: string;
@@ -39,6 +39,7 @@ export interface ClinicalTemplate {
   is_active: boolean;
   is_archived: boolean;
   is_latest_version: boolean;
+  is_system_template?: boolean;
   created_at: string;
   updated_at: string;
 }

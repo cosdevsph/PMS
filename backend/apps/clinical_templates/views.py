@@ -38,9 +38,21 @@ class ClinicalTemplateViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'created_at', 'version']
     
     def get_queryset(self):
-        """Filter templates by user's clinic"""
+        """Filter templates by user's clinic and include system-wide templates"""
         user = self.request.user
-        return self.queryset.filter(clinic=user.clinic)
+        if not user or not user.is_authenticated:
+            return self.queryset.none()
+        from django.db.models import Q
+        q = Q(is_system_template=True)
+        if getattr(user, 'clinic', None):
+            q |= Q(clinic=user.clinic)
+        return self.queryset.filter(q)
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        if getattr(obj, 'is_system_template', False) and request.method not in ('GET', 'HEAD', 'OPTIONS'):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("System templates are read-only and cannot be modified or deleted.")
     
     @action(detail=True, methods=['post'])
     def create_version(self, request, pk=None):
@@ -56,6 +68,11 @@ class ClinicalTemplateViewSet(viewsets.ModelViewSet):
             )
         
         template = self.get_object()
+        if template.is_system_template:
+            return Response(
+                {'detail': 'System templates cannot be modified or versioned by clinic users'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         new_version = template.create_new_version(request.user)
         
         serializer = self.get_serializer(new_version)
@@ -75,6 +92,11 @@ class ClinicalTemplateViewSet(viewsets.ModelViewSet):
             )
         
         template = self.get_object()
+        if template.is_system_template:
+            return Response(
+                {'detail': 'System templates cannot be archived or deleted'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         template.is_archived = True
         template.is_active = False
         template.save(update_fields=['is_archived', 'is_active'])
@@ -481,6 +503,13 @@ class ClinicalNoteViewSet(viewsets.ModelViewSet):
         content = note.content
         sections = []
         
+        # Check if General SOAP
+        is_general_soap = (
+            (note.template and note.template.name == 'General SOAP') or
+            (note.template and getattr(note.template, 'is_system_template', False)) or
+            (note.template_name == 'General SOAP')
+        )
+        
         if note.template and note.template.structure:
             template_structure = note.template.structure
             for section in template_structure.get('sections', []):
@@ -494,25 +523,41 @@ class ClinicalNoteViewSet(viewsets.ModelViewSet):
                     field_label = field.get('label', '')
                     field_type = field.get('type', '')
                     field_value = content.get(field_id, '')
+
+                    # For General SOAP: exclude Treatment and ensure Assessment replaces Diagnosis / Analysis
+                    if is_general_soap:
+                        if field_id == 'treatment':
+                            continue
+                        if field_id == 'diagnosis_analysis':
+                            field_id = 'assessment'
+                            field_label = 'Assessment'
+                            if not field_value:
+                                field_value = content.get('assessment') or content.get('diagnosis_analysis', '')
+                        elif field_id == 'assessment' and not field_value:
+                            field_value = content.get('assessment') or content.get('diagnosis_analysis', '')
                     
-                    if field_value:
-                        # Chart fields: value is a base64 PNG string — render as image in print
-                        if field_type == 'chart' and isinstance(field_value, str) and field_value.startswith('data:image/'):
+                    if field_type == 'chart':
+                        # Chart fields: value is a base64 PNG string or fallback default
+                        chart_img = field_value if (isinstance(field_value, str) and field_value.startswith('data:image/')) else ('/static/charts/body-chart.webp' if is_general_soap else '')
+                        if chart_img:
                             fields.append({
+                                'id': field_id,
+                                'type': field_type,
                                 'label': field_label,
                                 'value': '',
-                                'image': field_value,
+                                'image': chart_img,
                             })
-                        else:
-                            if isinstance(field_value, list):
-                                field_value = ', '.join(str(v) for v in field_value)
-                            elif isinstance(field_value, dict):
-                                # Fallback: stringify dicts that weren't handled above
-                                field_value = str(field_value)
-                            fields.append({
-                                'label': field_label,
-                                'value': str(field_value)
-                            })
+                    elif field_value or is_general_soap:
+                        if isinstance(field_value, list):
+                            field_value = ', '.join(str(v) for v in field_value)
+                        elif isinstance(field_value, dict):
+                            field_value = str(field_value)
+                        fields.append({
+                            'id': field_id,
+                            'type': field_type,
+                            'label': field_label,
+                            'value': str(field_value) if field_value else '—'
+                        })
                 
                 if fields:
                     sections.append({
@@ -598,6 +643,7 @@ class ClinicalNoteViewSet(viewsets.ModelViewSet):
             'status': note.status,
             'signed_at': note.signed_at.isoformat() if note.signed_at else None,
             'created_at': note.created_at.isoformat() if note.created_at else None,
+            'is_general_soap': is_general_soap,
             'sections': sections,
         }
         

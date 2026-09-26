@@ -39,25 +39,34 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
       {sortedSections.map((section) => (
         <div key={section.id}>
           {/* Section Header */}
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-gray-700">{section.title}</h3>
-            {section.description && (
-              <p className="text-xs text-gray-500 mt-0.5">{section.description}</p>
-            )}
-          </div>
+          {(Boolean(section.title?.trim()) || Boolean(section.description?.trim())) && (
+            <div className="mb-4">
+              {section.title?.trim() && <h3 className="text-sm font-semibold text-gray-700">{section.title}</h3>}
+              {section.description?.trim() && (
+                <p className="text-xs text-gray-500 mt-0.5">{section.description}</p>
+              )}
+            </div>
+          )}
 
           {/* Section Fields */}
           <div className="space-y-4">
-            {section.fields.map((field) => (
-              <FieldRenderer
-                key={field.id}
-                field={field}
-                value={values[field.id]}
-                onChange={(value) => onChange(field.id, value)}
-                error={errors[field.id]}
-                disabled={disabled}
-              />
-            ))}
+            {section.fields.map((field) => {
+              const fieldValue =
+                values[field.id] !== undefined && values[field.id] !== null && values[field.id] !== ''
+                  ? values[field.id]
+                  : (field.id === 'assessment' ? values['diagnosis_analysis'] : values[field.id]);
+
+              return (
+                <FieldRenderer
+                  key={field.id}
+                  field={field}
+                  value={fieldValue}
+                  onChange={(value) => onChange(field.id, value)}
+                  error={errors[field.id]}
+                  disabled={disabled}
+                />
+              );
+            })}
           </div>
         </div>
       ))}

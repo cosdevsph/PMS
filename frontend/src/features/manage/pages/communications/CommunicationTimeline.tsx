@@ -9,19 +9,24 @@ import type { CommunicationLog, CommStatus, CommType } from '../../services/comm
 // ── Type icon map ─────────────────────────────────────────────────────────────
 
 const TYPE_ICON: Record<CommType, React.ReactNode> = {
-  APPOINTMENT_REMINDER:   <Bell        className="w-4 h-4" />,
-  BOOKING_CONFIRMATION:   <Calendar    className="w-4 h-4" />,
-  RECURRING_CONFIRMATION: <Calendar    className="w-4 h-4" />,
-  DNA_FOLLOWUP:           <AlertCircle className="w-4 h-4" />,
-  REBOOK_FOLLOWUP:        <RotateCcw   className="w-4 h-4" />,
-  INACTIVE_CHECKIN:       <User        className="w-4 h-4" />,
-  CANCELLATION_NOTICE:    <XCircle     className="w-4 h-4" />,
-  CLINICAL_NOTE:          <FileText    className="w-4 h-4" />,
-  OTP_VERIFICATION:       <Shield      className="w-4 h-4" />,
-  PASSWORD_RESET:         <Shield      className="w-4 h-4" />,
-  INVOICE_EMAIL:          <Receipt     className="w-4 h-4" />,
-  RESCHEDULE_FOLLOWUP:    <RefreshCw   className="w-4 h-4" />,
-  SYSTEM_NOTIFICATION:    <Bell        className="w-4 h-4" />,
+  APPOINTMENT_REMINDER:   <Bell          className="w-4 h-4" />,
+  BOOKING_CONFIRMATION:   <Calendar      className="w-4 h-4" />,
+  RECURRING_CONFIRMATION: <Calendar      className="w-4 h-4" />,
+  DNA_FOLLOWUP:           <AlertCircle   className="w-4 h-4" />,
+  REBOOK_FOLLOWUP:        <RotateCcw     className="w-4 h-4" />,
+  INACTIVE_CHECKIN:       <User          className="w-4 h-4" />,
+  CANCELLATION_NOTICE:    <XCircle       className="w-4 h-4" />,
+  CLINICAL_NOTE:          <FileText      className="w-4 h-4" />,
+  OTP_VERIFICATION:       <Shield        className="w-4 h-4" />,
+  PASSWORD_RESET:         <Shield        className="w-4 h-4" />,
+  INVOICE_EMAIL:          <Receipt       className="w-4 h-4" />,
+  RESCHEDULE_FOLLOWUP:    <RefreshCw     className="w-4 h-4" />,
+  SYSTEM_NOTIFICATION:    <Bell          className="w-4 h-4" />,
+  PATIENT_RESPONSE:       <MessageSquare className="w-4 h-4" />,
+  RESCHEDULE_CONFIRMATION:<RefreshCw     className="w-4 h-4" />,
+  CANCELLATION:           <XCircle       className="w-4 h-4" />,
+  RESCHEDULE_REQUEST:     <Clock         className="w-4 h-4" />,
+  DNA_EVENT:              <AlertCircle   className="w-4 h-4" />,
 };
 
 const TYPE_COLOR: Record<CommType, string> = {
@@ -38,6 +43,11 @@ const TYPE_COLOR: Record<CommType, string> = {
   INVOICE_EMAIL:          'bg-violet-100 text-violet-600',
   RESCHEDULE_FOLLOWUP:    'bg-amber-100 text-amber-600',
   SYSTEM_NOTIFICATION:    'bg-gray-100 text-gray-600',
+  PATIENT_RESPONSE:       'bg-purple-100 text-purple-600',
+  RESCHEDULE_CONFIRMATION:'bg-blue-100 text-blue-600',
+  CANCELLATION:           'bg-rose-100 text-rose-600',
+  RESCHEDULE_REQUEST:     'bg-amber-100 text-amber-600',
+  DNA_EVENT:              'bg-red-100 text-red-600',
 };
 
 // ── Status line config ────────────────────────────────────────────────────────

@@ -198,6 +198,8 @@ class CommunicationLogSerializer(serializers.ModelSerializer):
     related_appointment_time = serializers.SerializerMethodField()
     direction_display    = serializers.CharField(source='get_direction_display', read_only=True)
     clinic_name          = serializers.SerializerMethodField()
+    is_responded         = serializers.BooleanField(read_only=True)
+    response_value       = serializers.CharField(read_only=True)
 
     class Meta:
         model  = CommunicationLog
@@ -229,6 +231,8 @@ class CommunicationLogSerializer(serializers.ModelSerializer):
             'error_message',
             'patient_reply',
             'replied_at',
+            'is_responded',
+            'response_value',
             'event_metadata',
             'delivered_at',
             'opened_at',
@@ -238,7 +242,7 @@ class CommunicationLogSerializer(serializers.ModelSerializer):
             'attachment_count',
             'created_at',
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'is_responded', 'response_value']
 
     def get_patient_name(self, obj) -> str:
         if obj.patient:

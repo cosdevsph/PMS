@@ -19,12 +19,13 @@ class ClinicalTemplateSerializer(serializers.ModelSerializer):
             'name', 'description', 'category', 'discipline',
             'clinic_branch', 'clinic_branch_name', 'structure',
             'version', 'parent_template', 'is_active', 'is_archived',
-            'is_latest_version', 'created_at', 'updated_at'
+            'is_latest_version', 'is_system_template', 'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'created_at', 'updated_at', 'version',
-            'clinic',       # ✅ ADD - set automatically from request.user
-            'created_by',   # ✅ ADD - set automatically from request.user
+            'clinic',              # ✅ set automatically from request.user
+            'created_by',          # ✅ set automatically from request.user
+            'is_system_template',  # System templates can only be managed at system level
         ]
     
     def get_is_latest_version(self, obj):
@@ -61,6 +62,7 @@ class ClinicalTemplateSerializer(serializers.ModelSerializer):
         if request and request.user:
             validated_data['clinic'] = request.user.clinic
             validated_data['created_by'] = request.user
+            validated_data['is_system_template'] = False
         
         return super().create(validated_data)
 

@@ -478,6 +478,11 @@ export const CreateClinicalNoteModal: React.FC<CreateClinicalNoteModalProps> = (
                                 <span className="text-sm font-semibold text-gray-900 group-hover:text-sky-700">
                                   {template.name}
                                 </span>
+                                {template.is_system_template && (
+                                  <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">
+                                    Malasakit Default
+                                  </span>
+                                )}
                                 {template.discipline && (
                                   <span className="text-xs bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full">
                                     {template.discipline}

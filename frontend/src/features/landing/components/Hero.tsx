@@ -1,69 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import DoctorImage from '@/assets/doctors/muhammad-hicham-PYxK4LNGn6E-unsplash 1.webp';
-import LeafSVG from '@/assets/malasakit/Leaf.svg';
+import { PlayCircle } from 'lucide-react';
 
 export const Hero: React.FC = () => {
   return (
-    <section className="relative min-h-screen bg-primary-gradient overflow-hidden flex flex-col justify-center lg:block">
-      {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-36 sm:pt-40 lg:pt-48 pb-10 lg:pb-20 w-full">
-        <div className="flex flex-col lg:flex-row items-center lg:items-start gap-12 lg:gap-8">
-          {/* Left - Text Content */}
-          <div className="flex-1 text-center lg:text-left max-w-xl lg:max-w-2xl">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold text-white leading-[1.1] font-display">
-              Empowering Filipino{' '}
-              <span className="block lg:inline text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold text-white leading-[1.1] font-display">Health Providers</span>
-            </h1>
-
-            <p className="mt-6 sm:mt-8 text-base sm:text-lg text-white/80 max-w-md mx-auto lg:mx-0 leading-relaxed font-body">
-              Streamline your clinic operations with our all-in-one platform. Manage appointments,
-              patient records, and billing effortlessly.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="mt-10 flex flex-col sm:flex-row flex-wrap justify-center lg:justify-start gap-4">
-              <Link
-                to="/register"
-                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-care-blue bg-white rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 font-body"
-              >
-                Start Trial
-              </Link>
-              <Link
-                to="/demo"
-                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-trust-harbor border-2 border-white/20 rounded-xl hover:bg-trust-harbor/90 active:bg-trust-harbor/80 transition-all shadow-lg hover:shadow-xl font-body"
-              >
-                Watch Demo
-              </Link>
-              <Link
-                to="/user-manual"
-                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-trust-harbor border-2 border-white/20 rounded-xl hover:bg-trust-harbor/90 active:bg-trust-harbor/80 transition-all shadow-lg hover:shadow-xl font-body"
-              >
-                Learn How It Works
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right - Doctor + Leaf composition */}
-      <div className="flex relative lg:absolute mt-8 lg:mt-0 right-0 bottom-0 items-end justify-center lg:justify-end pointer-events-none z-10 w-full">
-        {/* Doctor Image */}
-        <img
-          src={DoctorImage}
-          alt="Filipino healthcare professional"
-          className="h-[45vh] sm:h-[55vh] lg:h-[80vh] w-auto object-contain object-bottom drop-shadow-2xl"
-          loading="eager"
-        />
-        {/* Leaf Shape */}
-        <img
-          src={LeafSVG}
-          alt=""
-          className="h-[38vh] sm:h-[45vh] lg:h-[68vh] w-auto -ml-3 sm:-ml-5 opacity-90"
-          aria-hidden="true"
-        />
-      </div>
-
+    <section className="relative min-h-screen bg-primary-gradient overflow-hidden flex flex-col justify-center">
       {/* Subtle Floating Lights */}
       <div className="absolute top-20 right-20 w-64 h-64 lg:w-80 lg:h-80 bg-healing-mint rounded-full opacity-20 blur-3xl pointer-events-none" />
       <div className="absolute bottom-40 left-10 w-48 h-48 lg:w-64 lg:h-64 bg-white rounded-full opacity-10 blur-3xl pointer-events-none" />
@@ -87,6 +28,73 @@ export const Hero: React.FC = () => {
         <div className="animate-float-fast absolute top-[55%] left-[12%] w-10 h-10 rounded-full bg-healing-mint/25" style={{ animationDelay: '2.5s' }} />
         <div className="animate-float-fast absolute top-[20%] left-[60%] w-8 h-8 rounded-full bg-white/15" style={{ animationDelay: '3.5s' }} />
         <div className="animate-float-fast absolute bottom-[30%] left-[42%] w-6 h-6 rounded-full bg-white/20" style={{ animationDelay: '1s' }} />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 pt-32 sm:pt-40 lg:pt-0 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-12 items-center">
+          
+          {/* Left Column - Text Content */}
+          <div className="text-center lg:text-left lg:col-span-6 xl:col-span-5">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.1] font-display">
+              Empowering Filipino{' '}
+              <span className="block lg:inline text-4xl sm:text-5xl md:text-6xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.1] font-display">Health Providers</span>
+            </h1>
+
+            <p className="mt-6 sm:mt-8 text-base sm:text-lg text-white/80 max-w-md mx-auto lg:mx-0 leading-relaxed font-body">
+              Streamline your clinic operations with our all-in-one platform. Manage appointments,
+              patient records, and billing effortlessly.
+            </p>
+          </div>
+
+          {/* Right Column - Video Presentation & Buttons */}
+          <div className="relative w-full lg:col-span-6 xl:col-span-7 mt-8 lg:mt-0 flex flex-col items-center justify-center">
+            <div className="w-full max-w-2xl xl:max-w-3xl relative">
+              {/* Decorative background glow for video */}
+              <div className="absolute -inset-4 bg-gradient-to-r from-healing-mint/30 to-care-blue/30 rounded-[3rem] blur-2xl opacity-50 animate-pulse pointer-events-none"></div>
+              
+              <div className="bg-white/10 backdrop-blur-md rounded-[2.5rem] p-4 sm:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.15)] border border-white/20 relative z-10 transition-all hover:shadow-[0_8px_40px_rgb(0,0,0,0.25)] w-full">
+                <div className="aspect-video bg-gray-900 rounded-3xl overflow-hidden relative group shadow-inner">
+                  {/* Placeholder for Video */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white flex-col z-0">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 backdrop-blur-sm cursor-pointer border border-white/10">
+                      <PlayCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white translate-x-0.5" />
+                    </div>
+                    <p className="text-gray-300 font-medium text-sm sm:text-base tracking-wide">What is Malasakit?</p>
+                  </div>
+                  {/* The actual video tag */}
+                  <video className="w-full h-full object-cover relative z-10 opacity-0" controls>
+                    <source src="" type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Buttons relocated under the video */}
+            <div className="mt-8 flex flex-col sm:flex-row flex-wrap justify-center w-full gap-4 relative z-10">
+              <Link
+                to="/register"
+                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-care-blue bg-white rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 font-body flex-1 sm:flex-none"
+              >
+                Start Trial
+              </Link>
+              <Link
+                to="/demo"
+                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-trust-harbor border-2 border-white/20 rounded-xl hover:bg-trust-harbor/90 active:bg-trust-harbor/80 transition-all shadow-lg hover:shadow-xl font-body flex-1 sm:flex-none"
+              >
+                Watch Demo
+              </Link>
+              <Link
+                to="/user-manual"
+                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-trust-harbor border-2 border-white/20 rounded-xl hover:bg-trust-harbor/90 active:bg-trust-harbor/80 transition-all shadow-lg hover:shadow-xl font-body flex-1 sm:flex-none"
+              >
+                Learn How It Works
+              </Link>
+            </div>
+          </div>
+
+        </div>
       </div>
     </section>
   );

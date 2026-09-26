@@ -73,12 +73,14 @@ class SendSMSView(APIView):
                 from apps.notifications.models import CommunicationLog
                 from apps.notifications.services.notification_service import broadcast_communication_log_updated
                 from apps.patients.models import Patient
-                patient = Patient.objects.filter(clinic=clinic, phone=recipient).first()
+                from apps.gateway.services import build_phone_variations
+                patient = Patient.objects.filter(clinic=clinic, phone__in=build_phone_variations(recipient)).first()
                 comm_log = CommunicationLog.objects.create(
                     clinic=clinic,
                     patient=patient,
                     comm_type='SYSTEM_NOTIFICATION',
                     channel='SMS',
+                    direction='OUTBOUND',
                     status='QUEUED',
                     recipient=recipient,
                     subject='Direct SMS',

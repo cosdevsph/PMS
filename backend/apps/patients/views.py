@@ -35,7 +35,8 @@ from .serializers import (
 )
 import logging
 import traceback
-from django.db import transaction
+from django.db import models, transaction
+from django.db.models import Q
 from apps.common.validators import normalize_international_phone
 from apps.appointments.calendar_events import emit_calendar_event
 
@@ -1835,13 +1836,10 @@ class PublicAvailableSlotsView(APIView):
         if target_date < date_type.today():
             return Response({'detail': 'Cannot book a past date.'}, status=400)
 
-        duration     = service.duration_minutes
-        CLINIC_START = 6 * 60
-        CLINIC_END   = 21 * 60
+        duration = service.duration_minutes
 
         # ── Practitioner availability ──────────────────────────────────────────
         practitioner_obj = None
-        practitioner_availability = None
         if practitioner_id:
             try:
                 practitioner_obj = Practitioner.objects.select_related('user').get(
@@ -1849,83 +1847,10 @@ class PublicAvailableSlotsView(APIView):
                     is_deleted=False,
                     user__is_active=True,
                 )
-                practitioner_availability = practitioner_obj.availability
             except Practitioner.DoesNotExist:
                 pass
 
-        # Map weekday (0=Mon) to duty day string
-        WEEKDAY_MAP = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        target_weekday = WEEKDAY_MAP[target_date.weekday()]
-
-        # Parse lunch break (always used)
-        def parse_mins(t: str) -> int:
-            h, m = t.split(':')
-            return int(h) * 60 + int(m)
-
-        # ── Build candidate time blocks from duty schedule ─────────────────────
-        # Each block = (start_min, end_min).  Lunch is removed from each block.
-        candidate_blocks: list[tuple[int, int]] = []
-
-        if practitioner_availability and practitioner_availability.get('duty_days'):
-            duty_days = practitioner_availability.get('duty_days', [])
-            if target_weekday not in duty_days:
-                return Response({'date': date_str, 'slots': []})
-
-            duty_schedule = practitioner_availability.get('duty_schedule')
-            lunch_start_min = parse_mins(practitioner_availability.get('lunch_start_time', '12:00'))
-            lunch_end_min   = parse_mins(practitioner_availability.get('lunch_end_time', '13:00'))
-
-            if duty_schedule and target_weekday in duty_schedule:
-                # Split-shift: multiple blocks for this day
-                for block in duty_schedule[target_weekday]:
-                    b_start = parse_mins(block['start'])
-                    b_end   = parse_mins(block['end'])
-                    # Remove lunch from each block by splitting if needed
-                    if b_end <= lunch_start_min or b_start >= lunch_end_min:
-                        # Block entirely outside lunch — keep whole
-                        candidate_blocks.append((b_start, b_end))
-                    else:
-                        # Block overlaps lunch — split
-                        if b_start < lunch_start_min:
-                            candidate_blocks.append((b_start, lunch_start_min))
-                        if b_end > lunch_end_min:
-                            candidate_blocks.append((lunch_end_min, b_end))
-            else:
-                # Legacy single-block duty hours
-                duty_start_min = parse_mins(practitioner_availability.get('duty_start_time', '08:00'))
-                duty_end_min   = parse_mins(practitioner_availability.get('duty_end_time', '17:00'))
-                if duty_end_min <= lunch_start_min or duty_start_min >= lunch_end_min:
-                    candidate_blocks.append((duty_start_min, duty_end_min))
-                else:
-                    if duty_start_min < lunch_start_min:
-                        candidate_blocks.append((duty_start_min, lunch_start_min))
-                    if duty_end_min > lunch_end_min:
-                        candidate_blocks.append((lunch_end_min, duty_end_min))
-        else:
-            # No practitioner / no duty days config: full clinic hours
-            LUNCH_START = 12 * 60
-            LUNCH_END   = 13 * 60
-            candidate_blocks.append((CLINIC_START, LUNCH_START))
-            candidate_blocks.append((LUNCH_END, CLINIC_END))
-
-        # Generate 30-min candidate slots from all blocks
-        def time_to_minutes(t):
-            return t.hour * 60 + t.minute
-
-        def minutes_to_time(m):
-            return time(m // 60, m % 60)
-
-        SLOT_INTERVAL = 15  # minutes between slots
-        candidate_slots = []
-        for (b_start, b_end) in candidate_blocks:
-            m = b_start
-            # Only generate a slot if the full service duration fits within this block
-            while m + duration <= b_end:
-                candidate_slots.append(minutes_to_time(m))
-                m += SLOT_INTERVAL
-
-        weekday         = target_date.weekday()
-
+        from apps.appointments.availability_service import generate_available_slots, time_to_minutes
         booked_ranges = []
 
         diary_qs = Appointment.objects.filter(
@@ -1965,27 +1890,26 @@ class PublicAvailableSlotsView(APIView):
         block_qs = BlockAppointment.objects.filter(
             clinic=portal_link.clinic,
             date=target_date,
+            is_deleted=False,
         )
+        if practitioner_obj:
+            block_qs = block_qs.filter(
+                Q(practitioner=practitioner_obj) | Q(practitioner__isnull=True)
+            )
 
         for block in block_qs:
-            block_start = time_to_minutes(block.start_time)
-            block_end   = time_to_minutes(block.end_time)
-            booked_ranges.append((block_start, block_end))
+            booked_ranges.append((
+                time_to_minutes(block.start_time),
+                time_to_minutes(block.end_time),
+            ))
 
-        available = []
-        for slot_time in candidate_slots:
-            slot_start = time_to_minutes(slot_time)
-            slot_end   = slot_start + duration
-
-            if slot_end > CLINIC_END:
-                continue
-
-            overlaps = any(
-                slot_start < booked_end and slot_end > booked_start
-                for booked_start, booked_end in booked_ranges
-            )
-            if not overlaps:
-                available.append(f"{slot_time.hour:02d}:{slot_time.minute:02d}")
+        available = generate_available_slots(
+            practitioner=practitioner_obj,
+            target_date=target_date,
+            duration_minutes=duration,
+            booked_ranges=booked_ranges,
+            slot_interval=15,
+        )
 
         return Response({'date': date_str, 'slots': available})
 

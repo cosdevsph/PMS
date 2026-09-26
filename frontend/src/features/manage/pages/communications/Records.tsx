@@ -161,6 +161,19 @@ export const Records: React.FC = () => {
     }
   }, [selectedBranchId, selectedPatientId, channelFilter, fetchLogs]);
 
+  useEffect(() => {
+    const handleUpdate = (e: Event) => {
+      if (selectedBranchId && selectedPatientId) {
+        const detail = (e as CustomEvent).detail;
+        if (!detail || detail.patient === selectedPatientId) {
+          fetchLogs(selectedBranchId, selectedPatientId, channelFilter);
+        }
+      }
+    };
+    window.addEventListener('communicationUpdated', handleUpdate);
+    return () => window.removeEventListener('communicationUpdated', handleUpdate);
+  }, [selectedBranchId, selectedPatientId, channelFilter, fetchLogs]);
+
   // ── Toggle Patient Email Preference ──────────────────────────────────────────
   const handleTogglePatientEmail = async () => {
     if (!selectedPatient) return;

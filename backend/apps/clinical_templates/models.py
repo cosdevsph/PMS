@@ -28,14 +28,21 @@ class ClinicalTemplate(TimeStampedModel, SoftDeleteModel):
     clinic = models.ForeignKey(
         'clinics.Clinic',
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name='clinical_templates',
-        help_text='Template is scoped to this clinic'
+        help_text='Template is scoped to this clinic. Null indicates a system-wide default template.'
     )
     created_by = models.ForeignKey(
         'accounts.User',
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name='created_clinical_templates_v2'  # ✅ CHANGED: Unique related_name
+    )
+    is_system_template = models.BooleanField(
+        default=False,
+        help_text='System-wide default template available to all clinics'
     )
     
     # Template metadata
@@ -86,16 +93,23 @@ class ClinicalTemplate(TimeStampedModel, SoftDeleteModel):
             models.Index(fields=['clinic', 'is_active', 'is_archived']),
             models.Index(fields=['category']),
             models.Index(fields=['parent_template', 'version']),
+            models.Index(fields=['is_system_template', 'is_active']),
         ]
         constraints = [
             models.UniqueConstraint(
                 fields=['clinic', 'name', 'version'],
                 name='unique_template_version_per_clinic'
+            ),
+            models.UniqueConstraint(
+                fields=['name', 'version'],
+                condition=models.Q(is_system_template=True),
+                name='unique_system_template_version'
             )
         ]
     
     def __str__(self):
-        return f"{self.name} v{self.version} - {self.clinic.name}"
+        clinic_name = self.clinic.name if self.clinic else "System"
+        return f"{self.name} v{self.version} - {clinic_name}"
     
     def clean(self):
         """Validate template structure"""

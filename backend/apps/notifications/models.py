@@ -303,6 +303,23 @@ class CommunicationLog(TimeStampedModel):
     def __str__(self):
         return f"[{self.comm_type}] {self.channel} → {self.recipient} ({self.status})"
 
+    @property
+    def is_responded(self) -> bool:
+        """Returns True if this communication log has received a patient response."""
+        return self.status == 'REPLIED' or bool(self.replied_at or self.patient_reply)
+
+    @property
+    def response_value(self) -> str:
+        """Normalized string value of the patient response ('YES', 'NO', or raw text)."""
+        if not self.patient_reply:
+            return ''
+        val = str(self.patient_reply).strip().upper()
+        if val in ('Y', 'YES', 'CONFIRM'):
+            return 'YES'
+        elif val in ('N', 'NO', 'CANCEL', 'DECLINED'):
+            return 'NO'
+        return self.patient_reply
+
 
 class CommunicationReply(TimeStampedModel):
     """

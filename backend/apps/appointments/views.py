@@ -718,11 +718,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     # ── Available slots (existing) ────────────────────────────────────────────
     @action(detail=False, methods=['get'])
     def available_slots(self, request):
-        from datetime import date as date_type, time, timedelta
-        from apps.clinics.models import Practitioner
-
-        CLINIC_START = 6 * 60
-        CLINIC_END   = 21 * 60
+        from apps.clinics.models import Practitioner, ClinicService
+        from apps.appointments.availability_service import generate_available_slots, time_to_minutes
 
         practitioner_id = request.query_params.get('practitioner')
         date_str        = request.query_params.get('date')
@@ -739,51 +736,23 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         except ValueError:
             return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=400)
 
-        weekday = target_date.weekday()
-
-        def time_to_minutes(t):
-            return t.hour * 60 + t.minute
-
-        def minutes_to_time(m):
-            return time(m // 60, m % 60)
-
-        candidate_slots: list = []
-
+        practitioner = None
         if practitioner_id:
             try:
                 practitioner = Practitioner.objects.get(pk=practitioner_id)
             except Practitioner.DoesNotExist:
                 return Response({'error': 'Practitioner not found.'}, status=404)
 
-            schedules = PractitionerSchedule.objects.filter(
-                practitioner=practitioner,
-                weekday=weekday,
-                is_available=True,
-            )
-            if schedules.exists():
-                for sched in schedules:
-                    start_min = max(time_to_minutes(sched.start_time), CLINIC_START)
-                    end_min   = min(time_to_minutes(sched.end_time),   CLINIC_END)
-                    m = start_min
-                    while m + 15 <= end_min:
-                        candidate_slots.append(minutes_to_time(m))
-                        m += 15
-            else:
-                m = CLINIC_START
-                while m + 15 <= CLINIC_END:
-                    candidate_slots.append(minutes_to_time(m))
-                    m += 15
-        else:
-            m = CLINIC_START
-            while m + 15 <= CLINIC_END:
-                candidate_slots.append(minutes_to_time(m))
-                m += 15
-
         duration = 15
-        if service_id:
+        duration_param = request.query_params.get('duration') or request.query_params.get('duration_minutes')
+        if duration_param:
             try:
-                from apps.clinics.models import ClinicService
-                svc      = ClinicService.objects.get(pk=service_id)
+                duration = int(duration_param)
+            except (ValueError, TypeError):
+                pass
+        elif service_id:
+            try:
+                svc = ClinicService.objects.get(pk=service_id)
                 duration = svc.duration_minutes
             except Exception:
                 pass
@@ -792,26 +761,32 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             date=target_date,
             status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'],
             is_deleted=False,
+            patient__is_archived=False,
         )
         if practitioner_id:
             booked_qs = booked_qs.filter(practitioner_id=practitioner_id)
 
-        booked_ranges = [(a.start_time, a.end_time) for a in booked_qs]
+        booked_ranges = [(time_to_minutes(a.start_time), time_to_minutes(a.end_time)) for a in booked_qs]
 
-        available: list[str] = []
-        for slot_time in candidate_slots:
-            slot_start = time_to_minutes(slot_time)
-            slot_end   = slot_start + duration
-
-            if slot_end > CLINIC_END:
-                continue
-
-            overlaps = any(
-                slot_start < time_to_minutes(end) and slot_end > time_to_minutes(start)
-                for start, end in booked_ranges
+        # Include block appointments
+        block_qs = BlockAppointment.objects.filter(
+            date=target_date,
+            is_deleted=False,
+        )
+        if practitioner:
+            block_qs = block_qs.filter(
+                Q(practitioner=practitioner) | Q(practitioner__isnull=True)
             )
-            if not overlaps:
-                available.append(f"{slot_time.hour:02d}:{slot_time.minute:02d}")
+        for b in block_qs:
+            booked_ranges.append((time_to_minutes(b.start_time), time_to_minutes(b.end_time)))
+
+        available = generate_available_slots(
+            practitioner=practitioner,
+            target_date=target_date,
+            duration_minutes=duration,
+            booked_ranges=booked_ranges,
+            slot_interval=15,
+        )
 
         return Response({'slots': available})
 
@@ -834,6 +809,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         }
         """
         from datetime import time, timedelta
+        from apps.appointments.availability_service import is_appointment_within_availability
+        from apps.clinics.models import Practitioner
         
         practitioner_id = request.data.get('practitioner_id')
         dates = request.data.get('dates', [])  # List of date strings
@@ -864,14 +841,17 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         booked_qs = Appointment.objects.filter(
             status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'],
             is_deleted=False,
+            patient__is_archived=False,
         )
         
+        practitioner_obj = None
         # Filter by practitioner if provided (handle None, 0, and valid IDs)
         if practitioner_id is not None:
             try:
-                booked_qs = booked_qs.filter(practitioner_id=int(practitioner_id))
-            except (ValueError, TypeError):
-                pass  # If invalid, don't filter by practitioner
+                practitioner_obj = Practitioner.objects.get(pk=int(practitioner_id))
+                booked_qs = booked_qs.filter(practitioner=practitioner_obj)
+            except (ValueError, TypeError, Practitioner.DoesNotExist):
+                pass
         
         slots = []
         
@@ -883,34 +863,50 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             
             weekday = target_date.weekday()
             day_name = day_names[weekday]
+
+            # 1. Enforce Practitioner Availability & Duty End Time boundary
+            is_within_avail, _ = is_appointment_within_availability(
+                practitioner_obj, target_date, start_time_obj, duration
+            )
+            if not is_within_avail:
+                slots.append({
+                    'date': date_str,
+                    'day_name': day_name,
+                    'time': start_time_str,
+                    'status': 'BOOKED'
+                })
+                continue
             
-            # Check if there's a conflicting appointment on this date/time
+            # 2. Check if there's a conflicting appointment on this date/time
             conflicting = booked_qs.filter(
                 date=target_date,
             )
             
-            logger.info(
-                f"Checking availability for date={date_str}, start_time={start_minutes}, end_time={end_minutes}, "
-                f"practitioner_id={practitioner_id}, found {conflicting.count()} appointments on that date"
-            )
-            
             is_booked = False
             for apt in conflicting:
-                # Check for time overlap
                 apt_start_min = apt.start_time.hour * 60 + apt.start_time.minute
                 apt_end_min = apt.end_time.hour * 60 + apt.end_time.minute
                 
-                logger.info(
-                    f"Existing appointment: id={apt.id}, start={apt_start_min}, end={apt_end_min}, "
-                    f"practitioner={apt.practitioner_id}"
-                )
-                
-                # Check if our time slot overlaps with existing appointment
-                # Two time slots overlap if: start1 < end2 AND end1 > start2
                 if start_minutes < apt_end_min and end_minutes > apt_start_min:
-                    logger.info(f"OVERLAP DETECTED! new: {start_minutes}-{end_minutes}, existing: {apt_start_min}-{apt_end_min}")
                     is_booked = True
                     break
+
+            # 3. Check if there's a block appointment conflict
+            if not is_booked:
+                block_qs = BlockAppointment.objects.filter(
+                    date=target_date,
+                    is_deleted=False,
+                )
+                if practitioner_obj:
+                    block_qs = block_qs.filter(
+                        Q(practitioner=practitioner_obj) | Q(practitioner__isnull=True)
+                    )
+                for blk in block_qs:
+                    b_start = blk.start_time.hour * 60 + blk.start_time.minute
+                    b_end = blk.end_time.hour * 60 + blk.end_time.minute
+                    if start_minutes < b_end and end_minutes > b_start:
+                        is_booked = True
+                        break
             
             slots.append({
                 'date': date_str,
@@ -1753,85 +1749,13 @@ class PublicRebookingSlotsView(APIView):
         clinic = appt.clinic
         practitioner = appt.practitioner or getattr(appt.patient_case, 'primary_practitioner', getattr(appt.patient, 'primary_practitioner', None))
         service = appt.service
-        duration = appt.duration_minutes or service.duration_minutes if service else 60
+        duration = appt.duration_minutes or (service.duration_minutes if service else 60)
 
-        CLINIC_START = 6 * 60
-        CLINIC_END = 21 * 60
-        WEEKDAY_MAP = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        target_weekday = WEEKDAY_MAP[target_date.weekday()]
-
-        def parse_mins(t: str) -> int:
-            h, m = t.split(':')
-            return int(h) * 60 + int(m)
-
-        def minutes_to_time(m):
-            return time(m // 60, m % 60)
-
-        # Build candidate blocks
-        candidate_blocks: list[tuple[int, int]] = []
-        practitioner_availability = None
-
-        if practitioner:
-            try:
-                practitioner_availability = practitioner.availability
-            except Exception:
-                pass
-
-        # Use practitioner availability only if properly configured
-        if practitioner_availability and practitioner_availability.get('duty_days'):
-            duty_days = practitioner_availability.get('duty_days', [])
-            # Only restrict by duty days if explicitly set
-            if duty_days and target_weekday not in duty_days:
-                return Response({'date': date_str, 'slots': []})
-
-            duty_schedule = practitioner_availability.get('duty_schedule')
-            lunch_start_min = parse_mins(practitioner_availability.get('lunch_start_time', '12:00'))
-            lunch_end_min = parse_mins(practitioner_availability.get('lunch_end_time', '13:00'))
-
-            if duty_schedule and target_weekday in duty_schedule:
-                for block in duty_schedule[target_weekday]:
-                    b_start = parse_mins(block['start'])
-                    b_end = parse_mins(block['end'])
-                    if b_end <= lunch_start_min or b_start >= lunch_end_min:
-                        candidate_blocks.append((b_start, b_end))
-                    else:
-                        if b_start < lunch_start_min:
-                            candidate_blocks.append((b_start, lunch_start_min))
-                        if b_end > lunch_end_min:
-                            candidate_blocks.append((lunch_end_min, b_end))
-            elif duty_days:  # Only use legacy duty hours if duty_days is set
-                duty_start_min = parse_mins(practitioner_availability.get('duty_start_time', '08:00'))
-                duty_end_min = parse_mins(practitioner_availability.get('duty_end_time', '17:00'))
-                if duty_end_min <= lunch_start_min or duty_start_min >= lunch_end_min:
-                    candidate_blocks.append((duty_start_min, duty_end_min))
-                else:
-                    if duty_start_min < lunch_start_min:
-                        candidate_blocks.append((duty_start_min, lunch_start_min))
-                    if duty_end_min > lunch_end_min:
-                        candidate_blocks.append((lunch_end_min, duty_end_min))
-
-        # Fall back to clinic hours if no practitioner or no availability configured
-        if not candidate_blocks:
-            LUNCH_START = 12 * 60
-            LUNCH_END = 13 * 60
-            candidate_blocks.append((CLINIC_START, LUNCH_START))
-            candidate_blocks.append((LUNCH_END, CLINIC_END))
-
-        # Generate candidate slots
-        candidate_slots = []
-        SLOT_INTERVAL = 15
-        for (b_start, b_end) in candidate_blocks:
-            m = b_start
-            while m + duration <= b_end:
-                candidate_slots.append(minutes_to_time(m))
-                m += SLOT_INTERVAL
-
-        # Filter out booked appointments
+        from apps.appointments.availability_service import generate_available_slots, time_to_minutes
         from django.db import models
+
         booked_ranges = []
-        
         if practitioner:
-            # Filter by practitioner globally (across all branches), excluding ONLY CANCELLED
             diary_qs = Appointment.objects.filter(
                 date=target_date,
                 practitioner=practitioner,
@@ -1839,7 +1763,6 @@ class PublicRebookingSlotsView(APIView):
                 patient__is_archived=False,
             ).exclude(status='CANCELLED').exclude(id=appt.id)
             
-            # Filter out blocked times for this practitioner OR clinic-wide blocks
             block_qs = BlockAppointment.objects.filter(
                 date=target_date,
                 is_deleted=False,
@@ -1848,7 +1771,6 @@ class PublicRebookingSlotsView(APIView):
                 models.Q(practitioner__isnull=True, clinic=clinic)
             )
         else:
-            # Fallback to clinic-wide if no practitioner assigned
             diary_qs = Appointment.objects.filter(
                 date=target_date,
                 clinic=clinic,
@@ -1865,31 +1787,18 @@ class PublicRebookingSlotsView(APIView):
             )
 
         for existing in diary_qs:
-            booked_ranges.append((
-                parse_mins(existing.start_time.strftime('%H:%M')),
-                parse_mins(existing.end_time.strftime('%H:%M')),
-            ))
+            booked_ranges.append((time_to_minutes(existing.start_time), time_to_minutes(existing.end_time)))
 
         for block in block_qs:
-            booked_ranges.append((
-                parse_mins(block.start_time.strftime('%H:%M')),
-                parse_mins(block.end_time.strftime('%H:%M')),
-            ))
+            booked_ranges.append((time_to_minutes(block.start_time), time_to_minutes(block.end_time)))
 
-        available = []
-        for slot_time in candidate_slots:
-            slot_start = parse_mins(slot_time.strftime('%H:%M'))
-            slot_end = slot_start + duration
-
-            if slot_end > CLINIC_END:
-                continue
-
-            overlaps = any(
-                slot_start < booked_end and slot_end > booked_start
-                for booked_start, booked_end in booked_ranges
-            )
-            if not overlaps:
-                available.append(slot_time.strftime('%H:%M'))
+        available = generate_available_slots(
+            practitioner=practitioner,
+            target_date=target_date,
+            duration_minutes=duration,
+            booked_ranges=booked_ranges,
+            slot_interval=15,
+        )
 
         return Response({'date': date_str, 'slots': available})
 
@@ -2010,6 +1919,17 @@ class PublicRebookingLinkView(APIView):
 
         practitioner = original.practitioner or getattr(original.patient_case, 'primary_practitioner', getattr(original.patient, 'primary_practitioner', None))
 
+        # ── Practitioner Availability & Duty End Time Validation ──────────────
+        from apps.appointments.availability_service import is_appointment_within_availability
+        is_valid_avail, avail_reason = is_appointment_within_availability(
+            practitioner, new_date, new_start_time, duration
+        )
+        if not is_valid_avail:
+            return Response(
+                {'detail': avail_reason, 'code': 'outside_availability'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # ── Backend Conflict Enforcement ────────────────────────────────────
         from django.db import models
         if practitioner:
@@ -2103,6 +2023,24 @@ class PublicRebookingLinkView(APIView):
         link.is_used = True
         link.used_at = timezone.now()
         link.save(update_fields=['is_used', 'used_at', 'new_appointment'])
+
+        # Mark original appointment as cancelled / rescheduled and invalidate unused tokens
+        if original.status in ['SCHEDULED', 'CONFIRMED']:
+            original.status = 'CANCELLED'
+            original.cancellation_reason = f'Rescheduled to {new_appointment.date} {new_appointment.start_time.strftime("%H:%M")} via secure link'
+            original.cancelled_at = timezone.now()
+            original.save(update_fields=['status', 'cancellation_reason', 'cancelled_at', 'updated_at'])
+
+            from apps.appointments.models import AppointmentCancelToken
+            AppointmentCancelToken.objects.filter(appointment=original, is_used=False).update(
+                is_used=True, used_at=timezone.now()
+            )
+
+        try:
+            from apps.appointments.sms_service import send_appointment_rescheduled_confirmation_sms
+            send_appointment_rescheduled_confirmation_sms(new_appointment, old_appointment=original)
+        except Exception as sms_err:
+            logger.warning('Failed to dispatch reschedule confirmation SMS for appt #%s: %s', new_appointment.id, sms_err)
 
         # Log the patient response and reschedule confirmation
         try:
@@ -2395,7 +2333,7 @@ class PublicAppointmentCancelView(APIView):
                 status=status.HTTP_410_GONE,
             )
 
-        if appt.confirmation_status == 'CANCELLED' or appt.status == 'CANCELLED' or appt.patient_reply == 'N' or appt.confirmation_status == 'DECLINED':
+        if appt.status == 'CANCELLED' or appt.confirmation_status == 'CANCELLED':
             return Response(
                 {
                     'detail': 'This appointment was already cancelled.',
@@ -2472,7 +2410,7 @@ class PublicAppointmentCancelView(APIView):
                 status=status.HTTP_410_GONE,
             )
 
-        if appt.confirmation_status == 'CANCELLED' or appt.status == 'CANCELLED' or appt.patient_reply == 'N' or appt.confirmation_status == 'DECLINED':
+        if appt.status == 'CANCELLED' or appt.confirmation_status == 'CANCELLED':
             return Response(
                 {
                     'detail': 'This appointment was already cancelled.',
@@ -2583,6 +2521,13 @@ class PublicAppointmentCancelView(APIView):
             'Appointment #%s cancelled via email link by patient %s',
             appt.id, appt.patient_id,
         )
+
+        # Dispatch cancellation confirmation SMS
+        try:
+            from apps.appointments.sms_service import send_appointment_cancellation_confirmation_sms
+            send_appointment_cancellation_confirmation_sms(appt)
+        except Exception as sms_err:
+            logger.warning('Failed to dispatch cancellation confirmation SMS for appt #%s: %s', appt.id, sms_err)
 
         # ── Broadcast real-time calendar event ───────────────────────────
         try:

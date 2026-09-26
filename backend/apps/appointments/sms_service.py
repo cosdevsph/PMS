@@ -26,6 +26,36 @@ def _normalize_phone(phone: str) -> str | None:
     return phone if phone.startswith('+') else None
 
 
+def _format_date(d) -> str:
+    if not d:
+        return ''
+    if hasattr(d, 'strftime'):
+        return d.strftime('%a, %b %d %Y')
+    try:
+        from datetime import datetime
+        return datetime.strptime(str(d)[:10], '%Y-%m-%d').strftime('%a, %b %d %Y')
+    except Exception:
+        return str(d)
+
+
+def _format_time(t) -> str:
+    if not t:
+        return ''
+    if hasattr(t, 'strftime'):
+        return t.strftime('%I:%M %p')
+    try:
+        from datetime import datetime
+        raw = str(t).strip()
+        for fmt in ('%H:%M:%S', '%H:%M'):
+            try:
+                return datetime.strptime(raw, fmt).strftime('%I:%M %p')
+            except ValueError:
+                pass
+        return raw
+    except Exception:
+        return str(t)
+
+
 def send_appointment_reminder_sms(appointment) -> tuple[bool, str]:
     """
     Send a reminder SMS to the patient for their upcoming appointment using the integrated SMS Gateway.
@@ -114,8 +144,8 @@ def send_appointment_reminder_sms(appointment) -> tuple[bool, str]:
     context = {
         'patient_first_name':  patient.first_name,
         'patient_full_name':   patient.get_full_name(),
-        'appointment_date':    appointment.date.strftime('%a, %b %d %Y'),
-        'appointment_time':    appointment.start_time.strftime('%I:%M %p'),
+        'appointment_date':    _format_date(appointment.date),
+        'appointment_time':    _format_time(appointment.start_time),
         'practitioner_name':   practitioner_name,
         'location_name':       location_name,
         'clinic_name':         clinic.name,
@@ -170,6 +200,7 @@ def send_appointment_reminder_sms(appointment) -> tuple[bool, str]:
                 practitioner=appointment.practitioner,
                 comm_type='APPOINTMENT_REMINDER',
                 channel='SMS',
+                direction='OUTBOUND',
                 status='QUEUED',
                 recipient=to_number,
                 subject='SMS Appointment Reminder',
@@ -234,3 +265,147 @@ def send_bulk_sms_reminders(appointments_qs) -> dict:
             })
 
     return summary
+
+
+def send_appointment_cancellation_confirmation_sms(appointment) -> tuple[bool, str]:
+    """
+    Send an SMS confirmation to the patient when their appointment is cancelled.
+    """
+    if not getattr(settings, 'SMS_REMINDERS_ENABLED', True):
+        return False, "SMS reminders disabled"
+
+    patient = appointment.patient
+    clinic = appointment.clinic
+
+    raw_phone = getattr(patient, 'phone', None) or getattr(patient, 'contact_number', None)
+    if not raw_phone:
+        return False, "No phone number"
+
+    to_number = _normalize_phone(raw_phone)
+    if not to_number:
+        return False, "Could not normalize phone"
+
+    appt_date = _format_date(appointment.date)
+    appt_time = _format_time(appointment.start_time)
+    clinic_name = clinic.name if clinic else 'the clinic'
+    body = f"Your appointment on {appt_date} at {appt_time} with {clinic_name} has been successfully cancelled."
+
+    try:
+        from apps.smsgateway.models import SMSMessage
+        from apps.smsgateway.tasks import dispatch_sms_task
+
+        sms_message = SMSMessage.objects.create(
+            clinic=clinic,
+            recipient_number=to_number,
+            body=body,
+            status=SMSMessage.STATUS_QUEUED
+        )
+
+        try:
+            dispatch_sms_task.delay(str(sms_message.id))
+        except Exception:
+            pass
+
+        try:
+            from apps.notifications.models import CommunicationLog
+            from apps.notifications.services.notification_service import broadcast_communication_log_updated
+            new_log = CommunicationLog.objects.create(
+                clinic=clinic,
+                patient=patient,
+                appointment=appointment,
+                practitioner=appointment.practitioner,
+                comm_type='CANCELLATION_NOTICE',
+                channel='SMS',
+                direction='OUTBOUND',
+                status='QUEUED',
+                recipient=to_number,
+                subject='Appointment Cancellation Confirmation',
+                body_preview=body[:2000],
+                full_body=body,
+                message_id=str(sms_message.id),
+                event_metadata={
+                    'sms_message_id': str(sms_message.id),
+                    'cancelled_via': 'Public Web Link'
+                }
+            )
+            broadcast_communication_log_updated(new_log)
+        except Exception as comm_err:
+            logger.warning("Failed to create CommunicationLog for cancellation SMS: %s", comm_err)
+
+        return True, ''
+    except Exception as e:
+        logger.error("Error queueing cancellation SMS for appointment %s: %s", appointment.id, e)
+        return False, str(e)
+
+
+def send_appointment_rescheduled_confirmation_sms(new_appointment, old_appointment=None) -> tuple[bool, str]:
+    """
+    Send an SMS confirmation to the patient when their appointment is rescheduled.
+    """
+    if not getattr(settings, 'SMS_REMINDERS_ENABLED', True):
+        return False, "SMS reminders disabled"
+
+    patient = new_appointment.patient
+    clinic = new_appointment.clinic
+
+    raw_phone = getattr(patient, 'phone', None) or getattr(patient, 'contact_number', None)
+    if not raw_phone:
+        return False, "No phone number"
+
+    to_number = _normalize_phone(raw_phone)
+    if not to_number:
+        return False, "Could not normalize phone"
+
+    new_date = _format_date(new_appointment.date)
+    new_time = _format_time(new_appointment.start_time)
+    clinic_name = clinic.name if clinic else 'the clinic'
+    body = f"Your appointment has been successfully rescheduled to {new_date} at {new_time} with {clinic_name}."
+
+    try:
+        from apps.smsgateway.models import SMSMessage
+        from apps.smsgateway.tasks import dispatch_sms_task
+
+        sms_message = SMSMessage.objects.create(
+            clinic=clinic,
+            recipient_number=to_number,
+            body=body,
+            status=SMSMessage.STATUS_QUEUED
+        )
+
+        try:
+            dispatch_sms_task.delay(str(sms_message.id))
+        except Exception:
+            pass
+
+        try:
+            from apps.notifications.models import CommunicationLog
+            from apps.notifications.services.notification_service import broadcast_communication_log_updated
+            new_log = CommunicationLog.objects.create(
+                clinic=clinic,
+                patient=patient,
+                appointment=new_appointment,
+                practitioner=new_appointment.practitioner,
+                related_appointment=old_appointment,
+                comm_type='RESCHEDULE_CONFIRMATION',
+                channel='SMS',
+                direction='OUTBOUND',
+                status='QUEUED',
+                recipient=to_number,
+                subject='Appointment Rescheduled Confirmation',
+                body_preview=body[:2000],
+                full_body=body,
+                message_id=str(sms_message.id),
+                event_metadata={
+                    'sms_message_id': str(sms_message.id),
+                    'rescheduled_via': 'Public Web Link',
+                    'old_appointment_id': str(old_appointment.id) if old_appointment else None,
+                }
+            )
+            broadcast_communication_log_updated(new_log)
+        except Exception as comm_err:
+            logger.warning("Failed to create CommunicationLog for reschedule SMS: %s", comm_err)
+
+        return True, ''
+    except Exception as e:
+        logger.error("Error queueing reschedule SMS for appointment %s: %s", new_appointment.id, e)
+        return False, str(e)

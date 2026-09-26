@@ -1,7 +1,5 @@
-Hi {{ patient_first_name }}! Reminder for your appointment on {{ appointment_date }} at {{ appointment_time }} with {{ clinic_name }}.
+Hi {{ patient_first_name }}, your appointment with {{ clinic_name }} is scheduled for {{ appointment_date }} at {{ appointment_time }}.
 
-if you wish to proceed with the scheduled appointment, Reply "Y" if yes, "N" if Cancel.
+Do you wish to keep this appointment?
 
-If you wish to reschedule the appointment: {{ rebook_url }}
-
-thank you for choosing {{ clinic_name }}
+Reply YES to confirm or NO if you cannot attend.

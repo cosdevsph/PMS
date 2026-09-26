@@ -142,6 +142,16 @@ export const ClinicalNoteEditor: React.FC<ClinicalNoteEditorProps> = ({ initialA
                 };
               });
             }
+
+            if (template?.name === 'General SOAP' || template?.is_system_template) {
+              if (!mergedValues.assessment && mergedValues.diagnosis_analysis) {
+                mergedValues.assessment = mergedValues.diagnosis_analysis;
+              }
+              if (editorContext.type === 'COPY_NOTE') {
+                delete mergedValues.treatment;
+                delete mergedValues.diagnosis_analysis;
+              }
+            }
             setContent(mergedValues);
           }
 

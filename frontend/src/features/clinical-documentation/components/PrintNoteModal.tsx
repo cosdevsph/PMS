@@ -40,49 +40,96 @@ export const PrintNoteModal: React.FC<PrintNoteModalProps> = ({
       container.style.left = '-9999px';
       container.style.top = '0';
       container.style.width = `${A4_WIDTH_PX}px`;
-      container.style.minHeight = `${A4_HEIGHT_PX}px`;
       container.style.background = 'white';
       container.style.zIndex = '-1';
-      container.style.overflow = 'hidden';
+      container.style.overflow = 'visible';
       document.body.appendChild(container);
 
       const root = createRoot(container);
       await new Promise<void>((resolve) => {
         root.render(
-            <ClinicalNotePrintTemplate
-              note={note}
-              template={template}
-              appointment={appointment}
-              patientName={patientName}
-              clinicName={clinicName}
-              clinicLogoUrl={clinicLogoUrl}
-              className="!max-w-none"
-            />
+          <ClinicalNotePrintTemplate
+            note={note}
+            template={template}
+            appointment={appointment}
+            patientName={patientName}
+            clinicName={clinicName}
+            clinicLogoUrl={clinicLogoUrl}
+            className="!max-w-none"
+          />
         );
-        setTimeout(resolve, 1000); // Wait for render
+        setTimeout(resolve, 1200); // Wait for render and assets
       });
 
-      const captureHeight = Math.max(container.scrollHeight, A4_HEIGHT_PX);
-      const canvas = await html2canvas(container, {
-        scale: 2, // Higher scale for better print quality
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: A4_WIDTH_PX,
-        height: captureHeight,
-        windowWidth: A4_WIDTH_PX,
-      });
+      // Wait for any images to complete loading
+      const images = Array.from(container.querySelectorAll('img'));
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise<void>((res) => {
+            img.onload = () => res();
+            img.onerror = () => res();
+          });
+        })
+      );
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pageElements = container.querySelectorAll<HTMLElement>('.print-page');
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210;
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfPageWidth = 210;
+      const pdfPageHeight = 297;
 
-      const maxHeight = 297;
-      if (pdfHeight > maxHeight) {
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, maxHeight);
+      if (pageElements.length > 0) {
+        for (let i = 0; i < pageElements.length; i++) {
+          const pageEl = pageElements[i];
+          if (i > 0) {
+            pdf.addPage();
+          }
+
+          const pageCanvas = await html2canvas(pageEl, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            width: A4_WIDTH_PX,
+            height: pageEl.offsetHeight || A4_HEIGHT_PX,
+            windowWidth: A4_WIDTH_PX,
+          });
+
+          const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+          pdf.addImage(pageImgData, 'JPEG', 0, 0, pdfPageWidth, pdfPageHeight);
+        }
       } else {
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        const captureHeight = Math.max(container.scrollHeight, A4_HEIGHT_PX);
+        const canvas = await html2canvas(container, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          width: A4_WIDTH_PX,
+          height: captureHeight,
+          windowWidth: A4_WIDTH_PX,
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const renderedHeightMm = (canvas.height * pdfPageWidth) / canvas.width;
+
+        if (renderedHeightMm <= pdfPageHeight) {
+          pdf.addImage(imgData, 'JPEG', 0, 0, pdfPageWidth, renderedHeightMm);
+        } else {
+          // Multi-page pagination: slice along 297mm height so templates do not squish
+          let heightLeftMm = renderedHeightMm;
+          let positionMm = 0;
+
+          pdf.addImage(imgData, 'JPEG', 0, positionMm, pdfPageWidth, renderedHeightMm);
+          heightLeftMm -= pdfPageHeight;
+
+          while (heightLeftMm > 0) {
+            positionMm -= pdfPageHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, positionMm, pdfPageWidth, renderedHeightMm);
+            heightLeftMm -= pdfPageHeight;
+          }
+        }
       }
 
       const pdfBlob = pdf.output('blob');
@@ -95,7 +142,7 @@ export const PrintNoteModal: React.FC<PrintNoteModalProps> = ({
       console.error('Error generating PDF:', error);
       return null;
     }
-  }, [note, template, appointment, patientName]);
+  }, [note, template, appointment, patientName, clinicName, clinicLogoUrl]);
 
   const handlePrint = async () => {
     setIsGenerating(true);
@@ -177,7 +224,7 @@ export const PrintNoteModal: React.FC<PrintNoteModalProps> = ({
 
         {/* Content (Preview) */}
         <div className="flex-1 overflow-y-auto p-5 bg-slate-100/80">
-          <div className="max-w-[800px] mx-auto shadow-xl ring-1 ring-slate-900/5">
+          <div className="max-w-[800px] mx-auto">
             <ClinicalNotePrintTemplate
               note={note}
               template={template}
@@ -192,3 +239,4 @@ export const PrintNoteModal: React.FC<PrintNoteModalProps> = ({
     </div>
   );
 };
+

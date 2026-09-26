@@ -150,6 +150,11 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-gray-900 text-sm">{template.name}</span>
                   <span className="text-xs text-gray-400 font-mono">v{template.version}</span>
+                  {template.is_system_template && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-800">
+                      Malasakit Default
+                    </span>
+                  )}
                   {template.discipline && (
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-sky-100 text-sky-700">
                       {template.discipline}
@@ -179,7 +184,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                   </span>
                   <span className="text-gray-200">•</span>
                   <span className="text-xs text-gray-400">
-                    by {template.created_by_name}
+                    by {template.is_system_template ? 'Malasakit System' : (template.created_by_name || 'System')}
                   </span>
                   <span className="text-gray-200">•</span>
                   <div className="flex items-center gap-1">
@@ -211,7 +216,11 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                       onClick={() => setOpenMenuId(null)}
                     />
                     <div className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-lg border border-gray-200 py-1 min-w-[160px]">
-                      {!template.is_archived && (
+                      {template.is_system_template ? (
+                        <div className="px-3 py-2 text-xs text-gray-500 font-medium italic">
+                          System template (read-only)
+                        </div>
+                      ) : !template.is_archived ? (
                         <>
                           <button
                             onClick={() => { onEdit(template); setOpenMenuId(null); }}
@@ -229,8 +238,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                             Archive
                           </button>
                         </>
-                      )}
-                      {template.is_archived && (
+                      ) : (
                         <div className="px-3 py-2 text-xs text-gray-400">
                           Archived templates are read-only
                         </div>

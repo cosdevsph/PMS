@@ -20,7 +20,7 @@ export const supportApi = {
   uploadAttachment: async (feedbackId: number, file: File): Promise<UserFeedbackAttachment> => {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const response = await axiosInstance.post(
       `/support/feedback/${feedbackId}/upload_attachment/`,
       formData,
@@ -32,7 +32,7 @@ export const supportApi = {
     );
     return response.data;
   },
-  
+
   getAttachmentUrl: (feedbackId: number, attachmentId: number): string => {
     // This allows fetching the secure download endpoint
     return `/api/support/feedback/${feedbackId}/attachments/${attachmentId}/`;

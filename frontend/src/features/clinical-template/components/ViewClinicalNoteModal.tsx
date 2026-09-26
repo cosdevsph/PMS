@@ -351,7 +351,11 @@ export const ViewClinicalNoteModal: React.FC<ViewClinicalNoteModalProps> = ({
                             );
                           }
 
-                          const value = note.decrypted_content?.[field.id];
+                          const rawVal = note.decrypted_content?.[field.id];
+                          const value =
+                            rawVal !== undefined && rawVal !== null && rawVal !== ''
+                              ? rawVal
+                              : (field.id === 'assessment' ? note.decrypted_content?.['diagnosis_analysis'] : rawVal);
                           const displayValue = () => {
                             if (value === undefined || value === '' || value === null) {
                               return <span className="text-gray-400 italic">Not filled</span>;

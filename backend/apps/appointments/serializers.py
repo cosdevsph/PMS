@@ -1,4 +1,4 @@
-from apps.clinics import models
+from django.db.models import Q
 from rest_framework import serializers
 from .models import Appointment, PractitionerSchedule, AppointmentReminder, BlockAppointment, CalendarNote
 from apps.clinics.services.models import Service
@@ -25,6 +25,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
     # Include arrival_status and arrival_time in the response
     arrival_status = serializers.CharField(read_only=True)
     arrival_time   = serializers.DateTimeField(read_only=True)
+
+    # ── Patient reminder response tracking ──────────────────────────────────
+    is_responded   = serializers.BooleanField(read_only=True)
+    response_value = serializers.CharField(read_only=True)
 
     # ── DNA follow-up tracking ────────────────────────────────────────────────
     dna_followup_sent    = serializers.BooleanField(read_only=True)
@@ -63,7 +67,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'chief_complaint', 'notes', 'patient_notes',
             'reminder_sent', 'reminder_sent_at', 'has_invoice', 'is_covered_by_package', 'package_invoice_id',
             'confirmation_sent', 'confirmation_sent_at', 'confirmation_status',
-            'patient_reply', 'patient_reply_at',
+            'patient_reply', 'patient_reply_at', 'is_responded', 'response_value',
             'dna_followup_sent', 'dna_followup_sent_at',
             'is_rebook',
             'created_by', 'created_by_name',
@@ -80,8 +84,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'patient_case_title', 'patient_case_payer',
             'case_remaining_sessions', 'case_is_unlimited', 'package_invoices_count', 'case_session_number', 'case_approved_sessions',
             'effective_session_limit', 'session_limit_source', 'session_display',
+            'is_responded', 'response_value',
             'created_at', 'updated_at',
         ]
+
 
     def get_is_covered_by_package(self, obj) -> bool:
         """Check if this appointment belongs to a package case."""
@@ -235,7 +241,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 main = clinic.main_clinic
                 all_branch_ids = list(
                     ClinicModel.objects.filter(
-                        models.Q(id=main.id) | models.Q(parent_clinic=main)
+                        Q(id=main.id) | Q(parent_clinic=main)
                     ).values_list('id', flat=True)
                 )
                 if service.clinic_id not in all_branch_ids:
@@ -273,6 +279,51 @@ class AppointmentSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError({
                             'detail': 'This case has reached its effective session allocation.'
                         })
+
+        # ── Practitioner Availability & Duty End Time Validation ──────────────
+        appt_date = data.get('date') or (self.instance.date if self.instance else None)
+        start_time = data.get('start_time') or (self.instance.start_time if self.instance else None)
+        end_time = data.get('end_time') or (self.instance.end_time if self.instance else None)
+        duration = data.get('duration_minutes') or (self.instance.duration_minutes if self.instance else None)
+
+        if not duration and start_time and end_time:
+            duration = (end_time.hour * 60 + end_time.minute) - (start_time.hour * 60 + start_time.minute)
+
+        is_timing_set = (
+            self.instance is None
+            or 'date' in data
+            or 'start_time' in data
+            or 'end_time' in data
+            or 'practitioner' in data
+            or 'service' in data
+            or 'duration_minutes' in data
+        )
+
+        if is_timing_set and appt_date and start_time and duration:
+            from apps.appointments.availability_service import is_appointment_within_availability
+            is_valid_avail, avail_reason = is_appointment_within_availability(
+                practitioner, appt_date, start_time, duration
+            )
+            if not is_valid_avail:
+                raise serializers.ValidationError({
+                    'start_time': avail_reason
+                })
+
+        # ── Conflict Detection ───────────────────────────────────────────────
+        if is_timing_set and practitioner and appt_date and start_time and end_time:
+            overlapping = Appointment.objects.filter(
+                practitioner=practitioner,
+                date=appt_date,
+                status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'],
+                is_deleted=False,
+            )
+            if self.instance:
+                overlapping = overlapping.exclude(pk=self.instance.pk)
+            for apt in overlapping:
+                if start_time < apt.end_time and end_time > apt.start_time:
+                    raise serializers.ValidationError({
+                        'start_time': 'This appointment overlaps with an existing appointment for this practitioner.'
+                    })
 
         return data
 

@@ -11,6 +11,7 @@ import type { PatientCase } from '@/types/patient';
 import { PatientModal } from '@/features/patients/components/PatientModal';
 import { createAppointment } from '../appointment.api';
 import { usePractitioners } from '@/features/clinics/hooks/usePractitioners';
+import type { DutyDay, ShiftBlock } from '@/features/clinics/clinic.api';
 import { useAppointmentServices } from '../hooks/useAppointmentServices';
 import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';   // ← ADD
 import { useAuthStore } from '@/store/auth.store';
@@ -244,6 +245,40 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       if (!formData.patient_case) errs.patient_case = 'Please assign this appointment to a case.';
     }
     if (!formData.service) errs.service = 'Please select a service / appointment type.';
+
+    // Practitioner availability end time check:
+    if (selectedSlot && selectedPractitionerObj?.availability) {
+      const startH = selectedSlot.hour;
+      const startM = selectedSlot.minutes;
+      const slotMins = startH * 60 + startM;
+      const slotEndMins = slotMins + effectiveDuration;
+      const avail = selectedPractitionerObj.availability;
+      const dayNames: DutyDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayName = dayNames[selectedSlot.date.getDay()];
+
+      if (slotMins < 6 * 60 || slotEndMins > 21 * 60) {
+        errs.service = 'Appointment extends outside clinic operating hours (06:00 – 21:00).';
+      } else if (avail.duty_schedule && avail.duty_schedule[dayName]) {
+        const blocks: ShiftBlock[] = avail.duty_schedule[dayName] || [];
+        if (blocks.length > 0) {
+          const fits = blocks.some((b: ShiftBlock) => {
+            const [bsh, bsm] = b.start.split(':').map(Number);
+            const [beh, bem] = b.end.split(':').map(Number);
+            return slotMins >= bsh * 60 + bsm && slotEndMins <= beh * 60 + bem;
+          });
+          if (!fits) {
+            errs.service = `Appointment duration (${effectiveDuration} min) extends beyond practitioner's available duty hours.`;
+          }
+        }
+      } else if (avail.duty_start_time && avail.duty_end_time) {
+        const [dsh, dsm] = avail.duty_start_time.split(':').map(Number);
+        const [deh, dem] = avail.duty_end_time.split(':').map(Number);
+        if (slotMins < dsh * 60 + dsm || slotEndMins > deh * 60 + dem) {
+          errs.service = `Appointment duration (${effectiveDuration} min) extends beyond practitioner's duty end time.`;
+        }
+      }
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -318,11 +353,24 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       onCreated?.(created);
       handleClose();
     } catch (err: any) {
-      toast.error(
-        err.response?.data?.detail ||
-        err.response?.data?.message ||
-        'Failed to create appointment'
-      );
+      const resData = err.response?.data;
+      let errorMsg = 'Failed to create appointment';
+      if (typeof resData === 'string') {
+        errorMsg = resData;
+      } else if (resData?.detail) {
+        errorMsg = resData.detail;
+      } else if (resData?.message) {
+        errorMsg = resData.message;
+      } else if (resData && typeof resData === 'object') {
+        const firstKey = Object.keys(resData)[0];
+        const firstVal = resData[firstKey];
+        if (Array.isArray(firstVal) && firstVal.length > 0) {
+          errorMsg = firstVal[0];
+        } else if (typeof firstVal === 'string') {
+          errorMsg = firstVal;
+        }
+      }
+      toast.error(errorMsg);
     } finally {
       setSaving(false);
     }

@@ -89,46 +89,88 @@ export const SendNoteEmailModal: React.FC<SendNoteEmailModalProps> = ({
       const root = createRoot(container);
       await new Promise<void>((resolve) => {
         root.render(
-            <ClinicalNotePrintTemplate
-              note={note}
-              template={template}
-              appointment={appointment}
-              patientName={patientName}
-              clinicName={clinicName}
-              clinicLogoUrl={clinicLogoUrl}
-              className="!max-w-none"
-            />
+          <ClinicalNotePrintTemplate
+            note={note}
+            template={template}
+            appointment={appointment}
+            patientName={patientName}
+            clinicName={clinicName}
+            clinicLogoUrl={clinicLogoUrl}
+            className="!max-w-none"
+          />
         );
-        setTimeout(resolve, 1000); // Wait for render
+        setTimeout(resolve, 1200); // Wait for render
       });
 
-      const templateEl = container.firstElementChild as HTMLElement;
-      if (templateEl) {
-        templateEl.style.maxWidth = 'none';
-        templateEl.style.width = '100%';
-      }
+      // Wait for any images to complete loading
+      const images = Array.from(container.querySelectorAll('img'));
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise<void>((res) => {
+            img.onload = () => res();
+            img.onerror = () => res();
+          });
+        })
+      );
 
-      const captureHeight = Math.max(container.scrollHeight, A4_HEIGHT_PX);
-      const canvas = await html2canvas(container, {
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: A4_WIDTH_PX,
-        height: captureHeight,
-        windowWidth: A4_WIDTH_PX,
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.85);
+      const pageElements = container.querySelectorAll<HTMLElement>('.print-page');
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210;
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfPageWidth = 210;
+      const pdfPageHeight = 297;
 
-      const maxHeight = 297;
-      if (pdfHeight > maxHeight) {
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, maxHeight);
+      if (pageElements.length > 0) {
+        for (let i = 0; i < pageElements.length; i++) {
+          const pageEl = pageElements[i];
+          if (i > 0) {
+            pdf.addPage();
+          }
+
+          const pageCanvas = await html2canvas(pageEl, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            width: A4_WIDTH_PX,
+            height: pageEl.offsetHeight || A4_HEIGHT_PX,
+            windowWidth: A4_WIDTH_PX,
+          });
+
+          const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+          pdf.addImage(pageImgData, 'JPEG', 0, 0, pdfPageWidth, pdfPageHeight);
+        }
       } else {
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        const captureHeight = Math.max(container.scrollHeight, A4_HEIGHT_PX);
+        const canvas = await html2canvas(container, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          width: A4_WIDTH_PX,
+          height: captureHeight,
+          windowWidth: A4_WIDTH_PX,
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const renderedHeightMm = (canvas.height * pdfPageWidth) / canvas.width;
+
+        if (renderedHeightMm <= pdfPageHeight) {
+          pdf.addImage(imgData, 'JPEG', 0, 0, pdfPageWidth, renderedHeightMm);
+        } else {
+          // Multi-page pagination: slice along 297mm height so templates do not squish
+          let heightLeftMm = renderedHeightMm;
+          let positionMm = 0;
+
+          pdf.addImage(imgData, 'JPEG', 0, positionMm, pdfPageWidth, renderedHeightMm);
+          heightLeftMm -= pdfPageHeight;
+
+          while (heightLeftMm > 0) {
+            positionMm -= pdfPageHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, positionMm, pdfPageWidth, renderedHeightMm);
+            heightLeftMm -= pdfPageHeight;
+          }
+        }
       }
 
       const pdfBlob = pdf.output('blob');
@@ -147,7 +189,7 @@ export const SendNoteEmailModal: React.FC<SendNoteEmailModalProps> = ({
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [note, template, appointment, patientName]);
+  }, [note, template, appointment, patientName, clinicName, clinicLogoUrl]);
 
   // Auto-generate PDF on mount
   useEffect(() => {

@@ -257,10 +257,10 @@ class CommunicationLogViewSet(viewsets.ReadOnlyModelViewSet):
     """
     permission_classes = [IsAuthenticated]
     filter_backends    = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
-    filterset_fields   = ['comm_type', 'channel', 'status', 'patient', 'practitioner', 'appointment']
+    filterset_fields   = ['comm_type', 'channel', 'status', 'direction', 'patient', 'practitioner', 'appointment']
     ordering_fields    = ['created_at', 'delivered_at', 'opened_at']
     ordering           = ['-created_at']
-    search_fields      = ['recipient', 'subject', 'patient__first_name', 'patient__last_name', 'full_body']
+    search_fields      = ['recipient', 'subject', 'patient__first_name', 'patient__last_name', 'full_body', 'body_preview']
 
     def get_serializer_class(self):
         if self.action == 'retrieve':

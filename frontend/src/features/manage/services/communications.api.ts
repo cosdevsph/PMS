@@ -13,9 +13,12 @@ export type CommType =
   | 'CANCELLATION_NOTICE'  | 'CLINICAL_NOTE'
   | 'OTP_VERIFICATION'     | 'PASSWORD_RESET'
   | 'INVOICE_EMAIL'        | 'RESCHEDULE_FOLLOWUP'
-  | 'SYSTEM_NOTIFICATION';
+  | 'SYSTEM_NOTIFICATION'  | 'PATIENT_RESPONSE'
+  | 'RESCHEDULE_CONFIRMATION' | 'CANCELLATION'
+  | 'RESCHEDULE_REQUEST'   | 'DNA_EVENT';
 
 export type CommChannel = 'EMAIL' | 'SMS';
+export type CommDirection = 'OUTBOUND' | 'INBOUND' | 'SYSTEM';
 
 export interface CommunicationLog {
   id: number;
@@ -29,6 +32,8 @@ export interface CommunicationLog {
   comm_type_display: string;
   channel: CommChannel;
   channel_display: string;
+  direction?: CommDirection;
+  direction_display?: string;
   status: CommStatus;
   status_display: string;
   recipient: string;
@@ -37,10 +42,13 @@ export interface CommunicationLog {
   error_message: string;
   patient_reply: string;
   replied_at: string | null;
+  is_responded?: boolean;
+  response_value?: string;
   delivered_at: string | null;
   opened_at: string | null;
   bounced_at: string | null;
   message_id: string;
+  event_metadata?: Record<string, any>;
   reply_count: number;
   attachment_count: number;
   created_at: string;

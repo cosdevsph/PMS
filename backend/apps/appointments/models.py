@@ -203,6 +203,23 @@ class Appointment(TimeStampedModel, SoftDeleteModel):
         service_label = self.service.name if self.service else self.appointment_type
         return f"{self.patient.get_full_name()} — {service_label} @ {self.date} {self.start_time}"
 
+    @property
+    def is_responded(self) -> bool:
+        """Returns True if the patient has responded to this appointment reminder."""
+        return bool(self.patient_reply_at or self.patient_reply)
+
+    @property
+    def response_value(self) -> str:
+        """Normalized string value of the patient response ('YES', 'NO', or raw text)."""
+        if not self.patient_reply:
+            return ''
+        val = str(self.patient_reply).strip().upper()
+        if val in ('Y', 'YES', 'CONFIRM'):
+            return 'YES'
+        elif val in ('N', 'NO', 'CANCEL', 'DECLINED'):
+            return 'NO'
+        return self.patient_reply
+
     def save(self, *args, **kwargs):
         # Auto-populate duration from service if not explicitly set
         if self.service and not self.duration_minutes:
@@ -212,6 +229,18 @@ class Appointment(TimeStampedModel, SoftDeleteModel):
     def clean(self):
         if self.start_time and self.end_time and self.end_time <= self.start_time:
             raise ValidationError('End time must be after start time')
+
+        duration = self.duration_minutes
+        if not duration and self.start_time and self.end_time:
+            duration = (self.end_time.hour * 60 + self.end_time.minute) - (self.start_time.hour * 60 + self.start_time.minute)
+
+        if self.date and self.start_time and duration:
+            from apps.appointments.availability_service import is_appointment_within_availability
+            is_valid_avail, avail_reason = is_appointment_within_availability(
+                self.practitioner, self.date, self.start_time, duration
+            )
+            if not is_valid_avail:
+                raise ValidationError({'start_time': avail_reason})
 
         if self.practitioner and self.date and self.start_time and self.end_time:
             overlapping = Appointment.objects.filter(

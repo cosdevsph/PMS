@@ -86,6 +86,10 @@ const TYPE_CFG: Record<string, { bg: string; label: string }> = {
   REBOOK_FOLLOWUP:        { bg: 'bg-violet-100 text-violet-700',   label: 'Rebook' },
   INACTIVE_CHECKIN:       { bg: 'bg-pink-100 text-pink-700',        label: 'Check-in' },
   CANCELLATION_NOTICE:    { bg: 'bg-gray-100 text-gray-600',        label: 'Cancelled' },
+  PATIENT_RESPONSE:       { bg: 'bg-purple-100 text-purple-700',   label: 'Client Reply' },
+  RESCHEDULE_CONFIRMATION:{ bg: 'bg-blue-100 text-blue-700',       label: 'Rescheduled' },
+  CANCELLATION:           { bg: 'bg-rose-100 text-rose-700',       label: 'Cancelled' },
+  SYSTEM_NOTIFICATION:    { bg: 'bg-sky-100 text-sky-700',         label: 'SMS' },
 };
 
 function TypeChip({ type }: { type: string }) {
@@ -282,10 +286,11 @@ function PatientGroupItem({
 
 // ── Thread View ────────────────────────────────────────────────────────────
 function ThreadView({ log }: { log: CommunicationLogEntry }) {
-  const replied   = Boolean(log.patient_reply);
-  const confirmed = log.patient_reply === 'Y';
-  const declined  = log.patient_reply === 'N';
-  const isPending = !replied && (log.status === 'SENT' || log.status === 'DELIVERED');
+  const isResponded = Boolean(log.is_responded) || Boolean(log.patient_reply) || log.status === 'REPLIED';
+  const respVal = ((log.response_value || log.patient_reply || '') as string).toUpperCase();
+  const confirmed = respVal === 'YES' || respVal === 'Y' || respVal === 'CONFIRM';
+  const declined  = respVal === 'NO' || respVal === 'N' || respVal === 'CANCEL';
+  const isPending = !isResponded && (log.status === 'SENT' || log.status === 'DELIVERED');
 
   return (
     <div className="flex flex-col h-full">
@@ -331,21 +336,31 @@ function ThreadView({ log }: { log: CommunicationLogEntry }) {
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 bg-gray-50/30">
 
-        {/* 1. Outbound message */}
+        {/* 1. Message content */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 rounded-full bg-linear-to-br from-sky-500 to-sky-700 flex items-center justify-center shrink-0">
-              <Building2 className="w-3 h-3 text-white" />
-            </div>
-            <span className="text-[12px] font-semibold text-gray-700">{SystemBranding.companyName}</span>
-            <span className="text-[11px] text-gray-400">→ {log.recipient}</span>
+            {log.direction === 'INBOUND' ? (
+              <>
+                <PatientAvatar name={log.patient_name || '?'} className="w-6 h-6" />
+                <span className="text-[12px] font-semibold text-gray-700">{log.patient_name || 'Patient'}</span>
+                <span className="text-[11px] text-gray-400">→ {log.clinic_name || SystemBranding.companyName}</span>
+              </>
+            ) : (
+              <>
+                <div className="w-6 h-6 rounded-full bg-linear-to-br from-sky-500 to-sky-700 flex items-center justify-center shrink-0">
+                  <Building2 className="w-3 h-3 text-white" />
+                </div>
+                <span className="text-[12px] font-semibold text-gray-700">{log.clinic_name || SystemBranding.companyName}</span>
+                <span className="text-[11px] text-gray-400">→ {log.recipient}</span>
+              </>
+            )}
             <span className="text-[11px] text-gray-400 ml-auto">{formatFull(log.created_at)}</span>
           </div>
           <div className="ml-8 bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="px-4 py-3.5">
-              {log.body_preview
-                ? <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">{log.body_preview}</p>
-                : <p className="text-[13px] text-gray-400 italic">No preview available.</p>
+              {log.body_preview || (log as any).full_body
+                ? <p className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">{log.body_preview || (log as any).full_body}</p>
+                : <p className="text-[13px] text-gray-400 italic">No message content.</p>
               }
             </div>
           </div>
@@ -411,7 +426,7 @@ function ThreadView({ log }: { log: CommunicationLogEntry }) {
         )}
 
         {/* 3. Patient reply */}
-        {replied && (
+        {isResponded && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <PatientAvatar name={log.patient_name || '?'} className="w-6 h-6" />
@@ -534,6 +549,14 @@ export default function CommunicationLogs() {
   }, [page, search, typeFilter, channelFilter, statusFilter]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      fetchLogs();
+    };
+    window.addEventListener('communicationUpdated', handleUpdate);
+    return () => window.removeEventListener('communicationUpdated', handleUpdate);
+  }, [fetchLogs]);
 
   useEffect(() => {
     setPage(1);

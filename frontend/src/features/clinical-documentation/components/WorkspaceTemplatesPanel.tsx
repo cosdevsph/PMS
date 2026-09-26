@@ -34,7 +34,20 @@ export const WorkspaceTemplatesPanel = () => {
     t.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const disciplines = Array.from(new Set(filteredTemplates.map(t => t.discipline).filter(Boolean)));
+  // Group filtered templates: no discipline or General → "General", otherwise by discipline name
+  const groupedTemplates = filteredTemplates.reduce<Record<string, ClinicalTemplate[]>>((acc, t) => {
+    const group = t.discipline?.trim() || 'General';
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(t);
+    return acc;
+  }, {});
+
+  // Sort groups: "General" first, then alphabetically
+  const sortedGroups = Object.keys(groupedTemplates).sort((a, b) => {
+    if (a.toLowerCase() === 'general') return -1;
+    if (b.toLowerCase() === 'general') return 1;
+    return a.localeCompare(b);
+  });
 
   if (loading) {
     return (
@@ -82,45 +95,50 @@ export const WorkspaceTemplatesPanel = () => {
 
       {/* Template List */}
       <div className="flex-1 overflow-y-auto p-2">
-        {disciplines.length === 0 && searchTerm && (
+        {sortedGroups.length === 0 && searchTerm && (
           <div className="text-center py-10 text-slate-400 text-sm">
             No templates match your search.
           </div>
         )}
         
-        {disciplines.map((discipline) => (
-          <div key={discipline} className="mb-4 last:mb-0">
+        {sortedGroups.map((group) => (
+          <div key={group} className="mb-4 last:mb-0">
             <div className="flex items-center gap-3 px-2 mb-2">
               <h4 className="text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-                {discipline}
+                {group}
               </h4>
               <div className="h-px flex-1 bg-slate-200/60" />
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
-              {filteredTemplates
-                .filter(t => t.discipline === discipline)
-                .map(template => (
-                  <button
-                    key={template.id}
-                    onClick={() => setEditorContext({ type: 'NEW_NOTE', templateId: template.id })}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left bg-emerald-50/50 hover:bg-emerald-100/50 border border-emerald-100 hover:border-emerald-200 group transition-all"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100/50 flex items-center justify-center shrink-0 group-hover:bg-emerald-200/50 transition-colors">
-                      <FileText className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
+              {groupedTemplates[group].map((template) => (
+                <button
+                  key={template.id}
+                  onClick={() => setEditorContext({ type: 'NEW_NOTE', templateId: template.id })}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left bg-emerald-50/50 hover:bg-emerald-100/50 border border-emerald-100 hover:border-emerald-200 group transition-all"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100/50 flex items-center justify-center shrink-0 group-hover:bg-emerald-200/50 transition-colors">
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-slate-700 group-hover:text-emerald-900 truncate">
                         {template.name}
                       </p>
-                      {template.description && (
-                        <p className="text-xs text-slate-500 truncate">
-                          {template.description}
-                        </p>
+                      {template.is_system_template && (
+                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded shrink-0">
+                          Malasakit Default
+                        </span>
                       )}
                     </div>
-                    <Plus className="w-4 h-4 text-emerald-300 opacity-0 group-hover:opacity-100 group-hover:text-emerald-600 transition-all" />
-                  </button>
-                ))}
+                    {template.description && (
+                      <p className="text-xs text-slate-500 truncate mt-0.5">
+                        {template.description}
+                      </p>
+                    )}
+                  </div>
+                  <Plus className="w-4 h-4 text-emerald-300 opacity-0 group-hover:opacity-100 group-hover:text-emerald-600 transition-all" />
+                </button>
+              ))}
             </div>
           </div>
         ))}

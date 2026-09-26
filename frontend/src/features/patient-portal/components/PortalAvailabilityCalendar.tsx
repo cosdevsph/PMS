@@ -31,16 +31,12 @@ const fmt12 = (slot: string): string => {
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 };
 
-/** Return true if this "HH:MM" slot falls in the lunch window [12:00, 13:00) */
-const isLunchSlot = (slot: string): boolean => {
-  const [h, m] = slot.split(':').map(Number);
-  return (h === 12) || (h === 13 && m === 0);
-};
-
 /** Return true if this "HH:MM" slot is within clinic hours [06:00, 21:00) */
-const isWithinClinicHours = (slot: string): boolean => {
-  const [h] = slot.split(':').map(Number);
-  return h >= 6 && h < 21;
+const isWithinClinicHours = (slot: string, duration: number = 0): boolean => {
+  const [h, m] = slot.split(':').map(Number);
+  const slotMins = h * 60 + m;
+  const slotEndMins = slotMins + duration;
+  return slotMins >= 6 * 60 && slotEndMins <= 21 * 60;
 };
 
 /** Check if a date is within practitioner's duty days (supports duty_schedule keys) */
@@ -56,10 +52,16 @@ const isWithinDutyDays = (date: Date, availability: PortalAvailability | undefin
 };
 
 /** Check if a slot is within practitioner's duty hours (supports split-shift blocks) */
-const isWithinDutyHours = (slot: string, date: Date, availability: PortalAvailability | undefined): boolean => {
+const isWithinDutyHours = (
+  slot: string,
+  date: Date,
+  availability: PortalAvailability | undefined,
+  duration: number = 0,
+): boolean => {
   if (!availability) return true;
   const [h, m] = slot.split(':').map(Number);
   const slotMins = h * 60 + m;
+  const slotEndMins = slotMins + duration;
   const dayName  = DAY_MAP[date.getDay()];
 
   // Split-shift: check against specific day blocks
@@ -69,26 +71,35 @@ const isWithinDutyHours = (slot: string, date: Date, availability: PortalAvailab
       return dayBlocks.some(block => {
         const [startH, startM] = block.start.split(':').map(Number);
         const [endH, endM]     = block.end.split(':').map(Number);
-        return slotMins >= startH * 60 + startM && slotMins < endH * 60 + endM;
+        return slotMins >= startH * 60 + startM && slotEndMins <= endH * 60 + endM;
       });
     }
   }
   // Legacy single-block
+  if (!availability.duty_start_time || !availability.duty_end_time) return true;
   const [startH, startM] = availability.duty_start_time.split(':').map(Number);
   const [endH, endM]     = availability.duty_end_time.split(':').map(Number);
-  return slotMins >= startH * 60 + startM && slotMins < endH * 60 + endM;
+  return slotMins >= startH * 60 + startM && slotEndMins <= endH * 60 + endM;
 };
 
-/** Check if a slot is within practitioner's lunch break */
-const isWithinLunchBreak = (slot: string, availability: PortalAvailability | undefined): boolean => {
-  if (!availability) return isLunchSlot(slot);
+/** Check if a slot overlaps practitioner's lunch break */
+const isWithinLunchBreak = (
+  slot: string,
+  availability: PortalAvailability | undefined,
+  duration: number = 0,
+): boolean => {
   const [h, m] = slot.split(':').map(Number);
   const slotMins = h * 60 + m;
-  const [lunchStartH, lunchStartM] = availability.lunch_start_time.split(':').map(Number);
-  const [lunchEndH, lunchEndM] = availability.lunch_end_time.split(':').map(Number);
-  const lunchStartMins = lunchStartH * 60 + lunchStartM;
-  const lunchEndMins = lunchEndH * 60 + lunchEndM;
-  return slotMins >= lunchStartMins && slotMins < lunchEndMins;
+  const slotEndMins = slotMins + duration;
+
+  const lunchStartMins = availability?.lunch_start_time
+    ? (() => { const [lh, lm] = availability.lunch_start_time.split(':').map(Number); return lh * 60 + lm; })()
+    : 12 * 60;
+  const lunchEndMins = availability?.lunch_end_time
+    ? (() => { const [lh, lm] = availability.lunch_end_time.split(':').map(Number); return lh * 60 + lm; })()
+    : 13 * 60;
+
+  return slotMins < lunchEndMins && slotEndMins > lunchStartMins;
 };
 
 export const PortalAvailabilityCalendar: React.FC<PortalAvailabilityCalendarProps> = ({
@@ -139,10 +150,11 @@ export const PortalAvailabilityCalendar: React.FC<PortalAvailabilityCalendarProp
 
   // ── Filter + split slots into morning / afternoon ─────────────────────────
   const practitionerAvailability = practitioner?.availability;
+  const serviceDuration = service?.duration_minutes || 15;
   const visibleSlots = availableSlots.filter(
-    s => isWithinClinicHours(s)
-      && !isWithinLunchBreak(s, practitionerAvailability)
-      && isWithinDutyHours(s, selectedDate ? new Date(selectedDate + 'T00:00:00') : new Date(), practitionerAvailability)
+    s => isWithinClinicHours(s, serviceDuration)
+      && !isWithinLunchBreak(s, practitionerAvailability, serviceDuration)
+      && isWithinDutyHours(s, selectedDate ? new Date(selectedDate + 'T00:00:00') : new Date(), practitionerAvailability, serviceDuration)
   );
 
   const morningSlots   = visibleSlots.filter(s => {
