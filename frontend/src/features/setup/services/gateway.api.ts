@@ -134,6 +134,12 @@ export const gatewayApi = {
     const envApiBase = import.meta.env.VITE_API_BASE_URL;
     let base = (envApiBase || '').trim();
 
+    if (typeof window !== 'undefined' && (window.location.hostname.includes('malasakitsystems.com') || window.location.hostname.includes('vercel.app'))) {
+      if (!base || !/^https?:\/\//i.test(base)) {
+        return 'https://malasakit-webservice.onrender.com/api/gateway/download-apk/';
+      }
+    }
+
     if (!base) {
       base = typeof window !== 'undefined' && window.location.origin
         ? `${window.location.origin}/api`

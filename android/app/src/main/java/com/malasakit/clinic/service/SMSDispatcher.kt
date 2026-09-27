@@ -64,8 +64,8 @@ class SMSDispatcher(private val context: Context) {
 
             for (i in 0 until partsCount) {
                 // Sent intent (carrier network acceptance)
-                val sentIntent = Intent(ACTION_SMS_SENT).apply {
-                    setPackage(context.packageName)
+                val sentIntent = Intent(context, SMSSentReceiver::class.java).apply {
+                    action = ACTION_SMS_SENT
                     putExtra(EXTRA_LOCAL_ID, sms.localId)
                     putExtra(EXTRA_REMOTE_ID, sms.remoteMessageId)
                     putExtra(EXTRA_PART_INDEX, i)
@@ -80,8 +80,8 @@ class SMSDispatcher(private val context: Context) {
                 sentIntents.add(sentPending)
 
                 // Delivery intent (handset receipt)
-                val deliveryIntent = Intent(ACTION_SMS_DELIVERED).apply {
-                    setPackage(context.packageName)
+                val deliveryIntent = Intent(context, SMSDeliveryReceiver::class.java).apply {
+                    action = ACTION_SMS_DELIVERED
                     putExtra(EXTRA_LOCAL_ID, sms.localId)
                     putExtra(EXTRA_REMOTE_ID, sms.remoteMessageId)
                     putExtra(EXTRA_PART_INDEX, i)

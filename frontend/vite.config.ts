@@ -14,7 +14,23 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',
     port: 3000,
     open: true,
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: false,
+      },
+      '/static': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: false,
+      },
+      '/media': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: false,
+      },
+    },
   },
 })

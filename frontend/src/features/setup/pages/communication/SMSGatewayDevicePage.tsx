@@ -96,6 +96,19 @@ export const SMSGatewayDevicePage: React.FC = () => {
         </div>
       )}
 
+      {/* Platform Compatibility Notice */}
+      <div className="flex items-center justify-between gap-3 px-3.5 sm:px-4 py-2.5 sm:py-3 bg-sky-50/80 border border-sky-200/80 rounded-xl text-xs text-sky-900 shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <Smartphone className="w-4 h-4 text-sky-600 shrink-0" />
+          <p className="font-medium text-[11.5px] sm:text-xs">
+            This is only available on Android devices. iOS coming soon...
+          </p>
+        </div>
+        <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-100 text-sky-700 border border-sky-200">
+          Android
+        </span>
+      </div>
+
       {/* Primary Device Status Card */}
       <DeviceStatusCard
         device={device}

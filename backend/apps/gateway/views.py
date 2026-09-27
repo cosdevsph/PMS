@@ -404,10 +404,13 @@ class WebhookDeliveryView(APIView):
                 return Response({"message": "Duplicate state transition ignored"}, status=status.HTTP_200_OK)
 
             # Record delivery event
+            err_desc = payload.get('error_message') or payload.get('description') or ''
+            carrier_err = payload.get('carrier_error_code') or payload.get('error_code') or ''
+
             DeliveryEvent.objects.create(
                 message=sms_message,
                 status=new_status,
-                description=payload.get('description', ''),
+                description=err_desc,
                 provider_timestamp=timezone.now()
             )
 
@@ -417,7 +420,7 @@ class WebhookDeliveryView(APIView):
             elif new_status == SMSMessage.STATUS_SENT:
                 sms_message.mark_sent()
             elif new_status in [SMSMessage.STATUS_FAILED, SMSMessage.STATUS_UNDELIVERED]:
-                sms_message.mark_failed(reason=payload.get('description', 'Gateway reported failure'))
+                sms_message.mark_failed(reason=err_desc or 'Gateway reported failure')
             else:
                 sms_message.status = new_status
                 sms_message.save(update_fields=['status', 'updated_at'])
@@ -452,7 +455,7 @@ class WebhookDeliveryView(APIView):
                     if new_status == SMSMessage.STATUS_DELIVERED:
                         comm_log.delivered_at = timezone.now()
                     elif new_status in [SMSMessage.STATUS_FAILED, SMSMessage.STATUS_UNDELIVERED]:
-                        comm_log.error_message = payload.get('description', 'Gateway reported delivery failure')
+                        comm_log.error_message = err_desc or 'Gateway reported delivery failure'
 
                     meta = comm_log.event_metadata or {}
                     meta['gateway_device'] = {
@@ -462,8 +465,8 @@ class WebhookDeliveryView(APIView):
                         'sim_carrier': device.sim_carrier or '',
                         'model_name': device.model_name or '',
                     }
-                    if payload.get('error_code'):
-                        meta['carrier_error_code'] = payload.get('error_code')
+                    if carrier_err:
+                        meta['carrier_error_code'] = carrier_err
                     if payload.get('delivered_at'):
                         meta['device_timestamp'] = payload.get('delivered_at')
                     comm_log.event_metadata = meta

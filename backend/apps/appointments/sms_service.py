@@ -110,7 +110,7 @@ def send_appointment_reminder_sms(appointment) -> tuple[bool, str]:
     )
 
     # ── Generate action tokens for SMS links ──────────────────────────────────
-    frontend_base = getattr(settings, 'FRONTEND_URL', 'https://app.mespms.com').rstrip('/')
+    frontend_base = getattr(settings, 'FRONTEND_URL', 'https://malasakitsystems.com').rstrip('/')
     confirm_url = ''
     cancel_url = ''
     rebook_url = ''

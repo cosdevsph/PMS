@@ -86,11 +86,19 @@
         <!-- Sent & Delivery Status BroadcastReceivers -->
         <receiver
             android:name=".service.SMSDispatcher$SMSSentReceiver"
-            android:exported="false" />
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.malasakit.clinic.SMS_SENT" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name=".service.SMSDispatcher$SMSDeliveryReceiver"
-            android:exported="false" />
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.malasakit.clinic.SMS_DELIVERED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Boot Receiver for Auto-restart after device reboot -->
         <receiver

@@ -1,7 +1,18 @@
 import axios, { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+const getApiBaseUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl && !envUrl.includes('127.0.0.1') && !envUrl.includes('localhost') && !envUrl.startsWith('/')) {
+    return envUrl;
+  }
+  if (typeof window !== 'undefined' && (window.location.hostname.includes('malasakitsystems.com') || window.location.hostname.includes('vercel.app'))) {
+    return 'https://malasakit-webservice.onrender.com/api';
+  }
+  return '/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const axiosInstance = axios.create({
   baseURL: API_BASE_URL,

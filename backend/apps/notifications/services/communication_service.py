@@ -410,7 +410,7 @@ def send_appointment_reminder_with_reply(appointment) -> dict:
     )
     location_name = appointment.location.name if appointment.location else clinic.name
 
-    frontend_base = getattr(settings, 'FRONTEND_URL', 'https://app.mespms.com')
+    frontend_base = getattr(settings, 'FRONTEND_URL', 'https://malasakitsystems.com')
 
     # ── Generate confirm token for email button ───────────────────────────────
     confirm_url = ''
@@ -520,7 +520,7 @@ def send_dna_followup(appointment) -> dict:
         patient=patient,
         appointment=appointment,
     )
-    frontend_base = getattr(settings, 'FRONTEND_URL', 'https://app.mespms.com')
+    frontend_base = getattr(settings, 'FRONTEND_URL', 'https://malasakitsystems.com')
     booking_url = f"{frontend_base.rstrip('/')}/rebook/{rebooking_link_obj.token}"
 
     context = {

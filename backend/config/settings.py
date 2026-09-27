@@ -22,16 +22,27 @@ TIME_ZONE = 'Asia/Manila'
 USE_TZ = True
 
 # Frontend URL
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://malasakitsystems.com" if (os.getenv("RENDER") or not DEBUG) else "http://localhost:3000")
 
 # reCAPTCHA
 RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY", "")
 
 # Allowed Hosts
 if os.getenv("RENDER"):
-    ALLOWED_HOSTS = ["mespms.com", "www.mespms.com", "api.mespms.com", "malasakit-webservice.onrender.com",]
+    ALLOWED_HOSTS = [
+        "mespms.com",
+        "www.mespms.com",
+        "api.mespms.com",
+        "malasakit-webservice.onrender.com",
+        "malasakitsystems.com",
+        "www.malasakitsystems.com",
+    ]
+    render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+    if render_hostname and render_hostname not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(render_hostname)
 else:
-    ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    raw_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",")
+    ALLOWED_HOSTS = list(set(raw_hosts + ["*", ".trycloudflare.com", ".loca.lt", "192.168.1.5", "malasakitsystems.com", "www.malasakitsystems.com"]))
 
 # Application definition
 INSTALLED_APPS = [
@@ -169,9 +180,18 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://192.168.1.5:3000",
+    "http://192.168.1.5:5173",
     "http://192.168.254.167:3000",
     "https://malasakitsystems.com",
     "https://www.malasakitsystems.com"
+]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://localhost:\d+$",
+    r"^http://127\.0\.0\.1:\d+$",
+    r"^http://192\.168\.\d+\.\d+:\d+$",
+    r"^http://10\.\d+\.\d+\.\d+:\d+$",
 ]
 
 cloudinary.config(
@@ -196,6 +216,18 @@ if not DEBUG:
     ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://malasakitsystems.com",
+    "https://www.malasakitsystems.com",
+    "https://malasakit-webservice.onrender.com",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://192.168.1.5:3000",
+    "http://192.168.1.5:5173",
+]
 
 ROOT_URLCONF = 'config.urls'
 
@@ -418,10 +450,11 @@ USE_I18N = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Trust the X-Forwarded-Proto header from proxies/tunnels (Cloudflare, Render)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Security Settings (Production)
 if not DEBUG:
-    # Trust the X-Forwarded-Proto header from the proxy (Render)
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

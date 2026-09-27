@@ -297,7 +297,7 @@ def queue_options_sms_on_no(
     except Exception:
         pass
 
-    frontend_base = getattr(settings, 'FRONTEND_URL', 'https://app.mespms.com').rstrip('/')
+    frontend_base = getattr(settings, 'FRONTEND_URL', 'https://malasakitsystems.com').rstrip('/')
 
     # Invalidate previous unused tokens for this appointment
     RebookingLink.objects.filter(appointment=appointment, is_used=False).update(is_used=True, used_at=timezone.now())
