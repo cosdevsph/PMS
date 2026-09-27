@@ -33,7 +33,7 @@ export const Hero: React.FC = () => {
       {/* Content */}
       <div className="relative z-10 max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 pt-32 sm:pt-40 lg:pt-0 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-12 items-center">
-          
+
           {/* Left Column - Text Content */}
           <div className="text-center lg:text-left lg:col-span-6 xl:col-span-5">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.1] font-display">
@@ -52,19 +52,15 @@ export const Hero: React.FC = () => {
             <div className="w-full max-w-2xl xl:max-w-3xl relative">
               {/* Decorative background glow for video */}
               <div className="absolute -inset-4 bg-gradient-to-r from-healing-mint/30 to-care-blue/30 rounded-[3rem] blur-2xl opacity-50 animate-pulse pointer-events-none"></div>
-              
+
               <div className="bg-white/10 backdrop-blur-md rounded-[2.5rem] p-4 sm:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.15)] border border-white/20 relative z-10 transition-all hover:shadow-[0_8px_40px_rgb(0,0,0,0.25)] w-full">
                 <div className="aspect-video bg-gray-900 rounded-3xl overflow-hidden relative group shadow-inner">
-                  {/* Placeholder for Video */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white flex-col z-0">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 backdrop-blur-sm cursor-pointer border border-white/10">
-                      <PlayCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white translate-x-0.5" />
-                    </div>
-                    <p className="text-gray-300 font-medium text-sm sm:text-base tracking-wide">What is Malasakit?</p>
-                  </div>
-                  {/* The actual video tag */}
-                  <video className="w-full h-full object-cover relative z-10 opacity-0" controls>
-                    <source src="" type="video/mp4" />
+                  <video
+                    className="w-full h-full object-cover relative z-10"
+                    controls
+                    preload="metadata"
+                  >
+                    <source src="/videos/Malasakit%20-Landing.mp4" type="video/mp4" />
                     Your browser does not support the video tag.
                   </video>
                 </div>
