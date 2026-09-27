@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { PlayCircle } from 'lucide-react';
 
 export const Hero: React.FC = () => {
   return (
