@@ -70,7 +70,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     title: '',
     status: 'OPEN' as any,
     payer: '' as any,
-    approvedSessions: '' as number | '',
+    approvedSessions: 1 as number | '',
+    packageCost: '' as number | '',
     isUnlimited: false,
     referredBy: '',
     referralInfo: '',
@@ -153,6 +154,17 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         patient_case: '',
         practitioner: defaultPractitionerId ?? '',
         service: '',
+      });
+      setIsCreatingInlineCase(false);
+      setInlineCaseData({
+        title: '',
+        status: 'OPEN',
+        payer: '',
+        approvedSessions: 1,
+        packageCost: '',
+        isUnlimited: false,
+        referredBy: '',
+        referralInfo: '',
       });
       setChiefComplaint('');
       setNotes('');
@@ -311,14 +323,20 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
       if (isCreatingInlineCase) {
         try {
+          const sessionsNum = inlineCaseData.isUnlimited ? undefined : (inlineCaseData.approvedSessions === '' ? 1 : Number(inlineCaseData.approvedSessions));
+          const hasPackage = inlineCaseData.isUnlimited || (typeof sessionsNum === 'number' && sessionsNum >= 2);
+          const packageCostNum = (hasPackage && inlineCaseData.packageCost !== '') ? Number(inlineCaseData.packageCost) : undefined;
+
           const savedCase = await createPatientCase({
             patient: Number(formData.patient),
             title: inlineCaseData.title,
             status: inlineCaseData.status,
             primary_practitioner: formData.practitioner ? Number(formData.practitioner) : undefined,
             payer: inlineCaseData.payer || undefined,
-            approved_sessions: inlineCaseData.isUnlimited ? undefined : (inlineCaseData.approvedSessions || undefined),
+            approved_sessions: sessionsNum,
             is_unlimited: inlineCaseData.isUnlimited,
+            session_source: hasPackage ? 'PACKAGE' : 'MANUAL',
+            package_cost: packageCostNum,
             referred_by: inlineCaseData.referredBy || undefined,
             referral_info: inlineCaseData.referralInfo || undefined,
           });
@@ -546,24 +564,42 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                       <div className="bg-sky-100 border border-sky-200 rounded-xl p-4 space-y-4 shadow-sm">
                         <div className="flex items-center justify-between">
                           <h4 className="text-sm font-semibold text-gray-900">Create New Case</h4>
-                          <button type="button" onClick={() => setIsCreatingInlineCase(false)} className="text-xs font-medium text-gray-500 hover:text-gray-700">Cancel</button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCreatingInlineCase(false);
+                              setInlineCaseData({
+                                title: '',
+                                status: 'OPEN',
+                                payer: '',
+                                approvedSessions: 1,
+                                packageCost: '',
+                                isUnlimited: false,
+                                referredBy: '',
+                                referralInfo: '',
+                              });
+                            }}
+                            className="text-xs font-medium text-gray-500 hover:text-gray-700"
+                          >
+                            Cancel
+                          </button>
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-gray-700 mb-1">Case Title <span className="text-red-500">*</span></label>
-                          <input type="text" value={inlineCaseData.title} onChange={e => setInlineCaseData({...inlineCaseData, title: e.target.value})} className={`${inputBase} ${errors.patient_case ? inputError : ''}`} placeholder="e.g. Low Back Pain" />
+                          <input type="text" value={inlineCaseData.title} onChange={e => setInlineCaseData({ ...inlineCaseData, title: e.target.value })} className={`${inputBase} ${errors.patient_case ? inputError : ''}`} placeholder="e.g. Low Back Pain" />
                           {errors.patient_case && <p className="mt-1 text-xs text-red-600">{errors.patient_case}</p>}
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Status</label>
-                            <select value={inlineCaseData.status} onChange={e => setInlineCaseData({...inlineCaseData, status: e.target.value})} className={inputBase}>
+                            <select value={inlineCaseData.status} onChange={e => setInlineCaseData({ ...inlineCaseData, status: e.target.value })} className={inputBase}>
                               <option value="OPEN">Active</option>
                               <option value="DISCHARGED">Discharged</option>
                             </select>
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Payer</label>
-                            <select value={inlineCaseData.payer} onChange={e => setInlineCaseData({...inlineCaseData, payer: e.target.value})} className={inputBase}>
+                            <select value={inlineCaseData.payer} onChange={e => setInlineCaseData({ ...inlineCaseData, payer: e.target.value })} className={inputBase}>
                               <option value="">Self-Pay</option>
                               <option value="HMO">HMO / Insurance</option>
                               <option value="CORPORATE">Corporate</option>
@@ -571,40 +607,80 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                           </div>
                         </div>
                         <div className="grid grid-cols-1 gap-3">
-                          {selectedService?.is_package ? (
-                            <div className="bg-sky-50 border border-sky-200 rounded-md p-3">
-                              <div className="flex items-center gap-2 mb-2">
-                                <label className="block text-xs font-semibold text-gray-700">Approved Sessions</label>
-                                <span className="text-xs text-gray-500 font-mono">[ {inlineCaseData.approvedSessions || 0} ]</span>
-                              </div>
-                              <div className="text-sm font-semibold text-sky-900 mb-1">
-                                Package Allocation: {selectedService.session_allocation} sessions
-                              </div>
-                              <p className="text-xs text-sky-700">
-                                ⓘ This Case will use the package session allocation of {selectedService.session_allocation} sessions.
-                              </p>
-                              {/* Keep inputs hidden to maintain state if they switch services later */}
-                              <input type="hidden" value={inlineCaseData.approvedSessions} />
-                            </div>
-                          ) : (
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 mb-1">Approved Sessions</label>
-                              <input type="number" disabled={inlineCaseData.isUnlimited} value={inlineCaseData.approvedSessions} onChange={e => setInlineCaseData({...inlineCaseData, approvedSessions: e.target.value ? Number(e.target.value) : ''})} className={inputBase} min={1} placeholder={inlineCaseData.isUnlimited ? 'Unlimited' : ''} />
-                              <label className="flex items-center gap-2 mt-1.5 cursor-pointer">
-                                <input type="checkbox" checked={inlineCaseData.isUnlimited} onChange={e => setInlineCaseData({...inlineCaseData, isUnlimited: e.target.checked})} className="rounded border-gray-300 text-sky-600 focus:ring-sky-500" />
-                                <span className="text-xs text-gray-600">Unlimited sessions</span>
-                              </label>
-                            </div>
-                          )}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Pre-Approved Sessions</label>
+                            <input
+                              type="number"
+                              disabled={inlineCaseData.isUnlimited}
+                              value={inlineCaseData.isUnlimited ? '' : inlineCaseData.approvedSessions}
+                              onChange={e => {
+                                const val = e.target.value === '' ? '' : Number(e.target.value);
+                                setInlineCaseData(prev => ({
+                                  ...prev,
+                                  approvedSessions: val,
+                                  packageCost: (prev.isUnlimited || (typeof val === 'number' && val >= 2)) ? prev.packageCost : ''
+                                }));
+                              }}
+                              className={inputBase}
+                              min={1}
+                              placeholder={inlineCaseData.isUnlimited ? 'Unlimited' : '1'}
+                            />
+                            <label className="flex items-center gap-2 mt-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={inlineCaseData.isUnlimited}
+                                onChange={e => {
+                                  const checked = e.target.checked;
+                                  setInlineCaseData(prev => ({
+                                    ...prev,
+                                    isUnlimited: checked,
+                                    packageCost: (!checked && (typeof prev.approvedSessions !== 'number' || prev.approvedSessions < 2)) ? '' : prev.packageCost
+                                  }));
+                                }}
+                                className="rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                              />
+                              <span className="text-xs text-gray-600">Unlimited sessions</span>
+                            </label>
+                          </div>
                         </div>
+
+                        {/* ── Price of Case Package: appears if unlimited sessions or pre-approved sessions is 2 or higher ── */}
+                        {(inlineCaseData.isUnlimited || (typeof inlineCaseData.approvedSessions === 'number' && inlineCaseData.approvedSessions >= 2)) && (
+                          <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                              Price of Case Package <span className="text-xs font-normal text-gray-500">(Manual Entry)</span>
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">₱</span>
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={inlineCaseData.packageCost}
+                                onChange={e => setInlineCaseData(prev => ({
+                                  ...prev,
+                                  packageCost: e.target.value === '' ? '' : Number(e.target.value)
+                                }))}
+                                className={`${inputBase} pl-8`}
+                                placeholder="e.g., 5000"
+                              />
+                            </div>
+                            <p className="mt-1 text-[11px] text-gray-500">
+                              {inlineCaseData.isUnlimited
+                                ? 'Total package price for unlimited sessions.'
+                                : `Total package price for all ${inlineCaseData.approvedSessions} pre-approved sessions.`}
+                            </p>
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Referred By</label>
-                            <input type="text" value={inlineCaseData.referredBy} onChange={e => setInlineCaseData({...inlineCaseData, referredBy: e.target.value})} className={inputBase} placeholder="Doctor Name" />
+                            <input type="text" value={inlineCaseData.referredBy} onChange={e => setInlineCaseData({ ...inlineCaseData, referredBy: e.target.value })} className={inputBase} placeholder="Doctor Name" />
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Referral Info</label>
-                            <input type="text" value={inlineCaseData.referralInfo} onChange={e => setInlineCaseData({...inlineCaseData, referralInfo: e.target.value})} className={inputBase} placeholder="Hospital/Clinic" />
+                            <input type="text" value={inlineCaseData.referralInfo} onChange={e => setInlineCaseData({ ...inlineCaseData, referralInfo: e.target.value })} className={inputBase} placeholder="Hospital/Clinic" />
                           </div>
                         </div>
                       </div>
@@ -615,7 +691,14 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                           <select name="patient_case" value={formData.patient_case} onChange={handleCaseChange} className={`${inputBase} pl-9 ${errors.patient_case ? inputError : ''}`}>
                             <option value="">Select a case…</option>
                             {patientCases.map(c => (
-                              <option key={c.id} value={c.id}>{c.title} — {c.status}</option>
+                              <option key={c.id} value={c.id}>
+                                {c.title} — {c.status}
+                                {c.is_unlimited
+                                  ? ' (Unlimited)'
+                                  : c.approved_sessions
+                                    ? ` (${c.completed_sessions}/${c.approved_sessions} sessions${c.package_cost ? ` • ₱${Number(c.package_cost).toLocaleString()}` : ''})`
+                                    : ''}
+                              </option>
                             ))}
                             <option value="__create__">+ Create New Case</option>
                           </select>

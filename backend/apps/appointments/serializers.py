@@ -90,10 +90,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 
     def get_is_covered_by_package(self, obj) -> bool:
-        """Check if this appointment belongs to a package case."""
+        """Check if this appointment is covered by a pre-approved session or legacy package."""
         if obj.patient_case_id and obj.patient_case.session_source == 'PACKAGE':
             return True
-        return False
+        return obj.session_logs.filter(action='USED').exists()
         
     def get_package_invoice_id(self, obj) -> int | None:
         if obj.patient_case_id and obj.patient_case.session_source == 'PACKAGE':
@@ -248,6 +248,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {'service': 'This service does not belong to your clinic.'}
                     )
+
+        # Disallow booking new appointments with legacy package services
+        if self.instance is None and service and getattr(service, 'is_package', False):
+            raise serializers.ValidationError(
+                {'service': 'Package services cannot be booked for new appointments. Please select an actual clinic service.'}
+            )
 
         # Enforce case assignment for new internal appointments
         if self.instance is None:

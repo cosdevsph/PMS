@@ -440,6 +440,11 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
     phone = models.CharField(max_length=15, blank=True, validators=[validate_international_phone])
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    is_permanently_deleted = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='True when an admin permanently purges this user. Releases clinician allocation while preserving historical records.'
+    )
     
     # Password change tracking
     password_changed = models.BooleanField(default=False)
@@ -613,6 +618,19 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
     @property
     def is_staff_member(self):
         return 'STAFF' in (self.roles or [self.role])
+
+    @property
+    def subscription(self):
+        """
+        Return the authoritative subscription for this user.
+        If user belongs to a clinic, resolves to main clinic's subscription.
+        Falls back to user's created subscriptions.
+        """
+        if self.clinic:
+            main = self.clinic.main_clinic
+            if hasattr(main, 'subscription') and main.subscription:
+                return main.subscription
+        return self.created_subscriptions.first() if hasattr(self, 'created_subscriptions') else None
     
     @property
     def needs_password_change(self):

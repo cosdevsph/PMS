@@ -4,11 +4,14 @@ import toast from 'react-hot-toast';
 import {
   subscriptionApi,
   type CheckoutSessionResponse,
+  type CreateCheckoutPayload,
+  type PlanCatalogItem,
   type SubscriptionStatusResponse,
 } from '../services/subscription.api';
 
 export const SUBSCRIPTION_QUERY_KEYS = {
   status: ['subscription', 'status'] as const,
+  plans: ['subscription', 'plans'] as const,
 };
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
@@ -26,7 +29,16 @@ export const useSubscriptionStatus = (enabled = true) => {
     queryKey: SUBSCRIPTION_QUERY_KEYS.status,
     queryFn: subscriptionApi.getStatus,
     enabled,
-    staleTime: 60_000,
+    staleTime: 30_000,
+    retry: 1,
+  });
+};
+
+export const useSubscriptionPlans = () => {
+  return useQuery<PlanCatalogItem[]>({
+    queryKey: SUBSCRIPTION_QUERY_KEYS.plans,
+    queryFn: subscriptionApi.getPlans,
+    staleTime: 300_000,
     retry: 1,
   });
 };
@@ -36,8 +48,8 @@ export const useSubscriptionStatus = (enabled = true) => {
  * PayMongo hosted checkout page. Subscription activation happens via webhook.
  */
 export const useCreateCheckout = () => {
-  return useMutation<CheckoutSessionResponse, unknown, void>({
-    mutationFn: subscriptionApi.createCheckout,
+  return useMutation<CheckoutSessionResponse, unknown, CreateCheckoutPayload | void>({
+    mutationFn: (payload) => subscriptionApi.createCheckout(payload || undefined),
     onSuccess: (data) => {
       // Full page redirect to PayMongo checkout (GCash / Card)
       window.location.href = data.checkout_url;
@@ -50,6 +62,7 @@ export const useCreateCheckout = () => {
 
 export const useSubscription = () => {
   const statusQuery = useSubscriptionStatus(true);
+  const plansQuery = useSubscriptionPlans();
   const checkoutMutation = useCreateCheckout();
 
   return {
@@ -59,6 +72,8 @@ export const useSubscription = () => {
     isError: statusQuery.isError,
     error: statusQuery.error,
     refresh: statusQuery.refetch,
+    plans: plansQuery.data || [],
+    isLoadingPlans: plansQuery.isLoading,
     startCheckout: checkoutMutation.mutateAsync,
     isStartingCheckout: checkoutMutation.isPending,
   };

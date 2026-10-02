@@ -153,7 +153,7 @@ export const WorkspaceRightPanel = () => {
                   <div className="flex items-center">
                     {(() => {
                       const currentCase = cases.find(c => c.id === selectedCaseId);
-                      if (currentCase && currentCase.session_source === 'PACKAGE') {
+                      if (currentCase && (currentCase.approved_sessions !== null || currentCase.completed_sessions > 0)) {
                         return (
                           <span className="text-xs 2xl:text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-md border border-slate-200">
                             {currentCase.is_unlimited || !currentCase.approved_sessions

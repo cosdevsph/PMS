@@ -326,6 +326,7 @@ class PortalLinkPublicSerializer(serializers.ModelSerializer):
             is_active=True,
             show_in_portal=True,
             is_deleted=False,
+            is_package=False,
         ).order_by('discipline', 'name')
 
         if not services.exists():

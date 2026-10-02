@@ -45,10 +45,18 @@ export const updateStaff = async (
 };
 
 /**
- * Soft delete staff member
+ * Soft delete staff member (deactivates account; retains clinician seat allocation)
  */
 export const deleteStaff = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/users/${id}/`);
+};
+
+/**
+ * Permanently purge staff member account to release clinician allocation.
+ * Preserves all historical appointments, clinical notes, documents, and invoices.
+ */
+export const permanentDeleteStaff = async (id: number): Promise<void> => {
+  await axiosInstance.post(`/users/${id}/permanent-delete/`);
 };
 
 /**

@@ -5,6 +5,7 @@ import {
   createStaff,
   updateStaff,
   deleteStaff,
+  permanentDeleteStaff,
   toggleStaffStatus,
 } from '../services/StaffService';
 import type { StaffMember, CreateStaffData } from '../types/staff.types';
@@ -66,8 +67,10 @@ export const useStaffManagement = () => {
         icon: '📧',
       });
     } catch (err: any) {
-      const message = err.response?.data?.detail || 'Failed to create staff member';
-      toast.error(message);
+      if (err.response?.data?.error !== 'CLINICIAN_LIMIT_REACHED') {
+        const message = err.response?.data?.detail || 'Failed to create staff member';
+        toast.error(message);
+      }
       throw err;
     }
   };
@@ -107,8 +110,10 @@ export const useStaffManagement = () => {
     } catch (err: any) {
       console.error('[useStaffManagement] Update error:', err);
       console.error('[useStaffManagement] Error response:', err?.response?.data);
-      const message = err.response?.data?.detail || 'Failed to update staff member';
-      toast.error(message);
+      if (err.response?.data?.error !== 'CLINICIAN_LIMIT_REACHED') {
+        const message = err.response?.data?.detail || 'Failed to update staff member';
+        toast.error(message);
+      }
       throw err;
     }
   };
@@ -118,9 +123,24 @@ export const useStaffManagement = () => {
       await deleteStaff(id);
       setStaff((prev) => prev.filter((s) => s.id !== id));
       queryClient.invalidateQueries({ queryKey: ['practitioners'] });
+      queryClient.invalidateQueries({ queryKey: ['subscription', 'status'] });
       toast.success('Staff member removed successfully!');
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to remove staff member';
+      toast.error(message);
+      throw err;
+    }
+  };
+
+  const handlePermanentDeleteStaff = async (id: number) => {
+    try {
+      await permanentDeleteStaff(id);
+      setStaff((prev) => prev.filter((s) => s.id !== id));
+      queryClient.invalidateQueries({ queryKey: ['practitioners'] });
+      queryClient.invalidateQueries({ queryKey: ['subscription', 'status'] });
+      toast.success('Account permanently deleted. Clinician allocation released.');
+    } catch (err: any) {
+      const message = err.response?.data?.detail || 'Failed to permanently delete staff member';
       toast.error(message);
       throw err;
     }
@@ -131,11 +151,14 @@ export const useStaffManagement = () => {
       const updated = await toggleStaffStatus(id, isActive);
       setStaff((prev) => prev.map((s) => (s.id === id ? updated : s)));
       queryClient.invalidateQueries({ queryKey: ['practitioners'] });
+      queryClient.invalidateQueries({ queryKey: ['subscription', 'status'] });
       toast.success(`Staff member ${isActive ? 'activated' : 'deactivated'} successfully!`);
       return updated;
     } catch (err: any) {
-      const message = err.response?.data?.detail || 'Failed to update staff status';
-      toast.error(message);
+      if (err.response?.data?.error !== 'CLINICIAN_LIMIT_REACHED') {
+        const message = err.response?.data?.detail || 'Failed to update staff status';
+        toast.error(message);
+      }
       throw err;
     }
   };
@@ -147,6 +170,7 @@ export const useStaffManagement = () => {
     createStaff: handleCreateStaff,
     updateStaff: handleUpdateStaff,
     deleteStaff: handleDeleteStaff,
+    permanentDeleteStaff: handlePermanentDeleteStaff,
     toggleStaffStatus: handleToggleStatus,
     refreshStaff: fetchStaff,
   };

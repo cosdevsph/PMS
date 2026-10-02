@@ -214,9 +214,33 @@ def _confirm_portal_booking(booking, confirmed_by_user):
     booking.appointment = appointment
     booking.save(update_fields=['appointment'])
 
-    # ── 4. Auto-populate case for package services ────────────────────────
-    from apps.patients.services.case_service import auto_populate_package_case
-    auto_populate_package_case(appointment)
+    # ── 4. Link or create PatientCase and consume pre-approved session if available ──
+    from apps.patients.services.case_service import consume_case_session
+    if not appointment.patient_case:
+        # Find active open case for this patient
+        existing_case = PatientCase.objects.filter(
+            patient=patient,
+            status='OPEN',
+            is_archived=False,
+        ).order_by('-created_at').first()
+
+        if not existing_case:
+            service_name = booking.service.name if booking.service else 'General Consultation'
+            existing_case = PatientCase.objects.create(
+                patient=patient,
+                title=f"{service_name} Care",
+                description=f"Auto-generated case from portal booking #{booking.reference_number}",
+                status='OPEN',
+                primary_practitioner=booking.practitioner,
+                payer='PRIVATE',
+                session_source='MANUAL',
+            )
+
+        appointment.patient_case = existing_case
+        appointment.save(update_fields=['patient_case'])
+
+    # Attempt to consume a pre-approved session from the case if available
+    consume_case_session(appointment, user=confirmed_by_user)
 
     return patient, appointment
 
@@ -1820,6 +1844,7 @@ class PublicAvailableSlotsView(APIView):
             clinic=main_clinic,
             is_active=True,
             show_in_portal=True,
+            is_package=False,
         )
 
         from datetime import time, date as date_type, timedelta, datetime

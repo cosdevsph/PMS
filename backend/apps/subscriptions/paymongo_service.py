@@ -62,43 +62,77 @@ class PayMongoError(Exception):
     """Raised on any PayMongo API or configuration error."""
 
 
-def create_checkout_session(user, frontend_url: str | None = None) -> dict[str, Any]:
+def create_checkout_session(
+    user,
+    plan_code: str = 'STARTER',
+    billing_cycle: str = 'MONTHLY',
+    additional_branches: int = 0,
+    frontend_url: str | None = None,
+) -> dict[str, Any]:
     """
-    Create a PayMongo Checkout Session for the monthly subscription plan.
+    Create a PayMongo Checkout Session for the selected plan and billing cycle.
 
     Returns:
         {
             'checkout_id': 'cs_xxxx',
             'checkout_url': 'https://checkout.paymongo.com/...',
+            'total_pesos': Decimal(...),
+            'total_centavos': int(...),
         }
     """
+    from .plans import calculate_subscription_amount, PLAN_CATALOG
+
+    calc = calculate_subscription_amount(
+        plan_code=plan_code,
+        billing_cycle=billing_cycle,
+        additional_branches=additional_branches,
+    )
+
     base = (frontend_url or os.getenv('FRONTEND_URL', 'http://localhost:3000')).rstrip('/')
-    amount = int(os.getenv('SUBSCRIPTION_PRICE', 39900))  # centavos (₱399.00)
-    amount_pesos = amount / 100
+    
+    plan_meta = PLAN_CATALOG.get(calc['plan_code'], {})
+    clinician_str = f"up to {plan_meta.get('clinician_limit')} clinicians" if plan_meta.get('clinician_limit') else "unlimited clinicians"
+
+    line_items = [
+        {
+            'currency': 'PHP',
+            'amount': calc['base_plan_centavos'],
+            'description': f"{calc['plan_name']} ({calc['billing_cycle'].capitalize()}) — Full feature access, {clinician_str}, 12-month commitment.",
+            'name': f"Malasakit PMS — {calc['plan_name']} ({calc['billing_cycle'].capitalize()})",
+            'quantity': 1,
+        }
+    ]
+
+    if additional_branches > 0:
+        line_items.append({
+            'currency': 'PHP',
+            'amount': calc['additional_branch_centavos'],
+            'description': f"{additional_branches} add-on branch location(s) for {calc['plan_name']} ({calc['billing_cycle'].capitalize()})",
+            'name': f"Additional Branch Add-on ({additional_branches} branch{'es' if additional_branches > 1 else ''})",
+            'quantity': 1,
+        })
+
+    clinic_id = ''
+    if getattr(user, 'clinic', None):
+        clinic_id = str(user.clinic.main_clinic.pk)
 
     payload = {
         'data': {
             'attributes': {
-                'line_items': [
-                    {
-                        'currency': 'PHP',
-                        'amount': amount,
-                        'description': 'Full access to Malasakit Medical Systems for 30 days',
-                        'name': 'Malasakit Monthly Subscription',
-                        'quantity': 1,
-                    }
-                ],
+                'line_items': line_items,
                 'payment_method_types': ['card', 'gcash', 'paymaya'],
                 'success_url': f'{base}/setup/account/subscription?payment=success',
                 'cancel_url': f'{base}/setup/account/subscription?payment=cancelled',
-                'description': f'Malasakit Medical Systems Monthly Plan — ₱{amount_pesos:.0f}/month',
+                'description': f"Malasakit PMS {calc['plan_name']} ({calc['billing_cycle'].capitalize()}) — Total: ₱{calc['total_pesos']:,}",
                 'send_email_receipt': True,
                 'show_description': True,
                 'show_line_items': True,
                 'metadata': {
-                    # Stored in webhook payload so backend can identify the user
-                    # without trusting any frontend-submitted value.
                     'user_id': str(user.pk),
+                    'clinic_id': clinic_id,
+                    'plan': calc['plan_code'],
+                    'billing_cycle': calc['billing_cycle'],
+                    'additional_branches': str(additional_branches),
                 },
             }
         }
@@ -114,8 +148,13 @@ def create_checkout_session(user, frontend_url: str | None = None) -> dict[str, 
     if not checkout_url:
         raise PayMongoError('PayMongo did not return a checkout_url.')
 
-    logger.info('Created checkout session %s for user %s', checkout_id, user.pk)
-    return {'checkout_id': checkout_id, 'checkout_url': checkout_url}
+    logger.info('Created checkout session %s for user %s (plan=%s, cycle=%s, extra_branches=%s)', checkout_id, user.pk, calc['plan_code'], calc['billing_cycle'], additional_branches)
+    return {
+        'checkout_id': checkout_id,
+        'checkout_url': checkout_url,
+        'total_pesos': calc['total_pesos'],
+        'total_centavos': calc['total_centavos'],
+    }
 
 
 def verify_webhook_signature(raw_body: bytes, signature_header: str | None) -> bool:

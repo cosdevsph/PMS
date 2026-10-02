@@ -300,7 +300,8 @@ export const PatientCasesPage = () => {
               referral_info: data.referralInfo,
               session_source: data.sessionSource,
               approved_sessions: data.isUnlimited ? undefined : data.approvedSessions || undefined,
-              is_unlimited: data.isUnlimited
+              is_unlimited: data.isUnlimited,
+              package_cost: data.packageCost,
             });
             await refreshCases();
             setIsCreateCaseOpen(false);
@@ -333,7 +334,8 @@ export const PatientCasesPage = () => {
               referral_info: data.referralInfo,
               session_source: data.sessionSource,
               approved_sessions: data.isUnlimited ? undefined : data.approvedSessions || undefined,
-              is_unlimited: data.isUnlimited
+              is_unlimited: data.isUnlimited,
+              package_cost: data.packageCost,
             });
             await refreshCases();
             setIsEditCaseOpen(false);

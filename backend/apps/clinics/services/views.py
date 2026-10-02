@@ -101,8 +101,8 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='portal_services')
     def portal_services(self, request):
-        """Return only services visible in the patient portal."""
-        qs = self.get_queryset().filter(is_active=True, show_in_portal=True)
+        """Return only services visible in the patient portal (excludes legacy packages)."""
+        qs = self.get_queryset().filter(is_active=True, show_in_portal=True, is_package=False)
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 

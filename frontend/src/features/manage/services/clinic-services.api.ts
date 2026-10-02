@@ -23,8 +23,10 @@ export interface ClinicService {
   sort_order:       number;
   is_active:        boolean;
   show_in_portal:   boolean;
-  is_package:       boolean;
-  session_allocation: number | null;
+  /** @deprecated Legacy package flag — new services cannot be packages */
+  is_package?:       boolean;
+  /** @deprecated Legacy package session allocation */
+  session_allocation?: number | null;
   /** Practitioner discipline this service is assigned to */
   discipline:       string;
   /** Human-readable discipline label returned by the API */
@@ -43,8 +45,10 @@ export interface ClinicServicePayload {
   color_hex:        string;
   is_active:        boolean;
   show_in_portal:   boolean;
-  is_package:       boolean;
-  session_allocation: number | null;
+  /** @deprecated Legacy package flag */
+  is_package?:       boolean;
+  /** @deprecated Legacy package session allocation */
+  session_allocation?: number | null;
   /** Practitioner discipline — required */
   discipline:       string;
 }

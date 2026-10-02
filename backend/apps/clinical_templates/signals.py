@@ -35,14 +35,19 @@ def consume_session_on_note_save(sender, instance, created, **kwargs):
         return
         
     # Deduplication check: Has this appointment already consumed a session?
-    # This prevents duplicate consumption if multiple notes are added to the same appointment.
+    # This prevents duplicate consumption if multiple notes are added to the same appointment,
+    # or if the session was already consumed at appointment creation.
     if SessionConsumptionLog.objects.filter(
         appointment=appointment,
         patient_case=patient_case,
         action='USED'
     ).exists():
         return
-        
+
+    # Check if case has available pre-approved sessions
+    if not patient_case.is_unlimited and (patient_case.approved_sessions is None or patient_case.remaining_sessions <= 0):
+        return
+
     with transaction.atomic():
         patient_case = PatientCase.objects.select_for_update().get(id=patient_case.id)
         

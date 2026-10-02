@@ -191,6 +191,13 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Check if appointment is covered by a pre-approved session
+        from apps.patients.models import SessionConsumptionLog
+        is_covered_session = SessionConsumptionLog.objects.filter(
+            appointment=appt,
+            action='USED'
+        ).exists()
+
         # If it's a Package Case based on the appointment service, we use Master Invoice logic
         is_package = False
         if appt.patient_case:
@@ -291,10 +298,13 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
                         if matching_service:
                             description = matching_service.name
-                            unit_price  = Decimal(str(matching_service.price))
+                            unit_price  = Decimal('0') if is_covered_session else Decimal(str(matching_service.price))
                         else:
                             if appt.practitioner and hasattr(appt.practitioner, 'consultation_fee'):
-                                unit_price = Decimal(str(appt.practitioner.consultation_fee or 0))
+                                unit_price = Decimal('0') if is_covered_session else Decimal(str(appt.practitioner.consultation_fee or 0))
+
+                        if is_covered_session and not is_package:
+                            description = f"{description} (Covered by Pre-Approved Session)"
 
                         InvoiceItem.objects.create(
                             invoice     = invoice,

@@ -11,7 +11,7 @@ export const useSessionLimitValidation = () => {
   const validateAndProceed = useCallback(async (
     patientCaseId: number | null | undefined, 
     onProceed: () => void,
-    serviceId?: number | null
+    _serviceId?: number | null
   ) => {
     if (!patientCaseId) {
       onProceed();
@@ -21,27 +21,9 @@ export const useSessionLimitValidation = () => {
       const response = await axiosInstance.get(`/patient-cases/${patientCaseId}/`);
       const ptCase: PatientCase = response.data;
 
-      let selectedService: any = null;
-      if (serviceId) {
-        try {
-          // Attempt to fetch the service to check if it's a package
-          const srvRes = await axiosInstance.get(`/clinic-services/${serviceId}/`);
-          selectedService = srvRes.data;
-        } catch (e) {
-          console.warn('Could not fetch service details for validation', e);
-        }
-      }
-      
-      let effectiveLimit = ptCase.approved_sessions;
-      let isUnlimited = ptCase.is_unlimited;
-      let isPackageOverride = false;
+      const effectiveLimit = ptCase.approved_sessions;
+      const isUnlimited = ptCase.is_unlimited;
 
-      if (selectedService?.is_package && selectedService.session_allocation != null) {
-        effectiveLimit = selectedService.session_allocation;
-        isUnlimited = false;
-        isPackageOverride = true;
-      }
-      
       if (!isUnlimited && effectiveLimit !== null) {
         const remaining = Math.max(0, effectiveLimit - ptCase.completed_sessions);
         if (remaining <= 0) {
@@ -49,7 +31,6 @@ export const useSessionLimitValidation = () => {
             ...ptCase,
             approved_sessions: effectiveLimit,
             remaining_sessions: remaining,
-            session_source: isPackageOverride ? 'PACKAGE' : ptCase.session_source
           });
           setPendingCallback(() => onProceed);
           setIsOpen(true);

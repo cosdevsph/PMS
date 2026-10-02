@@ -11,6 +11,7 @@ import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PractitionerRemovalModal } from './PractitionerRemovalModal';
+import { ClinicianLimitReachedModal, type ClinicianLimitInfo } from './ClinicianLimitReachedModal';
 import { getPractitionerRoleImpact } from '../../services/StaffService';
 import { emitPractitionerRemoved } from '@/events/practitionerEvents';
 import { useAuthStore } from '@/store/auth.store';
@@ -241,6 +242,10 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   const [removalLoading, setRemovalLoading]       = useState(false);
   const pendingPayloadRef = useRef<(CreateStaffData & { confirm_practitioner_removal?: boolean }) | null>(null);
 
+  // ── Clinician capacity limit modal state (Strict Sharp Corners) ────────────
+  const [showClinicianLimitModal, setShowClinicianLimitModal] = useState(false);
+  const [clinicianLimitInfo, setClinicianLimitInfo]           = useState<ClinicianLimitInfo | null>(null);
+
   // ── Discipline create-inline state ─────────────────────────────────────────
   const [showCreateDiscipline, setShowCreateDiscipline] = useState(false);
   const [newDisciplineLabel, setNewDisciplineLabel]     = useState('');
@@ -400,8 +405,23 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       await onSubmit(payload as CreateStaffData);
       handleClose();
     } catch (err: any) {
-      const data = err?.response?.data as Record<string, string | string[]> | undefined;
-      console.log('[DEBUG-MODAL] 400 Error Data:', data);
+      const data = err?.response?.data as Record<string, any> | undefined;
+      console.log('[DEBUG-MODAL] Error Data:', data);
+
+      if (data?.error === 'CLINICIAN_LIMIT_REACHED' || data?.code === 'CLINICIAN_LIMIT_REACHED') {
+        // Intercept clinician limit capacity error and trigger sharp geometric modal
+        setClinicianLimitInfo({
+          current_allocations: data.current_allocations,
+          allowed_allocations: data.allowed_allocations,
+          archived_allocations: data.archived_allocations,
+          archived_practitioners: data.archived_practitioners,
+          plan_code: data.plan_code,
+          detail: data.detail,
+        });
+        setShowClinicianLimitModal(true);
+        throw err;
+      }
+
       if (data) {
         const mapped: StaffFormErrors = {};
         const pick = (v: string | string[]) => (Array.isArray(v) ? v[0] : v);
@@ -1272,6 +1292,18 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
           }
         />
       )}
+
+      {/* ── Clinician Limit Capacity Modal (Strict Sharp Corners) ─────────── */}
+      <ClinicianLimitReachedModal
+        isOpen={showClinicianLimitModal}
+        onClose={() => setShowClinicianLimitModal(false)}
+        limitInfo={clinicianLimitInfo}
+        onUpgrade={() => {
+          setShowClinicianLimitModal(false);
+          handleClose();
+          window.location.href = '/setup?card=account&option=subscription';
+        }}
+      />
     </>
   );
 };

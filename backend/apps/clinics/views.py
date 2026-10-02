@@ -224,6 +224,23 @@ class ClinicViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Enforce subscription branch limit
+        from apps.subscriptions.services import check_branch_capacity, BranchLimitReachedException
+        try:
+            check_branch_capacity(main_clinic, additional_branches=1)
+        except BranchLimitReachedException as exc:
+            return Response(
+                {
+                    'error': 'BRANCH_LIMIT_REACHED',
+                    'detail': str(exc),
+                    'current_branches': exc.current_branches,
+                    'allowed_branches': exc.allowed_branches,
+                    'plan_code': exc.plan_code,
+                    'upgrade_required': True,
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         branch_data = request.data.copy()
         branch_data['parent_clinic']        = main_clinic.id
         branch_data['is_main_branch']       = False

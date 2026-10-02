@@ -17,6 +17,7 @@ export interface CreateCaseData {
   session_source?: string;
   approved_sessions?: number;
   is_unlimited?: boolean;
+  package_cost?: number;
 }
 
 export interface UpdateCaseData {
@@ -32,6 +33,7 @@ export interface UpdateCaseData {
   session_source?: string;
   approved_sessions?: number;
   is_unlimited?: boolean;
+  package_cost?: number;
 }
 
 export const getPatientCases = async (patientId: number, isArchived?: boolean): Promise<PatientCase[]> => {

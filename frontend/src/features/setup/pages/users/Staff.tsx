@@ -7,6 +7,7 @@ import type { CreateStaffData, StaffMember } from '../../types/staff.types';
 import { useAuthStore }            from '@/store/auth.store';
 import { usePermissions }          from '@/hooks/usePermissions';
 import { DeleteStaffModal }        from '../../components/modals/DeleteStaffModal';
+import { ClinicianLimitReachedModal, type ClinicianLimitInfo } from '../../components/modals/ClinicianLimitReachedModal';
 import { getPractitionerRoleImpact } from '../../services/StaffService';
 import type { PractitionerRoleImpact } from '../../types/staff.types';
 import toast from 'react-hot-toast';
@@ -19,13 +20,15 @@ export const Staff: React.FC = () => {
   const [staffToDelete, setStaffToDelete] = useState<StaffMember | null>(null);
   const [deleteImpact, setDeleteImpact] = useState<PractitionerRoleImpact | undefined>();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showClinicianLimitModal, setShowClinicianLimitModal] = useState(false);
+  const [clinicianLimitInfo, setClinicianLimitInfo]           = useState<ClinicianLimitInfo | null>(null);
 
   const currentUser = useAuthStore(s => s.user);
   const { isOwner, isManager, managerBranches } = usePermissions();
 
   const {
     staff, loading, error,
-    createStaff, updateStaff, deleteStaff,
+    createStaff, updateStaff, deleteStaff, permanentDeleteStaff,
     toggleStaffStatus, refreshStaff,
   } = useStaffManagement();
 
@@ -48,17 +51,21 @@ export const Staff: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async ({ isPermanent }: { isPermanent: boolean }) => {
     if (!staffToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteStaff(staffToDelete.id);
+      if (isPermanent) {
+        await permanentDeleteStaff(staffToDelete.id);
+      } else {
+        await deleteStaff(staffToDelete.id);
+        toast.success('Staff member archived successfully');
+      }
       setIsDeleteModalOpen(false);
       setStaffToDelete(null);
       setDeleteImpact(undefined);
-      toast.success('User deleted successfully');
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Failed to delete user');
+      toast.error(err.response?.data?.detail || 'Failed to remove user');
     } finally {
       setIsDeleting(false);
     }
@@ -169,7 +176,16 @@ export const Staff: React.FC = () => {
         currentUserId={currentUser?.id}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
-        onToggleStatus={async (id, isActive) => await toggleStaffStatus(id, isActive)}
+        onToggleStatus={async (id, isActive) => {
+          try {
+            await toggleStaffStatus(id, isActive);
+          } catch (err: any) {
+            if (err?.response?.data?.error === 'CLINICIAN_LIMIT_REACHED' || err?.response?.data?.code === 'CLINICIAN_LIMIT_REACHED') {
+              setClinicianLimitInfo(err.response.data);
+              setShowClinicianLimitModal(true);
+            }
+          }
+        }}
       />
 
       {/* ── Modal ── */}
@@ -193,8 +209,20 @@ export const Staff: React.FC = () => {
           staffName={`${staffToDelete.first_name} ${staffToDelete.last_name}`}
           impact={deleteImpact}
           isPractitioner={staffToDelete.roles?.includes('PRACTITIONER') || staffToDelete.role === 'PRACTITIONER'}
+          canPermanentDelete={isOwner}
         />
       )}
+
+      {/* ── Clinician Limit Capacity Modal (Strict Sharp Corners) ─────────── */}
+      <ClinicianLimitReachedModal
+        isOpen={showClinicianLimitModal}
+        onClose={() => setShowClinicianLimitModal(false)}
+        limitInfo={clinicianLimitInfo}
+        onUpgrade={() => {
+          setShowClinicianLimitModal(false);
+          window.location.href = '/setup?card=account&option=subscription';
+        }}
+      />
     </div>
   );
 };

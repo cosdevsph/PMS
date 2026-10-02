@@ -86,16 +86,26 @@ class ServiceSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        # Validate package requirements
-        is_package = attrs.get('is_package', getattr(self.instance, 'is_package', False))
-        session_allocation = attrs.get('session_allocation', getattr(self.instance, 'session_allocation', None))
-
-        if is_package:
-            if not session_allocation or session_allocation < 1:
+        # Prevent creation of new package services
+        if self.instance is None:
+            if attrs.get('is_package'):
                 raise serializers.ValidationError({
-                    'session_allocation': 'Session allocation must be at least 1 for a package service.'
+                    'is_package': 'Creating package services is no longer supported. Pre-Approved Sessions must be configured at the Case level.'
                 })
-        else:
+            attrs['is_package'] = False
             attrs['session_allocation'] = None
+        else:
+            # Prevent converting an existing non-package service into a package
+            if attrs.get('is_package') and not getattr(self.instance, 'is_package', False):
+                raise serializers.ValidationError({
+                    'is_package': 'Converting an existing service into a package is not supported. Pre-Approved Sessions must be configured at the Case level.'
+                })
+            # Preserve legacy package validation for existing package services if updated
+            if getattr(self.instance, 'is_package', False) and attrs.get('is_package', True):
+                session_allocation = attrs.get('session_allocation', self.instance.session_allocation)
+                if not session_allocation or session_allocation < 1:
+                    raise serializers.ValidationError({
+                        'session_allocation': 'Session allocation must be at least 1 for a package service.'
+                    })
 
         return attrs

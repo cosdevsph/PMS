@@ -269,20 +269,8 @@ export const AddRecurringAppointments: React.FC<Props> = ({
       try {
         const response = await axiosInstance.get(`/patient-cases/${appointment.patient_case}/`);
         const ptCase = response.data;
-        let effectiveLimit = ptCase.approved_sessions;
-        let isUnlimited = ptCase.is_unlimited;
-
-        if (selectedServiceId) {
-          try {
-            const srvRes = await axiosInstance.get(`/clinic-services/${selectedServiceId}/`);
-            if (srvRes.data?.is_package && srvRes.data?.session_allocation != null) {
-              effectiveLimit = srvRes.data.session_allocation;
-              isUnlimited = false;
-            }
-          } catch (e) {
-            console.warn('Could not fetch service details for validation', e);
-          }
-        }
+        const effectiveLimit = ptCase.approved_sessions;
+        const isUnlimited = ptCase.is_unlimited;
 
         if (!isUnlimited && effectiveLimit !== null) {
           const totalAfter = ptCase.completed_sessions + finalDates.length;

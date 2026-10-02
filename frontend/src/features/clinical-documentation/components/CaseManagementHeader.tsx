@@ -75,6 +75,9 @@ export const CaseManagementHeader: React.FC<CaseManagementHeaderProps> = ({
         referred_by: formData.referredBy || undefined,
         referral_info: formData.referralInfo || undefined,
         approved_sessions: formData.approvedSessions,
+        is_unlimited: formData.isUnlimited,
+        session_source: formData.sessionSource,
+        package_cost: formData.packageCost,
         status: formData.status,
       };
       const newCase = await createPatientCase(data);
@@ -98,6 +101,9 @@ export const CaseManagementHeader: React.FC<CaseManagementHeaderProps> = ({
         referred_by: formData.referredBy || undefined,
         referral_info: formData.referralInfo || undefined,
         approved_sessions: formData.approvedSessions,
+        is_unlimited: formData.isUnlimited,
+        session_source: formData.sessionSource,
+        package_cost: formData.packageCost,
         status: formData.status,
       };
       await updatePatientCase(editingCase.id, data);

@@ -13,6 +13,7 @@ export interface CaseFormData {
   alertNotes: string;
   sessionSource?: 'MANUAL' | 'PACKAGE' | 'HMO';
   approvedSessions?: number;
+  packageCost?: number;
   isUnlimited: boolean;
   referredBy: string;
   referralInfo: string;
@@ -42,7 +43,12 @@ export const CaseModal = ({ isOpen, onClose, mode, initialValues, onSave, practi
   
   // Session Management State
   const approvedSessionsRef = React.useRef<HTMLInputElement>(null);
-  const [approvedSessions, setApprovedSessions] = useState<number | ''>(initialValues?.approved_sessions ?? '');
+  const [approvedSessions, setApprovedSessions] = useState<number | ''>(
+    initialValues?.approved_sessions ?? (mode === 'create' ? 1 : '')
+  );
+  const [packageCost, setPackageCost] = useState<number | ''>(
+    initialValues?.package_cost ? Number(initialValues.package_cost) : ''
+  );
   const [isUnlimited, setIsUnlimited] = useState<boolean>(initialValues?.is_unlimited ?? false);
   
   // Progress (Read-Only for Edit mode)
@@ -62,7 +68,8 @@ export const CaseModal = ({ isOpen, onClose, mode, initialValues, onSave, practi
       setPrimaryPractitionerName(initialValues?.primary_practitioner_name ?? '');
       setPayer(initialValues?.payer ?? '');
       setAlertNotes(initialValues?.alert_notes ?? '');
-      setApprovedSessions(initialValues?.approved_sessions ?? '');
+      setApprovedSessions(initialValues?.approved_sessions ?? (mode === 'create' ? 1 : ''));
+      setPackageCost(initialValues?.package_cost ? Number(initialValues.package_cost) : '');
       setIsUnlimited(initialValues?.is_unlimited ?? false);
       setReferredBy(initialValues?.referred_by ?? '');
       setReferralInfo(initialValues?.referral_info ?? '');
@@ -176,18 +183,31 @@ export const CaseModal = ({ isOpen, onClose, mode, initialValues, onSave, practi
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-gray-100">
-                  <h4 className="text-sm font-semibold text-gray-800">Session Management</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-gray-800">Pre-Approved Sessions</h4>
+                    <span className="text-[10px] font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded px-1.5 py-0.5">CASE ALLOCATION</span>
+                  </div>
+                  <p className="text-xs text-gray-500 -mt-2">
+                    Specify the number of prepaid or approved sessions allocated for this case.
+                  </p>
                   
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Approved Sessions</label>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Pre-Approved Sessions</label>
                       <input
                         type="number"
-                        min="0"
+                        min="1"
+                        ref={approvedSessionsRef}
                         value={isUnlimited ? '' : approvedSessions}
-                        onChange={(e) => setApprovedSessions(e.target.value === '' ? '' : Number(e.target.value))}
-                        disabled={isUnlimited || initialValues?.session_source === 'PACKAGE'}
-                        placeholder={isUnlimited ? "Unlimited" : "Enter amount"}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                          setApprovedSessions(val);
+                          if (!isUnlimited && typeof val === 'number' && val < 2) {
+                            setPackageCost('');
+                          }
+                        }}
+                        disabled={isUnlimited}
+                        placeholder={isUnlimited ? "Unlimited sessions" : "1"}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:bg-gray-50 disabled:text-gray-500"
                       />
                     </div>
@@ -199,27 +219,62 @@ export const CaseModal = ({ isOpen, onClose, mode, initialValues, onSave, practi
                       id="unlimited-sessions"
                       checked={isUnlimited}
                       onChange={(e) => {
-                        setIsUnlimited(e.target.checked);
-                        if (e.target.checked) setApprovedSessions('');
+                        const checked = e.target.checked;
+                        setIsUnlimited(checked);
+                        if (checked) {
+                          setApprovedSessions('');
+                        } else {
+                          setApprovedSessions(1);
+                        }
                       }}
-                      disabled={initialValues?.session_source === 'PACKAGE'}
-                      className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500 disabled:opacity-50"
+                      className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500"
                     />
                     <label htmlFor="unlimited-sessions" className="text-sm font-medium text-gray-700">
-                      Unlimited Sessions
+                      Unlimited Sessions (No Quota Limit)
                     </label>
                   </div>
+
+                  {/* ── Price of Case Package: appears if unlimited sessions or pre-approved sessions is 2 or higher ── */}
+                  {(isUnlimited || (typeof approvedSessions === 'number' && approvedSessions >= 2)) && (
+                    <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Price of Case Package <span className="text-xs font-normal text-gray-400">(Manual Entry)</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">₱</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={packageCost}
+                          onChange={(e) => setPackageCost(e.target.value === '' ? '' : Number(e.target.value))}
+                          placeholder="e.g., 5000"
+                          className="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        {isUnlimited
+                          ? 'Total package price for unlimited sessions.'
+                          : `Total package price for all ${approvedSessions} pre-approved sessions.`}
+                      </p>
+                    </div>
+                  )}
 
                   {mode === 'edit' && !isUnlimited && (
                     <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
                       <div>
-                        <p className="text-xs text-gray-500 font-medium">Completed</p>
+                        <p className="text-xs text-gray-500 font-medium">Approved</p>
+                        <p className="text-sm font-semibold text-gray-900">{approvedSessions || 0}</p>
+                      </div>
+                      <div className="h-8 w-px bg-gray-300"></div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">Used</p>
                         <p className="text-sm font-semibold text-gray-900">{completedSessions}</p>
                       </div>
                       <div className="h-8 w-px bg-gray-300"></div>
                       <div>
                         <p className="text-xs text-gray-500 font-medium">Remaining</p>
-                        <p className="text-sm font-semibold text-gray-900">{remainingSessions ?? '—'}</p>
+                        <p className="text-sm font-semibold text-sky-700">{remainingSessions ?? '—'}</p>
                       </div>
                     </div>
                   )}
@@ -298,6 +353,10 @@ export const CaseModal = ({ isOpen, onClose, mode, initialValues, onSave, practi
                   toast.error('Case title is required');
                   return;
                 }
+                const sessionsNum = isUnlimited ? undefined : (approvedSessions === '' ? (mode === 'create' ? 1 : undefined) : approvedSessions);
+                const hasPackage = isUnlimited || (typeof sessionsNum === 'number' && sessionsNum >= 2);
+                const packageCostNum = (hasPackage && packageCost !== '') ? Number(packageCost) : undefined;
+
                 onSave({ 
                   title: title.trim(), 
                   status, 
@@ -305,8 +364,9 @@ export const CaseModal = ({ isOpen, onClose, mode, initialValues, onSave, practi
                   primaryPractitionerName, 
                   payer, 
                   alertNotes, 
-                  sessionSource: initialValues?.session_source ?? 'MANUAL',
-                  approvedSessions: isUnlimited ? undefined : (approvedSessions === '' ? undefined : approvedSessions),
+                  sessionSource: hasPackage ? 'PACKAGE' : (initialValues?.session_source ?? 'MANUAL'),
+                  approvedSessions: sessionsNum,
+                  packageCost: packageCostNum,
                   isUnlimited,
                   referredBy, 
                   referralInfo, 

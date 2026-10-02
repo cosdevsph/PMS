@@ -178,10 +178,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment.patient.home_branch = appointment.clinic
             appointment.patient.save(update_fields=['home_branch'])
 
-        # ── Auto-populate case for package services ─────────────────────────
+        # ── Consume pre-approved session if available ───────────────────────
         if not getattr(appointment, '_is_rebook', False):
-            from apps.patients.services.case_service import auto_populate_package_case
-            auto_populate_package_case(appointment)
+            from apps.patients.services.case_service import consume_case_session
+            consume_case_session(appointment, user=self.request.user)
 
         # ── Trigger booking confirmation (non-blocking) ───────────────────
         try:
@@ -213,11 +213,19 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 serializer.validated_data['reminder_sent'] = False
                 serializer.validated_data['reminder_sent_at'] = None
 
+        old_case = serializer.instance.patient_case
         appointment = serializer.save(updated_by=self.request.user)
+        new_case = appointment.patient_case
 
-        # ── Auto-populate case for package services if needed ───────────────
-        from apps.patients.services.case_service import auto_populate_package_case
-        auto_populate_package_case(appointment)
+        # ── Handle Case reassignment session consumption/restoration ─────────
+        if old_case != new_case:
+            from apps.patients.services.case_service import restore_case_session, consume_case_session
+            if old_case:
+                appointment.patient_case = old_case
+                restore_case_session(appointment, user=self.request.user, reason=f'Case reassigned to #{new_case.id if new_case else "None"}')
+                appointment.patient_case = new_case
+            if new_case:
+                consume_case_session(appointment, user=self.request.user)
 
         # ── Trigger DNA follow-up when status changes to DNA/NO_SHOW ──────
         new_status = appointment.status
@@ -410,6 +418,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             'status', 'cancelled_by', 'cancellation_reason',
             'cancelled_at', 'updated_by', 'updated_at',
         ])
+
+        # ── Restore consumed pre-approved session on cancellation ────────
+        from apps.patients.services.case_service import restore_case_session
+        restore_case_session(appointment, user=request.user, reason=f'Appointment cancelled: {reason}')
 
         logger.info(
             "Appointment #%s CANCELLED by %s. Reason: %s",
@@ -702,7 +714,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             logger.warning('Calendar WS emit failed for appt #%s: %s', appointment.id, exc)
 
     def perform_destroy(self, instance):
-        """Emit APPOINTMENT_DELETED before soft-deleting the appointment."""
+        """Emit APPOINTMENT_DELETED and restore pre-approved session before soft-deleting the appointment."""
+        from apps.patients.services.case_service import restore_case_session
+        restore_case_session(instance, user=self.request.user, reason=f'Appointment #{instance.id} deleted')
+
         try:
             main_clinic_id = get_main_clinic_id(self.request.user)
             if main_clinic_id:

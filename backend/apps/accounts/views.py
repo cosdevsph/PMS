@@ -1287,6 +1287,30 @@ class UserViewSet(viewsets.ModelViewSet):
                 logger.info(f"Incoming Payload: {request.data}")
                 logger.info(f"Assigned Branch: {branch.id if branch else None}")
 
+                # ── Subscription Clinician Limit Check ────────────────────────
+                if 'PRACTITIONER' in roles or role == 'PRACTITIONER':
+                    from apps.subscriptions.services import check_clinician_capacity, ClinicianLimitReachedException
+                    target_clinic = request.user.clinic
+                    if target_clinic:
+                        requested_branch_ids = serializer.validated_data.get('branch_ids') or request.data.get('branch_ids', [])
+                        allocations_needed = max(1, len(requested_branch_ids)) if requested_branch_ids else 1
+                        try:
+                            check_clinician_capacity(target_clinic, additional_allocations=allocations_needed)
+                        except ClinicianLimitReachedException as exc:
+                            return Response(
+                                {
+                                    'error': 'CLINICIAN_LIMIT_REACHED',
+                                    'detail': str(exc),
+                                    'current_allocations': exc.current_allocations,
+                                    'allowed_allocations': exc.allowed_allocations,
+                                    'archived_allocations': exc.archived_allocations,
+                                    'archived_practitioners': exc.archived_practitioners,
+                                    'plan_code': exc.plan_code,
+                                    'upgrade_required': True,
+                                },
+                                status=status.HTTP_403_FORBIDDEN,
+                            )
+
                 user = User.objects.create_user(
                     email=serializer.validated_data['email'],
                     password=temp_password,
@@ -1529,6 +1553,43 @@ class UserViewSet(viewsets.ModelViewSet):
                     {'detail': 'Cannot deactivate the last active Owner account.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+
+        # ── Subscription Clinician Entitlement Enforcement ────────────────────
+        was_practitioner = 'PRACTITIONER' in old_effective_roles or instance.role == 'PRACTITIONER'
+        will_be_practitioner = 'PRACTITIONER' in new_roles_requested or new_role_requested == 'PRACTITIONER'
+
+        old_branch_count = max(1, instance.branch_accesses.count()) if (was_practitioner and instance.branch_accesses.exists()) else (1 if was_practitioner else 0)
+
+        if will_be_practitioner:
+            incoming_branch_ids = serializer.validated_data.get('branch_ids')
+            if incoming_branch_ids is not None:
+                new_branch_count = max(1, len(incoming_branch_ids))
+            else:
+                new_branch_count = old_branch_count if was_practitioner else 1
+        else:
+            new_branch_count = 0
+
+        net_new_allocations = new_branch_count - old_branch_count
+        if net_new_allocations > 0:
+            target_clinic = instance.clinic or actor.clinic
+            if target_clinic:
+                from apps.subscriptions.services import check_clinician_capacity, ClinicianLimitReachedException
+                try:
+                    check_clinician_capacity(target_clinic, additional_allocations=net_new_allocations)
+                except ClinicianLimitReachedException as exc:
+                    return Response(
+                        {
+                            'error': 'CLINICIAN_LIMIT_REACHED',
+                            'detail': str(exc),
+                            'current_allocations': exc.current_allocations,
+                            'allowed_allocations': exc.allowed_allocations,
+                            'archived_allocations': exc.archived_allocations,
+                            'archived_practitioners': exc.archived_practitioners,
+                            'plan_code': exc.plan_code,
+                            'upgrade_required': True,
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
 
         self.perform_update(serializer)
         instance.refresh_from_db()
@@ -1781,6 +1842,81 @@ class UserViewSet(viewsets.ModelViewSet):
             {'detail': 'Staff member removed successfully.'},
             status=status.HTTP_204_NO_CONTENT
         )
+
+    @action(detail=True, methods=['post'], url_path='permanent-delete')
+    def permanent_delete(self, request, pk=None):
+        """
+        Permanently purge a user account to release clinician allocation.
+        Historical clinical records (Appointments, Notes, Documents, Invoices, Audit Logs)
+        remain preserved in the database.
+        """
+        actor = request.user
+        if not actor.is_admin:
+            return Response(
+                {'detail': 'Only clinic administrators can permanently delete accounts.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        instance = User.objects.filter(clinic=actor.clinic, pk=pk).first()
+        if not instance:
+            return Response(
+                {'detail': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if instance.id == actor.id:
+            return Response(
+                {'detail': 'You cannot permanently delete your own account.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if instance.is_permanently_deleted:
+            return Response(
+                {'detail': 'Account is already permanently deleted.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Owner protection
+        if 'ADMIN' in instance.get_effective_roles():
+            remaining_owners = User.objects.filter(
+                clinic=instance.clinic,
+                is_deleted=False,
+                is_active=True,
+                is_permanently_deleted=False,
+            ).filter(roles__contains=['ADMIN']).exclude(pk=instance.pk).count()
+            if remaining_owners == 0:
+                return Response(
+                    {'detail': 'Cannot permanently delete the last Owner account. Assign another Owner first.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        import uuid
+        unique_suffix = str(uuid.uuid4())[:8]
+        if not instance.email.startswith('purged_'):
+            instance.email = f"purged_{unique_suffix}_{instance.email}"[:254]
+
+        instance.is_permanently_deleted = True
+        instance.is_deleted = True
+        instance.is_active = False
+        instance.save(update_fields=['email', 'is_permanently_deleted', 'is_deleted', 'is_active'])
+
+        if hasattr(instance, 'practitioner_profile'):
+            instance.practitioner_profile.soft_delete()
+
+        instance.branch_accesses.all().delete()
+        _invalidate_practitioners_cache(instance)
+
+        if instance.clinic:
+            sub = getattr(instance.clinic.main_clinic, 'subscription', None)
+            if sub:
+                sub._invalidate_cache()
+
+        logger.info(f"User {instance.id} permanently deleted by {actor.email}. Clinician allocation released.")
+        return Response({
+            'detail': 'Account permanently deleted. Clinician allocation released.',
+            'id': instance.id,
+            'is_permanently_deleted': True,
+        }, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['get', 'patch'])
     def me(self, request):
