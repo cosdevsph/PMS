@@ -46,6 +46,30 @@ const videoGuides: VideoGuide[] = [
     title: 'Creating Services, Pricing & Online Booking Setup',
     videoUrl: '/videos/guide-2-setup.mp4',
     description: 'Learn how to configure your clinic offerings by setting up services, managing pricing, and enabling the online booking system for your patients.'
+  },
+  {
+    id: 'guide-3',
+    tag: 'Video Guide #3',
+    title: 'Patient Management: Registration, Profiles & Search',
+    videoUrl: '/videos/guide-3-setup.mp4',
+    description: 'Learn how to efficiently manage your patients. This guide covers new patient registration, navigating patient profiles, and utilizing the search functionality.',
+    steps: [
+      { title: 'Patient Registration', description: 'Easily add new patients to your clinic database with comprehensive details.' },
+      { title: 'Patient Profiles', description: 'View and manage individual patient records, including medical history and appointments.' },
+      { title: 'Patient Search', description: 'Quickly find specific patients using the powerful search features.' }
+    ]
+  },
+  {
+    id: 'guide-4',
+    tag: 'Video Guide #4',
+    title: 'Appointment Scheduling & Calendar Management',
+    videoUrl: '/videos/guide-4-setup.mp4',
+    description: 'Master the calendar system to effortlessly manage patient appointments and clinic schedules. This guide covers creating, moving, and modifying appointments.',
+    steps: [
+      { title: 'Creating & Navigating', description: 'Schedule new patient visits and seamlessly navigate your daily, weekly, or monthly calendar views.' },
+      { title: 'Drag-and-Drop Management', description: 'Effortlessly organize your clinic schedule by dragging and dropping appointments to new time slots.' },
+      { title: 'Modifying & Cancelling', description: 'Manage changes smoothly by rescheduling or cancelling existing appointments with just a few clicks.' }
+    ]
   }
 ];
 
