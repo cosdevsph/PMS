@@ -43,8 +43,9 @@ const videoGuides: VideoGuide[] = [
   {
     id: 'guide-2',
     tag: 'Video Guide #2',
-    title: 'Creating Appointments',
-    description: 'Learn how to effortlessly schedule, manage, and track patient appointments using our intuitive calendar system. This guide covers adding new patients, setting appointment types, and managing clinic schedules.'
+    title: 'Creating Services, Pricing & Online Booking Setup',
+    videoUrl: '/videos/guide-2-setup.mp4',
+    description: 'Learn how to configure your clinic offerings by setting up services, managing pricing, and enabling the online booking system for your patients.'
   }
 ];
 

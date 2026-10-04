@@ -20,7 +20,7 @@ interface AddNoteModalProps {
 
 const calculateEndTime = (startTime: string, durationMins: number): string => {
   const [h, m] = startTime.split(':').map(Number);
-  const total  = h * 60 + m + durationMins;
+  const total = h * 60 + m + durationMins;
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 };
 
@@ -37,16 +37,16 @@ export const AddNoteModal: React.FC<AddNoteModalProps> = ({
   const { user } = useAuthStore();
   const { branches } = useClinicBranches();
 
-  const today     = format(initialDate ?? new Date(), 'yyyy-MM-dd');
-  const startTime = initialTime    ?? '09:00';
-  const endTime   = initialEndTime ?? calculateEndTime(startTime, 30);
+  const today = format(initialDate ?? new Date(), 'yyyy-MM-dd');
+  const startTime = initialTime ?? '09:00';
+  const endTime = initialEndTime ?? calculateEndTime(startTime, 30);
 
-  const [message, setMessage]     = useState('');
-  const [date, setDate]           = useState(today);
-  const [start, setStart]         = useState(startTime);
-  const [end, setEnd]             = useState(endTime);
-  const [saving, setSaving]       = useState(false);
-  const [msgError, setMsgError]   = useState('');
+  const [message, setMessage] = useState('');
+  const [date, setDate] = useState(today);
+  const [start, setStart] = useState(startTime);
+  const [end, setEnd] = useState(endTime);
+  const [saving, setSaving] = useState(false);
+  const [msgError, setMsgError] = useState('');
 
   // Reset state when modal opens
   React.useEffect(() => {
@@ -86,11 +86,11 @@ export const AddNoteModal: React.FC<AddNoteModalProps> = ({
     setSaving(true);
     try {
       const note = await createCalendarNote({
-        clinic:      clinicId,
+        clinic: clinicId,
         date,
-        start_time:  start,
-        end_time:    end,
-        message:     message.trim(),
+        start_time: start,
+        end_time: end,
+        message: message.trim(),
         ...(practitionerId != null ? { practitioner: practitionerId } : {}),
       });
       toast.success('Note added to calendar.');
