@@ -70,7 +70,47 @@ const videoGuides: VideoGuide[] = [
       { title: 'Drag-and-Drop Management', description: 'Effortlessly organize your clinic schedule by dragging and dropping appointments to new time slots.' },
       { title: 'Modifying & Cancelling', description: 'Manage changes smoothly by rescheduling or cancelling existing appointments with just a few clicks.' }
     ]
-  }
+  },
+  {
+    id: 'guide-5',
+    tag: 'Video Guide #5',
+    title: 'Clinical Documentation & Templates',
+    videoUrl: '/videos/guide-5-setup.mp4',
+    description: 'Learn how to streamline your charting process with clinical documentation and customizable templates.',
+  },
+  {
+    id: 'guide-6',
+    tag: 'Video Guide #6',
+    title: 'Coming Soon',
+    description: 'This video guide is currently being produced. Check back soon for updates.',
+  },
+  {
+    id: 'guide-7',
+    tag: 'Video Guide #7',
+    title: 'Patient Forms & Consent Forms',
+    videoUrl: '/videos/guide-7-setup.mp4',
+    description: 'Learn how to create, manage, and distribute patient intake and consent forms seamlessly within the platform.',
+  },
+  {
+    id: 'guide-8',
+    tag: 'Video Guide #8',
+    title: 'Billing, Payments, & Invoicing',
+    videoUrl: '/videos/guide-8-setup.mp4',
+    description: 'Master the financial side of your clinic by tracking billing, processing payments, and generating invoices.',
+  },
+  {
+    id: 'guide-9',
+    tag: 'Video Guide #9',
+    title: 'Reports & Analytics',
+    videoUrl: '/videos/guide-9-setup.mp4',
+    description: 'Gain valuable insights into your clinic\'s performance using comprehensive reports and analytics tools.',
+  },
+  { id: 'guide-10', tag: 'Video Guide #10', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' },
+  { id: 'guide-11', tag: 'Video Guide #11', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' },
+  { id: 'guide-12', tag: 'Video Guide #12', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' },
+  { id: 'guide-13', tag: 'Video Guide #13', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' },
+  { id: 'guide-14', tag: 'Video Guide #14', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' },
+  { id: 'guide-15', tag: 'Video Guide #15', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' }
 ];
 
 export const DemoPage: React.FC = () => {
