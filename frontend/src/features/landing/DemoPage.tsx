@@ -31,86 +31,102 @@ const videoGuides: VideoGuide[] = [
   {
     id: 'guide-1',
     tag: 'Video Guide #1',
-    title: 'Getting Started: Sign Up to Clinic Setup',
-    description: 'Learn how to register your account, set up administrative credentials, and configure your clinic details.',
+    title: 'Setting Up Your Clinic',
     videoUrl: '/videos/guide-1-setup.mp4',
-    steps: [
-      { title: 'Signing Up', description: 'Register your new account on the platform and verify your credentials.' },
-      { title: 'Creating Owner/Admin Account', description: 'Set up your administrative roles, security settings, and access control.' },
-      { title: 'Clinic Setup', description: 'Configure your clinic details, establish services, and operational standards.' }
-    ]
+    description: 'Topics: Clinic Information, Upload clinic logo, Clinic name, Clinic address, Clinic phone number, Clinic email address, Website URL, Facebook page URL, Branch Setup, Creating branches, Branch name, Branch address, Branch phone number, Branch email address, Staff Setup, Creating staff accounts, Staff names, Staff email addresses, Mobile numbers, Branch assignment, Schedule Setup, Practitioner recurring availability, Break schedules.',
   },
   {
     id: 'guide-2',
     tag: 'Video Guide #2',
-    title: 'Creating Services, Pricing & Online Booking Setup',
+    title: 'Services, Pricing & Online Booking Setup',
     videoUrl: '/videos/guide-2-setup.mp4',
-    description: 'Learn how to configure your clinic offerings by setting up services, managing pricing, and enabling the online booking system for your patients.'
+    description: 'Topics: Creating services, Service pricing, Appointment duration, Online booking settings, Online booking links, Booking QR codes, Website integration, Sharing booking links, Branch selection, Service selection.',
   },
   {
     id: 'guide-3',
     tag: 'Video Guide #3',
-    title: 'Patient Management: Registration, Profiles & Search',
+    title: 'SMS Gateway Setup',
     videoUrl: '/videos/guide-3-setup.mp4',
-    description: 'Learn how to efficiently manage your patients. This guide covers new patient registration, navigating patient profiles, and utilizing the search functionality.',
-    steps: [
-      { title: 'Patient Registration', description: 'Easily add new patients to your clinic database with comprehensive details.' },
-      { title: 'Patient Profiles', description: 'View and manage individual patient records, including medical history and appointments.' },
-      { title: 'Patient Search', description: 'Quickly find specific patients using the powerful search features.' }
-    ]
+    description: 'Topics: Installing SMS Gateway App, Pairing mobile device, Testing SMS reminders, Troubleshooting connection issues.',
   },
   {
     id: 'guide-4',
     tag: 'Video Guide #4',
-    title: 'Appointment Scheduling & Calendar Management',
+    title: 'Patient Management',
     videoUrl: '/videos/guide-4-setup.mp4',
-    description: 'Master the calendar system to effortlessly manage patient appointments and clinic schedules. This guide covers creating, moving, and modifying appointments.',
-    steps: [
-      { title: 'Creating & Navigating', description: 'Schedule new patient visits and seamlessly navigate your daily, weekly, or monthly calendar views.' },
-      { title: 'Drag-and-Drop Management', description: 'Effortlessly organize your clinic schedule by dragging and dropping appointments to new time slots.' },
-      { title: 'Modifying & Cancelling', description: 'Manage changes smoothly by rescheduling or cancelling existing appointments with just a few clicks.' }
-    ]
+    description: 'Topics: Patient registration, Patient profiles, Patient search, Edit patient details, Visit history, Managing patient records.',
   },
   {
     id: 'guide-5',
     tag: 'Video Guide #5',
-    title: 'Clinical Documentation & Templates',
+    title: 'Appointment Scheduling & Calendar Management',
     videoUrl: '/videos/guide-5-setup.mp4',
-    description: 'Learn how to streamline your charting process with clinical documentation and customizable templates.',
+    description: 'Topics: Creating appointments, Calendar navigation, Drag-and-drop calendar management, Rescheduling appointments, Cancelling appointments, Managing practitioner schedules.',
   },
   {
     id: 'guide-6',
     tag: 'Video Guide #6',
-    title: 'Coming Soon',
-    description: 'This video guide is currently being produced. Check back soon for updates.',
+    title: 'Clinical Documentation & Templates',
+    videoUrl: '/videos/guide-6-setup.mp4',
+    description: 'Topics: Assessment notes, Progress notes, Treatment notes, Creating templates, Editing templates, Clinic-specific documentation workflows.',
   },
   {
     id: 'guide-7',
     tag: 'Video Guide #7',
     title: 'Patient Forms & Consent Forms',
     videoUrl: '/videos/guide-7-setup.mp4',
-    description: 'Learn how to create, manage, and distribute patient intake and consent forms seamlessly within the platform.',
+    description: 'Topics: Registration forms, Intake forms, Consent forms, Form customization, Form management.',
   },
   {
     id: 'guide-8',
     tag: 'Video Guide #8',
-    title: 'Billing, Payments, & Invoicing',
+    title: 'Billing, Payments & Invoicing',
     videoUrl: '/videos/guide-8-setup.mp4',
-    description: 'Master the financial side of your clinic by tracking billing, processing payments, and generating invoices.',
+    description: 'Topics: Creating invoices, Recording payments, Payment tracking, Outstanding balances, Invoice management.',
   },
   {
     id: 'guide-9',
     tag: 'Video Guide #9',
     title: 'Reports & Analytics',
     videoUrl: '/videos/guide-9-setup.mp4',
-    description: 'Gain valuable insights into your clinic\'s performance using comprehensive reports and analytics tools.',
+    description: 'Topics: Revenue reports, Occupancy reports, Business performance metrics, Clinic insights.',
   },
-  { id: 'guide-10', tag: 'Video Guide #10', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' },
-  { id: 'guide-11', tag: 'Video Guide #11', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' },
-  { id: 'guide-12', tag: 'Video Guide #12', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' },
-  { id: 'guide-13', tag: 'Video Guide #13', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' },
-  { id: 'guide-14', tag: 'Video Guide #14', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' },
-  { id: 'guide-15', tag: 'Video Guide #15', title: 'Coming Soon', description: 'This video guide is currently being produced. Check back soon for updates.' }
+  {
+    id: 'guide-10',
+    tag: 'Help Article #10',
+    title: 'Inventory Management',
+    description: 'Topics: Inventory tracking, Stock management, Low stock alerts, Inventory reminders.',
+  },
+  {
+    id: 'guide-11',
+    tag: 'Help Article #11',
+    title: 'User Management & Permissions',
+    description: 'Topics: Staff accounts, User permissions, Access controls, Administrator accounts.',
+  },
+  {
+    id: 'guide-12',
+    tag: 'Help Article #12',
+    title: 'Managing Documents & Attachments',
+    description: 'Topics: Uploading files, Managing patient documents, Secure document storage.',
+  },
+  {
+    id: 'guide-13',
+    tag: 'Help Article #13',
+    title: 'Multi-Branch Management & Reporting',
+    description: 'Topics: Branch administration, Branch access, Clinician allocation, Branch-specific reports, Consolidated reporting, Business insights.',
+  },
+  {
+    id: 'guide-14',
+    tag: 'Help Article #14',
+    title: 'Audit Logs',
+    description: 'Topics: User activity tracking, Audit history, Accountability, Reviewing system activity.',
+  },
+  {
+    id: 'guide-15',
+    tag: 'Help Article #15',
+    title: 'Security & Data Protection',
+    description: 'Topics: HIPAA-aligned security practices, Role-based access controls, Data protection, Privacy features, Data backups, Security best practices.',
+  }
 ];
 
 export const DemoPage: React.FC = () => {
@@ -182,9 +198,6 @@ export const DemoPage: React.FC = () => {
                   >
                     <PlayCircle className={`w-5 h-5 mr-3 shrink-0 mt-0.5 ${isActive ? 'text-care-blue' : 'text-gray-400'}`} />
                     <div>
-                      <div className="text-xs font-bold uppercase tracking-wider mb-1 opacity-80">
-                        <HighlightText text={guide.tag} highlight={searchQuery} />
-                      </div>
                       <div className={`text-sm font-medium ${isActive ? 'font-bold' : ''}`}>
                         <HighlightText text={guide.title} highlight={searchQuery} />
                       </div>
@@ -244,9 +257,6 @@ export const DemoPage: React.FC = () => {
             {activeVideo && (
               <div className="w-full min-h-[500px] animate-fade-in" key={activeVideo.id}>
                 <div className="mb-6">
-                  <div className="inline-block px-4 py-1.5 bg-blue-50 text-care-blue font-semibold rounded-full text-sm mb-4 border border-blue-100">
-                    {activeVideo.tag}
-                  </div>
                   <h2 className="text-3xl md:text-4xl font-bold text-trust-harbor font-heading tracking-tight">
                     {activeVideo.title}
                   </h2>
@@ -272,17 +282,55 @@ export const DemoPage: React.FC = () => {
                         <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 backdrop-blur-sm cursor-pointer">
                           <PlayCircle className="w-10 h-10 text-white translate-x-0.5" />
                         </div>
-                        <p className="text-gray-400 font-medium">Video Guide Coming Soon</p>
-                        <span className="text-xs text-gray-500 mt-1">Recording in progress</span>
+                        <p className="text-gray-400 font-medium">
+                          {activeVideo.tag.includes('Help Article') ? 'Written Article Coming Soon' : 'Video Guide Coming Soon'}
+                        </p>
+                        <span className="text-xs text-gray-500 mt-1">
+                          {activeVideo.tag.includes('Help Article') ? 'Currently being drafted' : 'Recording in progress'}
+                        </span>
                       </div>
                     )}
                   </div>
                   
-                  {/* Video Description & Steps */}
+                  {/* Video Description & Topics */}
                   <div className="mt-8 px-2 sm:px-8 pb-4">
-                    <p className="text-gray-600 text-lg leading-relaxed max-w-3xl mb-8">
-                      {activeVideo.description}
-                    </p>
+                    {activeVideo.description.startsWith('Topics:') ? (
+                      <div>
+                        <h3 className="text-lg font-bold text-trust-harbor mb-4 font-heading">Topics Covered:</h3>
+                        <div className="flex flex-wrap gap-2.5">
+                          {activeVideo.description
+                            .replace('Topics:', '')
+                            .replace(/\.$/, '') // remove trailing dot if present
+                            .split(',')
+                            .map((topic, idx) => {
+                              const t = topic.trim();
+                              if (!t) return null;
+                              
+                              const topicColors = [
+                                'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
+                                'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
+                                'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
+                                'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+                                'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100',
+                                'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100',
+                                'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100',
+                                'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 hover:bg-fuchsia-100'
+                              ];
+                              const colorClass = topicColors[idx % topicColors.length];
+                              
+                              return (
+                                <span key={idx} className={`px-3.5 py-2 rounded-md text-sm font-medium border shadow-sm transition-colors ${colorClass}`}>
+                                  {t}
+                                </span>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-600 text-lg leading-relaxed max-w-3xl mb-8">
+                        {activeVideo.description}
+                      </p>
+                    )}
 
                     {activeVideo.steps && (
                       <div>
