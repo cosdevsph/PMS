@@ -1,18 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2, Check, ShieldCheck, Stethoscope, Users, DollarSign, Crown, Eye, Lock } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2, Check, CheckCircle2, ShieldCheck, Stethoscope, Users, DollarSign, Crown, Eye, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { CreateStaffData, StaffFormErrors, StaffMember, PractitionerRoleImpact } from '../../types/staff.types';
-import type { DutySchedule, DutyDay } from '@/features/clinics/clinic.api';
+import type { CreateStaffData, StaffFormErrors, StaffMember, PractitionerRoleImpact, UserLookupResult } from '../../types/staff.types';
+import type { DutySchedule, DutyDay, ShiftBlock } from '@/features/clinics/clinic.api';
 import { TITLE_OPTIONS, GENDER_OPTIONS } from '../../types/staff.types';
 import { useDisciplineOptions } from '../../hooks/useDisciplineOptions';
 import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';
+import type { ClinicBranch } from '@/types/clinic';
 import { validateEmailDetailed, validatePHPhoneDetailed } from '@/utils/validation';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PractitionerRemovalModal } from './PractitionerRemovalModal';
 import { ClinicianLimitReachedModal, type ClinicianLimitInfo } from './ClinicianLimitReachedModal';
-import { getPractitionerRoleImpact } from '../../services/StaffService';
+import { getPractitionerRoleImpact, lookupUserByEmail, updateStaff } from '../../services/StaffService';
 import { emitPractitionerRemoved } from '@/events/practitionerEvents';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -102,18 +103,31 @@ const DUTY_DAY_OPTIONS: { value: DutyDay; label: string }[] = [
 
 const DEFAULT_DUTY_DAYS: DutyDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
-/** Returns true if any two blocks in the list overlap in time. */
-const hasScheduleConflict = (blocks: { start: string; end: string }[]): boolean => {
-  if (blocks.length < 2) return false;
-  const sorted = [...blocks].sort((a, b) => a.start.localeCompare(b.start));
-  for (let i = 0; i < sorted.length - 1; i++) {
-    if (sorted[i].end > sorted[i + 1].start) return true;
-  }
-  return false;
+/** Format time string (HH:MM or HH:MM:SS) into 12-hour format e.g. "9:00 AM" */
+export const formatTime12h = (timeStr?: string | null): string => {
+  if (!timeStr) return '';
+  const [hourStr, minuteStr = '00'] = timeStr.trim().split(':');
+  const hour = parseInt(hourStr, 10);
+  if (isNaN(hour)) return timeStr;
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${formattedHour}:${minuteStr} ${ampm}`;
 };
 
-const makeDefaultSchedule = (days: DutyDay[]): DutySchedule =>
-  Object.fromEntries(days.map(d => [d, [{ start: '08:00', end: '17:00' }]])) as DutySchedule;
+/** Returns the conflicting pair if any two blocks overlap in time. */
+const checkScheduleConflict = (blocks: ShiftBlock[]): { prev: ShiftBlock; curr: ShiftBlock } | null => {
+  if (!blocks || blocks.length < 2) return null;
+  const sorted = [...blocks].sort((a, b) => a.start.localeCompare(b.start));
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (sorted[i].end > sorted[i + 1].start) {
+      return { prev: sorted[i], curr: sorted[i + 1] };
+    }
+  }
+  return null;
+};
+
+const makeDefaultSchedule = (days: DutyDay[], defaultBranchId: number | null = null): DutySchedule =>
+  Object.fromEntries(days.map(d => [d, [{ start: '08:00', end: '17:00', branch_id: defaultBranchId }]])) as DutySchedule;
 
 const generateTimeOptions = () => {
   const options = [];
@@ -137,16 +151,71 @@ const generateTimeOptions = () => {
 
 const TIME_OPTIONS = generateTimeOptions();
 
-/** Build a duty_schedule from editing staff data, falling back to legacy fields. */
+/** Build a duty_schedule from editing staff data, reconstructing multi-branch blocks when available. */
 const buildDutySchedule = (staff: StaffMember): DutySchedule => {
-  if (staff.duty_schedule) return staff.duty_schedule;
-  if (staff.availability?.duty_schedule) return staff.availability.duty_schedule as DutySchedule;
+  // 1. Reconstruct from active branch assignments
+  if (staff.branch_assignments && staff.branch_assignments.length > 0) {
+    const activeAssignments = staff.branch_assignments.filter(b => b.is_active);
+    const merged: Record<DutyDay, ShiftBlock[]> = {} as any;
+
+    for (const ba of activeAssignments) {
+      if (ba.duty_schedule && typeof ba.duty_schedule === 'object') {
+        for (const [day, blocks] of Object.entries(ba.duty_schedule)) {
+          const d = day as DutyDay;
+          if (!merged[d]) merged[d] = [];
+          for (const b of (blocks as ShiftBlock[])) {
+            merged[d].push({
+              start: b.start,
+              end: b.end,
+              branch_id: ba.branch_id,
+              branch_name: ba.branch_name,
+            });
+          }
+        }
+      } else if (ba.duty_days && ba.duty_days.length > 0) {
+        const start = ba.duty_start_time || '08:00';
+        const end = ba.duty_end_time || '17:00';
+        for (const day of ba.duty_days) {
+          const d = day as DutyDay;
+          if (!merged[d]) merged[d] = [];
+          merged[d].push({
+            start,
+            end,
+            branch_id: ba.branch_id,
+            branch_name: ba.branch_name,
+          });
+        }
+      }
+    }
+    if (Object.keys(merged).length > 0) {
+      return merged;
+    }
+  }
+
+  // 2. Direct duty_schedule fallback
+  const rawSched = staff.duty_schedule || (staff.availability?.duty_schedule as DutySchedule) || null;
+  if (rawSched && typeof rawSched === 'object') {
+    const enriched: Record<DutyDay, ShiftBlock[]> = {} as any;
+    for (const [day, blocks] of Object.entries(rawSched)) {
+      const d = day as DutyDay;
+      enriched[d] = (blocks as ShiftBlock[]).map(b => ({
+        ...b,
+        branch_id: b.branch_id ?? staff.clinic_branch ?? null,
+      }));
+    }
+    return enriched;
+  }
+
+  // 3. Legacy single-window fallback
   const days: DutyDay[] = (
     staff.duty_days ?? staff.availability?.duty_days ?? DEFAULT_DUTY_DAYS
   ) as DutyDay[];
   const start = staff.availability?.duty_start_time ?? '08:00';
   const end   = staff.availability?.duty_end_time   ?? '17:00';
-  return Object.fromEntries(days.map(d => [d, [{ start, end }]])) as DutySchedule;
+  const fallbackBranchId = staff.clinic_branch ?? null;
+  return Object.fromEntries(
+    days.map(d => [d, [{ start, end, branch_id: fallbackBranchId }]])
+  ) as DutySchedule;
 };
 
 interface CreateStaffAccountModalProps {
@@ -156,6 +225,8 @@ interface CreateStaffAccountModalProps {
   editingStaff?:   StaffMember | null;
   /** ID of the currently logged-in user. Used to show the "Me" badge. */
   currentUserId?:  number;
+  /** Optional branches passed from parent (e.g. ClinicSetupPage during onboarding) */
+  branches?:       ClinicBranch[];
 }
 
 const EMPTY_FORM: CreateStaffData = {
@@ -208,7 +279,7 @@ const SectionTitle: React.FC<{ color?: string; children: React.ReactNode }> = ({
 );
 
 export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = ({
-  isOpen, onClose, onSubmit, editingStaff = null, currentUserId,
+  isOpen, onClose, onSubmit, editingStaff = null, currentUserId, branches: propBranches,
 }) => {
   const isEditMode = !!editingStaff;
   const { isOwner, isManager, managerBranches } = usePermissions();
@@ -246,6 +317,17 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   const [showClinicianLimitModal, setShowClinicianLimitModal] = useState(false);
   const [clinicianLimitInfo, setClinicianLimitInfo]           = useState<ClinicianLimitInfo | null>(null);
 
+  // ── Multi-Branch: Existing practitioner detection state ─────────────────────
+  const [existingUserMatch, setExistingUserMatch] = useState<UserLookupResult['user'] | null>(null);
+  const [isLookingUpEmail, setIsLookingUpEmail]   = useState(false);
+  const lookupDebounceRef = useRef<any>(null);
+
+  const isAlreadyAssignedToSelectedBranch = Boolean(
+    existingUserMatch &&
+    formData.clinic_branch &&
+    existingUserMatch.assigned_branch_ids?.includes(Number(formData.clinic_branch))
+  );
+
   // ── Discipline create-inline state ─────────────────────────────────────────
   const [showCreateDiscipline, setShowCreateDiscipline] = useState(false);
   const [newDisciplineLabel, setNewDisciplineLabel]     = useState('');
@@ -263,7 +345,85 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     setShowCreateDiscipline(false);
   };
 
-  const { branches, loading: loadingBranches } = useClinicBranches();
+  const { branches: fetchedBranches, loading: loadingBranches } = useClinicBranches();
+
+  const branches = useMemo(() => {
+    return propBranches && propBranches.length > 0 ? propBranches : fetchedBranches;
+  }, [propBranches, fetchedBranches]);
+
+  // Multi-branch scheduling helpers
+  const availableBranches = useMemo(() => {
+    if (isOwner) return branches;
+    if (isManager) {
+      if (managerBranches && managerBranches.length > 0) return managerBranches as any[];
+      if (currentUser?.clinic_branch) return branches.filter(b => b.id === currentUser.clinic_branch);
+      return branches;
+    }
+    if (currentUser?.clinic_branch) return branches.filter(b => b.id === currentUser.clinic_branch);
+    return branches;
+  }, [isOwner, isManager, branches, managerBranches, currentUser?.clinic_branch]);
+
+  const defaultBranchId = useMemo(() => {
+    if (formData.clinic_branch) return Number(formData.clinic_branch);
+    if (isManager && !isOwner) {
+      if (currentUser?.clinic_branch) return currentUser.clinic_branch;
+      if (managerBranches && managerBranches.length > 0) return managerBranches[0].id;
+    }
+    if (availableBranches.length > 0) return availableBranches[0].id;
+    if (branches.length > 0) return branches[0].id;
+    return null;
+  }, [formData.clinic_branch, isManager, isOwner, currentUser?.clinic_branch, managerBranches, availableBranches, branches]);
+
+  const uniqueAssignedBranchIds = useMemo(() => {
+    const ids = new Set<number>();
+    const effectiveDefault = defaultBranchId ?? availableBranches[0]?.id ?? branches[0]?.id ?? null;
+    if (formData.duty_schedule) {
+      for (const day of (formData.duty_days ?? [])) {
+        const blocks = formData.duty_schedule[day] ?? [];
+        for (const b of blocks) {
+          const bId = b.branch_id ?? effectiveDefault;
+          if (bId) ids.add(Number(bId));
+        }
+      }
+    }
+    if (ids.size === 0) {
+      const bId = formData.clinic_branch ?? effectiveDefault;
+      if (bId) ids.add(Number(bId));
+    }
+    return Array.from(ids);
+  }, [formData.duty_schedule, formData.duty_days, formData.clinic_branch, defaultBranchId, availableBranches, branches]);
+
+  // Keep blocks populated with a default branch_id once branches are loaded
+  useEffect(() => {
+    if (!defaultBranchId) return;
+    setFormData(prev => {
+      let changed = false;
+      let nextClinicBranch = prev.clinic_branch;
+      if (!nextClinicBranch) {
+        nextClinicBranch = defaultBranchId;
+        changed = true;
+      }
+      if (!prev.duty_schedule) {
+        return changed ? { ...prev, clinic_branch: nextClinicBranch } : prev;
+      }
+      const nextSchedule: DutySchedule = {};
+      for (const [day, blocks] of Object.entries(prev.duty_schedule)) {
+        nextSchedule[day as DutyDay] = blocks.map(b => {
+          if (!b.branch_id) {
+            changed = true;
+            return { ...b, branch_id: defaultBranchId };
+          }
+          return b;
+        });
+      }
+      if (!changed) return prev;
+      return {
+        ...prev,
+        clinic_branch: nextClinicBranch,
+        duty_schedule: nextSchedule,
+      };
+    });
+  }, [defaultBranchId]);
 
   // Phase 8: Auto-assign branch for Branch Managers.
   // When the actor is a Branch Manager, pre-populate clinic_branch
@@ -285,6 +445,48 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       }
     }
   }, [isEditMode, isManager, isOwner, currentUser?.clinic_branch, managerBranches]);
+
+  // Debounced lookup for existing practitioner by email
+  useEffect(() => {
+    if (isEditMode) return;
+    const email = (formData.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@') || email.length < 5) {
+      setExistingUserMatch(null);
+      return;
+    }
+
+    if (lookupDebounceRef.current) {
+      clearTimeout(lookupDebounceRef.current);
+    }
+
+    lookupDebounceRef.current = setTimeout(async () => {
+      try {
+        setIsLookingUpEmail(true);
+        const res = await lookupUserByEmail(email);
+        if (res.found && res.user && res.user.is_practitioner) {
+          setExistingUserMatch(res.user);
+          setFormData(prev => ({
+            ...prev,
+            first_name: res.user!.first_name,
+            last_name: res.user!.last_name,
+            phone: res.user!.phone || prev.phone,
+            discipline: res.user!.discipline || prev.discipline,
+            roles: ['PRACTITIONER'],
+          }));
+        } else {
+          setExistingUserMatch(null);
+        }
+      } catch (err) {
+        setExistingUserMatch(null);
+      } finally {
+        setIsLookingUpEmail(false);
+      }
+    }, 450);
+
+    return () => {
+      if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
+    };
+  }, [formData.email, isEditMode]);
 
   useEffect(() => {
     if (editingStaff) {
@@ -326,10 +528,16 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       });
     } else {
       originalRolesRef.current = [];
-      setFormData(EMPTY_FORM);
+      const initialBranchId = defaultBranchId ?? availableBranches[0]?.id ?? branches[0]?.id ?? null;
+      setFormData({
+        ...EMPTY_FORM,
+        clinic_branch: initialBranchId,
+        duty_schedule: makeDefaultSchedule(DEFAULT_DUTY_DAYS, initialBranchId),
+      });
     }
+    setExistingUserMatch(null);
     setErrors({});
-  }, [editingStaff, isOpen]);
+  }, [editingStaff, isOpen, defaultBranchId]);
 
   const validateForm = (): boolean => {
     const e: StaffFormErrors = {};
@@ -346,6 +554,9 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     if (formData.date_of_birth && new Date(formData.date_of_birth) > new Date())
       e.date_of_birth = 'Date of birth cannot be in the future';
 
+    const isPractitioner = (formData.roles ?? []).includes('PRACTITIONER');
+    const effectiveDefaultBranch = defaultBranchId ?? availableBranches[0]?.id ?? branches[0]?.id ?? null;
+
     // Branch is required for all roles — every user must be scoped to a branch.
     // For Branch Managers, we auto-inject their branch, bypassing UI-level requirement checks here.
     if (!isManager || isOwner) {
@@ -354,33 +565,50 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
         if (!formData.branch_ids || formData.branch_ids.length === 0) {
           e.clinic_branch = 'A Manager must be assigned to at least one branch.';
         }
+      } else if (isPractitioner) {
+        if (uniqueAssignedBranchIds.length === 0 && !formData.clinic_branch && !effectiveDefaultBranch) {
+          e.clinic_branch = 'Please assign at least one branch in the schedule.';
+        }
       } else {
-        if (!formData.clinic_branch) e.clinic_branch = 'Branch assignment is required.';
+        if (!formData.clinic_branch && !effectiveDefaultBranch) e.clinic_branch = 'Branch assignment is required.';
       }
     }
 
     // Availability validation (for PRACTITIONER role only)
-    const needsSchedule = (formData.roles ?? []).includes('PRACTITIONER');
-    if (needsSchedule) {
+    if (isPractitioner) {
       if (!formData.duty_days || formData.duty_days.length === 0)
         e.duty_days = 'At least one duty day is required';
       // Validate per-day blocks
       if (formData.duty_schedule) {
         for (const day of (formData.duty_days ?? [])) {
           const blocks = formData.duty_schedule[day] ?? [];
+          if (blocks.length === 0) {
+            e.duty_schedule = `${day}: At least one working period is required.`;
+            break;
+          }
           for (const block of blocks) {
             if (!block.start || !block.end) {
-              e.duty_schedule = `${day}: every block must have a start and end time`;
+              e.duty_schedule = `${day}: Every working period must have a start and end time.`;
               break;
             }
             if (block.start >= block.end) {
-              e.duty_schedule = `${day}: shift end must be after shift start (${block.start}–${block.end})`;
+              e.duty_schedule = `${day}: Period end time must be after start time (${formatTime12h(block.start)} – ${formatTime12h(block.end)}).`;
+              break;
+            }
+            const blockBranch = block.branch_id ?? effectiveDefaultBranch;
+            if (!blockBranch) {
+              e.duty_schedule = `${day}: Every working period must have an assigned branch.`;
               break;
             }
           }
           if (e.duty_schedule) break;
-          if (!e.duty_schedule && hasScheduleConflict(blocks)) {
-            e.duty_schedule = `${day}: shift blocks overlap. Please adjust the time ranges.`;
+          const conflict = checkScheduleConflict(blocks);
+          if (conflict) {
+            const prevBranchName = conflict.prev.branch_name || branches.find(b => b.id === (conflict.prev.branch_id ?? effectiveDefaultBranch))?.name;
+            const currBranchName = conflict.curr.branch_name || branches.find(b => b.id === (conflict.curr.branch_id ?? effectiveDefaultBranch))?.name;
+            const prevBranchStr = prevBranchName ? ` (${prevBranchName})` : '';
+            const currBranchStr = currBranchName ? ` (${currBranchName})` : '';
+            e.duty_schedule = `${day}: Working periods overlap: ${formatTime12h(conflict.prev.start)}–${formatTime12h(conflict.prev.end)}${prevBranchStr} and ${formatTime12h(conflict.curr.start)}–${formatTime12h(conflict.curr.end)}${currBranchStr}. Shifts cannot overlap.`;
             break;
           }
         }
@@ -462,6 +690,66 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       return;
     }
 
+    // ── Multi-Branch Assignment: Existing Practitioner Detected ───────────────
+    if (existingUserMatch) {
+      const effectiveDefaultBranch = defaultBranchId ?? availableBranches[0]?.id ?? branches[0]?.id ?? null;
+      const primaryBranch = uniqueAssignedBranchIds.length > 0
+        ? uniqueAssignedBranchIds[0]
+        : (formData.clinic_branch ? Number(formData.clinic_branch) : effectiveDefaultBranch);
+
+      if (!primaryBranch) {
+        toast.error('Please configure at least one branch in the schedule.');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        let sanitizedSchedule = formData.duty_schedule;
+        if (formData.duty_schedule) {
+          sanitizedSchedule = {};
+          const fallbackBid = primaryBranch ?? effectiveDefaultBranch;
+          for (const [day, blocks] of Object.entries(formData.duty_schedule)) {
+            sanitizedSchedule[day as DutyDay] = blocks.map(b => ({
+              ...b,
+              branch_id: b.branch_id ?? fallbackBid,
+            }));
+          }
+        }
+
+        const payloadToSave: CreateStaffData & { id?: number; existing_user_id?: number } = {
+          ...formData,
+          clinic_branch: primaryBranch,
+          duty_schedule: sanitizedSchedule,
+          roles: ['PRACTITIONER'],
+          id: existingUserMatch.id,
+          existing_user_id: existingUserMatch.id,
+        };
+
+        await updateStaff(existingUserMatch.id, payloadToSave);
+        toast.success(`Updated Dr. ${existingUserMatch.name}'s schedule and branch assignments successfully!`);
+        await onSubmit(payloadToSave);
+        handleClose();
+      } catch (err: any) {
+        const data = err?.response?.data;
+        if (data?.error === 'CLINICIAN_LIMIT_REACHED' || data?.code === 'CLINICIAN_LIMIT_REACHED') {
+          setClinicianLimitInfo({
+            current_allocations: data.current_allocations,
+            allowed_allocations: data.allowed_allocations,
+            archived_allocations: data.archived_allocations,
+            archived_practitioners: data.archived_practitioners,
+            plan_code: data.plan_code,
+            detail: data.detail,
+          });
+          setShowClinicianLimitModal(true);
+        } else {
+          toast.error(data?.detail || err.message || 'Failed to update practitioner schedule.');
+        }
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     // Rebuild the full roles array: preserve non-clinical roles that aren't
     // selectable in the card UI (none currently), then add all selected
     // clinical roles. ADMIN is now a selectable card so it flows through
@@ -471,8 +759,28 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     );
     const finalRoles = [...preservedRoles, ...(formData.roles ?? ['STAFF'])];
 
+    const isPractitionerRole = finalRoles.includes('PRACTITIONER');
+    const effectiveDefaultBranch = defaultBranchId ?? availableBranches[0]?.id ?? branches[0]?.id ?? null;
+    const primaryBranch = isPractitionerRole
+      ? (uniqueAssignedBranchIds.length > 0 ? uniqueAssignedBranchIds[0] : (formData.clinic_branch ?? effectiveDefaultBranch))
+      : (formData.clinic_branch ?? effectiveDefaultBranch);
+
+    let sanitizedSchedule = formData.duty_schedule;
+    if (isPractitionerRole && formData.duty_schedule) {
+      sanitizedSchedule = {};
+      const fallbackBid = primaryBranch ?? effectiveDefaultBranch;
+      for (const [day, blocks] of Object.entries(formData.duty_schedule)) {
+        sanitizedSchedule[day as DutyDay] = blocks.map(b => ({
+          ...b,
+          branch_id: b.branch_id ?? fallbackBid,
+        }));
+      }
+    }
+
     const payload: CreateStaffData & { confirm_practitioner_removal?: boolean } = {
       ...formData,
+      clinic_branch: primaryBranch,
+      duty_schedule: isPractitionerRole ? sanitizedSchedule : formData.duty_schedule,
       phone: formData.phone,
       roles: finalRoles as CreateStaffData['roles'],
     };
@@ -550,6 +858,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
 
   const handleClose = () => {
     setFormData(EMPTY_FORM);
+    setExistingUserMatch(null);
     setErrors({});
     onClose();
   };
@@ -573,22 +882,26 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     } else {
       const newDays = [...currentDays, day];
       const existing = formData.duty_schedule ?? {};
+      const fallbackBid = defaultBranchId ?? availableBranches[0]?.id ?? branches[0]?.id ?? null;
       const newSchedule: DutySchedule = {
         ...existing,
-        [day]: (existing[day] ?? [{ start: '08:00', end: '17:00' }]),
+        [day]: (existing[day] ?? [{ start: '08:00', end: '17:00', branch_id: fallbackBid }]),
       };
       setFormData(prev => ({ ...prev, duty_days: newDays, duty_schedule: newSchedule }));
     }
   };
 
   const addBlock = (day: DutyDay) => {
+    const fallbackBid = defaultBranchId ?? availableBranches[0]?.id ?? branches[0]?.id ?? null;
     const existing = formData.duty_schedule ?? {};
-    const blocks = existing[day] ?? [{ start: '08:00', end: '17:00' }];
-    const [h, m] = (blocks[blocks.length - 1]?.end ?? '08:00').split(':').map(Number);
+    const blocks = existing[day] ?? [{ start: '08:00', end: '17:00', branch_id: fallbackBid }];
+    const lastBlock = blocks[blocks.length - 1];
+    const [h, m] = (lastBlock?.end ?? '08:00').split(':').map(Number);
     const newH = Math.min(h + 1, 23);
-    const newBlock = {
+    const newBlock: ShiftBlock = {
       start: `${String(newH).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
       end:   `${String(Math.min(newH + 1, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+      branch_id: lastBlock?.branch_id ?? fallbackBid,
     };
     setFormData(prev => ({
       ...prev,
@@ -598,15 +911,16 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
 
   const removeBlock = (day: DutyDay, idx: number) => {
     const existing = formData.duty_schedule ?? {};
-    const blocks = (existing[day] ?? []).filter((_: { start: string; end: string }, i: number) => i !== idx);
+    const blocks = (existing[day] ?? []).filter((_: ShiftBlock, i: number) => i !== idx);
     const newSchedule = { ...existing, [day]: blocks } as DutySchedule;
     setFormData(prev => ({ ...prev, duty_schedule: newSchedule }));
   };
 
-  const updateBlock = (day: DutyDay, idx: number, field: 'start' | 'end', value: string) => {
+  const updateBlock = (day: DutyDay, idx: number, field: 'start' | 'end' | 'branch_id', value: any) => {
     const existing = formData.duty_schedule ?? {};
     const blocks = [...(existing[day] ?? [])];
-    blocks[idx] = { ...blocks[idx], [field]: value };
+    const val = field === 'branch_id' ? (value ? Number(value) : null) : value;
+    blocks[idx] = { ...blocks[idx], [field]: val };
     setFormData(prev => ({ ...prev, duty_schedule: { ...existing, [day]: blocks } }));
   };
 
@@ -961,59 +1275,127 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                       {/* Per-day shift blocks */}
                       <div className="space-y-3 mb-4">
                         {DUTY_DAY_OPTIONS.filter(d => (formData.duty_days ?? []).includes(d.value)).map(day => {
-                          const blocks = formData.duty_schedule?.[day.value] ?? [{ start: '08:00', end: '17:00' }];
+                          const blocks = formData.duty_schedule?.[day.value] ?? [{ start: '08:00', end: '17:00', branch_id: defaultBranchId }];
                           return (
-                            <div key={day.value} className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">{day.label}</span>
+                            <div key={day.value} className="rounded-xl border border-gray-200 bg-gray-50/60 p-3.5">
+                              <div className="flex items-center justify-between mb-2.5">
+                                <span className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                  {day.label}
+                                </span>
                                 <button
                                   type="button"
                                   onClick={() => addBlock(day.value)}
-                                  className="flex items-center gap-1 text-xs text-emerald-600 font-medium hover:text-emerald-700 hover:bg-emerald-50 px-2 py-1 rounded-lg transition-colors"
+                                  className="flex items-center gap-1 text-xs text-emerald-600 font-semibold hover:text-emerald-700 hover:bg-emerald-50 px-2 py-1 rounded-lg transition-colors border border-emerald-200/60 bg-white"
                                 >
                                   <Plus className="w-3.5 h-3.5" />
-                                  Add Block
+                                  Add Working Period
                                 </button>
                               </div>
                               <div className="space-y-2">
-                                {blocks.map((block: { start: string; end: string }, idx: number) => (
-                                  <div key={idx} className="flex items-center gap-2">
-                                    <select
-                                      value={block.start}
-                                      onChange={e => updateBlock(day.value, idx, 'start', e.target.value)}
-                                      className="flex-1 border border-gray-200 bg-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition"
-                                    >
-                                      {TIME_OPTIONS.map(opt => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                      ))}
-                                    </select>
-                                    <span className="text-gray-400 text-xs shrink-0">–</span>
-                                    <select
-                                      value={block.end}
-                                      onChange={e => updateBlock(day.value, idx, 'end', e.target.value)}
-                                      className="flex-1 border border-gray-200 bg-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition"
-                                    >
-                                      {TIME_OPTIONS.map(opt => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                      ))}
-                                    </select>
-                                    <button
-                                      type="button"
-                                      disabled={blocks.length === 1}
-                                      onClick={() => removeBlock(day.value, idx)}
-                                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                      title="Remove block"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                ))}
+                                {blocks.map((block: ShiftBlock, idx: number) => {
+                                  const blockBranchId = block.branch_id ?? defaultBranchId;
+                                  return (
+                                    <div key={idx} className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-2 bg-white rounded-lg border border-gray-200 shadow-2xs">
+                                      <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                                        <select
+                                          value={block.start}
+                                          onChange={e => updateBlock(day.value, idx, 'start', e.target.value)}
+                                          className="flex-1 border border-gray-200 bg-white rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition"
+                                        >
+                                          {TIME_OPTIONS.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                          ))}
+                                        </select>
+                                        <span className="text-gray-400 text-xs shrink-0 font-bold">–</span>
+                                        <select
+                                          value={block.end}
+                                          onChange={e => updateBlock(day.value, idx, 'end', e.target.value)}
+                                          className="flex-1 border border-gray-200 bg-white rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition"
+                                        >
+                                          {TIME_OPTIONS.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5 flex-1 min-w-[170px]">
+                                        <span className="text-xs text-gray-400 shrink-0 font-medium">at</span>
+                                        <select
+                                          value={blockBranchId ?? ''}
+                                          onChange={e => updateBlock(day.value, idx, 'branch_id', Number(e.target.value))}
+                                          className="flex-1 border border-gray-200 bg-white rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition"
+                                        >
+                                          <option value="" disabled>Select branch</option>
+                                          {availableBranches.map(b => (
+                                            <option key={b.id} value={b.id}>
+                                              {b.name}{b.is_main_branch ? ' (Main)' : ''}{b.city ? ` · ${b.city}` : ''}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        disabled={blocks.length === 1}
+                                        onClick={() => removeBlock(day.value, idx)}
+                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                                        title="Remove working period"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           );
                         })}
                       </div>
                       {errors.duty_schedule && <FieldError msg={errors.duty_schedule} />}
+
+                      {/* Configured Branch Assignments Summary Card */}
+                      {uniqueAssignedBranchIds.length > 0 && (
+                        <div className="mb-4 p-3.5 bg-gradient-to-br from-emerald-50/70 to-teal-50/50 border border-emerald-200/80 rounded-xl">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-4 h-4 text-emerald-600" />
+                              <span className="text-xs font-bold text-emerald-900 tracking-wide uppercase">
+                                Configured Branch Assignments ({uniqueAssignedBranchIds.length})
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
+                              {uniqueAssignedBranchIds.length} Clinician {uniqueAssignedBranchIds.length === 1 ? 'Seat' : 'Seats'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-emerald-800/80 mb-2.5">
+                            The practitioner will have working hours at each configured branch. Multiple periods at the same branch reuse the single assignment.
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {uniqueAssignedBranchIds.map(bId => {
+                              const branchObj = branches.find(b => b.id === bId) || (managerBranches as any[])?.find(b => b.id === bId);
+                              const workingDays = (formData.duty_days ?? []).filter(day => {
+                                const blocks = formData.duty_schedule?.[day] ?? [];
+                                return blocks.some(b => (b.branch_id ?? defaultBranchId) === bId);
+                              });
+                              return (
+                                <div key={bId} className="flex items-start gap-2 p-2 bg-white/90 border border-emerald-100 rounded-lg text-xs shadow-2xs">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-gray-800 truncate">
+                                      {branchObj?.name || `Branch #${bId}`}
+                                      {branchObj?.is_main_branch && <span className="ml-1 text-[10px] text-sky-600 font-bold bg-sky-50 px-1 rounded">Main</span>}
+                                    </p>
+                                    <p className="text-[10px] text-gray-500">
+                                      {workingDays.length > 0 ? workingDays.join(', ') : 'No working periods'}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Lunch Break (global) */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1056,7 +1438,34 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                       </span>
                     </Label>
 
-                    {formData.roles.includes('ADMIN_ASSISTANT') ? (
+                    {/* Multi-Branch Active Overview for Edit Mode */}
+                    {isEditMode && editingStaff?.branch_assignments && editingStaff.branch_assignments.length > 0 && (
+                      <div className="mb-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+                        <span className="font-semibold text-slate-700">All Branch Assignments:</span>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {editingStaff.branch_assignments.map((b, idx) => (
+                            <span key={idx} className={`px-2 py-0.5 rounded-full border text-xs font-medium ${
+                              b.is_active ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-gray-100 text-gray-500 border-gray-200'
+                            }`}>
+                              {b.branch_name || `Branch #${b.branch_id}`} {b.is_active ? '· Active' : '· Inactive'}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(formData.roles ?? []).includes('PRACTITIONER') ? (
+                      /* ── Practitioner Scope: Multi-branch Schedule Notice ── */
+                      <div className="p-3.5 bg-sky-50/70 border border-sky-200 rounded-xl text-xs text-sky-800 flex items-start gap-2.5">
+                        <Building2 className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-semibold text-sky-900">Multi-Branch Schedule Configured</span>
+                          <p className="text-[11px] text-sky-700 mt-0.5">
+                            Branch assignments and working hours for this practitioner are configured above per duty day and working period. Primary branch: <strong className="font-bold">{branches.find(b => b.id === (uniqueAssignedBranchIds[0] ?? formData.clinic_branch))?.name || 'Selected branch'}</strong>.
+                          </p>
+                        </div>
+                      </div>
+                    ) : formData.roles.includes('ADMIN_ASSISTANT') ? (
                       /* ── Manager Scope: Multi-branch Checkboxes ── */
                       <div className="space-y-2">
                         <p className="text-xs text-gray-500 mb-2">
@@ -1128,7 +1537,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                               </div>
                             ) : (
                               <select
-                                value={formData.clinic_branch ?? ''}
+                                value={formData.clinic_branch ?? defaultBranchId ?? ''}
                                 onChange={e =>
                                   set('clinic_branch', e.target.value ? Number(e.target.value) : null)
                                 }
@@ -1213,6 +1622,49 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                       </p>
                     )}
                     <FieldError msg={errors.email} />
+
+                    {isLookingUpEmail && (
+                      <p className="mt-1 text-xs text-sky-600 flex items-center gap-1.5">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        Checking existing practitioner accounts…
+                      </p>
+                    )}
+
+                    {existingUserMatch && (
+                      <div className={`mt-2.5 p-3.5 rounded-xl border text-xs ${
+                        isAlreadyAssignedToSelectedBranch
+                          ? 'bg-amber-50 border-amber-200 text-amber-800'
+                          : 'bg-sky-50 border-sky-200 text-sky-800'
+                      }`}>
+                        <div className="flex items-start gap-2.5">
+                          <Building2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-sky-600" />
+                          <div className="space-y-1">
+                            <p className="font-semibold text-sm">
+                              {isAlreadyAssignedToSelectedBranch
+                                ? `Already Assigned: Dr. ${existingUserMatch.name}`
+                                : `Existing Practitioner Found: Dr. ${existingUserMatch.name}`}
+                            </p>
+                            <p>
+                              Account: <strong>{existingUserMatch.email}</strong> · Specialization: {existingUserMatch.specialization || 'General'}
+                            </p>
+                            {existingUserMatch.assigned_branches && existingUserMatch.assigned_branches.length > 0 && (
+                              <p>
+                                Currently assigned to: {existingUserMatch.assigned_branches.map(b => b.branch_name).join(', ')}
+                              </p>
+                            )}
+                            {isAlreadyAssignedToSelectedBranch ? (
+                              <p className="font-semibold text-amber-700 mt-1">
+                                ⚠ This practitioner is already assigned to the selected branch. Please choose a different branch to assign them to.
+                              </p>
+                            ) : (
+                              <p className="text-sky-700 font-medium mt-1">
+                                ✓ Ready to assign Dr. {existingUserMatch.name} to this branch with independent duty hours. (Consumes 1 clinician allocation).
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Phone */}
@@ -1267,7 +1719,9 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                 className="flex items-center gap-2 px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm text-sm font-semibold"
               >
                 {loading
-                  ? <><RefreshCw className="w-4 h-4 animate-spin" />{isEditMode ? 'Saving…' : 'Creating…'}</>
+                  ? <><RefreshCw className="w-4 h-4 animate-spin" />{isEditMode ? 'Saving…' : (existingUserMatch ? 'Assigning…' : 'Creating…')}</>
+                  : existingUserMatch
+                  ? <><Building2 className="w-4 h-4" />Assign to Selected Branch</>
                   : <><UserPlus  className="w-4 h-4" />{isEditMode ? 'Save Changes' : 'Create Staff Member'}</>
                 }
               </button>

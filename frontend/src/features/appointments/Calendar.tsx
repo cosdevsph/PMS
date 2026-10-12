@@ -26,6 +26,7 @@ import { NoteHoverCard } from './components/NoteHoverCard';
 import { NoteModal } from './components/NoteModal';
 import { ConflictModal } from './components/ConflictModal';
 import { ViewAllAppointmentModal } from './components/ViewAllAppointmentModal';
+import { ReminderResponseDot } from './utils/reminderResponse';
 import { APPOINTMENT_STATUS_COLORS } from '@/types';
 import type { Appointment, BlockAppointment, CalendarNote } from '@/types';
 import { rescheduleAppointment } from './appointment.api';
@@ -166,20 +167,6 @@ interface CalendarSlot {
   isLunchBreak: boolean;
 }
 
-// Helper: render communication status indicator (Nookal style)
-const renderCommunicationIndicator = (apt: Appointment) => {
-  if (apt.confirmation_status === 'CONFIRMED') {
-    return <span className="w-2 h-2 rounded-[2px] bg-[#10B981] inline-block mr-1 flex-shrink-0 shadow-sm" title="Confirmed" />;
-  }
-  if (apt.confirmation_status === 'DECLINED' || apt.status === 'CANCELLED') {
-    return <span className="w-2 h-2 rounded-[2px] bg-[#EF4444] inline-block mr-1 flex-shrink-0 shadow-sm" title="Cancelled" />;
-  }
-  if (apt.reminder_sent) {
-    return <span className="w-2 h-2 rounded-[2px] bg-[#F97316] inline-block mr-1 flex-shrink-0 shadow-sm" title="Reminder Sent" />;
-  }
-  return null;
-};
-
 const DragGhost: React.FC<DragGhostProps> = ({ appointment, position }) => (
   <div
     className="fixed pointer-events-none z-[9999] opacity-90 shadow-2xl"
@@ -192,7 +179,7 @@ const DragGhost: React.FC<DragGhostProps> = ({ appointment, position }) => (
   >
     <div className="bg-sky-500 text-white rounded-lg px-3 py-2 text-xs font-semibold shadow-lg border-2 border-sky-300">
       <div className="truncate flex items-center">
-        {renderCommunicationIndicator(appointment)}
+        <ReminderResponseDot appointment={appointment} />
         {appointment.patient_name}
       </div>
       <div className="text-sky-200 mt-0.5 truncate">
@@ -1690,7 +1677,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
             className="text-[10px] font-semibold truncate flex items-center"
             style={col.useHex ? { color: col.textColor } : {}}
           >
-            {renderCommunicationIndicator(apt)}
+            <ReminderResponseDot appointment={apt} />
             <span className={!col.useHex ? col.text : ''}>
               {apt.patient_name}
               {apt.session_display ? (
@@ -2056,9 +2043,10 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           <div className="absolute inset-0 pointer-events-none border-2 border-sky-400 animate-pulse" />
         )}
         <div
-          className="text-xs font-semibold truncate"
+          className="text-xs font-semibold truncate flex items-center"
           style={col.useHex ? { color: col.textColor } : {}}
         >
+          <ReminderResponseDot appointment={apt} />
           <span className={!col.useHex ? col.text : ''}>
             {formatTime12Hour(apt.start_time)} · {apt.patient_name}
             {apt.session_display ? (

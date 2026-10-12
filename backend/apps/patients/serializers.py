@@ -504,8 +504,9 @@ class PortalBookingCreateSerializer(serializers.ModelSerializer):
 
         if appt_date and appt_time:
             from apps.appointments.availability_service import is_appointment_within_availability, time_to_minutes
+            portal_branch = portal_link.clinic if portal_link else None
             is_valid_avail, avail_reason = is_appointment_within_availability(
-                prac, appt_date, appt_time, duration
+                prac, appt_date, appt_time, duration, branch=portal_branch
             )
             if not is_valid_avail:
                 raise serializers.ValidationError({'appointment_time': avail_reason})

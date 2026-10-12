@@ -206,20 +206,22 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def get_branch_id(self, obj) -> int | None:
         """
         Canonical branch_id for this appointment.
-        Priority: practitioner's clinic_branch_id → appointment's clinic_id
+        Priority: appointment's clinic_id → practitioner's clinic_branch_id
         """
+        if obj.clinic_id:
+            return obj.clinic_id
         if obj.practitioner:
             branch_id = getattr(obj.practitioner.user, 'clinic_branch_id', None)
             if branch_id:
                 return branch_id
-        return obj.clinic_id
+        return None
 
     def validate(self, data):
         practitioner = data.get('practitioner') or (self.instance.practitioner if self.instance else None)
         service      = data.get('service')      or (self.instance.service      if self.instance else None)
 
-        # ── Auto-set clinic from practitioner's branch ────────────────────────
-        if practitioner:
+        # ── Auto-set clinic from practitioner's branch only if clinic not explicitly provided ──
+        if practitioner and not data.get('clinic') and not (self.instance and self.instance.clinic):
             branch_id = getattr(practitioner.user, 'clinic_branch_id', None)
             if branch_id:
                 from apps.clinics.models import Clinic
@@ -307,8 +309,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         if is_timing_set and appt_date and start_time and duration:
             from apps.appointments.availability_service import is_appointment_within_availability
+            target_clinic = data.get('clinic') or (self.instance.clinic if self.instance else None)
             is_valid_avail, avail_reason = is_appointment_within_availability(
-                practitioner, appt_date, start_time, duration
+                practitioner, appt_date, start_time, duration, branch=target_clinic
             )
             if not is_valid_avail:
                 raise serializers.ValidationError({

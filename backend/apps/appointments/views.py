@@ -880,8 +880,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             day_name = day_names[weekday]
 
             # 1. Enforce Practitioner Availability & Duty End Time boundary
+            target_branch = request.data.get('clinic_branch') or request.data.get('branch') or getattr(request.user, 'clinic_branch', None) or getattr(request.user, 'clinic', None)
             is_within_avail, _ = is_appointment_within_availability(
-                practitioner_obj, target_date, start_time_obj, duration
+                practitioner_obj, target_date, start_time_obj, duration, branch=target_branch
             )
             if not is_within_avail:
                 slots.append({
@@ -1132,25 +1133,43 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
             base_qs = base_qs.filter(
                 Q(user__clinic_branch_id=branch_id) |
+                Q(user__branch_accesses__branch_id=branch_id, user__branch_accesses__is_active=True) |
                 Q(clinic_id=branch_id, user__clinic_branch__isnull=True) |
                 # Admin+Practitioner users have no branch restriction — they should
                 # appear in every branch view so they can be selected as a practitioner
                 # regardless of which branch tab the admin is viewing.
                 Q(user__clinic_branch__isnull=True, user__roles__contains=['ADMIN'])
-            )
+            ).distinct()
 
-        practitioners_data = [
-            {
+        branch_id_num = None
+        if clinic_branch_param:
+            try:
+                branch_id_num = int(clinic_branch_param)
+            except ValueError:
+                pass
+
+        practitioners_data = []
+        for p in base_qs:
+            # Resolve branch-specific availability if branch filter is applied
+            avail = p.availability
+            if branch_id_num:
+                uba = p.user.branch_accesses.filter(branch_id=branch_id_num, is_active=True).first()
+                if uba and (uba.duty_schedule or uba.duty_days):
+                    avail = uba.availability
+
+            assigned_branches = list(p.user.branch_accesses.filter(is_active=True).values('branch_id', 'branch__name'))
+
+            practitioners_data.append({
                 'id':                 p.id,
                 'name':               p.user.get_full_name(),
                 'email':              p.user.email,
                 'specialization':     p.specialization or None,
                 'clinic_id':          p.clinic_id,
                 'clinic_name':        p.clinic.name if p.clinic else None,
-                'clinic_branch_id':   p.user.clinic_branch_id,
+                'clinic_branch_id':   branch_id_num or p.user.clinic_branch_id,
                 'clinic_branch_name': p.user.clinic_branch.name
                                       if p.user.clinic_branch else None,
-                'availability':       p.availability,
+                'availability':       avail,
                 'role':               'PRACTITIONER',
                 'roles':              list(p.user.roles) if p.user.roles else ['PRACTITIONER'],
                 # ── Discipline is stored on the Practitioner profile, not the User. ──
@@ -1158,9 +1177,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 # for practitioner.discipline and incorrectly shows the
                 # "no discipline configured" warning even when one is set.
                 'discipline':         p.discipline or None,
-            }
-            for p in base_qs
-        ]
+                'assigned_branches':  assigned_branches,
+            })
 
         # ── Also include STAFF users so they appear in the diary filter ──
         from apps.accounts.models import User as UserModel
@@ -1191,8 +1209,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             if branch_id:
                 staff_qs = staff_qs.filter(
                     Q(clinic_branch_id=branch_id) |
+                    Q(branch_accesses__branch_id=branch_id, branch_accesses__is_active=True) |
                     Q(clinic_id=branch_id, clinic_branch__isnull=True)
-                )
+                ).distinct()
 
         default_days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
         for staff_user in staff_qs:
@@ -1937,7 +1956,7 @@ class PublicRebookingLinkView(APIView):
         # ── Practitioner Availability & Duty End Time Validation ──────────────
         from apps.appointments.availability_service import is_appointment_within_availability
         is_valid_avail, avail_reason = is_appointment_within_availability(
-            practitioner, new_date, new_start_time, duration
+            practitioner, new_date, new_start_time, duration, branch=original.clinic
         )
         if not is_valid_avail:
             return Response(

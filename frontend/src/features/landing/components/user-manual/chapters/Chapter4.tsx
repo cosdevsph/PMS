@@ -1,6 +1,16 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Screenshot4_1 from '@/assets/manual/Chapter 4/Screenshot 4.1.png';
+import Screenshot4_2 from '@/assets/manual/Chapter 4/Screenshot 4.2.png';
+import Screenshot4_3 from '@/assets/manual/Chapter 4/Screenshot 4.3.png';
+import Screenshot4_4 from '@/assets/manual/Chapter 4/Screenshot 4.4.png';
+import Screenshot4_5 from '@/assets/manual/Chapter 4/Screenshot 4.5.png';
+import Screenshot4_6 from '@/assets/manual/Chapter 4/Screenshot 4.6.png';
+import Screenshot4_7 from '@/assets/manual/Chapter 4/Screenshot 4.7.png';
+import Screenshot4_8 from '@/assets/manual/Chapter 4/Screenshot 4.8.png';
+import Screenshot4_9 from '@/assets/manual/Chapter 4/Screenshot 4.9.png';
+import Screenshot4_10 from '@/assets/manual/Chapter 4/Screenshot 4.10.png';
 
 const Chapter4: React.FC = () => {
   return (
@@ -25,7 +35,13 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             After successfully registering a new Owner account, the system automatically redirects you to the <strong>Clinic Setup</strong> page. This page tracks your progress across four main setup steps.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 4.1: Entire Clinic Setup page - Highlight Clinic Setup header, Navigation, and Clinic Profile section. Caption: 'The Clinic Setup page is displayed after successful account registration.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot4_1}
+              alt="Screenshot 4.1: Entire Clinic Setup page"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -39,7 +55,13 @@ const Chapter4: React.FC = () => {
             <li><strong>Clinic Email:</strong> The official email address used for clinic communications.</li>
             <li><strong>Website (Optional):</strong> A link to your clinic's external website.</li>
           </ul>
-          <ScreenshotPlaceholder label="Screenshot 4.2: Clinic Information section - Highlight Clinic Name, Phone, Email, Website. Caption: 'Complete the clinic's general information before continuing.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot4_2}
+              alt="Screenshot 4.2: Clinic Information section"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -60,7 +82,13 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             At the top of the Clinic Profile section, click <strong>Upload Logo</strong>. The system accepts PNG, JPG, and SVG formats up to 5 MB in size.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 4.3: Logo Upload area - Highlight Upload button and Preview area. Caption: 'Upload your clinic logo to personalize documents and patient-facing pages.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot4_3}
+              alt="Screenshot 4.3: Logo Upload area"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -68,7 +96,13 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Once uploaded, a preview of your logo will appear in the thumbnail box. You can easily click "Change Logo" or "Remove" if you make a mistake. Your logo will be prominently displayed on the Patient Portal, printed Clinical Notes, Invoices, and automated Emails.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 4.4: Uploaded logo preview - Caption: 'After uploading, the logo preview should appear immediately.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot4_4}
+              alt="Screenshot 4.4: Uploaded logo preview"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -95,7 +129,13 @@ const Chapter4: React.FC = () => {
             <li><strong>Postal Code:</strong> Enter your local ZIP/Postal code.</li>
             <li><strong>Custom Location:</strong> If your location isn't in the standard dropdown lists, click "Location not found? Enter manually" to type it out.</li>
           </ul>
-          <ScreenshotPlaceholder label="Screenshot 4.5: Location Details section - Highlight Address, Province, City, and Postal Code fields. Caption: 'Enter your clinic's official address information.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot4_5}
+              alt="Screenshot 4.5: Location Details section"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -103,7 +143,13 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             An interactive map is provided to pin your exact location. As you type your province and city, the map will automatically fly to your general area. Click on the map to drop a pin on your exact building.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 4.6: Map Picker - Highlight the Map Pin feature. Caption: 'Pin your exact clinic location for better accuracy.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot4_6}
+              alt="Screenshot 4.6: Map Picker"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -124,7 +170,13 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             At the bottom of the Clinic Profile section is a toggle for <strong>Email Notifications</strong>. Leaving this enabled ensures the system will send automated appointment reminders, booking confirmations, and welcome messages to your patients. SMS Notifications are currently under development.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 4.7: Preferences section - Highlight the Email Notifications toggle. Caption: 'Configure clinic communication preferences to match your operations.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot4_7}
+              alt="Screenshot 4.7: Preferences section"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -145,7 +197,13 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Ensure that all required fields (marked with a red asterisk <strong>*</strong>) have been completed. If any fields are invalid (such as an incorrect phone number format), they will be highlighted in red.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 4.8: Completed Clinic Setup form - Highlight completed fields. Caption: 'Review all information before saving.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot4_8}
+              alt="Screenshot 4.8: Completed Clinic Setup form"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -153,7 +211,13 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Scroll to the very bottom of the page and locate the <strong>Save Clinic Setup</strong> button. This button only becomes clickable once Step 1 (Clinic Profile) is completely filled out with valid data. Click it to finalize the process.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 4.9: Save button - Highlight the green Save Clinic Setup button. Caption: 'Click Save Clinic Setup to finish the initial configuration.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot4_9}
+              alt="Screenshot 4.9: Save Clinic Setup button"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -161,7 +225,13 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Upon successfully saving, a success notification will appear at the top of the screen. The system will securely initialize your workspace and automatically redirect you to your primary <strong>Owner Dashboard</strong>.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 4.10: Dashboard after successful setup - Caption: 'Your clinic has been successfully configured and is ready for use.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot4_10}
+              alt="Screenshot 4.10: Dashboard after successful setup"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 

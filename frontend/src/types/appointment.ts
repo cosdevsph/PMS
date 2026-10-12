@@ -51,6 +51,8 @@ export interface Appointment {
   confirmation_status?: 'PENDING' | 'CONFIRMED' | 'DECLINED';
   patient_reply?: string;
   patient_reply_at?: string | null;
+  is_responded?: boolean;
+  response_value?: string;
   rebook_followup_sent?: boolean;
 
   dna_followup_sent:    boolean;

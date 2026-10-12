@@ -39,9 +39,11 @@ export const StaffTableRow: React.FC<Props> = ({
   const effectiveRoles = staff.roles && staff.roles.length > 0 ? staff.roles : [staff.role];
   const isMe     = currentUserId != null && staff.id === currentUserId;
   const isAdmin  = effectiveRoles.includes('ADMIN');
-  // Show the assigned branch name when present; fall back to 'All Branches' only
-  // for admins who have no specific branch assignment.
-  const branchLabel = staff.clinic_branch_name ?? (isAdmin ? 'All Branches' : null);
+
+  const activeAssignments = (staff.branch_assignments ?? []).filter(b => b.is_active);
+  const assignedBranchNames = activeAssignments.length > 0
+    ? activeAssignments.map(b => b.branch_name).filter(Boolean) as string[]
+    : (staff.clinic_branch_name ? [staff.clinic_branch_name] : (isAdmin ? ['All Branches'] : []));
 
   return (
     <tr className="hover:bg-sky-50/40 transition-colors">
@@ -68,8 +70,17 @@ export const StaffTableRow: React.FC<Props> = ({
             {staff.nickname && (
               <p className="text-xs text-gray-400">"{staff.nickname}"</p>
             )}
-            {branchLabel && (
-              <p className="text-xs text-gray-400 mt-0.5">{branchLabel}</p>
+            {assignedBranchNames.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {assignedBranchNames.map((name, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>

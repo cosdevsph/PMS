@@ -72,8 +72,14 @@ export const Staff: React.FC = () => {
   };
 
   const handleModalSubmit = async (data: CreateStaffData) => {
-    if (selectedStaff) await updateStaff(selectedStaff.id, data);
-    else               await createStaff(data);
+    const existingId = (data as any).existing_user_id || (data as any).id;
+    if (selectedStaff) {
+      await updateStaff(selectedStaff.id, data);
+    } else if (existingId) {
+      await updateStaff(existingId, data);
+    } else {
+      await createStaff(data);
+    }
   };
 
   const handleEdit = (s: StaffMember) => {

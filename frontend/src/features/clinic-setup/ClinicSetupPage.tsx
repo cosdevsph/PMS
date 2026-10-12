@@ -17,7 +17,7 @@ import {
   Building2, MapPin, Phone, Mail, Globe,
   Upload, X, ChevronRight, CheckCircle2, Loader2, Edit3, Bell,
   Users, Stethoscope, Plus, Briefcase, Clock,
-  DollarSign, AlertCircle, Minus, FileText
+  DollarSign, Minus, FileText
 } from 'lucide-react';
 import { BranchConsentFormModal } from './components/BranchConsentFormModal';
 import toast from 'react-hot-toast';
@@ -26,6 +26,8 @@ import { isValidPHPhone } from '@/utils/phoneFormatter';
 import { validateEmailDetailed, validatePHPhoneDetailed } from '@/utils/validation';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
+import { useQueryClient } from '@tanstack/react-query';
+import { CLINIC_BRANCHES_QUERY_KEY } from '@/features/clinics/hooks/useClinicBranches';
 import { useStaffManagement } from '@/features/setup/hooks/useStaffManagement';
 import { useClinicServices } from '@/features/manage/hooks/useClinicServices';
 import type { ClinicBranch, CreateBranchData } from '@/types/clinic';
@@ -137,6 +139,7 @@ export const ClinicSetupPage: React.FC = () => {
 
   const [emailNotifEnabled, setEmailNotifEnabled] = useState(true);
   const [smsNotifEnabled,   setSmsNotifEnabled]   = useState(false);
+  const queryClient = useQueryClient();
 
   // ── (Removed old global consent form state) ────────────────────────────────
 
@@ -205,6 +208,13 @@ export const ClinicSetupPage: React.FC = () => {
     }),
     [staff],
   );
+
+  // Step 3 (Staff & Team): The owner account is already created for the clinic.
+  // Adding practitioners or extra staff is optional during onboarding.
+  const step3Complete = useMemo(() => {
+    return staff.length > 0 || step3Skipped || hasPractitioner;
+  }, [staff.length, step3Skipped, hasPractitioner]);
+
   const step1Complete = useMemo(() => {
     const emailOk = !!form.email.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
     const phoneOk = !!form.phone.trim() && isValidPHPhone(form.phone);
@@ -215,7 +225,7 @@ export const ClinicSetupPage: React.FC = () => {
   const completedCount = [
     step1Complete,
     branches.length > 0,
-    hasPractitioner,
+    step3Complete,
     services.length > 0,
   ].filter(Boolean).length;
 
@@ -359,6 +369,7 @@ export const ClinicSetupPage: React.FC = () => {
     try {
       const created = await createClinicBranch(clinicId, data);
       setBranches((prev) => [...prev, created]);
+      await queryClient.invalidateQueries({ queryKey: CLINIC_BRANCHES_QUERY_KEY });
       setBranchModalOpen(false);
       toast.success(`Branch "${created.name}" added.`);
       setTimeout(() => staffRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
@@ -375,8 +386,11 @@ export const ClinicSetupPage: React.FC = () => {
 
   // ── Section 3: Staff handlers ─────────────────────────────────────────────
   const handleStaffSubmit = async (data: CreateStaffData) => {
+    const existingId = (data as any).existing_user_id || (data as any).id;
     if (editingStaff) {
       await doUpdateStaff(editingStaff.id, data);
+    } else if (existingId) {
+      await doUpdateStaff(existingId, data);
     } else {
       await doCreateStaff(data);
     }
@@ -496,7 +510,7 @@ export const ClinicSetupPage: React.FC = () => {
             {[
               { label: 'Clinic',   done: step1Complete },
               { label: 'Branches', done: branches.length > 0 },
-              { label: 'Staff',    done: hasPractitioner },
+              { label: 'Staff',    done: step3Complete },
               { label: 'Services', done: services.length > 0 },
             ].map((step, i) => (
               <div key={i} className="flex flex-col items-center gap-1">
@@ -835,12 +849,12 @@ export const ClinicSetupPage: React.FC = () => {
             step={3}
             icon={<Users className="w-4 h-4 text-white" />}
             title="Staff & Practitioners"
-            subtitle="Add your team and assign roles and schedules."
-            done={hasPractitioner}
-            skipped={step3Skipped && !hasPractitioner}
+            subtitle="Add your team and assign roles and schedules (optional)."
+            done={step3Complete}
+            skipped={step3Skipped && staff.length === 0}
           />
 
-          {step3Skipped && !hasPractitioner ? (
+          {step3Skipped && staff.length === 0 ? (
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -916,15 +930,8 @@ export const ClinicSetupPage: React.FC = () => {
               {staff.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-gray-200 rounded-lg mb-4">
                   <Users className="w-8 h-8 text-gray-200 mb-2" />
-                  <p className="text-xs font-semibold text-gray-400">No staff added yet</p>
-                  <p className="text-xs text-gray-300 mt-0.5">Add at least 1 practitioner to continue.</p>
-                </div>
-              )}
-
-              {!hasPractitioner && staff.length > 0 && (
-                <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-700 text-xs mb-3">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  At least 1 staff member must have the <strong>Practitioner</strong> role to complete setup.
+                  <p className="text-xs font-semibold text-gray-400">No additional staff added yet</p>
+                  <p className="text-xs text-gray-300 mt-0.5">You can add staff and practitioners now, or invite them later from Settings.</p>
                 </div>
               )}
 
@@ -1175,6 +1182,7 @@ export const ClinicSetupPage: React.FC = () => {
             onClose={() => { setStaffModalOpen(false); setEditingStaff(null); }}
             onSubmit={handleStaffSubmit}
             editingStaff={editingStaff}
+            branches={branches.length > 0 ? branches : (clinicId ? [{ id: clinicId, name: form.name || 'Main Clinic', is_main_branch: true } as any] : [])}
           />
         )}
       </Suspense>

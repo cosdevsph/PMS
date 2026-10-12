@@ -2,6 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Appointment } from '@/types';
+import { ReminderResponseDot, ReminderResponseBadge } from '../utils/reminderResponse';
 
 interface ViewAllAppointmentModalProps {
   isOpen: boolean;
@@ -80,6 +81,9 @@ export const ViewAllAppointmentModal: React.FC<ViewAllAppointmentModalProps> = (
                       Primary Practitioner
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Reminder Response
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Appointment Status
                     </th>
                   </tr>
@@ -121,7 +125,8 @@ export const ViewAllAppointmentModal: React.FC<ViewAllAppointmentModalProps> = (
                               alt="Patient Profile" 
                               className="w-8 h-8 rounded-full object-cover border border-gray-200"
                             />
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 flex items-center">
+                              <ReminderResponseDot appointment={appt} />
                               {appt.patient_name || 'Unknown Patient'}
                             </div>
                           </div>
@@ -135,6 +140,12 @@ export const ViewAllAppointmentModal: React.FC<ViewAllAppointmentModalProps> = (
                           <div className="text-sm text-gray-700">
                             {appt.practitioner_name || 'Unassigned'}
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <ReminderResponseBadge appointment={appt} />
+                          {!appt.reminder_sent && !appt.confirmation_sent && !appt.confirmation_status && (
+                            <span className="text-xs text-gray-400 italic">No reminder sent</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColor}`}>

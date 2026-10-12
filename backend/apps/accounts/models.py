@@ -765,6 +765,48 @@ class UserBranchAccess(TimeStampedModel):
         help_text='The clinic branch the user can access.',
     )
 
+    # ── Branch-specific practitioner / staff schedule ─────────────────────────
+    duty_days = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of duty days for this branch, e.g. ["Mon", "Tue"]'
+    )
+    duty_start_time = models.TimeField(
+        null=True,
+        blank=True,
+        default='08:00',
+        help_text='Duty start time for this branch'
+    )
+    duty_end_time = models.TimeField(
+        null=True,
+        blank=True,
+        default='17:00',
+        help_text='Duty end time for this branch'
+    )
+    lunch_start_time = models.TimeField(
+        null=True,
+        blank=True,
+        default='12:00',
+        help_text='Lunch start time for this branch'
+    )
+    lunch_end_time = models.TimeField(
+        null=True,
+        blank=True,
+        default='13:00',
+        help_text='Lunch end time for this branch'
+    )
+    duty_schedule = models.JSONField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text='Per-day split-shift schedule for this branch'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text='Active status of this branch assignment'
+    )
+
     class Meta:
         db_table = 'user_branch_access'
         unique_together = [('user', 'branch')]
@@ -772,10 +814,23 @@ class UserBranchAccess(TimeStampedModel):
         indexes = [
             models.Index(fields=['user', 'branch']),
             models.Index(fields=['branch']),
+            models.Index(fields=['user', 'is_active']),
         ]
 
     def __str__(self):
-        return f"{self.user.get_full_name()} → {self.branch.name}"
+        return f"{self.user.get_full_name()} → {self.branch.name} ({'Active' if self.is_active else 'Inactive'})"
+
+    @property
+    def availability(self):
+        """Return branch-specific availability dictionary."""
+        return {
+            'duty_days': self.duty_days or ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+            'duty_start_time': self.duty_start_time.strftime('%H:%M') if self.duty_start_time else '08:00',
+            'duty_end_time': self.duty_end_time.strftime('%H:%M') if self.duty_end_time else '17:00',
+            'lunch_start_time': self.lunch_start_time.strftime('%H:%M') if self.lunch_start_time else '12:00',
+            'lunch_end_time': self.lunch_end_time.strftime('%H:%M') if self.lunch_end_time else '13:00',
+            'duty_schedule': self.duty_schedule,
+        }
 
 
 class UserRoleChangeLog(models.Model):

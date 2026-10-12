@@ -1878,16 +1878,22 @@ class PublicAvailableSlotsView(APIView):
         from apps.appointments.availability_service import generate_available_slots, time_to_minutes
         booked_ranges = []
 
-        diary_qs = Appointment.objects.filter(
-            date=target_date,
-            clinic=portal_link.clinic,
-            status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'],
-            is_deleted=False,
-            # ✅ Exclude archived patients' appointments from slot-availability too
-            patient__is_archived=False,
-        )
         if practitioner_id:
-            diary_qs = diary_qs.filter(practitioner_id=practitioner_id)
+            diary_qs = Appointment.objects.filter(
+                date=target_date,
+                practitioner_id=practitioner_id,
+                status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'],
+                is_deleted=False,
+                patient__is_archived=False,
+            )
+        else:
+            diary_qs = Appointment.objects.filter(
+                date=target_date,
+                clinic=portal_link.clinic,
+                status__in=['SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS'],
+                is_deleted=False,
+                patient__is_archived=False,
+            )
 
         for appt in diary_qs:
             booked_ranges.append((
@@ -1895,13 +1901,18 @@ class PublicAvailableSlotsView(APIView):
                 time_to_minutes(appt.end_time),
             ))
 
-        portal_qs = PortalBooking.objects.filter(
-            portal_link=portal_link,
-            appointment_date=target_date,
-            status__in=['PENDING', 'CONFIRMED'],
-        )
         if practitioner_id:
-            portal_qs = portal_qs.filter(practitioner_id=practitioner_id)
+            portal_qs = PortalBooking.objects.filter(
+                appointment_date=target_date,
+                practitioner_id=practitioner_id,
+                status__in=['PENDING', 'CONFIRMED'],
+            )
+        else:
+            portal_qs = PortalBooking.objects.filter(
+                portal_link=portal_link,
+                appointment_date=target_date,
+                status__in=['PENDING', 'CONFIRMED'],
+            )
 
         for booking in portal_qs:
             booking_start            = time_to_minutes(booking.appointment_time)
@@ -1934,6 +1945,7 @@ class PublicAvailableSlotsView(APIView):
             duration_minutes=duration,
             booked_ranges=booked_ranges,
             slot_interval=15,
+            branch=portal_link.clinic,
         )
 
         return Response({'date': date_str, 'slots': available})

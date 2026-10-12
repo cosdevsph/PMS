@@ -52,11 +52,15 @@ def subtract_interval(working_ranges: List[Tuple[int, int]], subtract_start: int
     return new_ranges
 
 
-def get_practitioner_working_windows(practitioner: Optional[Practitioner], target_date: date) -> List[Tuple[int, int]]:
+def get_practitioner_working_windows(
+    practitioner: Optional[Practitioner],
+    target_date: date,
+    branch: Optional[Any] = None,
+) -> List[Tuple[int, int]]:
     """
     Returns the practitioner's available working windows [(start_min, end_min), ...]
-    for target_date, accounting for duty days, split shifts, legacy duty hours,
-    and lunch breaks.
+    for target_date, accounting for branch-specific duty days/schedule (UserBranchAccess),
+    split shifts, legacy duty hours, and lunch breaks.
     Clamped to clinic operating hours [CLINIC_START, CLINIC_END].
     """
     weekday = target_date.weekday()
@@ -67,8 +71,35 @@ def get_practitioner_working_windows(practitioner: Optional[Practitioner], targe
         base_windows = [(CLINIC_START, CLINIC_END)]
         return subtract_interval(base_windows, 12 * 60, 13 * 60)
 
-    # 1. Check PractitionerSchedule table first
-    if getattr(practitioner, 'pk', None):
+    # 1. Check UserBranchAccess first if branch is provided
+    duty_days = None
+    duty_sched = None
+    duty_start_time = None
+    duty_end_time = None
+    lunch_start_time = None
+    lunch_end_time = None
+
+    if branch and getattr(practitioner, 'user_id', None):
+        from apps.accounts.models import UserBranchAccess
+        branch_id = branch.pk if hasattr(branch, 'pk') else branch
+        uba = UserBranchAccess.objects.filter(
+            user_id=practitioner.user_id,
+            branch_id=branch_id,
+        ).first()
+        if uba:
+            if not uba.is_active:
+                # Practitioner is inactive at this branch
+                return []
+            if uba.duty_schedule or uba.duty_days:
+                duty_days = uba.duty_days
+                duty_sched = uba.duty_schedule
+                duty_start_time = uba.duty_start_time
+                duty_end_time = uba.duty_end_time
+                lunch_start_time = uba.lunch_start_time
+                lunch_end_time = uba.lunch_end_time
+
+    # 2. Check PractitionerSchedule table first (legacy location-based)
+    if duty_sched is None and duty_days is None and getattr(practitioner, 'pk', None):
         sched_qs = PractitionerSchedule.objects.filter(
             practitioner=practitioner,
             weekday=weekday,
@@ -83,9 +114,16 @@ def get_practitioner_working_windows(practitioner: Optional[Practitioner], targe
                     windows.append((s_start, s_end))
             return windows
 
-    # 2. Check Practitioner duty_days
-    duty_days = practitioner.duty_days or []
-    duty_sched = practitioner.duty_schedule
+    # 3. Fallback to global Practitioner schedule if not resolved from branch
+    if duty_sched is None and duty_days is None:
+        duty_days = practitioner.duty_days or []
+        duty_sched = practitioner.duty_schedule
+        duty_start_time = practitioner.duty_start_time
+        duty_end_time = practitioner.duty_end_time
+        lunch_start_time = practitioner.lunch_start_time
+        lunch_end_time = practitioner.lunch_end_time
+    else:
+        duty_days = duty_days or []
 
     # If duty_schedule is configured with days, it defines the schedule days
     if duty_sched and isinstance(duty_sched, dict) and len(duty_sched) > 0:
@@ -95,7 +133,7 @@ def get_practitioner_working_windows(practitioner: Optional[Practitioner], targe
         if day_key not in duty_days:
             return []
 
-    # 3. Build candidate blocks
+    # 4. Build candidate blocks
     working_ranges: List[Tuple[int, int]] = []
     if duty_sched and isinstance(duty_sched, dict) and day_key in duty_sched:
         blocks = duty_sched[day_key]
@@ -108,9 +146,9 @@ def get_practitioner_working_windows(practitioner: Optional[Practitioner], targe
                         working_ranges.append((b_start, b_end))
                 except Exception:
                     pass
-    elif practitioner.duty_start_time and practitioner.duty_end_time:
-        start_min = time_to_minutes(practitioner.duty_start_time)
-        end_min = time_to_minutes(practitioner.duty_end_time)
+    elif duty_start_time and duty_end_time:
+        start_min = time_to_minutes(duty_start_time)
+        end_min = time_to_minutes(duty_end_time)
         if end_min > start_min:
             working_ranges.append((start_min, end_min))
 
@@ -118,16 +156,16 @@ def get_practitioner_working_windows(practitioner: Optional[Practitioner], targe
         # If no specific duty schedule or hours, default to clinic hours
         working_ranges = [(CLINIC_START, CLINIC_END)]
 
-    # 4. Subtract lunch break
-    if practitioner.lunch_start_time and practitioner.lunch_end_time:
-        l_start = time_to_minutes(practitioner.lunch_start_time)
-        l_end = time_to_minutes(practitioner.lunch_end_time)
+    # 5. Subtract lunch break
+    if lunch_start_time and lunch_end_time:
+        l_start = time_to_minutes(lunch_start_time)
+        l_end = time_to_minutes(lunch_end_time)
         working_ranges = subtract_interval(working_ranges, l_start, l_end)
     elif not (duty_sched and isinstance(duty_sched, dict) and day_key in duty_sched):
         # Subtract standard clinic lunch 12:00-13:00 for non-split schedules
         working_ranges = subtract_interval(working_ranges, 12 * 60, 13 * 60)
 
-    # 5. Clamp to clinic hours
+    # 6. Clamp to clinic hours
     clamped_ranges: List[Tuple[int, int]] = []
     for r_start, r_end in working_ranges:
         c_start = max(r_start, CLINIC_START)
@@ -143,6 +181,7 @@ def is_appointment_within_availability(
     target_date: date,
     start_time: Any,
     duration_minutes: int,
+    branch: Optional[Any] = None,
 ) -> Tuple[bool, str]:
     """
     Validates the Core Business Rule:
@@ -165,10 +204,11 @@ def is_appointment_within_availability(
             f"extends outside clinic operating hours (06:00 – 21:00)."
         )
 
-    windows = get_practitioner_working_windows(practitioner, target_date)
+    windows = get_practitioner_working_windows(practitioner, target_date, branch=branch)
     if not windows:
         day_name = target_date.strftime('%A')
-        return (False, f"Practitioner is not scheduled to work on {day_name}.")
+        branch_name = f" at {branch.name}" if hasattr(branch, 'name') and branch and getattr(branch, 'name', None) else ""
+        return (False, f"Practitioner is not scheduled to work on {day_name}{branch_name}.")
 
     # Check if the entire appointment fits within at least one continuous window
     for w_start, w_end in windows:
@@ -199,6 +239,7 @@ def generate_available_slots(
     duration_minutes: int,
     booked_ranges: Optional[List[Tuple[int, int]]] = None,
     slot_interval: int = 15,
+    branch: Optional[Any] = None,
 ) -> List[str]:
     """
     Generates available slot start times ('HH:MM') for target_date.
@@ -210,7 +251,7 @@ def generate_available_slots(
     if duration <= 0:
         duration = 15
 
-    windows = get_practitioner_working_windows(practitioner, target_date)
+    windows = get_practitioner_working_windows(practitioner, target_date, branch=branch)
     all_booked = booked_ranges or []
 
     available_slots: List[str] = []

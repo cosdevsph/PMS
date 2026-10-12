@@ -1,6 +1,16 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Screenshot3_1 from '@/assets/manual/Chapter 3/Screenshot 3.1.png';
+import Screenshot3_2 from '@/assets/manual/Chapter 3/Screenshot 3.2.png';
+import Screenshot3_3 from '@/assets/manual/Chapter 3/Screenshot 3.3.png';
+import Screenshot3_4 from '@/assets/manual/Chapter 3/Screenshot 3.4.png';
+import Screenshot3_5 from '@/assets/manual/Chapter 3/Screenshot 3.5.png';
+import Screenshot3_6 from '@/assets/manual/Chapter 3/Screenshot 3.6.png';
+import Screenshot3_7 from '@/assets/manual/Chapter 3/Screenshot 3.7.png';
+import Screenshot3_8 from '@/assets/manual/Chapter 3/Screenshot 3.8.png';
+import Screenshot3_9 from '@/assets/manual/Chapter 3/Screenshot 3.9.png';
+import Screenshot3_10 from '@/assets/manual/Chapter 3/Screenshot 3.10.png';
 
 const Chapter3: React.FC = () => {
   return (
@@ -21,7 +31,13 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Click the <strong>Sign In</strong> button located in the navigation bar.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 3.1: Landing Page - Highlight Navigation Bar and Sign In button. Caption: 'Click the Sign In button to access your existing Malasakit account.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot3_1}
+              alt="Screenshot 3.1: Landing Page - Highlight Navigation Bar and Sign In button"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -35,7 +51,13 @@ const Chapter3: React.FC = () => {
             <li><strong>Forgot Password:</strong> Click this link if you cannot remember your password.</li>
             <li><strong>Sign In button:</strong> Submits your credentials to authenticate your session.</li>
           </ul>
-          <ScreenshotPlaceholder label="Screenshot 3.2: Sign In Page - Highlight Email field, Password field, Forgot Password link, and Sign In button. Caption: 'Enter your registered email address and password.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot3_2}
+              alt="Screenshot 3.2: Sign In Page"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -43,7 +65,13 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             After entering your credentials and clicking <strong>Sign In</strong>, the system will verify your account. Upon successful authentication, you are securely redirected to the Dashboard.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 3.3: Dashboard - Highlight Dashboard, Sidebar, User Profile. Caption: 'After successful authentication, you will be redirected to the Dashboard.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot3_3}
+              alt="Screenshot 3.3: Dashboard"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -68,7 +96,13 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             On the Sign In page, locate and click the <strong>Forgot password?</strong> link above the password field.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 3.4: Sign In Page - Highlight Forgot Password link. Caption: 'Click Forgot Password if you cannot remember your password.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot3_4}
+              alt="Screenshot 3.4: Sign In Page - Forgot Password link"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -76,7 +110,13 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Enter your registered email address. This email must exactly match the account used during registration. Then, click the <strong>Send Verification Code</strong> button.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 3.5: Forgot Password Page - Highlight Email field and Continue/Send button. Caption: 'Enter the email address associated with your Malasakit account.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot3_5}
+              alt="Screenshot 3.5: Forgot Password Page - Enter Email"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -84,7 +124,13 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             After submission, Malasakit will securely send a 6-digit One-Time Password (OTP) to your inbox. You will be redirected to the OTP Verification screen where you can input the code to securely reset your password.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 3.6: Password Recovery Confirmation - Highlight Confirmation message. Caption: 'A recovery email or verification code has been sent.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot3_6}
+              alt="Screenshot 3.6: Password Recovery OTP Verification Screen"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -115,12 +161,14 @@ const Chapter3: React.FC = () => {
         </ul>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8 mb-6">
-        <ScreenshotPlaceholder label="Screenshot 3.7: Dashboard - Highlight Logged-in user. Caption: 'A signed-in user has access to the authorized system modules.'" />
-      </div>
-
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8 mb-8">
-        <ScreenshotPlaceholder label="Optional Illustration Placeholder: Workflow Diagram (Sign In -> Authenticated Session -> Dashboard Access -> Logout)" />
+        <div className="w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <img
+            src={Screenshot3_7}
+            alt="Screenshot 3.7: Dashboard - Highlight Logged-in user"
+            className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+          />
+        </div>
       </div>
 
       <DocCallout type="info">
@@ -140,7 +188,13 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             From the Dashboard (or any authenticated page), locate your Profile Avatar in the top-right corner of the navigation bar.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 3.8: Dashboard - Highlight Profile Avatar / User Menu. Caption: 'Open the user profile menu located at the top-right corner.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot3_8}
+              alt="Screenshot 3.8: Dashboard Profile Avatar"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -148,7 +202,13 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Click the avatar to reveal the dropdown menu. Click the <strong>Logout</strong> option. You will be prompted to confirm your choice. Confirming will securely end your active session and erase all authentication tokens from the browser.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 3.9: User Dropdown - Highlight Logout option. Caption: 'Select Logout to securely end your session.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot3_9}
+              alt="Screenshot 3.9: User Dropdown Logout option"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -156,7 +216,13 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             After successfully logging out, you are immediately redirected back to the Landing Page. A brief notification will confirm that you have been securely signed out.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 3.10: Landing Page - Caption: 'You have successfully signed out of your account.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot3_10}
+              alt="Screenshot 3.10: Landing Page Logged Out Confirmation"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 

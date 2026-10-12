@@ -21,36 +21,42 @@
 :root {
   --font-primary: 'Inter', sans-serif;
   --font-secondary: 'Plus Jakarta Sans', sans-serif;
-  --gradient-primary: linear-gradient(to right, #0575E6, #5CDB95);
+  --gradient-primary: linear-gradient(to right, #0575E6 0%, #0575E6 58%, #088FE3 80%, #5CDB95 100%);
 }
 
-/* Global font application */
+/* Global font application — Plus Jakarta Sans Regular for body text and longer content */
 html, body {
   font-family: var(--font-secondary);
+  font-weight: 400;
 }
 
-/* Headings use Inter Bold */
-h1, h2, h3, h4, h5, h6,
+/* Headings and main/big texts use Inter Bold */
+h1, h2,
 .text-display,
-.font-display,
-.font-heading {
+.font-display {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
 }
 
-/* Body text uses Plus Jakarta Sans */
-p, span, li, div,
+/* Subheadings and structured navigation use Inter Semi-Bold / Bold */
+h3, h4, h5, h6,
+.font-heading {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Body text and longer content use Plus Jakarta Sans Regular */
+p, span, li,
 .text-body,
 .font-body {
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* Primary gradient utility */
+/* Primary gradient utility — Care Blue dominant with subtle Healing Mint accent */
 .bg-primary-gradient {
-  background: linear-gradient(to top right, #0575E6, #5CDB95);
+  background: linear-gradient(to top right, #0575E6 0%, #0575E6 58%, #088FE3 80%, #5CDB95 100%);
 }
 .text-primary-gradient {
-  background: linear-gradient(to top right, #0575E6, #5CDB95);
+  background: linear-gradient(to top right, #0575E6 0%, #0575E6 58%, #088FE3 80%, #5CDB95 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -139,6 +145,27 @@ p, span, li, div,
   to   { transform: scaleX(0); }
 }
 
+/* React Bits: Text Shine Animation */
+@keyframes text-shine {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-text-shine {
+  animation: text-shine 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-text-shine {
+    animation: none !important;
+  }
+}
+
+
 /* Component Primitives */
 @layer components {  
   .card-base {
@@ -174,7 +201,7 @@ p, span, li, div,
   }
   .btn-primary {
     @apply text-white rounded-xl hover:opacity-95 transition-all;
-    background: linear-gradient(to right, #0575E6, #5CDB95);
+    background: linear-gradient(to right, #0575E6 0%, #0575E6 58%, #088FE3 80%, #5CDB95 100%);
   }
   .btn-secondary {
     @apply border border-trust-harbor text-trust-harbor bg-white rounded-xl hover:bg-clinical-cloud transition-all;

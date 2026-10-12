@@ -237,7 +237,7 @@ class Appointment(TimeStampedModel, SoftDeleteModel):
         if self.date and self.start_time and duration:
             from apps.appointments.availability_service import is_appointment_within_availability
             is_valid_avail, avail_reason = is_appointment_within_availability(
-                self.practitioner, self.date, self.start_time, duration
+                self.practitioner, self.date, self.start_time, duration, branch=self.clinic
             )
             if not is_valid_avail:
                 raise ValidationError({'start_time': avail_reason})

@@ -45,9 +45,56 @@ export interface StaffMember {
   gender?: GenderType;
   address?: string;
 
+  // Multi-branch assignments (for PRACTITIONER and staff)
+  branch_assignments?: BranchAssignment[];
+  assigned_branch_ids?: number[];
+
   // Availability (for PRACTITIONER and STAFF roles)
   availability?: PractitionerAvailability;
   duty_days?: DutyDay[];
+  lunch_start_time?: string;
+  lunch_end_time?: string;
+  duty_schedule?: DutySchedule | null;
+}
+
+export interface BranchAssignment {
+  id?: number;
+  branch_id: number;
+  branch_name?: string;
+  is_active: boolean;
+  duty_days?: DutyDay[];
+  duty_start_time?: string;
+  duty_end_time?: string;
+  lunch_start_time?: string;
+  lunch_end_time?: string;
+  duty_schedule?: DutySchedule | null;
+}
+
+export interface UserLookupResult {
+  found: boolean;
+  user?: {
+    id: number;
+    email: string;
+    name: string;
+    first_name: string;
+    last_name: string;
+    phone: string;
+    roles: UserRole[];
+    is_practitioner: boolean;
+    practitioner_id?: number | null;
+    license_number?: string;
+    specialization?: string;
+    discipline?: string;
+    assigned_branches: BranchAssignment[];
+    assigned_branch_ids: number[];
+  };
+}
+
+export interface AssignBranchData {
+  branch_id: number;
+  duty_days?: DutyDay[];
+  duty_start_time?: string;
+  duty_end_time?: string;
   lunch_start_time?: string;
   lunch_end_time?: string;
   duty_schedule?: DutySchedule | null;

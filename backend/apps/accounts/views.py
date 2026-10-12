@@ -8,6 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from django.contrib.auth import authenticate
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.core.cache import cache
 from .models import User, Role, Permission, PermissionGroup, FeaturePermission, DEFAULT_PERMISSIONS, FEATURE_KEYS, ROLE_PRIORITY, UserRoleChangeLog
@@ -1292,8 +1293,22 @@ class UserViewSet(viewsets.ModelViewSet):
                     from apps.subscriptions.services import check_clinician_capacity, ClinicianLimitReachedException
                     target_clinic = request.user.clinic
                     if target_clinic:
+                        incoming_schedule = serializer.validated_data.get('duty_schedule') or request.data.get('duty_schedule')
+                        unique_bids = set()
+                        if incoming_schedule and isinstance(incoming_schedule, dict):
+                            for blocks in incoming_schedule.values():
+                                if isinstance(blocks, list):
+                                    for b in blocks:
+                                        bid = b.get('branch_id')
+                                        if bid:
+                                            unique_bids.add(int(bid))
                         requested_branch_ids = serializer.validated_data.get('branch_ids') or request.data.get('branch_ids', [])
-                        allocations_needed = max(1, len(requested_branch_ids)) if requested_branch_ids else 1
+                        if requested_branch_ids:
+                            unique_bids.update([int(b) for b in requested_branch_ids])
+                        if not unique_bids and branch:
+                            unique_bids.add(branch.id)
+
+                        allocations_needed = max(1, len(unique_bids))
                         try:
                             check_clinician_capacity(target_clinic, additional_allocations=allocations_needed)
                         except ClinicianLimitReachedException as exc:
@@ -1382,6 +1397,16 @@ class UserViewSet(viewsets.ModelViewSet):
                         if discipline_value:
                             User.objects.filter(pk=user.pk).update(discipline=discipline_value)
                         logger.info(f"Practitioner profile created for: {user.email}")
+
+                if 'PRACTITIONER' in roles:
+                    # Sync multi-branch UserBranchAccess rows for Practitioner
+                    UserSerializer._sync_practitioner_branch_schedules(
+                        user=user,
+                        duty_schedule=request.data.get('duty_schedule'),
+                        default_branch=branch or request.user.clinic_branch or request.user.clinic,
+                        lunch_start_time=request.data.get('lunch_start_time', '12:00'),
+                        lunch_end_time=request.data.get('lunch_end_time', '13:00'),
+                    )
 
                 if 'STAFF' in roles:
                     # Save Staff availability and discipline directly on the User model
@@ -1558,12 +1583,25 @@ class UserViewSet(viewsets.ModelViewSet):
         was_practitioner = 'PRACTITIONER' in old_effective_roles or instance.role == 'PRACTITIONER'
         will_be_practitioner = 'PRACTITIONER' in new_roles_requested or new_role_requested == 'PRACTITIONER'
 
-        old_branch_count = max(1, instance.branch_accesses.count()) if (was_practitioner and instance.branch_accesses.exists()) else (1 if was_practitioner else 0)
+        active_uba_count = instance.branch_accesses.filter(is_active=True).count()
+        old_branch_count = max(1, active_uba_count) if (was_practitioner and active_uba_count > 0) else (1 if was_practitioner else 0)
 
         if will_be_practitioner:
+            incoming_schedule = serializer.validated_data.get('duty_schedule') or request.data.get('duty_schedule')
+            unique_bids = set()
+            if incoming_schedule and isinstance(incoming_schedule, dict):
+                for blocks in incoming_schedule.values():
+                    if isinstance(blocks, list):
+                        for b in blocks:
+                            bid = b.get('branch_id')
+                            if bid:
+                                unique_bids.add(int(bid))
             incoming_branch_ids = serializer.validated_data.get('branch_ids')
-            if incoming_branch_ids is not None:
-                new_branch_count = max(1, len(incoming_branch_ids))
+            if incoming_branch_ids:
+                unique_bids.update([int(b) for b in incoming_branch_ids])
+
+            if unique_bids:
+                new_branch_count = len(unique_bids)
             else:
                 new_branch_count = old_branch_count if was_practitioner else 1
         else:
@@ -1917,6 +1955,265 @@ class UserViewSet(viewsets.ModelViewSet):
             'id': instance.id,
             'is_permanently_deleted': True,
         }, status=status.HTTP_200_OK)
+
+    # ── Multi-Branch Practitioner Actions ─────────────────────────────────────
+
+    @action(detail=False, methods=['get'])
+    def lookup(self, request):
+        """
+        GET /api/users/lookup/?email=...
+        Lookup an existing user by email within the requesting admin/manager's clinic family.
+        Used by the staff creation modal to detect existing accounts and offer branch assignment.
+        """
+        email = (request.query_params.get('email') or '').strip().lower()
+        if not email:
+            return Response({'found': False, 'detail': 'Email parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        actor = request.user
+        if not (actor.is_admin or actor.is_manager):
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        main_clinic = actor.clinic.main_clinic if actor.clinic else None
+        if not main_clinic:
+            return Response({'found': False})
+
+        branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
+
+        user = User.objects.filter(
+            email=email,
+            is_deleted=False,
+            is_permanently_deleted=False,
+        ).filter(
+            Q(clinic=main_clinic) |
+            Q(clinic_branch_id__in=branch_ids) |
+            Q(branch_accesses__branch_id__in=branch_ids)
+        ).distinct().select_related('practitioner_profile').first()
+
+        if not user:
+            return Response({'found': False})
+
+        practitioner = getattr(user, 'practitioner_profile', None)
+        assigned_branches = []
+        for ba in user.branch_accesses.select_related('branch').all():
+            assigned_branches.append({
+                'id': ba.id,
+                'branch_id': ba.branch_id,
+                'branch_name': ba.branch.name if ba.branch else '',
+                'is_active': ba.is_active,
+                'duty_days': ba.duty_days or [],
+                'duty_start_time': ba.duty_start_time.strftime('%H:%M') if ba.duty_start_time else '08:00',
+                'duty_end_time': ba.duty_end_time.strftime('%H:%M') if ba.duty_end_time else '17:00',
+                'lunch_start_time': ba.lunch_start_time.strftime('%H:%M') if ba.lunch_start_time else '12:00',
+                'lunch_end_time': ba.lunch_end_time.strftime('%H:%M') if ba.lunch_end_time else '13:00',
+                'duty_schedule': ba.duty_schedule,
+            })
+
+        active_branch_ids = [b['branch_id'] for b in assigned_branches if b['is_active']]
+        if not active_branch_ids and user.clinic_branch_id:
+            active_branch_ids = [user.clinic_branch_id]
+
+        return Response({
+            'found': True,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'name': user.get_full_name(),
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'phone': user.phone,
+                'roles': user.get_effective_roles(),
+                'is_practitioner': 'PRACTITIONER' in user.get_effective_roles(),
+                'practitioner_id': practitioner.id if practitioner and not practitioner.is_deleted else None,
+                'license_number': practitioner.license_number if practitioner else '',
+                'specialization': practitioner.specialization if practitioner else '',
+                'discipline': practitioner.discipline if practitioner else (user.discipline or 'OCCUPATIONAL_THERAPY'),
+                'assigned_branches': assigned_branches,
+                'assigned_branch_ids': active_branch_ids,
+            }
+        })
+
+    @action(detail=True, methods=['post'], url_path='assign_branch')
+    def assign_branch(self, request, pk=None):
+        """
+        POST /api/users/{id}/assign_branch/
+        Assign an existing practitioner user to an additional clinic branch.
+        """
+        actor = request.user
+        is_owner = actor.is_admin
+        is_manager = actor.is_manager
+
+        if not (is_owner or is_manager):
+            return Response({'detail': 'Only administrators and managers can assign practitioners to branches.'}, status=status.HTTP_403_FORBIDDEN)
+
+        user = self.get_object()
+        effective_roles = user.get_effective_roles()
+        if 'PRACTITIONER' not in effective_roles:
+            return Response({'detail': 'This user does not have the Practitioner role.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        branch_id = request.data.get('branch_id')
+        if not branch_id:
+            return Response({'branch_id': 'branch_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # RBAC Check: If manager, branch_id must be in manager's managed branches
+        if is_manager and not is_owner:
+            manager_branch_ids = set(actor.branch_accesses.values_list('branch_id', flat=True))
+            if getattr(actor, 'clinic_branch_id', None):
+                manager_branch_ids.add(actor.clinic_branch_id)
+            if int(branch_id) not in manager_branch_ids:
+                return Response({'detail': 'You do not have permission to manage this branch.'}, status=status.HTTP_403_FORBIDDEN)
+
+        branch_result = self._validate_branch(request, branch_id)
+        if isinstance(branch_result, dict) and 'error' in branch_result:
+            return Response({'branch_id': branch_result['error']}, status=status.HTTP_400_BAD_REQUEST)
+
+        branch = branch_result
+
+        with transaction.atomic():
+            from apps.accounts.models import UserBranchAccess
+            uba = UserBranchAccess.objects.select_for_update().filter(user=user, branch=branch).first()
+            if uba and uba.is_active:
+                return Response(
+                    {'detail': f'Dr. {user.get_full_name()} is already assigned to {branch.name}.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check subscription clinician limit capacity
+            from apps.subscriptions.services import check_clinician_capacity, ClinicianLimitReachedException
+            target_clinic = actor.clinic
+            if target_clinic:
+                try:
+                    check_clinician_capacity(target_clinic, additional_allocations=1)
+                except ClinicianLimitReachedException as exc:
+                    return Response(
+                        {
+                            'error': 'CLINICIAN_LIMIT_REACHED',
+                            'detail': str(exc),
+                            'current_allocations': exc.current_allocations,
+                            'allowed_allocations': exc.allowed_allocations,
+                            'archived_allocations': exc.archived_allocations,
+                            'archived_practitioners': exc.archived_practitioners,
+                            'plan_code': exc.plan_code,
+                            'upgrade_required': True,
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
+            # Extract duty schedule for this branch
+            duty_days = request.data.get('duty_days', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'])
+            duty_start_time = request.data.get('duty_start_time', '08:00')
+            duty_end_time = request.data.get('duty_end_time', '17:00')
+            lunch_start_time = request.data.get('lunch_start_time', '12:00')
+            lunch_end_time = request.data.get('lunch_end_time', '13:00')
+            duty_schedule = request.data.get('duty_schedule', None)
+
+            if not uba:
+                uba = UserBranchAccess.objects.create(
+                    user=user,
+                    branch=branch,
+                    duty_days=duty_days,
+                    duty_start_time=duty_start_time,
+                    duty_end_time=duty_end_time,
+                    lunch_start_time=lunch_start_time,
+                    lunch_end_time=lunch_end_time,
+                    duty_schedule=duty_schedule,
+                    is_active=True,
+                )
+            else:
+                uba.duty_days = duty_days
+                uba.duty_start_time = duty_start_time
+                uba.duty_end_time = duty_end_time
+                uba.lunch_start_time = lunch_start_time
+                uba.lunch_end_time = lunch_end_time
+                uba.duty_schedule = duty_schedule
+                uba.is_active = True
+                uba.save()
+
+            _invalidate_practitioners_cache(user)
+
+        serializer = UserSerializer(user, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['patch', 'put'], url_path='update_branch_assignment')
+    def update_branch_assignment(self, request, pk=None):
+        """
+        PATCH /api/users/{id}/update_branch_assignment/
+        Update branch-specific duty hours and schedule for an existing assignment.
+        """
+        actor = request.user
+        if not (actor.is_admin or actor.is_manager):
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        user = self.get_object()
+        branch_id = request.data.get('branch_id')
+        if not branch_id:
+            return Response({'branch_id': 'branch_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if actor.is_manager and not actor.is_admin:
+            manager_branch_ids = set(actor.branch_accesses.values_list('branch_id', flat=True))
+            if getattr(actor, 'clinic_branch_id', None):
+                manager_branch_ids.add(actor.clinic_branch_id)
+            if int(branch_id) not in manager_branch_ids:
+                return Response({'detail': 'You do not have permission to manage this branch.'}, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.accounts.models import UserBranchAccess
+        uba = UserBranchAccess.objects.filter(user=user, branch_id=branch_id).first()
+        if not uba:
+            return Response({'detail': 'Branch assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'duty_days' in request.data:
+            uba.duty_days = request.data['duty_days']
+        if 'duty_start_time' in request.data:
+            uba.duty_start_time = request.data['duty_start_time']
+        if 'duty_end_time' in request.data:
+            uba.duty_end_time = request.data['duty_end_time']
+        if 'lunch_start_time' in request.data:
+            uba.lunch_start_time = request.data['lunch_start_time']
+        if 'lunch_end_time' in request.data:
+            uba.lunch_end_time = request.data['lunch_end_time']
+        if 'duty_schedule' in request.data:
+            uba.duty_schedule = request.data['duty_schedule']
+        if 'is_active' in request.data:
+            uba.is_active = bool(request.data['is_active'])
+
+        uba.save()
+        _invalidate_practitioners_cache(user)
+
+        serializer = UserSerializer(user, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='deactivate_branch_assignment')
+    def deactivate_branch_assignment(self, request, pk=None):
+        """
+        POST /api/users/{id}/deactivate_branch_assignment/
+        Deactivate a practitioner's assignment to a specific branch.
+        """
+        actor = request.user
+        if not (actor.is_admin or actor.is_manager):
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        user = self.get_object()
+        branch_id = request.data.get('branch_id')
+        if not branch_id:
+            return Response({'branch_id': 'branch_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if actor.is_manager and not actor.is_admin:
+            manager_branch_ids = set(actor.branch_accesses.values_list('branch_id', flat=True))
+            if getattr(actor, 'clinic_branch_id', None):
+                manager_branch_ids.add(actor.clinic_branch_id)
+            if int(branch_id) not in manager_branch_ids:
+                return Response({'detail': 'You do not have permission to manage this branch.'}, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.accounts.models import UserBranchAccess
+        uba = UserBranchAccess.objects.filter(user=user, branch_id=branch_id).first()
+        if not uba:
+            return Response({'detail': 'Branch assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        uba.is_active = False
+        uba.save(update_fields=['is_active'])
+        _invalidate_practitioners_cache(user)
+
+        serializer = UserSerializer(user, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['get', 'patch'])
     def me(self, request):

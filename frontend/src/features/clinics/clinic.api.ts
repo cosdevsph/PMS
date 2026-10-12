@@ -5,10 +5,12 @@ import type { ClinicBranch, ClinicBranchesResponse, CreateBranchData } from '@/t
 // ── Existing: Practitioner types ──────────────────────────────────────────────
 export type DutyDay = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
-/** A single shift block: {start: "08:00", end: "12:00"} */
+/** A single shift block: {start: "08:00", end: "12:00", branch_id?: 1} */
 export interface ShiftBlock {
   start: string;
   end:   string;
+  branch_id?: number | null;
+  branch_name?: string;
 }
 
 /** Split-shift schedule keyed by day abbreviation */

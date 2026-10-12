@@ -98,6 +98,21 @@ class PermissionGroupWriteSerializer(serializers.ModelSerializer):
         return instance
 
 
+class PractitionerBranchAssignmentSerializer(serializers.ModelSerializer):
+    branch_name = serializers.CharField(source='branch.name', read_only=True)
+    availability = serializers.ReadOnlyField()
+
+    class Meta:
+        model = UserBranchAccess
+        fields = [
+            'id', 'user', 'branch', 'branch_name', 'is_active',
+            'duty_days', 'duty_start_time', 'duty_end_time',
+            'lunch_start_time', 'lunch_end_time', 'duty_schedule',
+            'availability', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'availability']
+
+
 class UserSerializer(serializers.ModelSerializer):
     password               = serializers.CharField(write_only=True, required=False, validators=[validate_password])
     needs_password_change  = serializers.BooleanField(read_only=True)
@@ -148,6 +163,10 @@ class UserSerializer(serializers.ModelSerializer):
     # Read-only: whether this user holds the Manager (ADMIN_ASSISTANT) role.
     is_manager       = serializers.SerializerMethodField()
 
+    # ── Multi-branch assignments for practitioners & staff ───────────────────
+    branch_assignments  = serializers.SerializerMethodField()
+    assigned_branch_ids = serializers.SerializerMethodField()
+
     class Meta:
         model  = User
         fields = [
@@ -161,6 +180,8 @@ class UserSerializer(serializers.ModelSerializer):
             'permission_group', 'permission_group_name', 'permissions_map',
             # Manager multi-branch
             'branch_ids', 'manager_branches', 'is_manager',
+            # Multi-branch assignments
+            'branch_assignments', 'assigned_branch_ids',
             # Position (for all staff)
             'position',
             # Availability fields (legacy single block)
@@ -221,6 +242,30 @@ class UserSerializer(serializers.ModelSerializer):
     def get_is_manager(self, obj) -> bool:
         return obj.is_manager
 
+    def get_branch_assignments(self, obj) -> list:
+        branch_accesses = obj.branch_accesses.select_related('branch').all()
+        result = []
+        for ba in branch_accesses:
+            result.append({
+                'id': ba.id,
+                'branch_id': ba.branch_id,
+                'branch_name': ba.branch.name if ba.branch else '',
+                'is_active': ba.is_active,
+                'duty_days': ba.duty_days or [],
+                'duty_start_time': ba.duty_start_time.strftime('%H:%M') if hasattr(ba.duty_start_time, 'strftime') else (str(ba.duty_start_time)[:5] if ba.duty_start_time else '08:00'),
+                'duty_end_time': ba.duty_end_time.strftime('%H:%M') if hasattr(ba.duty_end_time, 'strftime') else (str(ba.duty_end_time)[:5] if ba.duty_end_time else '17:00'),
+                'lunch_start_time': ba.lunch_start_time.strftime('%H:%M') if hasattr(ba.lunch_start_time, 'strftime') else (str(ba.lunch_start_time)[:5] if ba.lunch_start_time else '12:00'),
+                'lunch_end_time': ba.lunch_end_time.strftime('%H:%M') if hasattr(ba.lunch_end_time, 'strftime') else (str(ba.lunch_end_time)[:5] if ba.lunch_end_time else '13:00'),
+                'duty_schedule': ba.duty_schedule,
+            })
+        return result
+
+    def get_assigned_branch_ids(self, obj) -> list:
+        active_ids = list(obj.branch_accesses.filter(is_active=True).values_list('branch_id', flat=True))
+        if not active_ids and obj.clinic_branch_id:
+            active_ids = [obj.clinic_branch_id]
+        return active_ids
+
     def get_permissions_map(self, obj) -> dict:
         """
         Return a flat {feature_key: access_level} dict.
@@ -277,10 +322,10 @@ class UserSerializer(serializers.ModelSerializer):
                 if practitioner and not practitioner.is_deleted:
                     data['practitioner_id']  = practitioner.id
                     data['duty_days']        = practitioner.duty_days or ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
-                    data['duty_start_time']  = practitioner.duty_start_time.strftime('%H:%M') if practitioner.duty_start_time else '08:00'
-                    data['duty_end_time']    = practitioner.duty_end_time.strftime('%H:%M') if practitioner.duty_end_time else '17:00'
-                    data['lunch_start_time'] = practitioner.lunch_start_time.strftime('%H:%M') if practitioner.lunch_start_time else '12:00'
-                    data['lunch_end_time']   = practitioner.lunch_end_time.strftime('%H:%M') if practitioner.lunch_end_time else '13:00'
+                    data['duty_start_time']  = practitioner.duty_start_time.strftime('%H:%M') if hasattr(practitioner.duty_start_time, 'strftime') else (str(practitioner.duty_start_time)[:5] if practitioner.duty_start_time else '08:00')
+                    data['duty_end_time']    = practitioner.duty_end_time.strftime('%H:%M') if hasattr(practitioner.duty_end_time, 'strftime') else (str(practitioner.duty_end_time)[:5] if practitioner.duty_end_time else '17:00')
+                    data['lunch_start_time'] = practitioner.lunch_start_time.strftime('%H:%M') if hasattr(practitioner.lunch_start_time, 'strftime') else (str(practitioner.lunch_start_time)[:5] if practitioner.lunch_start_time else '12:00')
+                    data['lunch_end_time']   = practitioner.lunch_end_time.strftime('%H:%M') if hasattr(practitioner.lunch_end_time, 'strftime') else (str(practitioner.lunch_end_time)[:5] if practitioner.lunch_end_time else '13:00')
                     data['duty_schedule']    = practitioner.duty_schedule
                     data['discipline']       = practitioner.discipline or 'OCCUPATIONAL_THERAPY'
                 else:
@@ -337,13 +382,31 @@ class UserSerializer(serializers.ModelSerializer):
                 )
         return value
 
+    @staticmethod
+    def _format_time_12h(time_str: str) -> str:
+        """Format 'HH:MM' string to 12-hour format e.g. '09:00 AM'."""
+        try:
+            parts = str(time_str).strip().split(':')
+            h = int(parts[0])
+            m = int(parts[1]) if len(parts) > 1 else 0
+            ampm = 'PM' if h >= 12 else 'AM'
+            h12 = 12 if h % 12 == 0 else h % 12
+            return f"{h12}:{m:02d} {ampm}"
+        except Exception:
+            return str(time_str)
+
     def _validate_duty_schedule(self, schedule):
-        """Validate duty_schedule structure and check for overlaps."""
+        """Validate duty_schedule structure and check for overlaps (12h error messages)."""
         valid_days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         if not isinstance(schedule, dict):
             raise serializers.ValidationError(
                 {'duty_schedule': 'duty_schedule must be an object mapping day names to lists of blocks.'}
             )
+
+        request = self.context.get('request')
+        from apps.clinics.models import Clinic
+        main_clinic = request.user.clinic.main_clinic if (request and getattr(request.user, 'clinic', None)) else None
+
         for day, blocks in schedule.items():
             if day not in valid_days:
                 raise serializers.ValidationError(
@@ -360,14 +423,40 @@ class UserSerializer(serializers.ModelSerializer):
                         {'duty_schedule': f'Each block in {day} must have "start" and "end" keys.'}
                     )
                 if block['start'] >= block['end']:
+                    s_12 = self._format_time_12h(block['start'])
+                    e_12 = self._format_time_12h(block['end'])
                     raise serializers.ValidationError(
-                        {'duty_schedule': f'{day}: block start ({block["start"]}) must be before end ({block["end"]}).'}
+                        {'duty_schedule': f'{day}: block start ({s_12}) must be before end ({e_12}).'}
                     )
                 if i > 0:
                     prev = sorted_blocks[i - 1]
                     if block['start'] < prev['end']:
+                        p_s = self._format_time_12h(prev['start'])
+                        p_e = self._format_time_12h(prev['end'])
+                        b_s = self._format_time_12h(block['start'])
+                        b_e = self._format_time_12h(block['end'])
+                        prev_bid = prev.get('branch_id')
+                        curr_bid = block.get('branch_id')
+                        prev_branch_name = Clinic.objects.filter(pk=prev_bid).values_list('name', flat=True).first() if prev_bid else None
+                        curr_branch_name = Clinic.objects.filter(pk=curr_bid).values_list('name', flat=True).first() if curr_bid else None
+                        p_str = f" ({prev_branch_name})" if prev_branch_name else ""
+                        c_str = f" ({curr_branch_name})" if curr_branch_name else ""
                         raise serializers.ValidationError(
-                            {'duty_schedule': f'{day}: overlapping blocks ({prev["start"]}–{prev["end"]} and {block["start"]}–{block["end"]}).'}
+                            {'duty_schedule': f'{day}: Working periods overlap: {p_s}–{p_e}{p_str} and {b_s}–{b_e}{c_str}. A practitioner cannot work in two places simultaneously.'}
+                        )
+
+                # Validate branch_id if provided
+                bid = block.get('branch_id')
+                if bid and main_clinic:
+                    try:
+                        branch_obj = Clinic.objects.get(pk=bid, is_deleted=False)
+                        if branch_obj.id != main_clinic.id and branch_obj.parent_clinic_id != main_clinic.id:
+                            raise serializers.ValidationError(
+                                {'duty_schedule': f'Branch #{bid} does not belong to your clinic.'}
+                            )
+                    except Clinic.DoesNotExist:
+                        raise serializers.ValidationError(
+                            {'duty_schedule': f'Branch #{bid} does not exist.'}
                         )
 
     def validate(self, attrs):
@@ -511,6 +600,103 @@ class UserSerializer(serializers.ModelSerializer):
                     ignore_conflicts=True,
                 )
 
+    # ── Multi-Branch helper: sync UserBranchAccess rows for Practitioners ───
+    @staticmethod
+    def _sync_practitioner_branch_schedules(
+        user,
+        duty_schedule,
+        default_branch=None,
+        lunch_start_time='12:00',
+        lunch_end_time='13:00'
+    ):
+        """
+        Slices a combined multi-branch duty_schedule and synchronizes UserBranchAccess
+        records for each unique assigned branch.
+
+        - Reuses the same UserBranchAccess for multiple periods at the same branch.
+        - Slices duty_schedule and duty_days per branch so branch-level availability
+          and calendar queries are scoped correctly.
+        - Soft-deactivates (is_active=False) any previously active UserBranchAccess
+          for branches that no longer have working periods in the new schedule.
+        """
+        from apps.accounts.models import UserBranchAccess
+        from apps.clinics.models import Clinic
+        from django.db import transaction as db_transaction
+
+        default_branch_id = default_branch.id if hasattr(default_branch, 'id') else default_branch
+        if not default_branch_id and user.clinic_branch_id:
+            default_branch_id = user.clinic_branch_id
+
+        # Collect unique branches and their respective working periods
+        branch_periods = {}  # branch_id -> { day: [ {start, end} ] }
+
+        if duty_schedule and isinstance(duty_schedule, dict):
+            for day, blocks in duty_schedule.items():
+                if not isinstance(blocks, list):
+                    continue
+                for block in blocks:
+                    bid = block.get('branch_id') or default_branch_id
+                    if not bid:
+                        continue
+                    bid = int(bid)
+                    if bid not in branch_periods:
+                        branch_periods[bid] = {}
+                    if day not in branch_periods[bid]:
+                        branch_periods[bid][day] = []
+                    branch_periods[bid][day].append({
+                        'start': block['start'],
+                        'end': block['end'],
+                    })
+
+        # If no branch_periods were extracted from duty_schedule, but a default_branch_id exists
+        if not branch_periods and default_branch_id:
+            branch_periods[default_branch_id] = duty_schedule or {}
+
+        with db_transaction.atomic():
+            # 1. Update/create active branch accesses for branches in the new schedule
+            for branch_id, sched in branch_periods.items():
+                try:
+                    branch_obj = Clinic.objects.get(pk=branch_id, is_deleted=False)
+                except Clinic.DoesNotExist:
+                    continue
+
+                days = list(sched.keys())
+                all_starts = [b['start'] for blocks in sched.values() for b in blocks if 'start' in b]
+                all_ends = [b['end'] for blocks in sched.values() for b in blocks if 'end' in b]
+                duty_start = min(all_starts) if all_starts else '08:00'
+                duty_end = max(all_ends) if all_ends else '17:00'
+
+                uba, _ = UserBranchAccess.objects.select_for_update().get_or_create(
+                    user=user,
+                    branch=branch_obj,
+                    defaults={
+                        'duty_days': days,
+                        'duty_schedule': sched,
+                        'duty_start_time': duty_start,
+                        'duty_end_time': duty_end,
+                        'lunch_start_time': lunch_start_time or '12:00',
+                        'lunch_end_time': lunch_end_time or '13:00',
+                        'is_active': True,
+                    }
+                )
+                uba.duty_days = days
+                uba.duty_schedule = sched
+                uba.duty_start_time = duty_start
+                uba.duty_end_time = duty_end
+                uba.lunch_start_time = lunch_start_time or '12:00'
+                uba.lunch_end_time = lunch_end_time or '13:00'
+                uba.is_active = True
+                uba.save()
+
+            # 2. For previously active branches of this practitioner that are NOT in branch_periods,
+            # soft-deactivate them (is_active=False)
+            assigned_bids = set(branch_periods.keys())
+            if assigned_bids:
+                UserBranchAccess.objects.filter(
+                    user=user,
+                    is_active=True
+                ).exclude(branch_id__in=assigned_bids).update(is_active=False)
+
     def update(self, instance, validated_data):
         password   = validated_data.pop('password', None)
         branch_ids = validated_data.pop('branch_ids', None)  # None = not in payload (no change)
@@ -635,6 +821,20 @@ class UserSerializer(serializers.ModelSerializer):
                 # All branches removed \u2014 null out the FK
                 instance.clinic_branch = None
                 instance.save(update_fields=['clinic_branch'])
+
+        # ── Multi-Branch: Sync UserBranchAccess rows for Practitioners ─────────────
+        if 'PRACTITIONER' in effective_roles_after:
+            sched_to_sync = shared_availability.get('duty_schedule')
+            if sched_to_sync is None and hasattr(instance, 'practitioner_profile'):
+                sched_to_sync = getattr(instance.practitioner_profile, 'duty_schedule', None)
+            if sched_to_sync is not None:
+                self._sync_practitioner_branch_schedules(
+                    user=instance,
+                    duty_schedule=sched_to_sync,
+                    default_branch=instance.clinic_branch,
+                    lunch_start_time=shared_availability.get('lunch_start_time', '12:00'),
+                    lunch_end_time=shared_availability.get('lunch_end_time', '13:00'),
+                )
 
         return instance
 

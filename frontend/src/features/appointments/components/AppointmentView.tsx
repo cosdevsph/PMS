@@ -44,6 +44,7 @@ import {
   editAppointment as apiEditAppointment,
   rescheduleAppointment as apiRescheduleAppointment,
 } from '../appointment.api';
+import { getAppointmentReminderResponse } from '../utils/reminderResponse';
 import toast from 'react-hot-toast';
 
 import { useAppointmentEdit } from '../hooks/useAppointmentEdit';
@@ -2224,24 +2225,48 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                          Status:
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${appointment.confirmation_status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700' :
-                            appointment.confirmation_status === 'DECLINED' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
-                            }`}>
-                            {appointment.confirmation_status === 'CONFIRMED' ? 'Confirmed' :
-                              appointment.confirmation_status === 'DECLINED' ? 'Declined' : 'Pending'}
-                          </span>
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {appointment.confirmation_status === 'CONFIRMED' ? 'The patient has confirmed their attendance.' :
-                            appointment.confirmation_status === 'DECLINED' ? 'The patient has declined this appointment.' :
-                              'Waiting for the patient to reply to their reminder.'}
-                        </p>
-                      </div>
-                    </div>
+                    {(() => {
+                      const reminderInfo = getAppointmentReminderResponse(appointment);
+                      if (!reminderInfo) {
+                        return (
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                                Status:
+                                <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 border border-gray-200">
+                                  No Reminder Sent
+                                </span>
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                No reminder or confirmation message has been sent to this patient yet.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                              Status:
+                              <span className={`px-2 py-0.5 rounded-full text-xs border ${reminderInfo.badgeClass}`}>
+                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${reminderInfo.dotClass} mr-1.5`} />
+                                {reminderInfo.label}
+                              </span>
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {reminderInfo.tooltip}
+                            </p>
+                            {reminderInfo.details && (
+                              <p className="text-xs text-sky-600 font-medium mt-0.5">
+                                {reminderInfo.details}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 

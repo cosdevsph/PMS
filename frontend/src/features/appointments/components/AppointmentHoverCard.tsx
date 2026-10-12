@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   User, Stethoscope, Tag, FileText,
-  Building2, CalendarDays, ArrowRight, Globe
+  Building2, CalendarDays, ArrowRight, Globe, MessageSquare
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment } from '@/types';
 import { APPOINTMENT_STATUS_COLORS } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { getUpcomingAppointments } from '../appointment.api';
+import { ReminderResponseDot, getAppointmentReminderResponse } from '../utils/reminderResponse';
 
 interface AppointmentHoverCardProps {
   appointment: Appointment;
@@ -175,9 +176,10 @@ export const AppointmentHoverCard: React.FC<AppointmentHoverCardProps> = ({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p
-              className="text-sm font-bold leading-tight truncate"
+              className="text-sm font-bold leading-tight truncate flex items-center"
               style={cardBackground ? { color: cardTextColor } : undefined}
             >
+              <ReminderResponseDot appointment={apt} size="md" />
               <span className={!cardBackground ? statusColors.text : ''}>
                 {apt.patient_name}
               </span>
@@ -309,6 +311,33 @@ export const AppointmentHoverCard: React.FC<AppointmentHoverCardProps> = ({
             value={apt.location_name}
           />
         )}
+
+        {/* Reminder / Confirmation Response */}
+        {(() => {
+          const reminderInfo = getAppointmentReminderResponse(apt);
+          if (!reminderInfo) return null;
+          return (
+            <Row
+              icon={<MessageSquare className="w-3.5 h-3.5" />}
+              label="Reminder / Response"
+              value={
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${reminderInfo.badgeClass}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${reminderInfo.dotClass}`} />
+                      {reminderInfo.label}
+                    </span>
+                  </div>
+                  {reminderInfo.details && (
+                    <span className="text-[10px] text-gray-500 font-normal">
+                      {reminderInfo.details}
+                    </span>
+                  )}
+                </div>
+              }
+            />
+          );
+        })()}
 
         {/* Upcoming Appointments */}
         {otherUpcomingAppointments.length > 0 && (

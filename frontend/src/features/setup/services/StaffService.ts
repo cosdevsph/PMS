@@ -1,5 +1,5 @@
 import { axiosInstance } from '@/lib/axios';
-import type { StaffMember, CreateStaffData, PractitionerRoleImpact } from '../types/staff.types';
+import type { StaffMember, CreateStaffData, PractitionerRoleImpact, UserLookupResult, AssignBranchData } from '../types/staff.types';
 
 /**
  * Get all staff members for the current clinic
@@ -97,5 +97,57 @@ export const getManagerBranches = async (): Promise<{
   count: number;
 }> => {
   const response = await axiosInstance.get('/users/me/manager-branches/');
+  return response.data;
+};
+
+/**
+ * Lookup an existing user by email within the clinic organization.
+ */
+export const lookupUserByEmail = async (email: string): Promise<UserLookupResult> => {
+  const response = await axiosInstance.get<UserLookupResult>('/users/lookup/', {
+    params: { email },
+  });
+  return response.data;
+};
+
+/**
+ * Assign an existing practitioner to an additional branch with specific duty hours.
+ */
+export const assignPractitionerToBranch = async (
+  userId: number,
+  data: AssignBranchData
+): Promise<StaffMember> => {
+  const response = await axiosInstance.post<StaffMember>(
+    `/users/${userId}/assign_branch/`,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * Update branch-specific duty hours for a practitioner.
+ */
+export const updateBranchAssignment = async (
+  userId: number,
+  data: Partial<AssignBranchData> & { branch_id: number }
+): Promise<StaffMember> => {
+  const response = await axiosInstance.patch<StaffMember>(
+    `/users/${userId}/update_branch_assignment/`,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * Deactivate a practitioner's assignment to a specific branch.
+ */
+export const deactivateBranchAssignment = async (
+  userId: number,
+  branchId: number
+): Promise<StaffMember> => {
+  const response = await axiosInstance.post<StaffMember>(
+    `/users/${userId}/deactivate_branch_assignment/`,
+    { branch_id: branchId }
+  );
   return response.data;
 };
