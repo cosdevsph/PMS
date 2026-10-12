@@ -24,7 +24,7 @@ import { CaseModal } from '@/features/patients/CaseModal';
 import { updatePatientCase } from '@/features/patients/patientCases.api';
 import type { CreateAppointmentData } from '@/types';
 import toast from 'react-hot-toast';
-import { PRACTITIONER_REMOVED_EVENT } from '@/events/practitionerEvents';
+import { PRACTITIONER_REMOVED_EVENT, PRACTITIONER_UPDATED_EVENT } from '@/events/practitionerEvents';
 
 type CalendarView = 'day' | 'week' | 'month';
 
@@ -170,6 +170,7 @@ export const Diary: React.FC = () => {
   // losing data about the user's home branch).
   const [cachedOwnAvailability, setCachedOwnAvailability] = useState<PractitionerAvailability | null>(null);
   const [cachedOwnBranchId, setCachedOwnBranchId] = useState<number | null>(null);
+  const [cachedOwnBranchIds, setCachedOwnBranchIds] = useState<number[]>([]);
   // The practitioner-list id of the logged-in user's own entry (e.g. Practitioner pk or 'staff-{id}')
   const [cachedOwnId, setCachedOwnId] = useState<number | string | null>(null);
 
@@ -197,6 +198,7 @@ export const Diary: React.FC = () => {
       if (cachedOwnId != null) {
         setCachedOwnAvailability(null);
         setCachedOwnBranchId(null);
+        setCachedOwnBranchIds([]);
         setCachedOwnId(null);
         hasAutoSelectedBranch.current = false;
         // If the calendar was filtering on our (now-removed) practitioner
@@ -210,6 +212,28 @@ export const Diary: React.FC = () => {
 
     if (own.availability) setCachedOwnAvailability(own.availability);
     if (cachedOwnId == null) setCachedOwnId(own.id);
+
+    // Collect all assigned branch IDs for this practitioner
+    const assignedBids: number[] = [];
+    if (own.clinic_branch_id) assignedBids.push(own.clinic_branch_id);
+    if (own.assigned_branches && Array.isArray(own.assigned_branches)) {
+      own.assigned_branches.forEach((b: any) => {
+        const bid = typeof b === 'number' ? b : (b?.branch_id ?? b?.id);
+        if (bid && !assignedBids.includes(Number(bid))) assignedBids.push(Number(bid));
+      });
+    }
+    if (user?.assigned_branch_ids && Array.isArray(user.assigned_branch_ids)) {
+      user.assigned_branch_ids.forEach((bid: number) => {
+        if (bid && !assignedBids.includes(Number(bid))) assignedBids.push(Number(bid));
+      });
+    }
+    if (user?.manager_branches && Array.isArray(user.manager_branches)) {
+      user.manager_branches.forEach((b: any) => {
+        const bid = typeof b === 'number' ? b : (b?.id ?? b?.branch_id);
+        if (bid && !assignedBids.includes(Number(bid))) assignedBids.push(Number(bid));
+      });
+    }
+    setCachedOwnBranchIds(assignedBids);
 
     // ── Branch-change detection ────────────────────────────────────────────
     // Compare the practitioner's current branch with what we last cached.
@@ -255,7 +279,7 @@ export const Diary: React.FC = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPractitioner, isStaff, user?.practitioner_id, user?.id, practitioners, branches]);
+  }, [isPractitioner, isStaff, user?.practitioner_id, user?.id, user?.assigned_branch_ids, practitioners, branches]);
 
   // ── Stale-selection guard ──────────────────────────────────────────────────
   // After every practitioners list change (e.g. post-refetch following a role
@@ -338,7 +362,10 @@ export const Diary: React.FC = () => {
         // Restore own practitioner context if applicable (unless user has a saved preference)
         const key = `diary_practitioner_${user?.id}_${authorizedBranchIds[0]}`;
         if (localStorage.getItem(key) === null) {
-          if (cachedOwnBranchId === authorizedBranchIds[0]) {
+          if (
+            (cachedOwnBranchId !== null && cachedOwnBranchId === authorizedBranchIds[0]) ||
+            cachedOwnBranchIds.includes(authorizedBranchIds[0])
+          ) {
             setSelectedPractitioner(cachedOwnId);
           } else {
             setSelectedPractitioner(null);
@@ -349,22 +376,31 @@ export const Diary: React.FC = () => {
         setSelectedClinicBranch(branches[0].id);
       }
     }
-  }, [selectedClinicBranch, branches, isBranchScopedUser, authorizedBranchIds, cachedOwnBranchId, cachedOwnId]);
+  }, [selectedClinicBranch, branches, isBranchScopedUser, authorizedBranchIds, cachedOwnBranchId, cachedOwnBranchIds, cachedOwnId, user?.id]);
 
-  // True when the currently selected branch tab is the user's "own" clinic:
+  // True when the currently selected branch tab is the user's "own" clinic or any assigned branch:
   const isOwnAssignedClinic =
-    (isPractitioner || isStaff) && (
-      (cachedOwnBranchId !== null && selectedClinicBranch === cachedOwnBranchId)
+    (isPractitioner || isStaff) &&
+    selectedClinicBranch !== null &&
+    (
+      (cachedOwnBranchId !== null && selectedClinicBranch === cachedOwnBranchId) ||
+      cachedOwnBranchIds.includes(selectedClinicBranch)
     );
 
   // Compute the availability to pass to Calendar
   const practitionerAvailabilityForCalendar = useMemo(() => {
     if (!selectedPractitioner) {
       // No explicit practitioner filter — overlay own schedule only when on the
-      // user's home tab.  For branch-assigned Admin+Practitioners browsing a
-      // different branch, isOwnAssignedClinic is false, so we return undefined
+      // user's home tab or any assigned branch. For branch-assigned Admin+Practitioners browsing an
+      // unassigned branch, isOwnAssignedClinic is false, so we return undefined
       // and the calendar renders without their availability shading.
-      if (isPractitioner && cachedOwnAvailability && isOwnAssignedClinic) return cachedOwnAvailability;
+      if (isPractitioner && isOwnAssignedClinic) {
+        const ownInBranch = practitioners.find(
+          p => (user?.practitioner_id && p.id === user.practitioner_id) || (cachedOwnId && p.id === cachedOwnId)
+        );
+        if (ownInBranch?.availability) return ownInBranch.availability;
+        if (cachedOwnAvailability) return cachedOwnAvailability;
+      }
       return undefined;
     }
 
@@ -380,7 +416,7 @@ export const Diary: React.FC = () => {
     }
 
     return undefined;
-  }, [selectedPractitioner, practitioners, isPractitioner, isStaff, cachedOwnAvailability, isOwnAssignedClinic]);
+  }, [selectedPractitioner, practitioners, isPractitioner, isStaff, cachedOwnAvailability, isOwnAssignedClinic, user?.practitioner_id, cachedOwnId]);
 
   // Build a full availability map for ALL practitioners so Calendar can colour
   // every slot correctly even when no specific practitioner is selected.
@@ -389,24 +425,24 @@ export const Diary: React.FC = () => {
     practitioners.forEach(p => {
       if (typeof p.id === 'number' && p.availability) map[p.id] = p.availability;
     });
-    // Also include the cached availability for the logged-in practitioner so
-    // switching branches never causes their own schedule to disappear.
-    if (isPractitioner && user?.practitioner_id && cachedOwnAvailability) {
+    // Also include the cached availability for the logged-in practitioner if not already present
+    // so switching branches never causes their own schedule to disappear if they have one cached.
+    if (isPractitioner && user?.practitioner_id && cachedOwnAvailability && !map[user.practitioner_id]) {
       map[user.practitioner_id] = cachedOwnAvailability;
     }
     return map;
   }, [practitioners, isPractitioner, user, cachedOwnAvailability]);
 
   // Which availability map to pass as allAvailabilities to Calendar:
-  // - Admin: pass map only when a single manual filter is active (compare handled separately)
+  // - Admin: pass map so slots are coloured properly for all practitioners in the branch;
+  //   when compareMode is active, compare handles its own availabilities.
   // - Practitioner/Staff: single-practitioner overlay via practitionerAvailability prop;
   //   allAvailabilities always undefined (avoids showing every branch practitioner)
   const calendarAllAvailabilities = useMemo(() => {
     if (!isAdmin) return undefined;
     if (compareMode) return undefined;
-    if (selectedPractitioner) return availabilityMap;
-    return undefined;
-  }, [isAdmin, compareMode, selectedPractitioner, availabilityMap]);
+    return availabilityMap;
+  }, [isAdmin, compareMode, availabilityMap]);
 
   // ── Compare mode availability ───────────────────────────────────────────────
   const compareAvailabilityA = useMemo(
@@ -493,9 +529,9 @@ export const Diary: React.FC = () => {
 
     const key = `diary_practitioner_${user?.id}_${branchId}`;
     if (localStorage.getItem(key) === null) {
-      if ((isPractitioner || isStaff) && cachedOwnBranchId !== null) {
-        // Branch-assigned: restore own practitioner filter on home branch, clear elsewhere.
-        if (branchId === cachedOwnBranchId) {
+      if ((isPractitioner || isStaff) && (cachedOwnBranchId !== null || cachedOwnBranchIds.length > 0)) {
+        // Branch-assigned: restore own practitioner filter on any assigned branch, clear elsewhere.
+        if (branchId === cachedOwnBranchId || cachedOwnBranchIds.includes(branchId)) {
           setSelectedPractitioner(cachedOwnId);
         } else {
           setSelectedPractitioner(null);
@@ -619,14 +655,14 @@ export const Diary: React.FC = () => {
     setAppointmentRefreshKey(prev => prev + 1);
   }, []);
 
-  // ── Practitioner removal → force immediate calendar refetch ───────────────────────
-  // CreateStaffAccountModal emits PRACTITIONER_REMOVED_EVENT after the admin
-  // confirms the role removal.  We increment both refresh keys here so
+  // ── Practitioner removal / update → force immediate calendar refetch ───────────────────────
+  // CreateStaffAccountModal and StaffService emit PRACTITIONER_REMOVED_EVENT and
+  // PRACTITIONER_UPDATED_EVENT. We increment both refresh keys here so
   // Calendar.tsx immediately calls refetch() + refetchBlockAppointments(),
-  // clearing all stale appointment/block-out/note data from the calendar view
+  // updating all stale appointment/block-out/note and practitioner data from the calendar view
   // without requiring a page reload.
   useEffect(() => {
-    const handlePractitionerRemoved = () => {
+    const handlePractitionerChanged = () => {
       // Invalidate ALL practitioner-related queries (any branchId)
       queryClient.invalidateQueries({ queryKey: ['practitioners'] });
       // Force immediate refetch of all practitioner queries
@@ -635,9 +671,11 @@ export const Diary: React.FC = () => {
       setAppointmentRefreshKey(prev => prev + 1);
       setEventRefreshKey(prev => prev + 1);
     };
-    window.addEventListener(PRACTITIONER_REMOVED_EVENT, handlePractitionerRemoved);
+    window.addEventListener(PRACTITIONER_REMOVED_EVENT, handlePractitionerChanged);
+    window.addEventListener(PRACTITIONER_UPDATED_EVENT, handlePractitionerChanged);
     return () => {
-      window.removeEventListener(PRACTITIONER_REMOVED_EVENT, handlePractitionerRemoved);
+      window.removeEventListener(PRACTITIONER_REMOVED_EVENT, handlePractitionerChanged);
+      window.removeEventListener(PRACTITIONER_UPDATED_EVENT, handlePractitionerChanged);
     };
   }, [queryClient]);
 

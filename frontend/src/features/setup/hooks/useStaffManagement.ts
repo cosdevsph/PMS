@@ -11,6 +11,7 @@ import {
 import type { StaffMember, CreateStaffData } from '../types/staff.types';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth.store';
+import { emitPractitionerUpdated } from '@/events/practitionerEvents';
 
 export const useStaffManagement = () => {
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -61,6 +62,8 @@ export const useStaffManagement = () => {
       // Invalidate the practitioners cache so Diary/Calendar immediately pick up
       // the new practitioner without waiting for the 5-minute stale-time window.
       queryClient.invalidateQueries({ queryKey: ['practitioners'] });
+      queryClient.refetchQueries({ queryKey: ['practitioners'] });
+      emitPractitionerUpdated(0, null);
       toast.success(`Staff member ${data.first_name} ${data.last_name} created successfully!`);
       toast.success('Login credentials have been sent to their email.', {
         duration: 5000,
@@ -85,6 +88,8 @@ export const useStaffManagement = () => {
       // Invalidate practitioners so Diary/Calendar refetch with the updated
       // branch assignment — prevents stale branch scope in scheduling views.
       queryClient.invalidateQueries({ queryKey: ['practitioners'] });
+      queryClient.refetchQueries({ queryKey: ['practitioners'] });
+      emitPractitionerUpdated(id, updated.practitioner_id ?? null);
 
       // When a practitioner role was removed the backend deleted future
       // appointments, block-outs, and calendar notes.  Invalidate those query

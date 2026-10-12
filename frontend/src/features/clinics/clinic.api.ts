@@ -41,6 +41,7 @@ export interface Practitioner {
   roles?:             string[];
   discipline?:        string | null;
   avatar_url?:        string | null;
+  assigned_branches?: Array<{ branch_id: number; branch__name?: string } | number>;
 }
 
 export interface PractitionersResponse {

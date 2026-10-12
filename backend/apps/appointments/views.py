@@ -1105,7 +1105,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         base_qs = Practitioner.objects.filter(
-            clinic_id__in=all_branch_ids,
+            Q(clinic_id__in=all_branch_ids) |
+            Q(user__branch_accesses__branch_id__in=all_branch_ids, user__branch_accesses__is_active=True),
             user__is_active=True,
             user__is_deleted=False,
             # Exclude soft-deleted Practitioner profiles — this covers the case
@@ -1118,7 +1119,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             # This is the authoritative check - even if the Practitioner profile
             # exists, if the user no longer has PRACTITIONER role, don't show them.
             user__roles__contains=['PRACTITIONER'],
-        ).select_related('user', 'clinic', 'user__clinic_branch')
+        ).select_related('user', 'clinic', 'user__clinic_branch').distinct()
         
         # DEBUG: Log what's being returned
         logger.info(f'[PRACTITIONER FILTER] base_qs count: {base_qs.count()}')
@@ -1132,8 +1133,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 return Response({'practitioners': []})
 
             base_qs = base_qs.filter(
-                Q(user__clinic_branch_id=branch_id) |
                 Q(user__branch_accesses__branch_id=branch_id, user__branch_accesses__is_active=True) |
+                (Q(user__clinic_branch_id=branch_id) & ~Q(user__branch_accesses__branch_id=branch_id, user__branch_accesses__is_active=False)) |
                 Q(clinic_id=branch_id, user__clinic_branch__isnull=True) |
                 # Admin+Practitioner users have no branch restriction — they should
                 # appear in every branch view so they can be selected as a practitioner

@@ -30,7 +30,7 @@ export const usePractitioners = (params?: UsePractitionersParams): UsePractition
       const response = await getPractitioners(branchId);
       return response.practitioners;
     },
-    staleTime: 5 * 60 * 1000, // treat as fresh for 5 min
+    staleTime: 60 * 1000, // treat as fresh for 1 min (invalidated on practitioner update/removal)
     gcTime: 10 * 60 * 1000,
     retry: 1,
     throwOnError: false,

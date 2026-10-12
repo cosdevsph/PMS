@@ -14,7 +14,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { PractitionerRemovalModal } from './PractitionerRemovalModal';
 import { ClinicianLimitReachedModal, type ClinicianLimitInfo } from './ClinicianLimitReachedModal';
 import { getPractitionerRoleImpact, lookupUserByEmail, updateStaff } from '../../services/StaffService';
-import { emitPractitionerRemoved } from '@/events/practitionerEvents';
+import { emitPractitionerRemoved, emitPractitionerUpdated } from '@/events/practitionerEvents';
 import { useAuthStore } from '@/store/auth.store';
 
 // ── Clinical Role Cards ──────────────────────────────────────────────────────
@@ -631,6 +631,10 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   ) => {
     try {
       await onSubmit(payload as CreateStaffData);
+      const targetUserId = (payload as any).id ?? (payload as any).existing_user_id ?? editingStaff?.id;
+      if (targetUserId) {
+        emitPractitionerUpdated(targetUserId, editingStaff?.practitioner_id ?? null);
+      }
       handleClose();
     } catch (err: any) {
       const data = err?.response?.data as Record<string, any> | undefined;
@@ -727,7 +731,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
 
         await updateStaff(existingUserMatch.id, payloadToSave);
         toast.success(`Updated Dr. ${existingUserMatch.name}'s schedule and branch assignments successfully!`);
-        await onSubmit(payloadToSave);
+        emitPractitionerUpdated(existingUserMatch.id, existingUserMatch.practitioner_id ?? null);
         handleClose();
       } catch (err: any) {
         const data = err?.response?.data;
@@ -777,9 +781,13 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       }
     }
 
+    const scheduleDays = Object.keys(sanitizedSchedule || {}) as DutyDay[];
+    const combinedDutyDays = Array.from(new Set([...(formData.duty_days || []), ...scheduleDays]));
+
     const payload: CreateStaffData & { confirm_practitioner_removal?: boolean } = {
       ...formData,
       clinic_branch: primaryBranch,
+      duty_days: isPractitionerRole && combinedDutyDays.length > 0 ? combinedDutyDays : formData.duty_days,
       duty_schedule: isPractitionerRole ? sanitizedSchedule : formData.duty_schedule,
       phone: formData.phone,
       roles: finalRoles as CreateStaffData['roles'],

@@ -110,6 +110,8 @@ export const lookupUserByEmail = async (email: string): Promise<UserLookupResult
   return response.data;
 };
 
+import { emitPractitionerUpdated } from '@/events/practitionerEvents';
+
 /**
  * Assign an existing practitioner to an additional branch with specific duty hours.
  */
@@ -121,6 +123,7 @@ export const assignPractitionerToBranch = async (
     `/users/${userId}/assign_branch/`,
     data
   );
+  emitPractitionerUpdated(userId, response.data.practitioner_id ?? null);
   return response.data;
 };
 
@@ -135,6 +138,7 @@ export const updateBranchAssignment = async (
     `/users/${userId}/update_branch_assignment/`,
     data
   );
+  emitPractitionerUpdated(userId, response.data.practitioner_id ?? null);
   return response.data;
 };
 
@@ -149,5 +153,6 @@ export const deactivateBranchAssignment = async (
     `/users/${userId}/deactivate_branch_assignment/`,
     { branch_id: branchId }
   );
+  emitPractitionerUpdated(userId, response.data.practitioner_id ?? null);
   return response.data;
 };

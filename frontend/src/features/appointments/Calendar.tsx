@@ -1604,6 +1604,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   // compact = true for week view (smaller cards)
   // forDayView = true when rendering in Day view (filtered slots)
   const renderTimelineCard = (apt: Appointment, compact = false, forDayView = false, positionOverride?: { left: string; right: string }) => {
+    void forDayView;
     const col = getBlockColors(apt);
     const isDragged = dragState.draggedAppointment?.id === apt.id;
     const isHeld = dragState.isHolding && dragState.draggedAppointment?.id === apt.id;
@@ -1619,9 +1620,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     if (resizeOvr) {
       const [sH, sM] = displayStart.split(':').map(Number);
       const [eH, eM] = displayEnd.split(':').map(Number);
-      const startSlot = forDayView && practitionerAvailability
-        ? Math.floor((sH * 60 + sM - timeToMinutes(practitionerAvailability.duty_start_time)) / 15)
-        : (sH - 6) * 4 + Math.floor(sM / 15);
+      const startSlot = (sH - 6) * 4 + Math.floor(sM / 15);
       const durationSlots = Math.max(((eH * 60 + eM) - (sH * 60 + sM)) / 15, 1);
       baseStyle = { top: `${startSlot * 1.25}rem`, height: `${durationSlots * 1.25}rem` };
     } else {
@@ -1768,6 +1767,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   // compact = true for week view (smaller cards)
   // forDayView = true when rendering in Day view (filtered slots)
   const renderBlockTimelineCard = (block: BlockAppointment, compact = false, forDayView = false, positionOverride?: { left: string; right: string }) => {
+    void forDayView;
     const isDragged = blockDragState.draggedBlock?.id === block.id;
     const isHeld = blockDragState.isHolding && blockDragState.draggedBlock?.id === block.id;
     const resizeOvr = getPreviewTimes('block', block.id);
@@ -1778,9 +1778,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     if (resizeOvr) {
       const [sH, sM] = displayStart.split(':').map(Number);
       const [eH, eM] = displayEnd.split(':').map(Number);
-      const startSlot = forDayView && practitionerAvailability
-        ? Math.floor((sH * 60 + sM - timeToMinutes(practitionerAvailability.duty_start_time)) / 15)
-        : (sH - 6) * 4 + Math.floor(sM / 15);
+      const startSlot = (sH - 6) * 4 + Math.floor(sM / 15);
       const durationSlots = Math.max(((eH * 60 + eM) - (sH * 60 + sM)) / 15, 1);
       baseStyle = { top: `${startSlot * 1.25}rem`, height: `${durationSlots * 1.25}rem` };
     } else {
@@ -1887,6 +1885,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     positionOverride?: { left: string; right: string },
   ) => {
     void compact;
+    void forDayView;
     const isDragged = noteDragState.isDragging && noteDragState.draggedNote?.id === note.id;
     const isHeld = noteDragState.isHolding && !noteDragState.isDragging && noteDragState.draggedNote?.id === note.id;
     const resizeOvr = getPreviewTimes('note', note.id);
@@ -1897,9 +1896,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     if (resizeOvr) {
       const [sH, sM] = displayStart.split(':').map(Number);
       const [eH, eM] = displayEnd.split(':').map(Number);
-      const startSlot = forDayView && practitionerAvailability
-        ? Math.floor((sH * 60 + sM - timeToMinutes(practitionerAvailability.duty_start_time)) / 15)
-        : (sH - 6) * 4 + Math.floor(sM / 15);
+      const startSlot = (sH - 6) * 4 + Math.floor(sM / 15);
       const durationSlots = Math.max(((eH * 60 + eM) - (sH * 60 + sM)) / 15, 1);
       baseNoteStyle = { top: `${startSlot * 1.25}rem`, height: `${durationSlots * 1.25}rem` };
     } else {

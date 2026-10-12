@@ -20,6 +20,7 @@
  */
 
 export const PRACTITIONER_REMOVED_EVENT = 'pms:practitioner-role-removed' as const;
+export const PRACTITIONER_UPDATED_EVENT = 'pms:practitioner-updated' as const;
 
 export interface PractitionerRemovedDetail {
   /** User ID whose PRACTITIONER role was just removed */
@@ -28,6 +29,15 @@ export interface PractitionerRemovedDetail {
   practitionerId: number | null;
   /** Timestamp of the removal */
   removedAt: string;
+}
+
+export interface PractitionerUpdatedDetail {
+  /** User ID whose staff/practitioner profile or schedule was updated */
+  userId: number;
+  /** Practitioner profile ID (if known) */
+  practitionerId?: number | null;
+  /** Timestamp of the update */
+  updatedAt: string;
 }
 
 /**
@@ -51,3 +61,26 @@ export const emitPractitionerRemoved = (
     })
   );
 };
+
+/**
+ * Emit a practitioner-updated event so Calendar/Diary immediately invalidate
+ * and refetch all branch practitioner queries and refresh scheduling data.
+ */
+export const emitPractitionerUpdated = (
+  userId: number,
+  practitionerId: number | null = null
+): void => {
+  const detail: PractitionerUpdatedDetail = {
+    userId,
+    practitionerId,
+    updatedAt: new Date().toISOString(),
+  };
+
+  window.dispatchEvent(
+    new CustomEvent<PractitionerUpdatedDetail>(PRACTITIONER_UPDATED_EVENT, {
+      detail,
+      bubbles: false,
+    })
+  );
+};
+

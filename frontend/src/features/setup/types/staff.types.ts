@@ -48,6 +48,7 @@ export interface StaffMember {
   // Multi-branch assignments (for PRACTITIONER and staff)
   branch_assignments?: BranchAssignment[];
   assigned_branch_ids?: number[];
+  practitioner_id?: number | null;
 
   // Availability (for PRACTITIONER and STAFF roles)
   availability?: PractitionerAvailability;

@@ -87,7 +87,10 @@ export interface User {
    * For Manager (ADMIN_ASSISTANT): only branches they are assigned to manage.
    * For all other roles: empty array.
    */
-  manager_branches?:     ManagerBranch[];
+    manager_branches?:     ManagerBranch[];
+  // Multi-branch assignment support
+  assigned_branch_ids?:  number[];
+  assigned_branches?:    Array<{ branch_id: number; branch_name?: string }>;
 }
 
 export interface AuthTokens {
