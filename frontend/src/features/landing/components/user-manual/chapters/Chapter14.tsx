@@ -1,163 +1,223 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Screenshot14_1 from '@/assets/manual/Chapter 14/Screenshot 14.1.png';
+import Screenshot14_2 from '@/assets/manual/Chapter 14/Screenshot 14.2.png';
+import Screenshot14_3 from '@/assets/manual/Chapter 14/Screenshot 14.3.png';
+import Screenshot14_4 from '@/assets/manual/Chapter 14/Screenshot 14.4.png';
+import Screenshot14_5 from '@/assets/manual/Chapter 14/Screenshot 14.5.png';
+import Screenshot14_6 from '@/assets/manual/Chapter 14/Screenshot 14.6.png';
 
 const Chapter14: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how Patient Cases act as the centralized hub for a patient's entire medical journey, combining appointments, notes, and billing.
+        Learn how to manage Patient Cases through the Patient Profile and how to assign or create cases directly while scheduling an appointment in the Diary.
       </p>
 
-      {/* IMPORTANT CONCEPT — Patient Case Lifecycle */}
+      {/* QUICK OVERVIEW FLOW */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-4">The Patient Case Lifecycle</h3>
-        
-        <p className="text-gray-700 font-body mb-4">
-          Instead of scattering patient information across multiple isolated modules, Malasakit aggregates every appointment, consultation, clinical note, and invoice into a single, comprehensive patient record. This chronological organization allows practitioners and clinic staff to instantly understand the patient's full history.
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Patient Case Workflows</h3>
+        <p className="text-gray-700 font-body mb-6">
+          Patient Cases group related appointments, treatment plans, clinical notes, and invoices under a single condition. You can create cases from two locations:
         </p>
 
-        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] mb-6 text-center overflow-x-auto">
-          <p className="text-sm font-semibold text-gray-800 mb-2">Data Aggregation Flow</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-[13px] text-gray-600 font-mono">
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">Registration</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">Appointment</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">Clinical Note</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">Invoice</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200 font-bold">Treatment History</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 font-bold rounded border border-emerald-200">Patient Timeline</span>
+        <div className="space-y-4">
+          {/* Pathway 1 Summary */}
+          <div className="bg-white p-4 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.08)]">
+            <p className="text-xs font-bold text-sky-800 uppercase tracking-wider mb-2">1. Patient Profile Location</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700 font-mono">
+              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Patient Page</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Click View Profile</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Select Cases Menu</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Cases List</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-bold">Create New Case Modal</span>
+            </div>
+          </div>
+
+          {/* Pathway 2 Summary */}
+          <div className="bg-white p-4 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.08)]">
+            <p className="text-xs font-bold text-purple-800 uppercase tracking-wider mb-2">2. Diary / Calendar Appointment Booking</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700 font-mono">
+              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Diary Page</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Select Patient</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Creating Appointment Modal</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-bold">Assigned Case Field (Existing or New)</span>
+            </div>
           </div>
         </div>
-
-        <ScreenshotPlaceholder label="Diagram 14.1: Patient Case Lifecycle. Caption: 'Patient Cases combines every clinical activity into one complete timeline.'" />
       </div>
 
 
-      {/* SECTION 14.1 — Timeline */}
+      {/* SECTION 14.1 — Patient Case Location (From Patient Profile) */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        14.1 The Patient Timeline
+        14.1 Patient Case Location (Patient Profile)
       </h3>
-      <p className="text-gray-700 font-body mb-6">A chronological history of every clinical event.</p>
+      <p className="text-gray-700 font-body mb-6">Manage patient cases and treatment plans directly within the patient file.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            The Patient Timeline automatically logs and displays patient activities in chronological order. Instead of digging through separate billing or appointment modules, practitioners can scroll through the timeline to see exactly what happened and when.
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Follow this path to view existing cases or establish a new treatment case from the patient profile:
           </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li><strong>Initial Registration:</strong> When the profile was first created.</li>
-            <li><strong>Appointments:</strong> Booked, completed, or cancelled visits.</li>
-            <li><strong>Clinical Notes:</strong> Documents saved by practitioners.</li>
-            <li><strong>Invoices:</strong> Billing events generated from visits.</li>
-          </ul>
 
-          <ScreenshotPlaceholder label="Screenshot 14.1: Patient Cases main page. Highlight Timeline and Navigation tabs. Caption: 'The Patient Cases module provides a centralized timeline of the patient's clinical journey.'" />
-          <ScreenshotPlaceholder label="Screenshot 14.2: Patient Timeline. Highlight Chronological activities. Caption: 'Events are displayed in chronological order, allowing practitioners to review patient history quickly.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 14.2: Timeline Flow. Caption: 'The patient timeline organizes every significant clinical event in chronological order.'" />
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Open Patient Page:</strong> Navigate to the <strong>Clients</strong> (Patients) directory from the main sidebar navigation.
+            </li>
+            <li>
+              <strong>Click View Profile in Action:</strong> Find the patient record and click <strong>View Profile</strong> under the <strong>Action</strong> column (or click the patient row).
+            </li>
+            <li>
+              <strong>Select Cases Menu:</strong> On the dedicated left-hand patient sidebar, click on the <strong>Cases</strong> menu tab.
+            </li>
+            <li>
+              <strong>Patient Cases List Displayed:</strong> The system displays all ongoing and past cases for this patient, detailing active statuses, session counts, primary practitioners, and payer types.
+            </li>
+            <li>
+              <strong>Click Create Case Button:</strong> Click the <strong>New Case</strong> (or Create Case) button at the top of the cases view.
+            </li>
+            <li>
+              <strong>Enter Details in Create New Case Modal:</strong> Complete the case details:
+              <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-gray-600">
+                <li><strong>Case Title:</strong> Name of the clinical condition or care plan (e.g., Post-Op ACL Rehabilitation, Chronic Cervical Pain).</li>
+                <li><strong>Primary Practitioner:</strong> Assign the attending clinician responsible for the case.</li>
+                <li><strong>Payer & Billing:</strong> Choose payment source (Self-Pay, HMO, Insurance, or Package).</li>
+                <li><strong>Approved Sessions:</strong> Enter the allocated number of sessions or enable Unlimited.</li>
+                <li><strong>Description & Referral:</strong> Add clinical notes, referral information, or diagnosis summary.</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Save and Create Case:</strong> Click <strong>Create Case</strong> to save the treatment program.
+            </li>
+          </ol>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot14_1}
+              alt="Screenshot 14.1: Patient Page View Profile Action"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot14_2}
+              alt="Screenshot 14.2: Patient Cases Menu & Cases List Display"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot14_3}
+              alt="Screenshot 14.3: Create New Case Modal"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
         </div>
       </div>
 
       <DocCallout type="info">
-        The Timeline provides a rapid overview of the patient's clinical journey without ever requiring users to search through other disconnected modules.
+        Cases allow clinics to organize multiple appointments over time under a unified clinical diagnosis, making it easy to track treatment progression and billing packages.
       </DocCallout>
 
 
-      {/* SECTION 14.2 — History */}
+      {/* SECTION 14.2 — Diary Page (Appointment Booking with Assigned Case) */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        14.2 Appointment History
+        14.2 Diary Page: Assigning or Creating Cases during Appointment Booking
       </h3>
-      <p className="text-gray-700 font-body mb-6">Review previous and recurring consultations.</p>
+      <p className="text-gray-700 font-body mb-6">Link appointments to an existing case or create a brand-new case on the fly.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            The Appointment History tab includes every completed visit associated with the patient. This allows practitioners to easily trace treatment progression over multiple sessions, prepare for upcoming consultations, and verify attendance records. 
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Every appointment in Malasakit PMS connects to a case. You can select an ongoing case or create a new one directly while booking in the Diary:
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 14.3: Appointment History. Highlight Appointment list, Visit dates, Practitioner. Caption: 'Appointment History provides a complete record of previous patient visits.'" />
-          <ScreenshotPlaceholder label="Screenshot 14.4: Appointment Details. Highlight Completed consultation. Caption: 'Selecting an appointment displays its detailed information.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 14.3: Treatment History. Caption: 'Historical appointments provide a complete treatment progression for each patient.'" />
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Open Diary Page:</strong> Navigate to the <strong>Diary</strong> (or Calendar) to view practitioner appointment schedules.
+            </li>
+            <li>
+              <strong>Create an Appointment:</strong> Double-click an available time slot or click the <strong>Create Appointment</strong> button.
+            </li>
+            <li>
+              <strong>Select Patient:</strong> Search and select the patient, then click the <strong>Create Appointment</strong> button in the pop-up to proceed.
+            </li>
+            <li>
+              <strong>Creating Appointment Modal is Displayed:</strong> The comprehensive appointment modal opens with clinician, branch, date, and service options.
+            </li>
+            <li>
+              <strong>Configure the Assigned Case Field:</strong>
+              <div className="mt-2 space-y-2">
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wide">Option A — Select Existing Case</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Select an ongoing case from the dropdown. The system automatically tracks this visit against the patient's approved sessions and package balance.
+                  </p>
+                </div>
+                <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg">
+                  <p className="text-xs font-bold text-sky-900 uppercase tracking-wide">Option B — Create New Case</p>
+                  <p className="text-xs text-sky-700 mt-1">
+                    Select <strong>+ Create New Case</strong> in the dropdown. An inline form opens immediately inside the modal where you enter the Case Title, Payer, Approved Sessions, and optional Package Cost without ever leaving your calendar.
+                  </p>
+                </div>
+              </div>
+            </li>
+            <li>
+              <strong>Confirm and Save Appointment:</strong> Complete service selection and click <strong>Create Appointment</strong>. The appointment is immediately booked and linked to the chosen or newly created case.
+            </li>
+          </ol>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot14_4}
+              alt="Screenshot 14.4: Diary Page Patient Selection"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot14_5}
+              alt="Screenshot 14.5: Creating Appointment Modal Assigned Case Field"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot14_6}
+              alt="Screenshot 14.6: Creating Appointment Modal Inline New Case"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
         </div>
       </div>
 
       <DocCallout type="tip">
-        Always review previous appointments before beginning a new consultation to better understand the patient's ongoing care and past treatment efficacy.
+        Creating a case directly within the appointment booking modal saves time during fast front-desk intake, ensuring new consultations are always tied to a structured clinical plan.
       </DocCallout>
 
-
-      {/* SECTION 14.3 — Clinical Notes */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        14.3 Clinical Notes
-      </h3>
-      <p className="text-gray-700 font-body mb-6">How medical documentation is stored.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Every Clinical Note (such as SOAP notes or practitioner documentation) is permanently linked to the specific appointment in which it was created. 
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            By viewing the Clinical Notes tab within the Patient Case, practitioners can review historical medical documentation chronologically, matching the patient's treatment progression precisely, without needing to navigate to the standalone Clinical module.
-          </p>
-
-          <ScreenshotPlaceholder label="Screenshot 14.5: Clinical Notes tab. Highlight Clinical Note list, Appointment reference. Caption: 'Clinical Notes are organized according to the appointment in which they were created.'" />
-          <ScreenshotPlaceholder label="Screenshot 14.6: View Clinical Note. Highlight Practitioner, Appointment, Clinical content. Caption: 'Each Clinical Note preserves the documentation recorded during the patient's consultation.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 14.4: Note Linking Flow. Caption: 'Clinical Notes become part of the patient's permanent treatment history.'" />
-          </div>
-        </div>
-      </div>
-
-      <DocCallout type="important">
-        Clinical Notes cannot exist independently—they are always strictly linked to a specific appointment to ensure medical documentation maintains accurate chronological and contextual integrity.
-      </DocCallout>
-
-
-      {/* SECTION 14.4 — Invoices */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        14.4 Invoices
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Review billing records from past appointments.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Invoices generated from completed appointments automatically feed into the patient's Patient Case. This provides a clear billing history, allowing Front Desk or Finance staff to quickly verify past payments, review Invoice Numbers, and check outstanding balances directly from the patient's medical file.
-          </p>
-
-          <ScreenshotPlaceholder label="Screenshot 14.7: Invoices tab. Highlight Invoice list. Caption: 'Patient Cases displays every invoice associated with the patient's completed appointments.'" />
-          <ScreenshotPlaceholder label="Screenshot 14.8: Invoice Details. Highlight Invoice Number, Appointment, Payment Status. Caption: 'Each invoice remains linked to the appointment that generated it.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 14.5: Billing History. Caption: 'Invoices become part of the patient's complete financial history.'" />
-          </div>
-        </div>
-      </div>
 
       {/* CHAPTER SUMMARY */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you explored the power of the centralized Patient Cases module. You should now understand:
+        In this chapter, you learned how to navigate and manage Patient Cases in Malasakit PMS:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li>How the <strong>Patient Timeline</strong> chronologically displays every clinical event from registration to recent visits.</li>
-        <li>How the <strong>Appointment History</strong> tab provides a clear view of treatment progression.</li>
-        <li>Why <strong>Clinical Notes</strong> are always linked to specific appointments, and how to review them historically.</li>
-        <li>How <strong>Invoices</strong> are aggregated to provide a complete view of the patient's billing history directly from their case file.</li>
+        <li><strong>Patient Profile Location:</strong> Navigate to <strong>Clients</strong> → <strong>View Profile</strong> → <strong>Cases</strong> menu → click <strong>New Case</strong> to enter case details and create the treatment plan.</li>
+        <li><strong>Diary Page Booking:</strong> Start an appointment in the <strong>Diary</strong> → select patient → open the <strong>Creating Appointment Modal</strong> → use the <strong>Assigned Case</strong> field to either link an existing case or create a new case inline.</li>
       </ul>
     </>
   );

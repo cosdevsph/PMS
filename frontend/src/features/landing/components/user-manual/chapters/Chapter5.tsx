@@ -1,6 +1,15 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Diagram5_1 from '@/assets/manual/Chapter 5/Diagram 5.1.png';
+import Screenshot5_1 from '@/assets/manual/Chapter 5/Screenshot 5.1.png';
+import Screenshot5_2 from '@/assets/manual/Chapter 5/Screenshot 5.2.png';
+import Screenshot5_3 from '@/assets/manual/Chapter 5/Screenshot 5.3.png';
+import Screenshot5_4 from '@/assets/manual/Chapter 5/Screenshot 5.4.png';
+import Screenshot5_5 from '@/assets/manual/Chapter 5/Screenshot 5.5.png';
+import Screenshot5_6 from '@/assets/manual/Chapter 5/Screenshot 5.6.png';
+import Screenshot5_7 from '@/assets/manual/Chapter 5/Screenshot 5.7.png';
+import Screenshot5_8 from '@/assets/manual/Chapter 5/Screenshot 5.8.png';
 
 const Chapter5: React.FC = () => {
   return (
@@ -49,7 +58,13 @@ const Chapter5: React.FC = () => {
           <li>Bookings are automatically associated with the correct physical location.</li>
         </ul>
 
-        <ScreenshotPlaceholder label="Diagram 5.1: Branch Architecture Diagram. Caption: 'Each clinic branch has its own independent patient access point.'" />
+        <div className="mt-6 w-full flex justify-center bg-white border border-sky-200 rounded-xl overflow-hidden p-2 shadow-sm">
+          <img
+            src={Diagram5_1}
+            alt="Diagram 5.1: Branch Architecture Diagram"
+            className="w-full max-h-[500px] object-contain rounded-lg"
+          />
+        </div>
       </div>
 
 
@@ -65,7 +80,13 @@ const Chapter5: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Navigate to the <strong>Clinic Locations</strong> page in your Settings. Here you will see a list of all your active and inactive branches.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 5.1: Clinic Locations page - Highlight Branch List and Create New Branch button. Caption: 'Open the Clinic Locations page to manage your branches.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot5_1}
+              alt="Screenshot 5.1: Clinic Locations page"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -79,7 +100,13 @@ const Chapter5: React.FC = () => {
             <li><strong>Email & Phone:</strong> The contact details specific to this branch location.</li>
             <li><strong>Address & Map Pin:</strong> The physical location of the branch. Similar to the initial clinic setup, you can use the map to drop a pin on the exact building.</li>
           </ul>
-          <ScreenshotPlaceholder label="Screenshot 5.2: Create Branch Modal - Highlight the branch fields. Caption: 'Complete all required branch information.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot5_2}
+              alt="Screenshot 5.2: Create Branch Modal"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -87,7 +114,13 @@ const Chapter5: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Click <strong>Create Branch</strong>. The new branch will immediately appear as a card in your branch list and inherit the subscription plan from the main clinic.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 5.3: Updated Branch List - Caption: 'The new clinic branch now appears in the branch list.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot5_3}
+              alt="Screenshot 5.3: Updated Branch List"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -103,7 +136,13 @@ const Chapter5: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             To edit an existing branch, locate its card on the Clinic Locations page and click <strong>Edit Details</strong> (or use the three-dot menu). You can update the address, contact information, and map pin at any time.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 5.4: Edit Branch Modal - Highlight editable fields. Caption: 'Modify branch information whenever updates are required.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot5_4}
+              alt="Screenshot 5.4: Edit Branch Modal"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -124,7 +163,13 @@ const Chapter5: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Navigate to the <strong>Branch Portals</strong> page. Every active branch automatically receives its own unique <strong>Booking URL</strong>. Patients who visit this URL are directed straight to that specific branch's scheduling portal.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 5.5: Branch Portals page - Highlight the Booking URL and Copy button. Caption: 'Each clinic branch has its own unique patient booking URL.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot5_5}
+              alt="Screenshot 5.5: Branch Portals page"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -132,7 +177,13 @@ const Chapter5: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             If a branch is temporarily closed or not accepting online appointments, you can toggle the <strong>Public Access</strong> switch at the bottom of the portal card. This immediately disables the booking link and QR code.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 5.6: Public Access Toggle - Highlight the active/inactive toggle. Caption: 'Easily enable or disable online booking access for specific branches.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot5_6}
+              alt="Screenshot 5.6: Public Access Toggle"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -153,7 +204,13 @@ const Chapter5: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             On the <strong>Branch Portals</strong> page, every branch features an auto-generated QR code. Clicking <strong>Save PNG</strong> downloads a high-resolution, print-ready image card that includes your clinic logo, branch location name, and the scannable code.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 5.7: QR Code section - Highlight the QR Code and Save PNG button. Caption: 'Every clinic branch receives its own downloadable QR Code.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot5_7}
+              alt="Screenshot 5.7: QR Code section"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -161,7 +218,13 @@ const Chapter5: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             If your QR code is ever compromised or you wish to invalidate old marketing materials, you can click the <strong>Regenerate</strong> button. This instantly creates a new booking URL and QR code, rendering all previous versions permanently inactive.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 5.8: Regenerate QR Confirmation - Highlight the warning dialog. Caption: 'Regenerating a QR code immediately invalidates old links.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot5_8}
+              alt="Screenshot 5.8: Regenerate QR Confirmation"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 

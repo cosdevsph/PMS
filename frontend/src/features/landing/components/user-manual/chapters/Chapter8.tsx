@@ -1,219 +1,188 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Screenshot8_1 from '@/assets/manual/Chapter 8/Screenshot 8.1.png';
+import Screenshot8_2 from '@/assets/manual/Chapter 8/Screenshot 8.2.png';
+import Screenshot8_3 from '@/assets/manual/Chapter 8/Screenshot 8.3.png';
+import Screenshot8_4 from '@/assets/manual/Chapter 8/Screenshot 8.4.png';
 
 const Chapter8: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how clinic owners and managers configure new staff accounts, assign roles, and securely grant branch access.
+        Learn how to navigate to the Staff Management module and create new staff members and practitioners with assigned roles and clinic branches.
       </p>
 
-      {/* IMPORTANT CONCEPT — Staff Account Creation Workflow */}
+      {/* QUICK OVERVIEW FLOW */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-4">Staff Account Creation Workflow</h3>
-        
-        <p className="text-gray-700 font-body mb-4">
-          Every staff member must have an account before accessing Malasakit. When creating a staff account, administrators configure four main components:
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Staff Creation Quick Guide</h3>
+        <p className="text-gray-700 font-body mb-6">
+          Follow this streamlined path to access user management and register a new team member into Malasakit PMS:
         </p>
 
-        <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-          <li><strong>Personal Information</strong> (Name, birth date, contact details)</li>
-          <li><strong>Login Credentials</strong> (Email and temporary password)</li>
-          <li><strong>User Roles</strong> (e.g., Practitioner, Manager, Front Desk)</li>
-          <li><strong>Clinic Branch(es)</strong> (The specific locations the user can access)</li>
-        </ul>
-
-        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] mb-6 text-center">
-          <p className="text-sm font-semibold text-gray-800 mb-2">Configuration Flow</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-sm text-gray-600 font-mono">
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">Create Staff Account</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200">Assign Role(s)</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200">Assign Branch(es)</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-green-50 text-green-700 font-bold rounded border border-green-200">Save Account</span>
+        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Workflow Summary</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Setup Page</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Staff Card</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Staff Page</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">New Staff Member</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">Created Successfully</span>
           </div>
         </div>
-
-        <ScreenshotPlaceholder label="Diagram 8.1: Staff Creation Workflow. Caption: 'Every staff account is configured with both roles and clinic branch assignments.'" />
       </div>
 
 
-      {/* SECTION 8.1 — Opening Staff Management */}
+      {/* SECTION 8.1 — Accessing the Staff Page */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        8.1 Opening Staff Management
+        8.1 Navigating to the Staff Page
       </h3>
-      <p className="text-gray-700 font-body mb-6">Locate the user administration dashboard.</p>
+      <p className="text-gray-700 font-body mb-6">Access the centralized staff and practitioner directory from the Setup hub.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            To manage users, navigate to <strong>Clinic Setup</strong> in the sidebar and click on <strong>Staff</strong>. This page displays all existing staff members, their assigned roles, and their authorized branches.
-          </p>
-          <ScreenshotPlaceholder label="Screenshot 8.1: Staff Management page - Highlight Staff List and Create Staff Account button. Caption: 'Open the Staff Management page to create and manage staff accounts.'" />
-          <ScreenshotPlaceholder label="Screenshot 8.2: Create Staff Account button - Highlight action button. Caption: 'Click Create Staff Account to register a new staff member.'" />
+          <ol className="list-decimal pl-6 space-y-4 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Go to the Setup Page:</strong> In the main navigation sidebar, click on <strong>Setup</strong>. This opens the central configuration hub.
+            </li>
+            <li>
+              <strong>Locate the Staff / Users Card:</strong> Find the <strong>Users</strong> card (or Staff card) in the setup options grid.
+            </li>
+            <li>
+              <strong>Click Staff:</strong> Select the <strong>Staff</strong> option under the card.
+            </li>
+            <li>
+              <strong>Staff Page is Displayed:</strong> The system opens the <strong>Staff Management</strong> directory, listing all existing staff members, their roles, active branches, and status toggles.
+            </li>
+          </ol>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot8_1}
+              alt="Screenshot 8.1: Setup Page"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot8_2}
+              alt="Screenshot 8.2: Staff Management Page"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
 
-      {/* SECTION 8.2 — Completing Staff Information */}
+      {/* SECTION 8.2 — Creating a New Staff Member */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        8.2 Completing Staff Information
+        8.2 Creating a New Staff Member
       </h3>
-      <p className="text-gray-700 font-body mb-6">Enter the user's personal and contact details.</p>
+      <p className="text-gray-700 font-body mb-6">Open the registration modal and configure employee information, roles, and branch access.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            The first section of the modal collects the staff member's personal information:
+          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Step 1: Click "New Staff Member"</h4>
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            At the top right of the Staff page, click the blue <strong>New Staff Member</strong> button. The staff creation modal will open.
           </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li><strong>First Name, Last Name, Middle Name, Nickname:</strong> The user's full name as it will appear in the system and on clinical notes.</li>
-            <li><strong>Gender & Date of Birth:</strong> Basic demographic information.</li>
-            <li><strong>Email Address:</strong> Used for system login and receiving the initial temporary password.</li>
-            <li><strong>Contact Number:</strong> A valid phone number for clinic communications.</li>
-          </ul>
-          <ScreenshotPlaceholder label="Screenshot 8.3: Create Staff Account Modal - Highlight Personal Information section. Caption: 'Enter the staff member's personal information.'" />
+
+          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Step 2: Enter Staff Details</h4>
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            Complete the form fields across the three main sections:
+          </p>
+
+          {/* Form Breakdown Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {/* Card 1: Personal Information */}
+            <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
+              <h5 className="font-bold text-gray-900 mb-2 border-b border-gray-200 pb-2">1. Personal Information</h5>
+              <ul className="text-sm space-y-2 text-gray-700 font-body">
+                <li><strong>Title:</strong> Dr., Mr., Ms., Mrs., or Prof.</li>
+                <li><strong>Full Name:</strong> First Name and Last Name (required), Middle Name, and Nickname.</li>
+                <li><strong>Gender:</strong> Select Male, Female, or Other.</li>
+                <li><strong>Date of Birth:</strong> Staff member's birth date for identification records.</li>
+              </ul>
+            </div>
+
+            {/* Card 2: Professional Information */}
+            <div className="p-5 rounded-xl border border-sky-200 bg-sky-50/50">
+              <h5 className="font-bold text-sky-900 mb-2 border-b border-sky-200 pb-2">2. Professional & Roles</h5>
+              <ul className="text-sm space-y-2 text-gray-700 font-body">
+                <li><strong>Clinical Role:</strong> Select one or more roles (Administrator, Manager, Practitioner, Staff / Front Desk, Finance, Read-Only).</li>
+                <li><strong>Discipline:</strong> Clinical discipline (e.g., Occupational Therapy, Physical Therapy, Psychology) for practitioners.</li>
+                <li><strong>Practitioner Schedule:</strong> Configure duty days, working shift hours, and lunch breaks per branch.</li>
+                <li><strong>Branch Assignment:</strong> Assign the user to their authorized clinic branch or branches.</li>
+              </ul>
+            </div>
+
+            {/* Card 3: Contact Information */}
+            <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
+              <h5 className="font-bold text-gray-900 mb-2 border-b border-gray-200 pb-2">3. Contact Information</h5>
+              <ul className="text-sm space-y-2 text-gray-700 font-body">
+                <li><strong>Email Address:</strong> Required for login. An automated check detects if an existing clinician account can be linked to additional branches.</li>
+                <li><strong>Phone Number:</strong> Official mobile number for system alerts and communication.</li>
+                <li><strong>Address:</strong> Residential or clinic location address (optional).</li>
+              </ul>
+            </div>
+          </div>
+
+          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Step 3: Save and Submit</h4>
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            Review the entered details and click the <strong>Create Staff Member</strong> button (or <strong>Assign to Selected Branch</strong> if linking an existing practitioner).
+          </p>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot8_3}
+              alt="Screenshot 8.3: Create Staff Member Modal"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
       <DocCallout type="tip">
-        Use the staff member's official work email to simplify password recovery and ensure system notifications are routed correctly.
+        Always enter the staff member's official work email address. Malasakit uses this address to deliver temporary login credentials and automated password setup instructions.
       </DocCallout>
 
 
-      {/* SECTION 8.3 — Assigning User Roles */}
+      {/* SECTION 8.3 — Successful Creation */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        8.3 Assigning User Roles
+        8.3 Successful Account Creation
       </h3>
-      <p className="text-gray-700 font-body mb-6">Define what features the user can access.</p>
+      <p className="text-gray-700 font-body mb-6">What happens after submitting the form.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Select one or more roles from the Clinical Role section to define the staff member's system permissions. Available operational roles include:
+            Once saved, the system completes the following automated actions:
           </p>
+
           <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li><strong>Manager (Admin Assistant):</strong> Branch management and administration.</li>
-            <li><strong>Practitioner:</strong> Clinical operations and patient care.</li>
-            <li><strong>Staff (Front Desk):</strong> Patient scheduling and registration.</li>
-            <li><strong>Finance:</strong> Billing, invoicing, and reports.</li>
+            <li><strong>Instant Directory Update:</strong> The new staff member immediately appears in the <strong>Staff</strong> table with their assigned role badges and active branch tags.</li>
+            <li><strong>Automated Welcome Email:</strong> An email containing system login credentials and a secure temporary password is dispatched to the user.</li>
+            <li><strong>Mandatory First-Time Password Reset:</strong> Upon their first login, the user is required to set a new password before accessing clinic data.</li>
+            <li><strong>Immediate RBAC Scoping:</strong> Role permissions and branch boundaries take effect instantly on both the user interface and backend API.</li>
           </ul>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            A single user may hold multiple roles simultaneously (e.g., a Practitioner who is also a Manager). Their permissions will be combined. Note that <strong>Owner (Administrator)</strong> accounts are typically created during the initial clinic registration process.
-          </p>
-          <ScreenshotPlaceholder label="Screenshot 8.4: Role Selection - Highlight Role selector cards. Caption: 'Assign one or more roles to define the staff member's permissions.'" />
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot8_4}
+              alt="Screenshot 8.4: Staff Table with New Member"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
       <DocCallout type="info">
-        A user's final permissions are determined by the combination of their assigned roles and their assigned clinic branches.
-      </DocCallout>
-
-
-      {/* SECTION 8.4 — Creating a Manager Account */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        8.4 Creating a Manager Account
-      </h3>
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            When selecting the <strong>Manager</strong> role, you must assign the user to one or multiple clinic branches. Managers possess administrative capabilities but are strictly limited to managing data within their assigned branches.
-          </p>
-          <ScreenshotPlaceholder label="Screenshot 8.5: Manager Role Selected - Highlight Manager role and Assigned Branch selector. Caption: 'Managers may be assigned to one or multiple clinic branches.'" />
-        </div>
-      </div>
-
-
-      {/* SECTION 8.5 — Creating a Practitioner Account */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        8.5 Creating a Practitioner Account
-      </h3>
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            When creating a <strong>Practitioner</strong>, you must assign them to their primary working branch. This guarantees that their appointment calendar, patient list, and clinical notes are exclusively tied to that specific clinic location. Practitioners cannot access the "All Branches" calendar.
-          </p>
-          <ScreenshotPlaceholder label="Screenshot 8.6: Practitioner Role Selected - Highlight Practitioner role and Assigned Branch. Caption: 'Practitioners are assigned to their working clinic branch during account creation.'" />
-        </div>
-      </div>
-
-      <DocCallout type="important">
-        Practitioners only access patients, appointments, calendars, and reports belonging to their assigned clinic branch.
-      </DocCallout>
-
-
-      {/* SECTION 8.6 — Creating a Front Desk Account */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        8.6 Creating a Front Desk Account
-      </h3>
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Select the <strong>Staff</strong> role to create a Front Desk user. After assigning them to specific branches, they will be able to register patients, manage schedules, and monitor online bookings specifically for those locations.
-          </p>
-          <ScreenshotPlaceholder label="Screenshot 8.7: Front Desk Role - Highlight Front Desk role and Assigned Branch. Caption: 'Front Desk users manage appointments and patients for assigned clinic branches.'" />
-        </div>
-      </div>
-
-
-      {/* SECTION 8.7 — Creating a Finance Account */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        8.7 Creating a Finance Account
-      </h3>
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Select the <strong>Finance</strong> role for billing and invoicing staff. By restricting their branch assignments, you ensure they only view and process financial information generated by their authorized locations.
-          </p>
-          <ScreenshotPlaceholder label="Screenshot 8.8: Finance Role - Highlight Finance role and Assigned Branch. Caption: 'Finance staff manage billing for assigned clinic branches.'" />
-        </div>
-      </div>
-
-
-      {/* SECTION 8.8 — Branch Assignment */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        8.8 Branch Assignment Logic
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Understand how locations are granted.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Depending on the roles selected, the branch assignment component will allow either a single location or multiple locations.
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li><strong>Single Branch Assignment:</strong> Typically used for Practitioners to firmly root their clinical calendar and availability to one physical location.</li>
-            <li><strong>Multiple Branch Assignment:</strong> Available for Managers, Front Desk, and Finance staff who oversee operations across several clinic branches.</li>
-          </ul>
-
-          <ScreenshotPlaceholder label="Screenshot 8.9: Assigned Branch Selector - Highlight Branch selection component. Caption: 'Assign one or more clinic branches depending on the staff member's responsibilities.'" />
-          <ScreenshotPlaceholder label="Screenshot 8.10: Branch Assignment Completed - Highlight selected branches. Caption: 'Selected clinic branches determine which data the staff member can access.'" />
-          <ScreenshotPlaceholder label="Diagram 8.2: Branch Assignment Flow. Caption: 'Branch assignments determine which clinic data each staff member can access.'" />
-        </div>
-      </div>
-
-
-      {/* SECTION 8.9 — Saving the Staff Account */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        8.9 Saving the Staff Account
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Finalize the configuration and activate the user.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Once all fields are complete, click <strong>Save</strong>. The system will validate the information and automatically generate the account. The new staff member will immediately appear in your Staff List, and an email containing their temporary password will be dispatched. Their role permissions and branch restrictions take effect instantly.
-          </p>
-          <ScreenshotPlaceholder label="Screenshot 8.11: Save Button - Highlight Save button. Caption: 'Click Save to create the new staff account.'" />
-          <ScreenshotPlaceholder label="Screenshot 8.12: Updated Staff List - Highlight newly created staff member. Caption: 'The new staff member now appears in the Staff Management list.'" />
-        </div>
-      </div>
-
-      <DocCallout type="warning">
-        Always verify assigned roles and clinic branches before saving. Incorrect assignments may allow users to access unintended clinic data or restrict access to required features.
+        If you ever need to update a staff member's roles, contact details, or assigned clinic branches, simply click their row in the Staff directory to open the edit modal.
       </DocCallout>
 
       {/* CHAPTER SUMMARY */}
@@ -221,14 +190,13 @@ const Chapter8: React.FC = () => {
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned how to successfully onboard new employees into the Malasakit System. You should now know how to:
+        In this chapter, you learned the simplified process for registering team members in Malasakit PMS:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li>Navigate to the Staff Management page.</li>
-        <li>Complete a new user's personal information.</li>
-        <li>Assign clinical and administrative roles.</li>
-        <li>Correctly assign single or multiple branches based on the user's role.</li>
-        <li>Save the account to trigger automated login instructions.</li>
+        <li>Navigating from <strong>Setup</strong> &rarr; <strong>Staff Card</strong> &rarr; <strong>Staff Page</strong>.</li>
+        <li>Launching the creation modal via the <strong>New Staff Member</strong> button.</li>
+        <li>Entering <strong>Personal Information</strong>, <strong>Professional Roles & Schedules</strong>, and <strong>Contact Details</strong>.</li>
+        <li>Successfully saving the account and verifying immediate directory and email dispatch.</li>
       </ul>
     </>
   );

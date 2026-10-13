@@ -1,235 +1,330 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Screenshot9_1 from '@/assets/manual/Chapter 9/Screenshot 9.1.png';
+import Screenshot9_2 from '@/assets/manual/Chapter 9/Screenshot 9.2.png';
+import Screenshot9_3 from '@/assets/manual/Chapter 9/Screenshot 9.3.png';
+import Screenshot9_4 from '@/assets/manual/Chapter 9/Screenshot 9.4.png';
+import Screenshot9_5 from '@/assets/manual/Chapter 9/Screenshot 9.5.png';
+import Screenshot9_6 from '@/assets/manual/Chapter 9/Screenshot 9.6.png';
+import Screenshot9_7 from '@/assets/manual/Chapter 9/Screenshot 9.7.png';
 
 const Chapter9: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how Malasakit combines Role-Based Access Control and Branch Restrictions to protect sensitive clinic information.
+        Learn where to find the Permission Groups page in Malasakit PMS, understand the core permission groups, and see what features each group can access.
       </p>
 
-      {/* IMPORTANT CONCEPT — Permission Evaluation Flow */}
-      <div className="bg-sky-50 border-l-4 border-sky-500 p-4 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-4">Permission Evaluation Flow</h3>
-        
-        <p className="text-gray-700 font-body mb-4">
-          Every action a user attempts to perform—whether viewing a page or saving data—is securely validated against two critical factors:
+      {/* QUICK OVERVIEW FLOW */}
+      <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Permission Groups Quick Overview</h3>
+        <p className="text-gray-700 font-body mb-6">
+          Permission Groups define the exact tools and modules that users assigned to a specific role template can view, edit, or manage across your clinic:
         </p>
 
-        <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-          <li><strong>Assigned Role(s):</strong> Determines <em>what</em> features the user can access.</li>
-          <li><strong>Assigned Clinic Branch(es):</strong> Determines <em>where</em> the user can access those features.</li>
-        </ul>
-
-        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] mb-6 text-center">
-          <p className="text-sm font-semibold text-gray-800 mb-2">Evaluation Sequence</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-sm text-gray-600 font-mono">
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">User Login</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200">Role & Branch Check</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200">Page Access</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200">Data Visibility</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 font-bold rounded border border-emerald-200">Allowed / Denied</span>
+        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Navigation Path</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Setup Page</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Users Card</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Click Permissions</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">Permission Groups Page</span>
           </div>
         </div>
-
-        <ScreenshotPlaceholder label="Diagram 9.1: Permission Evaluation Flow. Caption: 'Every request is validated using both user roles and assigned clinic branches.'" />
       </div>
 
 
-      {/* SECTION 9.1 — Role Permissions */}
+      {/* SECTION 9.1 — Locating the Permission Groups Page */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        9.1 Role Permissions
+        9.1 Locating the Permission Groups Page
       </h3>
-      <p className="text-gray-700 font-body mb-6">Permissions are primarily determined by user roles.</p>
+      <p className="text-gray-700 font-body mb-6">Find and access the centralized permissions configuration page.</p>
 
       <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-4 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Higher-level roles generally possess broader administrative permissions, while lower-level roles focus on operational tasks. Below is a simplified comparison of what each role can access:
-          </p>
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <ol className="list-decimal pl-6 space-y-4 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Go to the Setup Page:</strong> Click on <strong>Setup</strong> in the left-hand navigation sidebar to open your clinic's administrative hub.
+            </li>
+            <li>
+              <strong>Find the Users Card:</strong> In the setup grid, locate the <strong>Users</strong> card (teal icon).
+            </li>
+            <li>
+              <strong>Click Permissions:</strong> Select the <strong>Permissions</strong> option under the card.
+            </li>
+            <li>
+              <strong>Permission Groups Page is Displayed:</strong> The system opens the <strong>Permission Groups</strong> builder, displaying all system templates, member counts, and customization controls.
+            </li>
+          </ol>
 
-          <div className="overflow-x-auto mb-8 border border-gray-200 rounded-xl">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 font-semibold text-gray-600">Role</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600 text-center">Staff Mgmt</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600 text-center">Patients & Appts</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600 text-center">Calendar</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600 text-center">Reports</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600 text-center">Billing</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600 text-center">Clinic Setup</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
-                <tr>
-                  <td className="px-4 py-3 font-medium text-gray-900">Owner</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 font-medium text-gray-900">Manager</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-red-500">✘</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 font-medium text-gray-900">Practitioner</td>
-                  <td className="px-4 py-3 text-center text-red-500">✘</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">Own</td>
-                  <td className="px-4 py-3 text-center text-red-500">✘</td>
-                  <td className="px-4 py-3 text-center text-red-500">✘</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 font-medium text-gray-900">Front Desk</td>
-                  <td className="px-4 py-3 text-center text-red-500">✘</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-red-500">✘</td>
-                  <td className="px-4 py-3 text-center text-red-500">✘</td>
-                  <td className="px-4 py-3 text-center text-red-500">✘</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 font-medium text-gray-900">Finance</td>
-                  <td className="px-4 py-3 text-center text-red-500">✘</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">View Only</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">View Only</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">Financial</td>
-                  <td className="px-4 py-3 text-center text-emerald-600">✔</td>
-                  <td className="px-4 py-3 text-center text-red-500">✘</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot9_1}
+              alt="Screenshot 9.1: Permission Group Location"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
 
-          <ScreenshotPlaceholder label="Screenshot 9.1: User Profile showing assigned roles. Caption: 'User permissions are determined by assigned roles.'" />
-          <ScreenshotPlaceholder label="Diagram 9.2: Role Hierarchy. Caption: 'Higher-level roles generally have broader permissions, while lower-level roles focus on operational tasks.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot9_2}
+              alt="Screenshot 9.2: Permission Groups Page"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
       <DocCallout type="info">
-        A user may possess multiple roles. In this case, their permissions are merged, granting them the highest level of access provided by their role combination.
+        Only clinic <strong>Owners</strong> (Administrators) have permission to open and configure the Permission Groups page. Restricted roles cannot modify group settings.
       </DocCallout>
 
 
-      {/* SECTION 9.2 — Branch Restrictions */}
+      {/* SECTION 9.2 — Permission Groups & What They Can Access */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        9.2 Branch Restrictions
+        9.2 Permission Groups & What They Can Access
       </h3>
-      <p className="text-gray-700 font-body mb-6">How location assignments isolate clinic data.</p>
+      <p className="text-gray-700 font-body mb-6">
+        Malasakit PMS includes five built-in system permission groups tailored for standard healthcare clinic workflows.
+      </p>
 
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-4 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Even if a user possesses the correct role to perform an action, they must also be explicitly authorized to perform that action <strong>at that specific clinic branch</strong>.
+      {/* Group 1: Owner */}
+      <div className="space-y-8 mb-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold uppercase tracking-wider">
+              System Protected
+            </span>
+            <h4 className="text-xl font-bold text-gray-900 font-heading">1. Owner (Administrator)</h4>
+          </div>
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            The <strong>Owner</strong> permission group grants full, unrestricted administrative and clinical authority across all clinic branches.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
-              <h5 className="font-bold text-gray-900 mb-2 border-b border-gray-200 pb-2">Example 1: Manager</h5>
-              <p className="text-sm text-gray-600 mb-2">Assigned to Branch 1 & Branch 2</p>
-              <ul className="text-sm space-y-1">
-                <li className="text-emerald-600">✔ Visible: Branch 1 data</li>
-                <li className="text-emerald-600">✔ Visible: Branch 2 data</li>
-                <li className="text-red-500">✘ Hidden: Branch 3 data</li>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
+              <p className="font-semibold text-emerald-900 mb-2">✔ What They Can Access:</p>
+              <ul className="space-y-1 text-emerald-800 list-disc pl-5">
+                <li>Full access to all clinic branches and locations</li>
+                <li>Subscription, plan management, and invoices</li>
+                <li>Staff account creation, editing, and archiving</li>
+                <li>Permission groups configuration and customization</li>
+                <li>All branch calendars, diaries, and patient records</li>
+                <li>Organization-wide financial and performance reports</li>
+                <li>Global clinic setup and communication settings</li>
               </ul>
             </div>
-
-            <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
-              <h5 className="font-bold text-gray-900 mb-2 border-b border-gray-200 pb-2">Example 2: Practitioner</h5>
-              <p className="text-sm text-gray-600 mb-2">Assigned to Branch 2</p>
-              <ul className="text-sm space-y-1">
-                <li className="text-emerald-600">✔ Visible: Branch 2 Patients</li>
-                <li className="text-emerald-600">✔ Visible: Branch 2 Calendar</li>
-                <li className="text-emerald-600">✔ Visible: Branch 2 Reports</li>
-                <li className="text-red-500">✘ Hidden: Branch 1 & 3 data</li>
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+              <p className="font-semibold text-gray-900 mb-2">✘ System Restrictions:</p>
+              <ul className="space-y-1 text-gray-600 list-disc pl-5">
+                <li>None — Owners have unrestricted access to all modules and system data.</li>
+                <li>Protected group: cannot be deleted or revoked.</li>
               </ul>
             </div>
           </div>
 
-          <ScreenshotPlaceholder label="Screenshot 9.2: Branch Selector. Caption: 'Users only see clinic branches assigned to their account.'" />
-          <ScreenshotPlaceholder label="Screenshot 9.3: Calendar View. Highlight the assigned branch and disabled 'All Branches' tab. Caption: 'Practitioners can only access the calendar for their assigned clinic branch.'" />
-          <ScreenshotPlaceholder label="Diagram 9.3: Branch Visibility. Caption: 'Branch assignments control which clinic data is visible to each user.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot9_3}
+              alt="Screenshot 9.3: Owner Permission Group Settings"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
-      <DocCallout type="important">
-        Branch restrictions apply throughout the entire system. This includes patients, appointments, reports, consent forms, public links, QR codes, and notifications.
-      </DocCallout>
-
-
-      {/* SECTION 9.3 — Access Control Layers */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        9.3 Access Control Layers
-      </h3>
-      <p className="text-gray-700 font-body mb-6">How Malasakit controls module access.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-4 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            To ensure bulletproof security, Malasakit evaluates user permissions using a two-layer security approach:
-          </p>
-
-          <h5 className="font-bold text-gray-900 mb-2">1. Frontend Route Protection</h5>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            The user interface automatically adapts to your permissions. If you lack the required role, unauthorized menus will appear completely disabled or entirely hidden from the sidebar. You will be actively prevented from navigating to those pages.
-          </p>
-
-          <h5 className="font-bold text-gray-900 mb-2">2. Backend API Protection</h5>
+      {/* Group 2: Manager */}
+      <div className="space-y-8 mb-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="px-3 py-1 rounded-full bg-violet-100 text-violet-800 border border-violet-200 text-xs font-bold uppercase tracking-wider">
+              Management
+            </span>
+            <h4 className="text-xl font-bold text-gray-900 font-heading">2. Manager (Admin Assistant)</h4>
+          </div>
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Even if a technically savvy user attempts to bypass the frontend by manually typing a restricted URL into the browser, the backend server acts as the ultimate gatekeeper. Every single request sent to the database is verified, and unauthorized requests are permanently rejected.
+            The <strong>Manager</strong> group is designed for administrative leaders overseeing day-to-day operations for their authorized clinic branches.
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 9.4: Disabled Setup Menu. Highlight disabled administrative modules. Caption: 'Restricted modules remain visible but cannot be accessed by unauthorized users.'" />
-          <ScreenshotPlaceholder label="Screenshot 9.5: Access Denied page. Highlight access denied message. Caption: 'Unauthorized users are prevented from opening restricted pages.'" />
-          <ScreenshotPlaceholder label="Diagram 9.4: Access Control Layers. Caption: 'Both frontend and backend validations protect sensitive clinic information.'" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
+              <p className="font-semibold text-emerald-900 mb-2">✔ What They Can Access:</p>
+              <ul className="space-y-1 text-emerald-800 list-disc pl-5">
+                <li>Manage staff and practitioners in assigned branches</li>
+                <li>Patient records, appointments, calendar, and diary</li>
+                <li>Branch-specific financial and performance reports</li>
+                <li>Configure branch consent forms and public booking links</li>
+                <li>Inventory and item management</li>
+                <li>Invoices, billing, and operational communication</li>
+                <li>View clinical notes for supervision (read-only)</li>
+              </ul>
+            </div>
+            <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl">
+              <p className="font-semibold text-rose-900 mb-2">✘ What They Cannot Access:</p>
+              <ul className="space-y-1 text-rose-800 list-disc pl-5">
+                <li>Cannot manage clinic subscription or billing settings</li>
+                <li>Cannot modify system permission groups</li>
+                <li>Cannot edit or sign medical clinical notes</li>
+                <li>Cannot view or manage unassigned clinic branches</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot9_4}
+              alt="Screenshot 9.4: Manager (Admin Assistant) Permission Group Settings"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
-      <DocCallout type="warning">
-        Frontend restrictions improve the user experience by hiding irrelevant buttons, but backend authorization provides the actual security. Unauthorized API requests are strictly denied.
-      </DocCallout>
-
-
-      {/* SECTION 9.4 — Security */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        9.4 Security
-      </h3>
-      <p className="text-gray-700 font-body mb-6">How Malasakit safeguards clinic data.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-4 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            System security is maintained through secure session management and branch isolation. This guarantees patient privacy by ensuring that only authorized personnel interact with sensitive information.
+      {/* Group 3: Practitioner */}
+      <div className="space-y-8 mb-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200 text-xs font-bold uppercase tracking-wider">
+              Clinical
+            </span>
+            <h4 className="text-xl font-bold text-gray-900 font-heading">3. Practitioner</h4>
+          </div>
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            The <strong>Practitioner</strong> group is tailored specifically for clinical providers focused on treating patients across their authorized clinic locations.
           </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li><strong>Authentication:</strong> All users must log in using encrypted credentials before any data is exposed.</li>
-            <li><strong>Authorization (JWT):</strong> The system continuously verifies an active, authorized session for every action taken.</li>
-            <li><strong>Branch Isolation:</strong> Patients, clinical notes, and financial records are permanently segmented by clinic branch.</li>
-          </ul>
 
-          <ScreenshotPlaceholder label="Screenshot 9.6: Login screen. Highlight secure login. Caption: 'All users must authenticate before accessing clinic information.'" />
-          <ScreenshotPlaceholder label="Screenshot 9.7: Protected module (example: Billing). Highlight restricted access based on role. Caption: 'Sensitive modules are available only to authorized users.'" />
-          <ScreenshotPlaceholder label="Diagram 9.5: Security Overview. Caption: 'Every secure action follows authentication and authorization checks before access is granted.'" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
+              <p className="font-semibold text-emerald-900 mb-2">✔ What They Can Access:</p>
+              <ul className="space-y-1 text-emerald-800 list-disc pl-5">
+                <li>Create, edit, and sign Clinical Notes and treatment records</li>
+                <li>Patient medical charts, client cases, and documents</li>
+                <li>Manage appointment schedules across authorized branches</li>
+                <li>View branch calendar, diary, and own working availability</li>
+                <li>View clinical outcome measures and treatment history</li>
+                <li>View treatment invoices associated with their patients</li>
+              </ul>
+            </div>
+            <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl">
+              <p className="font-semibold text-rose-900 mb-2">✘ What They Cannot Access:</p>
+              <ul className="space-y-1 text-rose-800 list-disc pl-5">
+                <li>Cannot access Staff Management or edit employee accounts</li>
+                <li>Cannot modify system permissions or clinic settings</li>
+                <li>Cannot manage subscription plans or organization billing</li>
+                <li>Cannot access financial accounting reports</li>
+                <li>Strictly blocked from unassigned clinic branches</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot9_5}
+              alt="Screenshot 9.5: Practitioner Permission Group Settings"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Group 4: Front Desk */}
+      <div className="space-y-8 mb-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="px-3 py-1 rounded-full bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold uppercase tracking-wider">
+              Reception & Intake
+            </span>
+            <h4 className="text-xl font-bold text-gray-900 font-heading">4. Front Desk (Staff)</h4>
+          </div>
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            The <strong>Front Desk</strong> group is designed for receptionists and intake coordinators who manage appointments and patient check-ins.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
+              <p className="font-semibold text-emerald-900 mb-2">✔ What They Can Access:</p>
+              <ul className="space-y-1 text-emerald-800 list-disc pl-5">
+                <li>Book, reschedule, and cancel calendar appointments</li>
+                <li>Manage branch diary and incoming public portal bookings</li>
+                <li>Register new patients and update contact demographics</li>
+                <li>Manage patient check-ins and attendance statuses</li>
+                <li>Generate invoices and process payment receipts at the front desk</li>
+                <li>View patient clinical notes (read-only reference)</li>
+              </ul>
+            </div>
+            <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl">
+              <p className="font-semibold text-rose-900 mb-2">✘ What They Cannot Access:</p>
+              <ul className="space-y-1 text-rose-800 list-disc pl-5">
+                <li>Cannot author, edit, or sign clinical medical notes</li>
+                <li>Cannot manage staff accounts or user permissions</li>
+                <li>Cannot configure clinic settings or subscriptions</li>
+                <li>Cannot access unassigned clinic branches</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot9_6}
+              alt="Screenshot 9.6: Front Desk Permission Group Settings"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Group 5: Finance */}
+      <div className="space-y-8 mb-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="px-3 py-1 rounded-full bg-green-100 text-green-800 border border-green-200 text-xs font-bold uppercase tracking-wider">
+              Accounting & Billing
+            </span>
+            <h4 className="text-xl font-bold text-gray-900 font-heading">5. Finance</h4>
+          </div>
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            The <strong>Finance</strong> group is focused strictly on billing, invoicing, payments, and financial reporting for authorized clinic branches.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
+              <p className="font-semibold text-emerald-900 mb-2">✔ What They Can Access:</p>
+              <ul className="space-y-1 text-emerald-800 list-disc pl-5">
+                <li>Create, edit, issue, and manage client invoices</li>
+                <li>Record payments, track balances, and handle refunds</li>
+                <li>Process bulk invoicing runs for corporate/insurance accounts</li>
+                <li>Generate financial statements, revenue summaries, and tax reports</li>
+                <li>View patient demographic information for invoicing purposes</li>
+                <li>View appointment lists to verify billing items</li>
+              </ul>
+            </div>
+            <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl">
+              <p className="font-semibold text-rose-900 mb-2">✘ What They Cannot Access:</p>
+              <ul className="space-y-1 text-rose-800 list-disc pl-5">
+                <li>Cannot access clinical medical notes or treatment records</li>
+                <li>Cannot access or manage clinic diary</li>
+                <li>Cannot modify staff members or permission groups</li>
+                <li>Cannot view financial data for unassigned clinic branches</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot9_7}
+              alt="Screenshot 9.7: Finance Permission Group Settings"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
       <DocCallout type="tip">
-        Regularly review staff roles and branch assignments to ensure users only have access to the information required for their day-to-day responsibilities.
+        Remember that a user's final access is governed by both their <strong>Permission Group</strong> (which features are unlocked) and their <strong>Branch Assignment</strong> (which clinic locations they can see).
       </DocCallout>
 
       {/* CHAPTER SUMMARY */}
@@ -237,14 +332,15 @@ const Chapter9: React.FC = () => {
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned how Malasakit keeps your clinic information safe. You should now understand:
+        In this chapter, you learned how to navigate and understand Permission Groups in Malasakit PMS:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li>How role permissions determine feature access across different staff members.</li>
-        <li>How branch restrictions control patient and financial data visibility.</li>
-        <li>The difference between frontend user-interface restrictions and backend security.</li>
-        <li>How authentication and authorization work together to protect patient privacy.</li>
-        <li>Why different users experience entirely different views of the system dashboard.</li>
+        <li>Navigating to <strong>Setup</strong> &rarr; <strong>Users Card</strong> &rarr; <strong>Permissions</strong> to find the Permission Groups page.</li>
+        <li>The system-wide governance of the <strong>Owner</strong> group.</li>
+        <li>The operational and staff oversight of the <strong>Manager (Admin Assistant)</strong> group.</li>
+        <li>The dedicated clinical treatment authority of the <strong>Practitioner</strong> group.</li>
+        <li>The scheduling and intake focus of the <strong>Front Desk (Staff)</strong> group.</li>
+        <li>The billing, invoicing, and revenue focus of the <strong>Finance</strong> group.</li>
       </ul>
     </>
   );

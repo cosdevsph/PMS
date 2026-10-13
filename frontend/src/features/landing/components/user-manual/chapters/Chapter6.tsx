@@ -1,6 +1,13 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Diagram6_1 from '@/assets/manual/Chapter 6/Diagram 6.1.png';
+import Screenshot6_1 from '@/assets/manual/Chapter 6/Screenshot 6.1.png';
+import Screenshot6_2 from '@/assets/manual/Chapter 6/Screenshot 6.2.png';
+import Screenshot6_3 from '@/assets/manual/Chapter 6/Screenshot 6.3.png';
+import Screenshot6_4 from '@/assets/manual/Chapter 6/Screenshot 6.4.png';
+import Screenshot6_5 from '@/assets/manual/Chapter 6/Screenshot 6.5.png';
+import Screenshot6_6 from '@/assets/manual/Chapter 6/Screenshot 6.6.png';
 
 const Chapter6: React.FC = () => {
   return (
@@ -21,7 +28,13 @@ const Chapter6: React.FC = () => {
           This means that every clinic branch owns and maintains its own independent consent agreement. Patients automatically receive and sign the exact consent form associated with the specific branch where their appointment is booked.
         </p>
 
-        <ScreenshotPlaceholder label="Diagram 6.1: Branch → Consent Relationship. Caption: 'Each clinic branch maintains its own independent consent form.'" />
+        <div className="mt-6 w-full flex justify-center bg-white border border-sky-200 rounded-xl overflow-hidden p-2 shadow-sm">
+          <img
+            src={Diagram6_1}
+            alt="Diagram 6.1: Branch → Consent Relationship"
+            className="w-full max-h-[500px] object-contain rounded-lg"
+          />
+        </div>
       </div>
 
 
@@ -37,7 +50,13 @@ const Chapter6: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Navigate to the <strong>Clinic Consent Forms</strong> page. This page lists all branches that you have access to, along with their current consent form status, creator, and last modified date. To begin, click the <strong>Edit</strong> button next to a branch.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 6.1: Clinic Consent Forms page - Highlight the Branch List and Edit buttons. Caption: 'Open the Clinic Consent Forms management page.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot6_1}
+              alt="Screenshot 6.1: Clinic Consent Forms page"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -49,7 +68,13 @@ const Chapter6: React.FC = () => {
             <li><strong>Header Content (Optional):</strong> A brief introductory sentence or subtitle, such as "Acknowledgment of Policies and Procedures".</li>
             <li><strong>Body Content (Required):</strong> The main terms and conditions. This is where you outline privacy policies, operational rules, and medical liabilities.</li>
           </ul>
-          <ScreenshotPlaceholder label="Screenshot 6.2: Consent Editor - Highlight the Header and Body Content text areas. Caption: 'Write the clinic's consent agreement using clear, patient-friendly terminology.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot6_2}
+              alt="Screenshot 6.2: Consent Editor"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
@@ -57,7 +82,13 @@ const Chapter6: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Before saving, click the <strong>Live Preview</strong> button. This opens a realistic mockup of exactly what the patient will see on their mobile device or computer before confirming their booking. Once satisfied, click <strong>Save Configuration</strong>.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 6.3: Live Preview Modal - Caption: 'Always preview your consent form to ensure formatting is readable.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot6_3}
+              alt="Screenshot 6.3: Live Preview Modal"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -82,13 +113,25 @@ const Chapter6: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-4">
             Staff with access to multiple branches will see an <strong>Assign To</strong> dropdown menu at the top of the modal. They can select any branch under their jurisdiction to configure its specific consent form.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 6.4: Manager (Multiple Branches) - Highlight branch selection dropdown. Caption: 'Users assigned to multiple branches must choose the appropriate branch.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot6_4}
+              alt="Screenshot 6.4: Manager (Multiple Branches) - Branch selection dropdown"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
 
           <h5 className="font-bold text-gray-900 mb-2 mt-8">For Single-Branch Managers</h5>
           <p className="text-gray-700 font-body leading-relaxed mb-4">
             If a manager is only assigned to a single location, the system automatically detects their branch. The dropdown menu is locked and read-only, preventing them from modifying agreements for other branches.
           </p>
-          <ScreenshotPlaceholder label="Screenshot 6.5: Manager (Single Branch) - Highlight locked, auto-selected branch input. Caption: 'Users assigned to a single branch have the branch selected automatically.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot6_5}
+              alt="Screenshot 6.5: Manager (Single Branch) - Locked auto-selected branch"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -115,7 +158,13 @@ const Chapter6: React.FC = () => {
             <li><strong>Inactive (Disabled):</strong> The consent form is turned off. New patients will bypass the consent step during registration. However, any previously signed historical consent records remain securely stored in the system.</li>
           </ul>
           
-          <ScreenshotPlaceholder label="Screenshot 6.6: Require Consent Signature Toggle - Highlight the toggle switch. Caption: 'Activate or deactivate consent forms as needed.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot6_6}
+              alt="Screenshot 6.6: Require Consent Signature Toggle"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 

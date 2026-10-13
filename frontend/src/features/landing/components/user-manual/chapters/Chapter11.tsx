@@ -1,165 +1,264 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Screenshot11_1 from '@/assets/manual/Chapter 11/Screenshot 11.1.png';
+import Screenshot11_2 from '@/assets/manual/Chapter 11/Screenshot 11.2.png';
+import Screenshot11_3 from '@/assets/manual/Chapter 11/Screenshot 11.3.png';
+import Screenshot11_4 from '@/assets/manual/Chapter 11/Screenshot 11.4.png';
+import Screenshot11_5 from '@/assets/manual/Chapter 11/Screenshot 11.5.png';
+import Screenshot11_6 from '@/assets/manual/Chapter 11/Screenshot 11.6.png';
 
 const Chapter11: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how to configure working schedules, break periods, and understand how duty hours directly drive calendar availability and occupancy reporting.
+        Learn how clinic Owners and Managers configure practitioner duty hours, view schedules across different calendar layouts, and monitor clinic occupancy calculations.
       </p>
 
-      {/* IMPORTANT CONCEPT — Duty Hours Workflow */}
+      {/* QUICK OVERVIEW FLOW */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-4">Duty Hours Workflow</h3>
-        
-        <p className="text-gray-700 font-body mb-4">
-          Duty hours define precisely when practitioners are available to accept appointments. A properly configured schedule ensures that online booking slots are accurate, calendars reliably prevent double-bookings, and daily occupancy statistics reflect true practitioner utilization.
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Duty Hours & Calendar Overview</h3>
+        <p className="text-gray-700 font-body mb-6">
+          Configuring duty hours ensures appointment calendars accurately reflect when practitioners are available and powers automated occupancy reporting:
         </p>
 
-        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] mb-6 text-center overflow-x-auto">
-          <p className="text-sm font-semibold text-gray-800 mb-2">Schedule Generation Sequence</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-[13px] text-gray-600 font-mono">
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">Weekly Schedule</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">Working Hours</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">Break Times</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200 font-bold">Availability Generated</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 font-bold rounded border border-emerald-200">Occupancy & Calendar</span>
+        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Workflow Sequence</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Setup → Staff</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Staff Modal</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Configure Duty Hours</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Diary / Calendar Views</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">Live Occupancy Stats</span>
           </div>
         </div>
-
-        <ScreenshotPlaceholder label="Diagram 11.1: Duty Hours Workflow. Caption: 'Duty Hours determine every appointment slot available within the practitioner's calendar.'" />
       </div>
 
 
-      {/* SECTION 11.1 — Weekly Schedule */}
+      {/* SECTION 11.1 — Setting Duty Hours in CreateStaffAccountModal */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        11.1 Weekly Schedule
+        11.1 Configuring Practitioner Duty Hours in Staff Modal
       </h3>
-      <p className="text-gray-700 font-body mb-6">Select which days the practitioner provides services.</p>
+      <p className="text-gray-700 font-body mb-6">Set working days, daily shifts, and break intervals for clinic practitioners.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            The first step in configuring availability is selecting the practitioner's active working days. Administrators can toggle specific days of the week (e.g., Monday through Friday) to define the baseline schedule. Days that are left unselected are treated as non-working days and will absolutely not generate any appointment availability.
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Clinic Owners and Managers configure practitioner working schedules directly inside the <strong>Create / Edit Staff Account Modal</strong> (<code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 text-sky-700 font-mono">CreateStaffAccountModal</code>):
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 11.1: Weekly Schedule configuration. Highlight Working days and Enabled days. Caption: 'Select the days the practitioner is available for appointments.'" />
-          <ScreenshotPlaceholder label="Screenshot 11.2: Weekly schedule after configuration. Highlight Configured working days. Caption: 'Only selected working days will allow appointment bookings.'" />
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Open Staff Member Form:</strong> Navigate to <strong>Setup → Staff</strong>, then click <strong>New Staff Member</strong> or click <strong>Edit</strong> on an existing practitioner record.
+            </li>
+            <li>
+              <strong>Assign Role:</strong> Ensure the staff member has the <strong>Practitioner</strong> role enabled to display the duty hours configuration section.
+            </li>
+            <li>
+              <strong>Select Working Days:</strong> Toggle the practitioner's active duty days (e.g., Monday through Friday). Unselected days will be treated as non-working days.
+            </li>
+            <li>
+              <strong>Configure Shift Blocks & Branches:</strong> Set the shift <strong>Start Time</strong> and <strong>End Time</strong> for each active day, and assign the specific clinic branch for that shift. Additional working periods can be added per day if needed.
+            </li>
+            <li>
+              <strong>Set Lunch Break:</strong> Specify the <strong>Lunch Start</strong> and <strong>Lunch End</strong> times. The system automatically reserves this time window so appointments are not booked during lunch.
+            </li>
+            <li>
+              <strong>Save Schedule:</strong> Click <strong>Save Changes</strong> or <strong>Create Staff</strong> to apply the duty hours across the clinic calendars.
+            </li>
+          </ol>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot11_1}
+              alt="Screenshot 11.1: Setting Duty Hours in CreateStaffAccountModal"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
       <DocCallout type="info">
-        Days marked as unavailable cannot receive appointments through manual scheduling or the public online booking portal.
+        Only clinic Owners and Managers have access to configure or modify practitioner duty schedules.
       </DocCallout>
 
 
-      {/* SECTION 11.2 — Working Hours & Breaks */}
+      {/* SECTION 11.2 — Diary Week View: Duty Hours vs Non-Duty Hours */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        11.2 Working Hours & Breaks
+        11.2 Diary Week View: Duty Hours vs. Non-Duty Hours
       </h3>
-      <p className="text-gray-700 font-body mb-6">Define daily availability and rest periods.</p>
+      <p className="text-gray-700 font-body mb-6">Understand how practitioner availability and off-duty intervals appear on the weekly schedule.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Once the working days are set, administrators must configure the daily <strong>Start Time</strong> and <strong>End Time</strong>, as well as designated <strong>Break Periods</strong> (such as a Lunch Break).
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            These break periods effectively slice the practitioner's working day into distinct "working intervals." For example, if a practitioner works from 8:00 AM to 5:00 PM with a lunch break from 12:00 PM to 1:00 PM, the system will only generate bookable appointment slots between 8:00 AM–12:00 PM and 1:00 PM–5:00 PM.
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            The Diary Week View visually translates the configured duty hours into clear scheduling intervals:
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 11.3: Working Hours configuration. Highlight Start Time and End Time. Caption: 'Configure the practitioner's daily working hours.'" />
-          <ScreenshotPlaceholder label="Screenshot 11.4: Break configuration. Highlight Break Start and Break End. Caption: 'Appointments are automatically blocked during configured break periods.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 11.2: Daily Schedule Timeline. Caption: 'Break periods divide the practitioner's working schedule into available appointment blocks.'" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="p-5 rounded-xl border border-emerald-200 bg-emerald-50/50">
+              <h5 className="font-bold text-emerald-900 mb-2 border-b border-emerald-200 pb-2 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                Duty Hours (Available)
+              </h5>
+              <p className="text-xs text-emerald-800 font-body mb-3">
+                Open bookable intervals where the practitioner is active on duty:
+              </p>
+              <ul className="text-sm space-y-1.5 text-gray-700 font-body">
+                <li>Displayed with a clear, open background.</li>
+                <li>Ready for one-click appointment slotting.</li>
+                <li>Counts directly toward total available minutes for daily occupancy.</li>
+              </ul>
+            </div>
+
+            <div className="p-5 rounded-xl border border-purple-200 bg-purple-50/50">
+              <h5 className="font-bold text-purple-900 mb-2 border-b border-purple-200 pb-2 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                Non-Duty Hours & Days (Unavailable)
+              </h5>
+              <p className="text-xs text-purple-800 font-body mb-3">
+                Off-duty times, unscheduled days, and configured break intervals:
+              </p>
+              <ul className="text-sm space-y-1.5 text-gray-700 font-body">
+                <li>Clearly distinguished with a shaded / tinted background.</li>
+                <li>Displays a "Non-duty" indicator to prevent accidental bookings.</li>
+                <li>Staff can still apply administrative overrides if an urgent appointment is required.</li>
+              </ul>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <DocCallout type="important">
-        Appointments absolutely cannot be scheduled outside of working hours or during configured break periods.
-      </DocCallout>
-
-
-      {/* SECTION 11.3 — Occupancy */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        11.3 Occupancy Calculations
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Track practitioner utilization and clinic volume.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Malasakit actively uses the practitioner's configured duty hours to calculate their daily <strong>Occupancy Percentage</strong>. This metric represents how much of their available schedule has been booked by patients.
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            For example, if a practitioner has 8 available hours generated from their duty schedule, and 4 hours worth of appointments are booked, their Occupancy is calculated at 50%. A fully booked working day will display 100% Occupancy. The Calendar interface displays these statistics in real-time, including:
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li><strong>Occupancy %:</strong> Percentage of available time booked.</li>
-            <li><strong>Number of Clients:</strong> Total unique patients seen.</li>
-            <li><strong>Number of New Clients:</strong> First-time clinic visitors.</li>
-          </ul>
-
-          <ScreenshotPlaceholder label="Screenshot 11.5: Calendar Occupancy Statistics. Highlight Occupancy %, Clients, New Clients. Caption: 'Occupancy is calculated using the practitioner's configured duty hours.'" />
-          <ScreenshotPlaceholder label="Diagram 11.3: Occupancy Calculation. Caption: 'Occupancy reflects how much of the practitioner's available schedule has been booked.'" />
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot11_2}
+              alt="Screenshot 11.2: Diary Week View Showing Duty Hours and Non-Duty Hours"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
       <DocCallout type="tip">
-        Review occupancy statistics regularly to identify heavily booked practitioners and optimize appointment distribution across your clinic branches.
+        Shaded non-duty slots help Front Desk staff instantly identify when a clinician is off-duty without needing to memorize individual staff timetables.
       </DocCallout>
 
 
-      {/* SECTION 11.4 — Calendar Integration */}
+      {/* SECTION 11.3 — Different Calendar Views */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        11.4 Calendar Integration
+        11.3 Different Calendar Views
       </h3>
-      <p className="text-gray-700 font-body mb-6">How schedules sync across Malasakit.</p>
+      <p className="text-gray-700 font-body mb-6">Switch between Day, Week, and Month perspectives to fit your daily workflow.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Duty hour configurations are not isolated settings—they immediately synchronize across the entire Malasakit ecosystem. 
+            The calendar toolbar provides three distinct view modes designed for different operational needs:
           </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-8">
-            <li><strong>Week & Day Views:</strong> The Calendar actively visually blocks out non-working hours and break periods, ensuring Front Desk staff know exactly when to slot patients.</li>
-            <li><strong>Online Booking:</strong> The public-facing portal reads directly from this schedule, ensuring patients at home can only book within the approved working intervals.</li>
-            <li><strong>Dynamic Updates:</strong> Changing a practitioner's schedule instantly updates availability everywhere without requiring a manual refresh.</li>
-          </ul>
 
-          <ScreenshotPlaceholder label="Screenshot 11.6: Calendar Week View. Highlight Practitioner duty hours. Caption: 'Configured duty hours are displayed directly in the weekly calendar.'" />
-          <ScreenshotPlaceholder label="Screenshot 11.7: Calendar Day View. Highlight Working hours and appointments. Caption: 'Daily calendar availability follows the practitioner's configured schedule.'" />
-          <ScreenshotPlaceholder label="Screenshot 11.8: Online Booking practitioner availability. Highlight Available appointment times. Caption: 'Online booking automatically follows the practitioner's configured duty hours.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 11.4: Calendar Integration. Caption: 'One duty hour configuration powers appointment scheduling, calendar visibility, online booking, and occupancy reporting.'" />
+          <div className="space-y-8">
+            {/* Day View */}
+            <div className="border-t border-gray-100 pt-6 first:border-0 first:pt-0">
+              <h4 className="text-lg font-bold text-gray-900 mb-2">1. Day View</h4>
+              <p className="text-gray-700 font-body mb-4">
+                Provides an hour-by-hour operational breakdown of a single day across practitioners. Best for Front Desk staff managing patient check-ins, walk-ins, and daily clinical flow.
+              </p>
+              <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+                <img
+                  src={Screenshot11_3}
+                  alt="Screenshot 11.3: Calendar Day View"
+                  className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+                />
+              </div>
+            </div>
+
+            {/* Week View */}
+            <div className="border-t border-gray-100 pt-6">
+              <h4 className="text-lg font-bold text-gray-900 mb-2">2. Week View</h4>
+              <p className="text-gray-700 font-body mb-4">
+                Displays a 7-day schedule breakdown for a practitioner or branch. Ideal for reviewing weekly shift coverage, spotting open appointment slots, and balancing booking distribution.
+              </p>
+              <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+                <img
+                  src={Screenshot11_4}
+                  alt="Screenshot 11.4: Calendar Week View"
+                  className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+                />
+              </div>
+            </div>
+
+            {/* Month View */}
+            <div className="border-t border-gray-100 pt-6">
+              <h4 className="text-lg font-bold text-gray-900 mb-2">3. Month View</h4>
+              <p className="text-gray-700 font-body mb-4">
+                Offers a high-level monthly calendar grid showing appointment volumes, holidays, and overall clinic booking density at a glance.
+              </p>
+              <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+                <img
+                  src={Screenshot11_5}
+                  alt="Screenshot 11.5: Calendar Month View"
+                  className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <DocCallout type="warning">
-        Changing duty hours immediately affects future appointment availability. Review schedule changes carefully before saving to avoid creating unintended booking conflicts or erasing existing slots.
+
+      {/* SECTION 11.4 — Occupancy Calculations */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        11.4 Occupancy Calculations
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Track practitioner utilization and clinic volume in real time.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Malasakit PMS automatically computes daily practitioner utilization using the configured duty hours. The calendar header displays real-time performance statistics:
+          </p>
+
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li>
+              <strong>Occupancy %:</strong> Calculated as <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 text-sky-700 font-mono">(Booked Appointment Minutes / Total Duty Minutes) × 100%</code>. Shows how much of a practitioner's scheduled working time is filled with appointments.
+            </li>
+            <li>
+              <strong>Number of Clients:</strong> The total count of unique patients scheduled for consultations during the selected period.
+            </li>
+            <li>
+              <strong>New Clients:</strong> The number of first-time visitors attending their initial clinic appointment.
+            </li>
+          </ul>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot11_6}
+              alt="Screenshot 11.6: Occupancy Calculations and Statistics"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+      <DocCallout type="tip">
+        Review occupancy percentages regularly to identify peak utilization hours, prevent practitioner burnout, and adjust duty schedules to meet patient demand.
       </DocCallout>
+
 
       {/* CHAPTER SUMMARY */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned how practitioner duty hours serve as the foundation for availability across Malasakit. You should now understand how to:
+        In this chapter, you learned how practitioner duty hours and calendar views operate in Malasakit PMS:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li>Configure weekly working schedules by enabling active working days.</li>
-        <li>Set daily working hours and integrate break periods to divide shifts.</li>
-        <li>Interpret the Occupancy Percentage, Clients, and New Clients statistics on the calendar.</li>
-        <li>Recognize how duty hours directly control the availability shown on the public online booking portal.</li>
+        <li>Configuring working days, shift hours, branch locations, and lunch breaks in the <strong>CreateStaffAccountModal</strong>.</li>
+        <li>Distinguishing active duty hours from shaded non-duty periods in the <strong>Diary Week View</strong>.</li>
+        <li>Switching between <strong>Day View</strong>, <strong>Week View</strong>, and <strong>Month View</strong> based on operational tasks.</li>
+        <li>Monitoring practitioner utilization and clinic volume via real-time <strong>Occupancy Calculations</strong>.</li>
       </ul>
     </>
   );
