@@ -1,6 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, Circle } from 'lucide-react';
+import { Circle, CircleDot, ArrowRight } from 'lucide-react';
+import { PublicPageLayout } from '../../public/PublicPageLayout';
+import { PageHeader } from '../../public/PageHeader';
+import { CtaBand, ctaBandButtonClass, ctaBandInputClass } from '../../public/CtaBand';
+import { Reveal } from '../../motion/Reveal';
 
 export const Roadmap: React.FC = () => {
   const roadmapItems = [
@@ -47,44 +50,43 @@ export const Roadmap: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-primary-gradient py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center text-healing-mint hover:text-white transition-colors mb-6">
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Home
-          </Link>
-          <h1 className="text-4xl font-bold">Product Roadmap</h1>
-          <p className="text-xl text-white/70 mt-2">What's coming to Malasakit</p>
-        </div>
-      </div>
+    <PublicPageLayout title="Roadmap">
+      <PageHeader category="Product" title="Product Roadmap" breadcrumbLabel="Roadmap" description="What's coming to Malasakit" />
 
-      {/* Roadmap Timeline */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="space-y-12">
-          {roadmapItems.map((phase, index) => (
-            <div key={index} className="relative">
-              <div className="flex items-start">
-                <div className="relative flex flex-col items-center mr-8">
-                  {phase.status === 'In Progress' ? (
-                    <CheckCircle className="w-8 h-8 text-healing-mint" />
-                  ) : (
-                    <Circle className="w-8 h-8 text-white/50" />
-                  )}
-                  {index < roadmapItems.length - 1 && (
-                    <div className="w-1 h-24 bg-gradient-to-b from-healing-mint/50 to-transparent mt-2" />
-                  )}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+        {/* Roadmap Timeline */}
+        <ol className="relative">
+          {roadmapItems.map((phase, index) => {
+            const inProgress = phase.status === 'In Progress';
+            const isLast = index === roadmapItems.length - 1;
+            return (
+              <li key={index} className="relative flex gap-5 sm:gap-8 pb-10 last:pb-0">
+                {/* Timeline rail */}
+                <div className="relative flex flex-col items-center">
+                  <span
+                    className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center ring-4 ring-white ${
+                      inProgress ? 'bg-care-blue text-white' : 'bg-clinical-cloud text-steady-slate border border-gray-200'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {inProgress ? <CircleDot className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+                  </span>
+                  {!isLast && <span className="flex-1 w-0.5 mt-2 bg-gradient-to-b from-care-blue/40 to-gray-200" aria-hidden="true" />}
                 </div>
-                <div className="flex-1">
-                  <div className="bg-gray-800/50 rounded-lg p-8 border border-white/10 hover:border-healing-mint/50 transition-colors">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-2xl font-bold">{phase.phase}</h3>
+
+                <Reveal className="flex-1 min-w-0">
+                  <div
+                    className={`rounded-2xl bg-white p-6 sm:p-8 shadow-sm ${
+                      inProgress ? 'ring-2 ring-care-blue/40' : 'ring-1 ring-gray-200/80'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                      <h2 className="text-2xl tracking-tight text-gray-900 font-display">{phase.phase}</h2>
                       <span
-                        className={`px-4 py-2 rounded-full text-sm font-bold ${
-                          phase.status === 'In Progress'
-                            ? 'bg-healing-mint/20 text-healing-mint'
-                            : 'bg-gray-700 text-white/70'
+                        className={`px-3.5 py-1 rounded-full text-sm font-semibold font-body ${
+                          inProgress
+                            ? 'bg-care-blue/10 text-care-blue'
+                            : 'bg-gray-100 text-steady-slate'
                         }`}
                       >
                         {phase.status}
@@ -92,38 +94,42 @@ export const Roadmap: React.FC = () => {
                     </div>
                     <ul className="space-y-3">
                       {phase.items.map((item, itemIndex) => (
-                        <li key={itemIndex} className="text-white/80 flex items-start">
-                          <span className="text-healing-mint mr-3">→</span>
+                        <li key={itemIndex} className="text-gray-700 flex items-start gap-3 font-body">
+                          <ArrowRight className="w-4 h-4 mt-1 text-care-blue shrink-0" aria-hidden="true" />
                           {item}
                         </li>
                       ))}
                     </ul>
                   </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                </Reveal>
+              </li>
+            );
+          })}
+        </ol>
 
         {/* CTA */}
-        <div className="mt-20 bg-gradient-to-r from-healing-mint/20 to-blue-600/20 rounded-lg p-12 text-center border border-healing-mint/50">
-          <h2 className="text-3xl font-bold mb-4">Stay Updated</h2>
-          <p className="text-xl text-white/70 mb-8">Subscribe to our newsletter to get notified about new features</p>
-          <form className="flex max-w-md mx-auto gap-4">
+        <CtaBand
+          className="mt-16 sm:mt-20"
+          title="Stay Updated"
+          description="Subscribe to our newsletter to get notified about new features"
+        >
+          <form className="flex flex-col sm:flex-row max-w-md mx-auto gap-3">
+            <label htmlFor="roadmap-newsletter-email" className="sr-only">
+              Email address
+            </label>
             <input
+              id="roadmap-newsletter-email"
               type="email"
+              autoComplete="email"
               placeholder="Enter your email"
-              className="flex-1 px-4 py-3 rounded-lg bg-gray-800 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-healing-mint"
+              className={ctaBandInputClass}
             />
-            <button
-              type="submit"
-              className="bg-healing-mint text-gray-900 px-8 py-3 rounded-lg font-bold hover:bg-white transition-colors"
-            >
+            <button type="submit" className={ctaBandButtonClass}>
               Subscribe
             </button>
           </form>
-        </div>
+        </CtaBand>
       </div>
-    </div>
+    </PublicPageLayout>
   );
 };

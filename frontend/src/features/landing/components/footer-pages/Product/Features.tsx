@@ -1,11 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Check } from 'lucide-react';
+import { Check, CalendarDays, FileText, Receipt, Building2 } from 'lucide-react';
+import { PublicPageLayout } from '../../public/PublicPageLayout';
+import { PageHeader } from '../../public/PageHeader';
+import { CtaBand, ctaBandButtonClass } from '../../public/CtaBand';
+import { Reveal } from '../../motion/Reveal';
 
 export const Features: React.FC = () => {
   const features = [
     {
       category: 'Appointment Management',
+      icon: CalendarDays,
       items: [
         'Easy online scheduling',
         'Automated reminders via email and SMS',
@@ -15,6 +20,7 @@ export const Features: React.FC = () => {
     },
     {
       category: 'Patient Records',
+      icon: FileText,
       items: [
         'Secure digital health records',
         'Patient history tracking',
@@ -24,6 +30,7 @@ export const Features: React.FC = () => {
     },
     {
       category: 'Billing & Invoicing',
+      icon: Receipt,
       items: [
         'Automated invoice generation',
         'Payment tracking',
@@ -33,6 +40,7 @@ export const Features: React.FC = () => {
     },
     {
       category: 'Clinic Management',
+      icon: Building2,
       items: [
         'Multi-clinic support',
         'Staff management',
@@ -43,49 +51,47 @@ export const Features: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-primary-gradient py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center text-healing-mint hover:text-white transition-colors mb-6">
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Home
-          </Link>
-          <h1 className="text-4xl font-bold">Features</h1>
-          <p className="text-xl text-white/70 mt-2">Comprehensive tools for modern healthcare management</p>
-        </div>
-      </div>
+    <PublicPageLayout title="Features">
+      <PageHeader category="Product" title="Features" description="Comprehensive tools for modern healthcare management" />
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid md:grid-cols-2 gap-12">
-          {features.map((feature, index) => (
-            <div key={index} className="bg-gray-800/50 rounded-lg p-8 border border-white/10 hover:border-healing-mint/50 transition-colors">
-              <h2 className="text-2xl font-bold text-healing-mint mb-6">{feature.category}</h2>
-              <ul className="space-y-4">
-                {feature.items.map((item, itemIndex) => (
-                  <li key={itemIndex} className="flex items-start">
-                    <Check className="w-5 h-5 text-healing-mint mr-3 mt-1 flex-shrink-0" />
-                    <span className="text-white/80">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+        <ul className="grid md:grid-cols-2 gap-5 sm:gap-6">
+          {features.map((feature, index) => {
+            const Icon = feature.icon;
+            return (
+              <Reveal as="li" key={index} delay={(index % 2) * 80} className="h-full">
+                <div className="h-full rounded-2xl bg-white ring-1 ring-gray-200/80 shadow-sm p-7 sm:p-8">
+                  <div className="flex items-center gap-4 mb-6">
+                    <span className="w-12 h-12 rounded-xl bg-care-blue/10 text-care-blue flex items-center justify-center shrink-0" aria-hidden="true">
+                      <Icon className="w-6 h-6" />
+                    </span>
+                    <h2 className="text-xl sm:text-2xl tracking-tight text-gray-900 font-display">{feature.category}</h2>
+                  </div>
+                  <ul className="space-y-3.5">
+                    {feature.items.map((item, itemIndex) => (
+                      <li key={itemIndex} className="flex items-start gap-3">
+                        <Check className="w-5 h-5 text-care-blue mt-0.5 shrink-0" aria-hidden="true" />
+                        <span className="text-gray-700 font-body">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Reveal>
+            );
+          })}
+        </ul>
 
         {/* CTA Section */}
-        <div className="mt-16 bg-gradient-to-r from-healing-mint/20 to-blue-600/20 rounded-lg p-12 text-center border border-healing-mint/50">
-          <h2 className="text-3xl font-bold mb-4">Ready to streamline your practice?</h2>
-          <p className="text-xl text-white/70 mb-8">Experience the power of modern healthcare management</p>
-          <Link
-            to="/pricing"
-            className="inline-block bg-healing-mint text-gray-900 px-8 py-3 rounded-lg font-bold hover:bg-white transition-colors"
-          >
+        <CtaBand
+          className="mt-16 sm:mt-20"
+          title="Ready to streamline your practice?"
+          description="Experience the power of modern healthcare management"
+        >
+          <Link to="/pricing" className={ctaBandButtonClass}>
             View Pricing Plans
           </Link>
-        </div>
+        </CtaBand>
       </div>
-    </div>
+    </PublicPageLayout>
   );
 };

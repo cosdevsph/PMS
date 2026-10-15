@@ -1,6 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, ArrowRight } from 'lucide-react';
+import { Calendar, User, ArrowRight } from 'lucide-react';
+import { PublicPageLayout } from '../../public/PublicPageLayout';
+import { PageHeader } from '../../public/PageHeader';
+import { CtaBand, ctaBandButtonClass, ctaBandInputClass } from '../../public/CtaBand';
+import { Reveal } from '../../motion/Reveal';
 
 export const Blog: React.FC = () => {
   const posts = [
@@ -39,75 +42,74 @@ export const Blog: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-primary-gradient py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center text-healing-mint hover:text-white transition-colors mb-6">
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Home
-          </Link>
-          <h1 className="text-4xl font-bold">Blog</h1>
-          <p className="text-xl text-white/70 mt-2">Insights and best practices for healthcare management</p>
-        </div>
-      </div>
+    <PublicPageLayout title="Blog">
+      <PageHeader category="Company" title="Blog" description="Insights and best practices for healthcare management" />
 
-      {/* Blog Posts */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid md:grid-cols-2 gap-8 mb-16">
-          {posts.map((post) => (
-            <article
-              key={post.id}
-              className="bg-gray-800/50 rounded-lg overflow-hidden border border-white/10 hover:border-healing-mint/50 transition-all hover:shadow-lg cursor-pointer"
-            >
-              <div className="h-48 bg-gradient-to-br from-healing-mint/20 to-blue-600/20"></div>
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-bold text-healing-mint bg-healing-mint/10 px-3 py-1 rounded-full">
-                    {post.category}
-                  </span>
-                  <div className="flex items-center text-white/60 text-sm">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    {post.date}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+        {/* Blog Posts */}
+        <ul className="grid md:grid-cols-2 gap-6 mb-16 sm:mb-20">
+          {posts.map((post, index) => (
+            <Reveal as="li" key={post.id} delay={(index % 2) * 80} className="h-full">
+              <article className="h-full flex flex-col rounded-2xl bg-white ring-1 ring-gray-200/80 shadow-sm overflow-hidden">
+                {/* Branded cover placeholder */}
+                <div className="relative h-40 sm:h-44 bg-gradient-to-br from-care-blue/15 via-clinical-cloud to-gentle-renewal/50 overflow-hidden" aria-hidden="true">
+                  <div className="absolute right-6 bottom-0 flex items-end gap-2">
+                    <div className="w-8 h-20 rounded-t-full bg-white/60" />
+                    <div className="w-10 h-14 rounded-t-full bg-white/40" />
+                    <div className="w-7 h-10 rounded-t-full bg-white/30" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-bold mb-3 hover:text-healing-mint transition-colors">
-                  {post.title}
-                </h2>
-                <p className="text-white/70 mb-6">{post.excerpt}</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center text-white/60">
-                    <User className="w-4 h-4 mr-2" />
-                    {post.author}
+                <div className="flex-1 flex flex-col p-6 sm:p-8">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-care-blue bg-care-blue/10 px-3 py-1 rounded-full font-body">
+                      {post.category}
+                    </span>
+                    <div className="flex items-center text-steady-slate text-sm font-body">
+                      <Calendar className="w-4 h-4 mr-2" aria-hidden="true" />
+                      {post.date}
+                    </div>
                   </div>
-                  <button className="text-healing-mint hover:text-white transition-colors flex items-center">
-                    Read More <ArrowRight className="w-4 h-4 ml-2" />
-                  </button>
+                  <h2 className="text-xl sm:text-2xl tracking-tight text-gray-900 font-display mb-3">
+                    {post.title}
+                  </h2>
+                  <p className="text-steady-slate leading-relaxed font-body mb-6">{post.excerpt}</p>
+                  <div className="mt-auto pt-5 border-t border-gray-100 flex items-center justify-between gap-4">
+                    <div className="flex items-center text-gray-700 text-sm font-body">
+                      <User className="w-4 h-4 mr-2 text-steady-slate" aria-hidden="true" />
+                      {post.author}
+                    </div>
+                    <button
+                      type="button"
+                      className="text-sm font-semibold text-care-blue hover:text-trust-harbor transition-colors flex items-center rounded font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-care-blue focus-visible:ring-offset-2"
+                    >
+                      Read More <ArrowRight className="w-4 h-4 ml-1.5" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </article>
+              </article>
+            </Reveal>
           ))}
-        </div>
+        </ul>
 
         {/* Subscribe Section */}
-        <div className="bg-gradient-to-r from-healing-mint/20 to-blue-600/20 rounded-lg p-12 text-center border border-healing-mint/50">
-          <h2 className="text-3xl font-bold mb-4">Subscribe to Our Newsletter</h2>
-          <p className="text-xl text-white/70 mb-8">Get the latest healthcare insights delivered to your inbox</p>
-          <form className="flex max-w-md mx-auto gap-4">
+        <CtaBand title="Subscribe to Our Newsletter" description="Get the latest healthcare insights delivered to your inbox">
+          <form className="flex flex-col sm:flex-row max-w-md mx-auto gap-3">
+            <label htmlFor="blog-newsletter-email" className="sr-only">
+              Email address
+            </label>
             <input
+              id="blog-newsletter-email"
               type="email"
+              autoComplete="email"
               placeholder="Enter your email"
-              className="flex-1 px-4 py-3 rounded-lg bg-gray-800 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-healing-mint"
+              className={ctaBandInputClass}
             />
-            <button
-              type="submit"
-              className="bg-healing-mint text-gray-900 px-8 py-3 rounded-lg font-bold hover:bg-white transition-colors"
-            >
+            <button type="submit" className={ctaBandButtonClass}>
               Subscribe
             </button>
           </form>
-        </div>
+        </CtaBand>
       </div>
-    </div>
+    </PublicPageLayout>
   );
 };

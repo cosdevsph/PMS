@@ -42,6 +42,7 @@
     "konva": "^10.2.5",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
+    "motion": "^14.3.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

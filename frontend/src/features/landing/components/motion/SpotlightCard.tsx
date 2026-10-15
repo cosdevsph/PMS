@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
+import { useCanHover } from '../../hooks/useMediaQuery';
 
 export interface SpotlightCardProps {
   children: React.ReactNode;
@@ -15,45 +16,21 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [canHover, setCanHover] = useState(true);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const hoverQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
-      setCanHover(hoverQuery.matches);
-
-      const handleChange = (e: MediaQueryListEvent) => {
-        setCanHover(e.matches);
-      };
-      hoverQuery.addEventListener('change', handleChange);
-      return () => hoverQuery.removeEventListener('change', handleChange);
-    }
-  }, []);
+  const canHover = useCanHover();
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current || !canHover) return;
     const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    cardRef.current.style.setProperty('--mouse-x', `${x}px`);
-    cardRef.current.style.setProperty('--mouse-y', `${y}px`);
-  };
-
-  const handleMouseEnter = () => {
-    if (canHover) setIsHovered(true);
-  };
-
-  const handleMouseLeave = () => {
-    if (canHover) setIsHovered(false);
+    cardRef.current.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+    cardRef.current.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
   };
 
   return (
     <div
       ref={cardRef}
       onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => canHover && setIsHovered(true)}
+      onMouseLeave={() => canHover && setIsHovered(false)}
       className={`relative group overflow-hidden ${className}`}
       style={
         {
@@ -62,10 +39,10 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
         } as React.CSSProperties
       }
     >
-      {/* Interactive Cursor Spotlight Glow */}
+      {/* Interactive cursor spotlight — painted beneath the content so it never covers media controls */}
       {canHover && (
         <div
-          className={`pointer-events-none absolute -inset-px transition-opacity duration-500 z-20 ${
+          className={`pointer-events-none absolute -inset-px transition-opacity duration-500 z-0 motion-reduce:transition-none ${
             isHovered ? 'opacity-100' : 'opacity-0'
           }`}
           style={{

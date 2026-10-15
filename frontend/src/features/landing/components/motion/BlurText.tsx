@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
+import { usePrefersReducedMotion } from '../../hooks/useMediaQuery';
 
 export interface BlurTextProps {
   text: string;
@@ -20,30 +21,12 @@ export const BlurText: React.FC<BlurTextProps> = ({
   onAnimationComplete,
 }) => {
   const [inView, setInView] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const ref = useRef<HTMLHeadingElement | HTMLSpanElement | null>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    // Check user's motion preferences
-    if (typeof window !== 'undefined') {
-      const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-      setPrefersReducedMotion(mediaQuery.matches);
-      
-      const handleChange = (e: MediaQueryListEvent) => {
-        setPrefersReducedMotion(e.matches);
-      };
-      mediaQuery.addEventListener('change', handleChange);
-
-      // Trigger entrance
-      const timer = setTimeout(() => {
-        setInView(true);
-      }, 50);
-
-      return () => {
-        mediaQuery.removeEventListener('change', handleChange);
-        clearTimeout(timer);
-      };
-    }
+    // Trigger entrance on the next tick so the initial blurred state paints first
+    const timer = setTimeout(() => setInView(true), 50);
+    return () => clearTimeout(timer);
   }, []);
 
   const elements = animateBy === 'words' ? text.split(' ') : text.split('');
@@ -64,7 +47,9 @@ export const BlurText: React.FC<BlurTextProps> = ({
   const yOffset = direction === 'top' ? '-12px' : '12px';
 
   return (
-    <span ref={ref} className={`inline-block ${className}`} aria-label={text}>
+    <span className={`inline-block ${className}`}>
+      {/* Screen readers get the full phrase once; the animated fragments are hidden from them */}
+      <span className="sr-only">{text}</span>
       {elements.map((item, index) => (
         <span
           key={index}

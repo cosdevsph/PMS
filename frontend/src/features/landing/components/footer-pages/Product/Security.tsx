@@ -1,6 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Shield, Lock, Eye } from 'lucide-react';
+import { Shield, Lock, Eye } from 'lucide-react';
+import { PublicPageLayout } from '../../public/PublicPageLayout';
+import { PageHeader } from '../../public/PageHeader';
+import { CtaBand, ctaBandButtonClass } from '../../public/CtaBand';
+import { Reveal } from '../../motion/Reveal';
 
 export const Security: React.FC = () => {
   const securityFeatures = [
@@ -23,103 +26,92 @@ export const Security: React.FC = () => {
 
   const certifications = ['HIPAA', 'SOC 2 Type II', 'ISO 27001', 'GDPR Compliant'];
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-primary-gradient py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center text-healing-mint hover:text-white transition-colors mb-6">
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Home
-          </Link>
-          <h1 className="text-4xl font-bold">Security & Compliance</h1>
-          <p className="text-xl text-white/70 mt-2">We take your data security seriously</p>
-        </div>
-      </div>
+  const practices = [
+    {
+      title: 'Regular Security Audits',
+      description: 'We conduct regular third-party security audits to identify and address vulnerabilities.',
+    },
+    {
+      title: 'Secure Infrastructure',
+      description: 'Our infrastructure is hosted on AWS with multi-region redundancy and automatic backups.',
+    },
+    {
+      title: 'Data Backup & Recovery',
+      description: 'Automatic daily backups with recovery point objectives (RPO) of less than 1 hour.',
+    },
+    {
+      title: 'Incident Response',
+      description: '24/7 security monitoring and incident response team for immediate threat mitigation.',
+    },
+    {
+      title: 'Staff Training',
+      description: 'All team members undergo regular security training and background checks.',
+    },
+  ];
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+  return (
+    <PublicPageLayout title="Security">
+      <PageHeader
+        category="Product"
+        title="Security & Compliance"
+        breadcrumbLabel="Security"
+        description="We take your data security seriously"
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 space-y-16 sm:space-y-20">
         {/* Security Features */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <ul className="grid md:grid-cols-3 gap-5 sm:gap-6">
           {securityFeatures.map((feature, index) => {
             const Icon = feature.icon;
             return (
-              <div
-                key={index}
-                className="bg-gray-800/50 rounded-lg p-8 border border-white/10 hover:border-healing-mint/50 transition-all"
-              >
-                <Icon className="w-12 h-12 text-healing-mint mb-4" />
-                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                <p className="text-white/70">{feature.description}</p>
-              </div>
+              <Reveal as="li" key={index} delay={index * 80} className="h-full">
+                <div className="h-full rounded-2xl bg-white ring-1 ring-gray-200/80 shadow-sm p-7 sm:p-8">
+                  <span className="w-12 h-12 rounded-xl bg-care-blue/10 text-care-blue flex items-center justify-center mb-5" aria-hidden="true">
+                    <Icon className="w-6 h-6" />
+                  </span>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2 font-heading">{feature.title}</h3>
+                  <p className="text-steady-slate leading-relaxed font-body">{feature.description}</p>
+                </div>
+              </Reveal>
             );
           })}
-        </div>
+        </ul>
 
         {/* Certifications */}
-        <div className="bg-gray-800/50 rounded-lg p-12 border border-white/10 mb-16">
-          <h2 className="text-3xl font-bold mb-8 text-center">Certifications & Compliance</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <section aria-labelledby="certifications-title" className="text-center">
+          <h2 id="certifications-title" className="text-3xl tracking-tight text-gray-900 font-display mb-8">Certifications & Compliance</h2>
+          <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {certifications.map((cert, index) => (
-              <div
+              <li
                 key={index}
-                className="bg-gradient-to-br from-healing-mint/20 to-blue-600/20 rounded-lg p-6 text-center border border-healing-mint/30"
+                className="rounded-2xl bg-clinical-cloud ring-1 ring-gray-200/60 p-6"
               >
-                <p className="font-bold text-healing-mint">{cert}</p>
-              </div>
+                <p className="font-bold text-trust-harbor font-heading">{cert}</p>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </section>
 
         {/* Security Practices */}
-        <div className="bg-gray-800/50 rounded-lg p-12 border border-white/10">
-          <h2 className="text-3xl font-bold mb-8">Our Security Practices</h2>
-          <div className="space-y-6">
-            <div>
-              <h3 className="font-bold text-healing-mint text-lg mb-2">Regular Security Audits</h3>
-              <p className="text-white/70">
-                We conduct regular third-party security audits to identify and address vulnerabilities.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-bold text-healing-mint text-lg mb-2">Secure Infrastructure</h3>
-              <p className="text-white/70">
-                Our infrastructure is hosted on AWS with multi-region redundancy and automatic backups.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-bold text-healing-mint text-lg mb-2">Data Backup & Recovery</h3>
-              <p className="text-white/70">
-                Automatic daily backups with recovery point objectives (RPO) of less than 1 hour.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-bold text-healing-mint text-lg mb-2">Incident Response</h3>
-              <p className="text-white/70">
-                24/7 security monitoring and incident response team for immediate threat mitigation.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-bold text-healing-mint text-lg mb-2">Staff Training</h3>
-              <p className="text-white/70">
-                All team members undergo regular security training and background checks.
-              </p>
-            </div>
-          </div>
-        </div>
+        <section aria-labelledby="practices-title" className="grid lg:grid-cols-12 gap-8 lg:gap-12">
+          <h2 id="practices-title" className="lg:col-span-4 text-3xl tracking-tight text-gray-900 font-display">Our Security Practices</h2>
+          <dl className="lg:col-span-8 divide-y divide-gray-200 border-y border-gray-200">
+            {practices.map((practice) => (
+              <div key={practice.title} className="py-5 sm:grid sm:grid-cols-3 sm:gap-6">
+                <dt className="font-bold text-trust-harbor text-lg mb-1 sm:mb-0 font-heading">{practice.title}</dt>
+                <dd className="sm:col-span-2 text-steady-slate leading-relaxed font-body">{practice.description}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
 
         {/* Contact Security */}
-        <div className="mt-16 bg-gradient-to-r from-healing-mint/20 to-blue-600/20 rounded-lg p-12 text-center border border-healing-mint/50">
-          <h2 className="text-3xl font-bold mb-4">Have Security Questions?</h2>
-          <p className="text-xl text-white/70 mb-8">Our security team is ready to address your concerns</p>
-          <a
-            href="mailto:security@malasakit.com"
-            className="inline-block bg-healing-mint text-gray-900 px-8 py-3 rounded-lg font-bold hover:bg-white transition-colors"
-          >
+        <CtaBand title="Have Security Questions?" description="Our security team is ready to address your concerns">
+          <a href="mailto:security@malasakit.com" className={ctaBandButtonClass}>
             Contact Security Team
           </a>
-        </div>
+        </CtaBand>
       </div>
-    </div>
+    </PublicPageLayout>
   );
 };

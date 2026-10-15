@@ -1,90 +1,74 @@
 import React from 'react';
 import { features } from '../data/features';
 import { ArrowRight } from 'lucide-react';
+import { SectionHeader } from './public/SectionHeader';
+import { Reveal } from './motion/Reveal';
+
+const scrollToPlans = () => document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' });
 
 export const Features: React.FC = () => {
-  const colors = ['cyan', 'purple', 'green', 'blue', 'indigo', 'emerald'];
-
-  const getColorClasses = (index: number) => {
-    const color = colors[index % colors.length];
-    switch (color) {
-      case 'cyan':
-        return 'bg-care-blue/10 text-care-blue';
-      case 'purple':
-        return 'bg-purple-100 text-purple-600';
-      case 'green':
-        return 'bg-healing-mint/20 text-healing-mint';
-      case 'blue':
-        return 'bg-trust-harbor/10 text-trust-harbor';
-      case 'indigo':
-        return 'bg-indigo-100 text-indigo-600';
-      case 'emerald':
-        return 'bg-gentle-renewal/30 text-emerald-600';
-      default:
-        return 'bg-gray-100 text-gray-600';
-    }
-  };
+  // Brand-only icon tints, rotated across the grid
+  const tints = [
+    'bg-care-blue/10 text-care-blue',
+    'bg-trust-harbor/10 text-trust-harbor',
+    'bg-gentle-renewal/50 text-trust-harbor',
+  ];
 
   return (
-    <section id="features" className="py-20 sm:py-28 bg-clinical-cloud">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-display">
-            Powerful Features for Your Practice
-          </h2>
-          <p className="mt-6 text-lg sm:text-xl text-gray-600 leading-relaxed font-body">
-            Everything you need to streamline your clinic operations and deliver exceptional patient care.
-          </p>
-        </div>
+    <section id="features" aria-labelledby="features-title" className="py-20 sm:py-28 bg-clinical-cloud scroll-mt-28">
+      <div className="max-w-[100rem] mx-auto px-4 sm:px-5 lg:px-6">
+        <SectionHeader
+          id="features-title"
+          eyebrow="Features"
+          title="Powerful Features for Your Practice"
+          description="Everything you need to streamline your clinic operations and deliver exceptional patient care."
+        />
 
-        {/* Features Grid - Cards with different colors */}
-        <div className="mt-20 grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <ul className="mt-14 sm:mt-16 grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
           {features.map((feature, index) => {
             const Icon = feature.icon;
-            
+
             return (
-              <div 
-                key={feature.id}
-                className="bg-white rounded-2xl p-8 shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100"
-              >
-                {/* Icon with rotating colors */}
-                <div className={`w-14 h-14 ${getColorClasses(index)} rounded-xl flex items-center justify-center mb-6`}>
-                  <Icon className="w-7 h-7" />
+              <Reveal as="li" key={feature.id} delay={(index % 3) * 80} className="h-full">
+                <div className="group h-full flex flex-col bg-white rounded-2xl p-7 sm:p-8 ring-1 ring-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200">
+                  <div className={`w-12 h-12 ${tints[index % tints.length]} rounded-xl flex items-center justify-center mb-5`} aria-hidden="true">
+                    <Icon className="w-6 h-6" />
+                  </div>
+
+                  <h3 className="text-xl font-bold text-gray-900 mb-2 font-heading">
+                    {feature.title}
+                  </h3>
+                  <p className="text-base text-steady-slate leading-relaxed font-body">
+                    {feature.description}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={scrollToPlans}
+                    aria-label={`Learn more about ${feature.title} — view pricing plans`}
+                    className="mt-auto pt-5 self-start inline-flex items-center text-sm font-semibold text-care-blue hover:text-trust-harbor rounded transition-colors font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-care-blue focus-visible:ring-offset-2"
+                  >
+                    Learn more <ArrowRight className="ml-1.5 w-4 h-4 group-hover:translate-x-0.5 motion-reduce:transform-none transition-transform" aria-hidden="true" />
+                  </button>
                 </div>
-                
-                {/* Content */}
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 font-display">
-                  {feature.title}
-                </h3>
-                <p className="text-base text-gray-600 leading-relaxed font-body">
-                  {feature.description}
-                </p>
-                
-                {/* Learn more link */}
-                <button
-                  onClick={() => document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="mt-4 inline-flex items-center text-care-blue font-semibold hover:text-trust-harbor transition-colors font-body"
-                >
-                  Learn more <ArrowRight className="ml-2 w-4 h-4" />
-                </button>
-              </div>
+              </Reveal>
             );
           })}
-        </div>
+        </ul>
 
         {/* Bottom CTA */}
-        <div className="mt-20 text-center">
-          <div className="inline-block bg-white rounded-2xl shadow-lg px-8 py-6">
-            <p className="text-base text-gray-600 font-body">
+        <div className="mt-14 sm:mt-16 text-center">
+          <div className="inline-flex flex-col sm:flex-row items-center gap-1 sm:gap-2 bg-white rounded-2xl ring-1 ring-gray-200/70 shadow-sm px-6 sm:px-8 py-5">
+            <p className="text-base text-steady-slate font-body">
               Ready to transform your practice?{' '}
-              <button
-                onClick={() => document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' })}
-                className="text-care-blue font-semibold hover:text-trust-harbor transition-colors font-body"
-              >
-                View pricing plans →
-              </button>
             </p>
+            <button
+              type="button"
+              onClick={scrollToPlans}
+              className="text-base text-care-blue font-semibold hover:text-trust-harbor rounded transition-colors font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-care-blue focus-visible:ring-offset-2"
+            >
+              View pricing plans →
+            </button>
           </div>
         </div>
       </div>

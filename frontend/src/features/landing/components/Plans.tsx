@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Building2, Check, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { SectionHeader } from './public/SectionHeader';
+import { BillingToggle } from './public/pricing/BillingToggle';
+import { PlanCard } from './public/pricing/PlanCard';
+import { Reveal } from './motion/Reveal';
 
 interface PricingTier {
   id: string;
@@ -58,159 +61,73 @@ export const Plans: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(false);
 
   return (
-    <section id="plans" className="py-20 sm:py-28 bg-trust-harbor relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
-            <Sparkles className="w-3.5 h-3.5" />
-            Transparent Pricing
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white font-display">
-            Plans Tailored to Your Clinic’s Scale
-          </h2>
-          <p className="mt-4 text-base sm:text-lg text-gray-300 leading-relaxed font-body">
-            All plans include 100% full system access and unlimited admin accounts. 12-month commitment with flexible monthly or annual billing.
-          </p>
+    <section id="plans" aria-labelledby="plans-title" className="py-20 sm:py-28 bg-trust-harbor relative overflow-hidden scroll-mt-28">
+      {/* Subtle brand glow */}
+      <div
+        className="absolute -top-40 left-1/2 -translate-x-1/2 w-[48rem] h-[24rem] bg-care-blue/30 rounded-full blur-3xl pointer-events-none"
+        aria-hidden="true"
+      />
 
-          {/* Monthly / Annual Switch */}
-          <div className="mt-8 inline-flex p-1 rounded-2xl bg-gray-800/80 border border-gray-700 backdrop-blur-sm">
-            <button
-              type="button"
-              onClick={() => setIsAnnual(false)}
-              className={`px-5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
-                !isAnnual
-                  ? 'bg-primary-gradient text-white shadow-md'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Monthly Billing
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsAnnual(true)}
-              className={`px-5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${
-                isAnnual
-                  ? 'bg-primary-gradient text-white shadow-md'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <span>Annual Billing</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                Save ~10%
-              </span>
-            </button>
-          </div>
+      <div className="relative max-w-[100rem] mx-auto px-4 sm:px-5 lg:px-6">
+        <SectionHeader
+          id="plans-title"
+          tone="dark"
+          eyebrow={
+            <span className="inline-flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+              Transparent Pricing
+            </span>
+          }
+          title="Plans Tailored to Your Clinic’s Scale"
+          description="All plans include 100% full system access and unlimited admin accounts. 12-month commitment with flexible monthly or annual billing."
+        />
+
+        <div className="mt-8 flex justify-center">
+          <BillingToggle isAnnual={isAnnual} onChange={setIsAnnual} />
         </div>
 
         {/* Pricing Cards Grid */}
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-8">
-          {TIERS.map((tier) => {
-            const price = isAnnual ? tier.annualPrice : tier.monthlyPrice;
-            const period = isAnnual ? '/ year' : '/ month';
-
-            return (
-              <div
-                key={tier.id}
-                className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 border ${
-                  tier.highlight
-                    ? 'bg-gradient-to-b from-gray-800 to-gray-900 border-emerald-500/50 shadow-2xl shadow-emerald-500/10 scale-105 z-10'
-                    : 'bg-gray-800/60 border-gray-700/80 hover:border-gray-600'
-                }`}
-              >
-                {tier.badge && (
-                  <div className="absolute -top-3.5 right-6">
-                    <span className="bg-primary-gradient text-white text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full shadow-lg">
-                      {tier.badge}
-                    </span>
-                  </div>
-                )}
-
-                <div>
-                  <h3 className="text-2xl font-bold text-white font-display">{tier.name}</h3>
-                  <p className="mt-2 text-sm text-gray-400 min-h-[40px] font-body">{tier.description}</p>
-
-                  <div className="mt-6 pt-6 border-t border-gray-700/60">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-extrabold text-white font-display">
-                        ₱{price.toLocaleString('en-PH')}
-                      </span>
-                      <span className="text-sm text-gray-400 font-body">{period}</span>
-                    </div>
-                    {isAnnual && (
-                      <p className="mt-1 text-xs text-emerald-400 font-semibold font-body">
-                        {tier.annualSavings}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="mt-6 space-y-3 font-body text-sm">
-                    <div className="flex items-center gap-3 text-white">
-                      <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                        <Users className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="font-semibold">{tier.clinicians}</span>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-gray-300">
-                      <div className="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
-                        <Building2 className="w-3.5 h-3.5" />
-                      </div>
-                      <span>
-                        {tier.branches}
-                        <span className="block text-xs text-gray-400">
-                          +₱{tier.branchAddonMonthly.toLocaleString('en-PH')}/mo per extra branch
-                        </span>
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-emerald-300 font-medium">
-                      <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                      </div>
-                      <span>100% Full Feature Parity</span>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-gray-300">
-                      <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
-                        <Check className="w-3.5 h-3.5" />
-                      </div>
-                      <span>Unlimited Admin Accounts</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 pt-6 border-t border-gray-700/60">
-                  <Link
-                    to="/register"
-                    className={`block w-full py-3.5 px-4 text-center text-sm font-bold rounded-xl transition-all shadow-md font-body ${
-                      tier.highlight
-                        ? 'bg-primary-gradient text-white hover:opacity-95'
-                        : 'bg-gray-700 text-white hover:bg-gray-600'
-                    }`}
-                  >
-                    Start 14-Day Free Trial
-                  </Link>
-                  <p className="mt-2 text-center text-xs text-gray-400 font-body">
-                    No credit card required for trial
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <ul className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-md md:max-w-none mx-auto">
+          {TIERS.map((tier, index) => (
+            <Reveal as="li" key={tier.id} delay={index * 80} className="h-full">
+              <PlanCard
+                tone="dark"
+                name={tier.name}
+                badge={tier.badge}
+                highlight={tier.highlight}
+                description={tier.description}
+                priceLabel={`₱${(isAnnual ? tier.annualPrice : tier.monthlyPrice).toLocaleString('en-PH')}`}
+                periodLabel={isAnnual ? '/ year' : '/ month'}
+                savingsLabel={isAnnual ? tier.annualSavings : undefined}
+                highlights={[
+                  { icon: Users, label: tier.clinicians, emphasis: true },
+                  {
+                    icon: Building2,
+                    label: tier.branches,
+                    sublabel: `+₱${tier.branchAddonMonthly.toLocaleString('en-PH')}/mo per extra branch`,
+                  },
+                  { icon: ShieldCheck, label: '100% Full Feature Parity', emphasis: true },
+                  { icon: Check, label: 'Unlimited Admin Accounts' },
+                ]}
+                ctaLabel="Start 14-Day Free Trial"
+                ctaTo="/register"
+                ctaNote="No credit card required for trial"
+              />
+            </Reveal>
+          ))}
+        </ul>
 
         {/* Enterprise & Custom Scale Callout */}
-        <div className="mt-12 rounded-3xl bg-gradient-to-r from-gray-800 via-gray-850 to-gray-800 border border-gray-700 p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+        <div className="mt-12 rounded-3xl bg-white/[0.06] ring-1 ring-white/10 p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 text-healing-mint flex items-center justify-center shrink-0" aria-hidden="true">
               <Sparkles className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white font-display">
+              <h3 className="text-xl font-bold text-white font-heading">
                 Enterprise & Healthcare Networks
               </h3>
-              <p className="mt-1 text-sm text-gray-300 font-body max-w-2xl">
+              <p className="mt-1 text-sm text-white/75 font-body max-w-2xl leading-relaxed">
                 Need more than 12 clinicians, bespoke branch networks, dedicated onboarding, or custom integrations? We offer tailored enterprise agreements.
               </p>
             </div>
@@ -218,16 +135,16 @@ export const Plans: React.FC = () => {
 
           <a
             href="mailto:support@malasakitpms.ph?subject=Enterprise%20Inquiry"
-            className="px-6 py-3 rounded-xl bg-white text-gray-900 hover:bg-gray-100 font-bold text-sm whitespace-nowrap transition-colors shadow-md font-body"
+            className="w-full md:w-auto text-center px-6 py-3 rounded-xl bg-white text-trust-harbor hover:bg-clinical-cloud font-bold text-sm whitespace-nowrap transition-colors shadow-md font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-trust-harbor"
           >
             Contact Enterprise Sales
           </a>
         </div>
 
         {/* Commitment & Features Banner */}
-        <div className="mt-16 text-center">
-          <p className="text-sm text-gray-400 font-body">
-            All paid plans include a <strong>12-month contract commitment</strong> with flexible monthly or annual billing options.
+        <div className="mt-12 text-center">
+          <p className="text-sm text-white/70 font-body">
+            All paid plans include a <strong className="text-white/90">12-month contract commitment</strong> with flexible monthly or annual billing options.
           </p>
         </div>
       </div>
