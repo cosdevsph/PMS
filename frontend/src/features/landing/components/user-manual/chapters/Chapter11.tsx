@@ -1,12 +1,12 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot11_1 from '@/assets/manual/Chapter 11/Screenshot 11.1.png';
-import Screenshot11_2 from '@/assets/manual/Chapter 11/Screenshot 11.2.png';
-import Screenshot11_3 from '@/assets/manual/Chapter 11/Screenshot 11.3.png';
-import Screenshot11_4 from '@/assets/manual/Chapter 11/Screenshot 11.4.png';
-import Screenshot11_5 from '@/assets/manual/Chapter 11/Screenshot 11.5.png';
-import Screenshot11_6 from '@/assets/manual/Chapter 11/Screenshot 11.6.png';
+import Screenshot11_1 from '@/assets/manual/Chapter 11/Screenshot 11.1.webp';
+import Screenshot11_2 from '@/assets/manual/Chapter 11/Screenshot 11.2.webp';
+import Screenshot11_3 from '@/assets/manual/Chapter 11/Screenshot 11.3.webp';
+import Screenshot11_4 from '@/assets/manual/Chapter 11/Screenshot 11.4.webp';
+import Screenshot11_5 from '@/assets/manual/Chapter 11/Screenshot 11.5.webp';
+import Screenshot11_6 from '@/assets/manual/Chapter 11/Screenshot 11.6.webp';
 
 const Chapter11: React.FC = () => {
   return (
@@ -72,11 +72,14 @@ const Chapter11: React.FC = () => {
             </li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot11_1}
+              width={1032}
+              height={976}
+              decoding="async"
               alt="Screenshot 11.1: Setting Duty Hours in CreateStaffAccountModal"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -131,11 +134,15 @@ const Chapter11: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot11_2}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 11.2: Diary Week View Showing Duty Hours and Non-Duty Hours"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -165,11 +172,15 @@ const Chapter11: React.FC = () => {
               <p className="text-gray-700 font-body mb-4">
                 Provides an hour-by-hour operational breakdown of a single day across practitioners. Best for Front Desk staff managing patient check-ins, walk-ins, and daily clinical flow.
               </p>
-              <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+              <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
                 <img
                   src={Screenshot11_3}
+                  width={1032}
+                  height={976}
+                  decoding="async"
+                  loading="lazy"
                   alt="Screenshot 11.3: Calendar Day View"
-                  className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+                  className="w-full max-h-[500px] object-contain rounded-lg"
                 />
               </div>
             </div>
@@ -180,11 +191,15 @@ const Chapter11: React.FC = () => {
               <p className="text-gray-700 font-body mb-4">
                 Displays a 7-day schedule breakdown for a practitioner or branch. Ideal for reviewing weekly shift coverage, spotting open appointment slots, and balancing booking distribution.
               </p>
-              <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+              <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
                 <img
                   src={Screenshot11_4}
+                  width={1032}
+                  height={976}
+                  decoding="async"
+                  loading="lazy"
                   alt="Screenshot 11.4: Calendar Week View"
-                  className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+                  className="w-full max-h-[500px] object-contain rounded-lg"
                 />
               </div>
             </div>
@@ -195,11 +210,15 @@ const Chapter11: React.FC = () => {
               <p className="text-gray-700 font-body mb-4">
                 Offers a high-level monthly calendar grid showing appointment volumes, holidays, and overall clinic booking density at a glance.
               </p>
-              <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+              <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
                 <img
                   src={Screenshot11_5}
+                  width={1032}
+                  height={976}
+                  decoding="async"
+                  loading="lazy"
                   alt="Screenshot 11.5: Calendar Month View"
-                  className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+                  className="w-full max-h-[500px] object-contain rounded-lg"
                 />
               </div>
             </div>
@@ -232,11 +251,15 @@ const Chapter11: React.FC = () => {
             </li>
           </ul>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot11_6}
+              width={851}
+              height={109}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 11.6: Occupancy Calculations and Statistics"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

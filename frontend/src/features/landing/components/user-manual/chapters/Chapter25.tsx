@@ -1,9 +1,9 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot25_1 from '@/assets/manual/Chapter 25/Screensbot 25.1.png';
-import Screenshot25_2 from '@/assets/manual/Chapter 25/Screensbot 25.2.png';
-import Screenshot25_2_1 from '@/assets/manual/Chapter 25/Screensbot 25.2.1.png';
+import Screenshot25_1 from '@/assets/manual/Chapter 25/Screensbot 25.1.webp';
+import Screenshot25_2 from '@/assets/manual/Chapter 25/Screensbot 25.2.webp';
+import Screenshot25_2_1 from '@/assets/manual/Chapter 25/Screensbot 25.2.1.webp';
 
 const Chapter25: React.FC = () => {
   return (
@@ -64,11 +64,14 @@ const Chapter25: React.FC = () => {
             Subscription controls and billing settings contain confidential financial information and are accessible to Clinic Owners and authorized Administrators.
           </DocCallout>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot25_1}
+              width={3420}
+              height={2002}
+              decoding="async"
               alt="Screenshot 25.1: Navigate to Setup and under Account Card, select Subscription"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -117,11 +120,15 @@ const Chapter25: React.FC = () => {
             </ul>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot25_2}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 25.2: Current Subscription plan and entitlement details display"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -221,11 +228,15 @@ const Chapter25: React.FC = () => {
             You can toggle between <strong>Monthly</strong> and <strong>Annual</strong> billing at the top of the comparison matrix to save approximately <strong>10%</strong>. Additional physical branch locations can be added flexibly to any tier.
           </DocCallout>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot25_2_1}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 25.2.1: Other upgrade of plans displayed on the same page"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

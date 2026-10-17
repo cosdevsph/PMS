@@ -1,11 +1,11 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot23_1 from '@/assets/manual/Chapter 23/Screenshot 23.1.png';
-import Screenshot23_2 from '@/assets/manual/Chapter 23/Screenshot 23.2.png';
-import Screenshot23_3 from '@/assets/manual/Chapter 23/Screenshot 23.3.png';
-import Screenshot23_4 from '@/assets/manual/Chapter 23/Screenshot 23.4.png';
-import Screenshot23_5 from '@/assets/manual/Chapter 23/Screenshot 23.5.png';
+import Screenshot23_1 from '@/assets/manual/Chapter 23/Screenshot 23.1.webp';
+import Screenshot23_2 from '@/assets/manual/Chapter 23/Screenshot 23.2.webp';
+import Screenshot23_3 from '@/assets/manual/Chapter 23/Screenshot 23.3.webp';
+import Screenshot23_4 from '@/assets/manual/Chapter 23/Screenshot 23.4.webp';
+import Screenshot23_5 from '@/assets/manual/Chapter 23/Screenshot 23.5.webp';
 
 const Chapter23: React.FC = () => {
   return (
@@ -54,11 +54,14 @@ const Chapter23: React.FC = () => {
             <li>Confirm the assigned practitioner, rendered service (e.g., <em>Second Consultation</em>), and chief complaint.</li>
           </ul>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot23_1}
+              width={992}
+              height={812}
+              decoding="async"
               alt="Screenshot 23.1: Select an existing appointment in the diary calendar"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -85,9 +88,13 @@ const Chapter23: React.FC = () => {
             <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200">Communications</div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot23_2}
+              width={1625}
+              height={205}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 23.2: From appointment view modal, navigate to Generate Invoice Tab"
               className="w-full max-h-[300px] object-contain rounded-lg shadow-sm"
             />
@@ -118,11 +125,15 @@ const Chapter23: React.FC = () => {
             Click the prominent blue <strong>+ Generate Invoice</strong> button to open the full invoice editor.
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot23_3}
+              width={3420}
+              height={2001}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 23.3: Click Generate Invoice to generate an invoice"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -176,11 +187,15 @@ const Chapter23: React.FC = () => {
             Once all details are verified, click the dark <strong>Generate Invoice</strong> button in the bottom right corner.
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot23_4}
+              width={3420}
+              height={2169}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 23.4: Enter necessary invoice details and click Generate Invoice"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -220,11 +235,15 @@ const Chapter23: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot23_5}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 23.5: Redirect to Billing History page via Patient Profile > Invoices menu"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
-import { ChevronRight, Search, PlayCircle } from 'lucide-react';
+import { ChevronRight, ChevronDown, Search, PlayCircle } from 'lucide-react';
 
 interface VideoGuide {
   id: string;
@@ -13,7 +14,8 @@ interface VideoGuide {
 
 const HighlightText = ({ text, highlight }: { text: string; highlight: string }) => {
   if (!highlight.trim()) return <>{text}</>;
-  const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+  const escaped = highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
   return (
     <>
       {parts.map((part, i) => 
@@ -93,6 +95,16 @@ const videoGuides: VideoGuide[] = [
   }
 ];
 
+const focusRing =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-care-blue focus-visible:ring-offset-1';
+
+// Brand-only tints for the topic chips (rotated across the list)
+const topicColors = [
+  'bg-care-blue/10 text-care-blue border-care-blue/20',
+  'bg-trust-harbor/10 text-trust-harbor border-trust-harbor/20',
+  'bg-gentle-renewal/40 text-trust-harbor border-gentle-renewal',
+];
+
 export const DemoPage: React.FC = () => {
   const [activeVideoId, setActiveVideoId] = useState<string>(videoGuides[0].id);
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,252 +116,311 @@ export const DemoPage: React.FC = () => {
 
   const activeVideoIndex = videoGuides.findIndex(v => v.id === activeVideoId);
   const activeVideo = videoGuides[activeVideoIndex];
-  
+
   const nextVideo = activeVideoIndex < videoGuides.length - 1 ? videoGuides[activeVideoIndex + 1] : null;
 
   const filteredGuides = useMemo(() => {
     if (!searchQuery.trim()) return videoGuides;
     const lowerQuery = searchQuery.toLowerCase();
-    return videoGuides.filter(guide => 
-      guide.title.toLowerCase().includes(lowerQuery) || 
+    return videoGuides.filter(guide =>
+      guide.title.toLowerCase().includes(lowerQuery) ||
       guide.description.toLowerCase().includes(lowerQuery) ||
       guide.tag.toLowerCase().includes(lowerQuery) ||
       (guide.steps && guide.steps.some(step => step.title.toLowerCase().includes(lowerQuery) || step.description.toLowerCase().includes(lowerQuery)))
     );
   }, [searchQuery]);
 
-  const renderSidebarContent = () => (
-    <div className="w-full h-full flex flex-col lg:p-6 lg:pt-8">
-      {/* Search Bar */}
-      <div className="mb-6 px-6 lg:px-0 mt-6 lg:mt-0">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
-          </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-care-blue focus:border-care-blue sm:text-sm font-body transition-all"
-            placeholder="Search video guides..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <h3 className="hidden lg:block text-lg font-bold text-trust-harbor mb-6 font-heading tracking-wide uppercase text-sm border-b border-gray-100 pb-3">
-        Video Guides
-      </h3>
-
-      <div className="overflow-y-auto flex-1 custom-scrollbar px-6 lg:px-0 pb-6 lg:pb-20">
-        {filteredGuides.length === 0 ? (
-          <p className="text-gray-500 text-sm font-body text-center py-8">No video guides found matching your search.</p>
-        ) : (
-          <ul className="space-y-2">
-            {filteredGuides.map((guide) => {
-              const isActive = guide.id === activeVideoId;
-              return (
-                <li key={guide.id}>
-                  <button
-                    onClick={() => {
-                      setActiveVideoId(guide.id);
-                      setIsMobileSidebarOpen(false);
-                    }}
-                    className={`w-full text-left flex items-start p-3 rounded-xl transition-all font-body ${
-                      isActive 
-                        ? 'bg-blue-50 text-care-blue ring-1 ring-blue-100' 
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-trust-harbor'
-                    }`}
-                  >
-                    <PlayCircle className={`w-5 h-5 mr-3 shrink-0 mt-0.5 ${isActive ? 'text-care-blue' : 'text-gray-400'}`} />
-                    <div>
-                      <div className={`text-sm font-medium ${isActive ? 'font-bold' : ''}`}>
-                        <HighlightText text={guide.title} highlight={searchQuery} />
-                      </div>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+  const searchField = (idSuffix: string) => (
+    <div className="relative">
+      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" aria-hidden="true" />
+      <input
+        id={`demo-search-${idSuffix}`}
+        type="search"
+        aria-label="Search video guides"
+        className="block w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 bg-clinical-cloud/60 text-sm font-body text-gray-900 placeholder-gray-500 transition-colors hover:border-gray-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-care-blue/30 focus:border-care-blue"
+        placeholder="Search video guides..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
     </div>
   );
+
+  const guideList = (scrollClasses: string) => (
+    <nav aria-label="Video guides" className={`overflow-y-auto overscroll-contain ${scrollClasses}`}>
+      {filteredGuides.length === 0 ? (
+        <p role="status" className="text-gray-500 text-sm font-body text-center py-8">No video guides found matching your search.</p>
+      ) : (
+        <ul className="space-y-0.5">
+          {filteredGuides.map((guide) => {
+            const isActive = guide.id === activeVideoId;
+            const number = videoGuides.findIndex(v => v.id === guide.id) + 1;
+            return (
+              <li key={guide.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveVideoId(guide.id);
+                    setIsMobileSidebarOpen(false);
+                  }}
+                  aria-current={isActive ? 'true' : undefined}
+                  className={`group relative w-full text-left flex items-center gap-3 rounded-lg py-2 pl-3 pr-2 text-sm font-body transition-colors ${focusRing} ${
+                    isActive
+                      ? 'bg-care-blue/10 text-trust-harbor font-semibold'
+                      : 'text-gray-600 hover:bg-clinical-cloud hover:text-trust-harbor'
+                  }`}
+                >
+                  {isActive && (
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-care-blue" aria-hidden="true" />
+                  )}
+                  <span
+                    className={`flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md px-1 text-[11px] font-bold tabular-nums ${
+                      isActive
+                        ? 'bg-care-blue text-white'
+                        : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:text-trust-harbor'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {number}
+                  </span>
+                  <span className="leading-snug">
+                    <HighlightText text={guide.title} highlight={searchQuery} />
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </nav>
+  );
+
+  const total = videoGuides.length;
+  const progress = Math.round(((activeVideoIndex + 1) / total) * 100);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Navbar />
-      
-      {/* Desktop Sidebar (Fixed Left) */}
-      <div className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[20rem] xl:w-[22rem] pt-28 bg-gray-50/30 border-r border-gray-100 z-40 flex-col">
-        {renderSidebarContent()}
-      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 pt-32 pb-20 w-full px-4 sm:px-6 lg:pl-[22rem] xl:pl-[26rem] lg:pr-12 xl:pr-24">
-        <div className="w-full max-w-5xl mx-auto">
-          
-          {/* Header */}
-          <div className="mb-8 pb-8 border-b border-gray-100 text-center lg:text-left">
-            <h1 className="text-4xl md:text-5xl font-bold text-trust-harbor font-heading mb-4">Demo Guides</h1>
-            <p className="text-lg text-gray-600 font-body max-w-3xl mx-auto lg:mx-0">
-              Discover how easy it is to manage your clinic. Follow our step-by-step video guides to get started and master the platform.
-            </p>
-          </div>
+      {/* pt-32 clears the fixed Navbar (24px offset + 80px bar) */}
+      <main className="flex-1 pt-32 pb-20 w-full">
+        <div className="max-w-[100rem] mx-auto px-4 sm:px-5 lg:px-6">
 
-          <div className="flex flex-col gap-8">
-            {/* Mobile Sidebar Toggle & Content */}
-            <div className="block lg:hidden w-full">
-               <button 
-                  onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl font-semibold text-trust-harbor font-heading"
-                >
-                  <span className="flex items-center gap-2">
-                    <PlayCircle className="w-5 h-5 text-care-blue" />
-                    Browse Video Guides
-                  </span>
-                  <ChevronRight className={`w-5 h-5 transition-transform ${isMobileSidebarOpen ? 'rotate-90' : ''}`} />
-                </button>
-                {isMobileSidebarOpen && (
-                  <div className="mt-2 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden max-h-[60vh] flex flex-col shadow-sm">
-                    {renderSidebarContent()}
-                  </div>
-                )}
-            </div>
-
-            {/* Content Area */}
-            {activeVideo && (
-              <div className="w-full min-h-[500px] animate-fade-in" key={activeVideo.id}>
-                <div className="mb-6">
-                  <h2 className="text-3xl md:text-4xl font-bold text-trust-harbor font-heading tracking-tight">
-                    {activeVideo.title}
-                  </h2>
+          <div className="lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10 xl:gap-14 items-start">
+            {/* Desktop sidebar column. The column only reserves the width; the sidebar itself is fixed below the
+                Navbar (top-28 = 24px offset + 80px bar + 8px gap) and scrolls on its own, independent of the page.
+                Left is left unset on purpose, so it stays aligned with this column at any screen width. */}
+            <aside className="hidden lg:block" aria-label="Video guide navigation">
+              <div className="fixed top-28 bottom-4 w-[18rem] xl:w-[20rem] flex flex-col">
+              <div className="flex min-h-0 max-h-full flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="px-6 pb-4 pt-5 border-b border-gray-100">
+                  <p className="flex items-center gap-2 text-sm font-bold text-trust-harbor font-heading">
+                    <PlayCircle className="h-4 w-4 text-care-blue" aria-hidden="true" />
+                    Demo Guides
+                  </p>
+                  <h3 className="mt-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 font-body">
+                    Video Guides
+                  </h3>
                 </div>
-                
-                {/* Video Player wrapper */}
-                <div className="bg-white rounded-[2rem] p-4 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100 transition-all hover:shadow-[0_8px_40px_rgb(0,0,0,0.12)]">
-                  <div className="aspect-video bg-gray-900 rounded-3xl overflow-hidden relative group shadow-inner">
-                    {activeVideo.videoUrl ? (
-                      <video
-                        key={activeVideo.videoUrl}
-                        className="w-full h-full object-contain bg-black rounded-2xl relative z-10"
-                        controls
-                        playsInline
-                        preload="metadata"
-                      >
-                        <source src={activeVideo.videoUrl} type="video/mp4" />
-                        Your browser does not support the video tag.
-                      </video>
-                    ) : (
-                      /* Placeholder when video is not yet uploaded */
-                      <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white flex-col z-0">
-                        <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 backdrop-blur-sm cursor-pointer">
-                          <PlayCircle className="w-10 h-10 text-white translate-x-0.5" />
+                <div className="px-4 pt-4">{searchField('desktop')}</div>
+                {guideList('min-h-0 flex-1 px-3 pb-4 pt-3 [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]')}
+              </div>
+              </div>
+            </aside>
+
+            <div className="min-w-0">
+              {/* Header */}
+              <div className="mb-10 pb-8 border-b border-gray-100 text-center lg:text-left">
+                <h1 className="text-4xl md:text-5xl font-bold text-trust-harbor font-heading mb-4">Demo Guides</h1>
+                <p className="text-lg md:text-xl text-gray-600 font-body max-w-3xl mx-auto lg:mx-0">
+                  Discover how easy it is to manage your clinic. Follow our step-by-step video guides to get started and master the platform.
+                </p>
+              </div>
+
+              <div className="max-w-5xl">
+                {/* Mobile guide browser */}
+                <div className="block lg:hidden w-full mb-10">
+                  <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+                      aria-expanded={isMobileSidebarOpen}
+                      aria-controls="demo-guides-mobile"
+                      className={`flex w-full items-center justify-between gap-3 rounded-2xl px-5 py-4 text-left text-base font-semibold text-trust-harbor font-heading ${focusRing}`}
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <PlayCircle className="h-5 w-5 text-care-blue" aria-hidden="true" />
+                        Browse Video Guides
+                      </span>
+                      <ChevronDown
+                        className={`h-5 w-5 text-gray-500 transition-transform duration-200 motion-reduce:transition-none ${isMobileSidebarOpen ? 'rotate-180' : ''}`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    <div id="demo-guides-mobile" hidden={!isMobileSidebarOpen} className="border-t border-gray-100 pt-3">
+                      <div className="px-4 pb-1">{searchField('mobile')}</div>
+                      {guideList('max-h-[60vh] px-4 pb-5 pt-3')}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Content Area */}
+                {activeVideo && (
+                  <div className="w-full min-h-[500px] animate-fade-in" key={activeVideo.id}>
+                    <header className="mb-8">
+                      <nav aria-label="Breadcrumb">
+                        <ol className="flex flex-wrap items-center gap-1.5 text-sm text-gray-500 font-body">
+                          <li>
+                            <Link to="/" className={`rounded hover:text-care-blue ${focusRing}`}>Home</Link>
+                          </li>
+                          <li aria-hidden="true"><ChevronRight className="w-3.5 h-3.5 text-gray-300" /></li>
+                          <li>Demo Guides</li>
+                          <li aria-hidden="true"><ChevronRight className="w-3.5 h-3.5 text-gray-300" /></li>
+                          <li aria-current="page" className="font-medium text-trust-harbor">Guide {activeVideoIndex + 1}</li>
+                        </ol>
+                      </nav>
+
+                      <p className="mt-5 text-xs font-bold uppercase tracking-[0.12em] text-care-blue font-body">
+                        {activeVideo.tag}
+                      </p>
+                      <h2 className="mt-2 text-3xl sm:text-4xl font-bold text-trust-harbor font-heading tracking-tight leading-tight">
+                        {activeVideo.title}
+                      </h2>
+
+                      <div className="mt-5 flex items-center gap-3 max-w-sm">
+                        <div
+                          className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100"
+                          role="progressbar"
+                          aria-label="Position in the video guides"
+                          aria-valuemin={1}
+                          aria-valuemax={total}
+                          aria-valuenow={activeVideoIndex + 1}
+                        >
+                          <div className="h-full rounded-full bg-primary-gradient" style={{ width: `${progress}%` }} />
                         </div>
-                        <p className="text-gray-400 font-medium">
-                          {activeVideo.tag.includes('Help Article') ? 'Written Article Coming Soon' : 'Video Guide Coming Soon'}
-                        </p>
-                        <span className="text-xs text-gray-500 mt-1">
-                          {activeVideo.tag.includes('Help Article') ? 'Currently being drafted' : 'Recording in progress'}
+                        <span className="shrink-0 text-sm text-gray-500 font-body tabular-nums">
+                          Video {activeVideoIndex + 1} of {total}
                         </span>
                       </div>
-                    )}
-                  </div>
-                  
-                  {/* Video Description & Topics */}
-                  <div className="mt-8 px-2 sm:px-8 pb-4">
-                    {activeVideo.description.startsWith('Topics:') ? (
-                      <div>
-                        <h3 className="text-lg font-bold text-trust-harbor mb-4 font-heading">Topics Covered:</h3>
-                        <div className="flex flex-wrap gap-2.5">
-                          {activeVideo.description
-                            .replace('Topics:', '')
-                            .replace(/\.$/, '') // remove trailing dot if present
-                            .split(',')
-                            .map((topic, idx) => {
-                              const t = topic.trim();
-                              if (!t) return null;
-                              
-                              const topicColors = [
-                                'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
-                                'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
-                                'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
-                                'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
-                                'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100',
-                                'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100',
-                                'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100',
-                                'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 hover:bg-fuchsia-100'
-                              ];
-                              const colorClass = topicColors[idx % topicColors.length];
-                              
-                              return (
-                                <span key={idx} className={`px-3.5 py-2 rounded-md text-sm font-medium border shadow-sm transition-colors ${colorClass}`}>
-                                  {t}
-                                </span>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-gray-600 text-lg leading-relaxed max-w-3xl mb-8">
-                        {activeVideo.description}
-                      </p>
-                    )}
+                    </header>
 
-                    {activeVideo.steps && (
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-800 mb-8 text-center md:text-left">Step-by-Step Process</h3>
-                        <div className="relative">
-                          {/* Connecting Line (Desktop) */}
-                          <div className="hidden md:block absolute top-[28px] left-[50px] right-[50px] h-1 bg-gray-100 z-0 rounded-full">
-                            <div className="h-full bg-care-blue/20 rounded-full" style={{ width: '100%' }}></div>
+                    {/* Video Player wrapper */}
+                    <div className="bg-white rounded-[2rem] p-4 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100 transition-all hover:shadow-[0_8px_40px_rgb(0,0,0,0.12)]">
+                      <div className="aspect-video bg-gray-900 rounded-3xl overflow-hidden relative group shadow-inner">
+                        {activeVideo.videoUrl ? (
+                          <video
+                            key={activeVideo.videoUrl}
+                            className="w-full h-full object-contain bg-black rounded-2xl relative z-10"
+                            controls
+                            playsInline
+                            preload="metadata"
+                            aria-label={activeVideo.title}
+                          >
+                            <source src={activeVideo.videoUrl} type="video/mp4" />
+                            Your browser does not support the video tag.
+                          </video>
+                        ) : (
+                          /* Placeholder when video is not yet uploaded */
+                          <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white flex-col z-0">
+                            <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-300 backdrop-blur-sm cursor-pointer">
+                              <PlayCircle className="w-10 h-10 text-white translate-x-0.5" />
+                            </div>
+                            <p className="text-gray-400 font-medium">
+                              {activeVideo.tag.includes('Help Article') ? 'Written Article Coming Soon' : 'Video Guide Coming Soon'}
+                            </p>
+                            <span className="text-xs text-gray-500 mt-1">
+                              {activeVideo.tag.includes('Help Article') ? 'Currently being drafted' : 'Recording in progress'}
+                            </span>
                           </div>
-                          
-                          {/* Connecting Line (Mobile) */}
-                          <div className="md:hidden absolute top-[50px] bottom-[50px] left-[28px] w-1 bg-gray-100 z-0 rounded-full">
-                            <div className="w-full bg-care-blue/20 rounded-full" style={{ height: '100%' }}></div>
+                        )}
+                      </div>
+
+                      {/* Video Description & Topics */}
+                      <div className="mt-8 px-2 sm:px-8 pb-4">
+                        {activeVideo.description.startsWith('Topics:') ? (
+                          <div>
+                            <h3 className="text-lg font-bold text-trust-harbor mb-4 font-heading">Topics Covered:</h3>
+                            <div className="flex flex-wrap gap-2.5">
+                              {activeVideo.description
+                                .replace('Topics:', '')
+                                .replace(/\.$/, '') // remove trailing dot if present
+                                .split(',')
+                                .map((topic, idx) => {
+                                  const t = topic.trim();
+                                  if (!t) return null;
+
+                                  const colorClass = topicColors[idx % topicColors.length];
+
+                                  return (
+                                    <span key={idx} className={`px-3.5 py-2 rounded-lg text-sm font-medium border font-body ${colorClass}`}>
+                                      {t}
+                                    </span>
+                                  );
+                                })}
+                            </div>
                           </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 relative z-10">
-                            {activeVideo.steps.map((step, idx) => (
-                              <div key={idx} className="flex flex-row md:flex-col items-start md:items-center text-left md:text-center relative">
-                                <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-xl mb-0 md:mb-5 shadow-md shrink-0 mr-5 md:mr-0 z-10 ${
-                                  idx === 0 ? 'bg-care-blue text-white border-4 border-white' : 'bg-white text-care-blue border-4 border-gray-200'
-                                }`}>
-                                  {idx + 1}
-                                </div>
-                                <div>
-                                  <h4 className="font-bold text-gray-900 text-lg mb-2">{step.title}</h4>
-                                  <p className="text-gray-500 text-sm leading-relaxed">{step.description}</p>
-                                </div>
+                        ) : (
+                          <p className="text-gray-600 text-lg leading-relaxed max-w-3xl mb-8">
+                            {activeVideo.description}
+                          </p>
+                        )}
+
+                        {activeVideo.steps && (
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-800 mb-8 text-center md:text-left">Step-by-Step Process</h3>
+                            <div className="relative">
+                              {/* Connecting Line (Desktop) */}
+                              <div className="hidden md:block absolute top-[28px] left-[50px] right-[50px] h-1 bg-gray-100 z-0 rounded-full">
+                                <div className="h-full bg-care-blue/20 rounded-full" style={{ width: '100%' }}></div>
                               </div>
-                            ))}
+
+                              {/* Connecting Line (Mobile) */}
+                              <div className="md:hidden absolute top-[50px] bottom-[50px] left-[28px] w-1 bg-gray-100 z-0 rounded-full">
+                                <div className="w-full bg-care-blue/20 rounded-full" style={{ height: '100%' }}></div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 relative z-10">
+                                {activeVideo.steps.map((step, idx) => (
+                                  <div key={idx} className="flex flex-row md:flex-col items-start md:items-center text-left md:text-center relative">
+                                    <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-xl mb-0 md:mb-5 shadow-md shrink-0 mr-5 md:mr-0 z-10 ${
+                                      idx === 0 ? 'bg-care-blue text-white border-4 border-white' : 'bg-white text-care-blue border-4 border-gray-200'
+                                    }`}>
+                                      {idx + 1}
+                                    </div>
+                                    <div>
+                                      <h4 className="font-bold text-gray-900 text-lg mb-2">{step.title}</h4>
+                                      <p className="text-gray-500 text-sm leading-relaxed">{step.description}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Next Video Button */}
+                    {nextVideo && (
+                      <div className="mt-12 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setActiveVideoId(nextVideo.id)}
+                          className={`group flex items-center gap-4 px-6 py-4 bg-white hover:bg-care-blue/5 border border-gray-200 hover:border-care-blue rounded-2xl transition-all shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-care-blue focus-visible:ring-offset-2`}
+                        >
+                          <div className="text-right">
+                            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Up Next</div>
+                            <div className="text-sm font-semibold text-trust-harbor group-hover:text-care-blue">{nextVideo.title}</div>
+                          </div>
+                          <div className="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm group-hover:bg-care-blue group-hover:border-care-blue group-hover:text-white transition-all">
+                            <ChevronRight className="w-6 h-6 text-gray-400 group-hover:text-white" aria-hidden="true" />
+                          </div>
+                        </button>
                       </div>
                     )}
-                  </div>
-                </div>
-
-                {/* Next Video Button */}
-                {nextVideo && (
-                  <div className="mt-12 flex justify-end">
-                    <button
-                      onClick={() => setActiveVideoId(nextVideo.id)}
-                      className="group flex items-center gap-4 px-6 py-4 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 rounded-2xl transition-all shadow-sm hover:shadow-md"
-                    >
-                      <div className="text-right">
-                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Up Next</div>
-                        <div className="text-sm font-semibold text-trust-harbor group-hover:text-care-blue">{nextVideo.title}</div>
-                      </div>
-                      <div className="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm group-hover:bg-care-blue group-hover:border-care-blue group-hover:text-white transition-all">
-                        <ChevronRight className="w-6 h-6 text-gray-400 group-hover:text-white" />
-                      </div>
-                    </button>
                   </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </main>

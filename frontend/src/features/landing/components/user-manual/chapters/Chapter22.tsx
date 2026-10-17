@@ -1,10 +1,10 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot22_1 from '@/assets/manual/Chapter 22/Screenshot 22.1.png';
-import Screenshot22_2 from '@/assets/manual/Chapter 22/Screenshot 22.2.png';
-import Screenshot22_3 from '@/assets/manual/Chapter 22/Screenshot 22.3.png';
-import Screenshot22_4 from '@/assets/manual/Chapter 22/Screenshot 22.4.png';
+import Screenshot22_1 from '@/assets/manual/Chapter 22/Screenshot 22.1.webp';
+import Screenshot22_2 from '@/assets/manual/Chapter 22/Screenshot 22.2.webp';
+import Screenshot22_3 from '@/assets/manual/Chapter 22/Screenshot 22.3.webp';
+import Screenshot22_4 from '@/assets/manual/Chapter 22/Screenshot 22.4.webp';
 
 const Chapter22: React.FC = () => {
   return (
@@ -67,11 +67,14 @@ const Chapter22: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot22_1}
+              width={3420}
+              height={2001}
+              decoding="async"
               alt="Screenshot 22.1: Navigate to Clinical Note Page"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -116,11 +119,15 @@ const Chapter22: React.FC = () => {
             <em>Note: The adjacent pencil icon enables editing for authorized staff, and the copy icon duplicates note structure for recurring sessions.</em>
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot22_2}
+              width={1330}
+              height={280}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 22.2: Select desired Note and navigate to Print icon or Email icon"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -167,11 +174,15 @@ const Chapter22: React.FC = () => {
             Because Malasakit compiles the PDF using standardized vector formatting, body chart drawings, text, and logos remain crisp and clear when printed on standard A4 paper.
           </DocCallout>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot22_3}
+              width={1678}
+              height={1931}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 22.3: Print Preview: Download as PDF or Print buttons"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -229,11 +240,15 @@ const Chapter22: React.FC = () => {
             Clinical notes contain sensitive medical information. Always verify recipient email addresses carefully before clicking <strong>Send Email</strong>.
           </DocCallout>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot22_4}
+              width={3420}
+              height={2001}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 22.4: Sending email directly modal"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

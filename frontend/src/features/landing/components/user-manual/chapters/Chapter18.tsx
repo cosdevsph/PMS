@@ -1,13 +1,13 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot18_1 from '@/assets/manual/Chapter 18/Screenshot 18.1.png';
-import Screenshot18_2 from '@/assets/manual/Chapter 18/Screenshot 18.2.png';
-import Screenshot18_3 from '@/assets/manual/Chapter 18/Screenshot 18.3.png';
-import Screenshot18_4 from '@/assets/manual/Chapter 18/Screenshot 18.4.png';
-import Screenshot18_5 from '@/assets/manual/Chapter 18/Screenshot 18.5.png';
-import Screenshot18_6 from '@/assets/manual/Chapter 18/Screenshot 18.6.png';
-import Screenshot18_7 from '@/assets/manual/Chapter 18/Screenshot 18.7.png';
+import Screenshot18_1 from '@/assets/manual/Chapter 18/Screenshot 18.1.webp';
+import Screenshot18_2 from '@/assets/manual/Chapter 18/Screenshot 18.2.webp';
+import Screenshot18_3 from '@/assets/manual/Chapter 18/Screenshot 18.3.webp';
+import Screenshot18_4 from '@/assets/manual/Chapter 18/Screenshot 18.4.webp';
+import Screenshot18_5 from '@/assets/manual/Chapter 18/Screenshot 18.5.webp';
+import Screenshot18_6 from '@/assets/manual/Chapter 18/Screenshot 18.6.webp';
+import Screenshot18_7 from '@/assets/manual/Chapter 18/Screenshot 18.7.webp';
 
 const Chapter18: React.FC = () => {
   return (
@@ -62,11 +62,14 @@ const Chapter18: React.FC = () => {
             <li>Review the patient header, appointment timing, and clinical status badges.</li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot18_1}
+              width={3420}
+              height={2002}
+              decoding="async"
               alt="Screenshot 18.1: Appointment View Modal"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -91,11 +94,15 @@ const Chapter18: React.FC = () => {
             <li><strong>Rebook Appointment:</strong> Duplicate appointment settings for a fast future follow-up.</li>
           </ul>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot18_2}
+              width={1502}
+              height={1250}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 18.2: Display the Appointment Dropdown in the Appointment View modal"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -134,11 +141,15 @@ const Chapter18: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot18_3}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 18.3: Appointment Details Display"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -164,11 +175,15 @@ const Chapter18: React.FC = () => {
             <li>Click <strong>Save Changes</strong> to instantly update the booking across the calendar.</li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot18_4}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 18.4: Edit Appointment Details Display"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -202,11 +217,15 @@ const Chapter18: React.FC = () => {
             </li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot18_5}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 18.5: Cancel Appointment Modal, Entering Reason of cancellation, and Confirm"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -236,11 +255,15 @@ const Chapter18: React.FC = () => {
             <li><strong>Cancelled:</strong> Appointment was cancelled prior to the session.</li>
           </ul>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot18_6}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 18.6: Appointment View Modal displaying the Status menu"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -281,11 +304,15 @@ const Chapter18: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot18_7}
+              width={1092}
+              height={692}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 18.7: Arrival Status Dropdown"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

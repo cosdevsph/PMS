@@ -1,16 +1,16 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot3_1 from '@/assets/manual/Chapter 3/Screenshot 3.1.png';
-import Screenshot3_2 from '@/assets/manual/Chapter 3/Screenshot 3.2.png';
-import Screenshot3_3 from '@/assets/manual/Chapter 3/Screenshot 3.3.png';
-import Screenshot3_4 from '@/assets/manual/Chapter 3/Screenshot 3.4.png';
-import Screenshot3_5 from '@/assets/manual/Chapter 3/Screenshot 3.5.png';
-import Screenshot3_6 from '@/assets/manual/Chapter 3/Screenshot 3.6.png';
-import Screenshot3_7 from '@/assets/manual/Chapter 3/Screenshot 3.7.png';
-import Screenshot3_8 from '@/assets/manual/Chapter 3/Screenshot 3.8.png';
-import Screenshot3_9 from '@/assets/manual/Chapter 3/Screenshot 3.9.png';
-import Screenshot3_10 from '@/assets/manual/Chapter 3/Screenshot 3.10.png';
+import Screenshot3_1 from '@/assets/manual/Chapter 3/Screenshot 3.1.webp';
+import Screenshot3_2 from '@/assets/manual/Chapter 3/Screenshot 3.2.webp';
+import Screenshot3_3 from '@/assets/manual/Chapter 3/Screenshot 3.3.webp';
+import Screenshot3_4 from '@/assets/manual/Chapter 3/Screenshot 3.4.webp';
+import Screenshot3_5 from '@/assets/manual/Chapter 3/Screenshot 3.5.webp';
+import Screenshot3_6 from '@/assets/manual/Chapter 3/Screenshot 3.6.webp';
+import Screenshot3_7 from '@/assets/manual/Chapter 3/Screenshot 3.7.webp';
+import Screenshot3_8 from '@/assets/manual/Chapter 3/Screenshot 3.8.webp';
+import Screenshot3_9 from '@/assets/manual/Chapter 3/Screenshot 3.9.webp';
+import Screenshot3_10 from '@/assets/manual/Chapter 3/Screenshot 3.10.webp';
 
 const Chapter3: React.FC = () => {
   return (
@@ -31,11 +31,14 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Click the <strong>Sign In</strong> button located in the navigation bar.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot3_1}
+              width={2532}
+              height={644}
+              decoding="async"
               alt="Screenshot 3.1: Landing Page - Highlight Navigation Bar and Sign In button"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -51,11 +54,15 @@ const Chapter3: React.FC = () => {
             <li><strong>Forgot Password:</strong> Click this link if you cannot remember your password.</li>
             <li><strong>Sign In button:</strong> Submits your credentials to authenticate your session.</li>
           </ul>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot3_2}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 3.2: Sign In Page"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -65,11 +72,15 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             After entering your credentials and clicking <strong>Sign In</strong>, the system will verify your account. Upon successful authentication, you are securely redirected to the Dashboard.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot3_3}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 3.3: Dashboard"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -96,11 +107,15 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             On the Sign In page, locate and click the <strong>Forgot password?</strong> link above the password field.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot3_4}
+              width={954}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 3.4: Sign In Page - Forgot Password link"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -110,11 +125,15 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Enter your registered email address. This email must exactly match the account used during registration. Then, click the <strong>Send Verification Code</strong> button.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot3_5}
+              width={1028}
+              height={856}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 3.5: Forgot Password Page - Enter Email"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -124,11 +143,15 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             After submission, Malasakit will securely send a 6-digit One-Time Password (OTP) to your inbox. You will be redirected to the OTP Verification screen where you can input the code to securely reset your password.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot3_6}
+              width={1102}
+              height={1074}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 3.6: Password Recovery OTP Verification Screen"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -162,11 +185,15 @@ const Chapter3: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8 mb-8">
-        <div className="w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+        <div className="w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
           <img
             src={Screenshot3_7}
+            width={3420}
+            height={2002}
+            decoding="async"
+            loading="lazy"
             alt="Screenshot 3.7: Dashboard - Highlight Logged-in user"
-            className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            className="w-full max-h-[500px] object-contain rounded-lg"
           />
         </div>
       </div>
@@ -188,11 +215,15 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             From the Dashboard (or any authenticated page), locate your Profile Avatar in the top-right corner of the navigation bar.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot3_8}
+              width={888}
+              height={916}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 3.8: Dashboard Profile Avatar"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -202,11 +233,15 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Click the avatar to reveal the dropdown menu. Click the <strong>Logout</strong> option. You will be prompted to confirm your choice. Confirming will securely end your active session and erase all authentication tokens from the browser.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot3_9}
+              width={632}
+              height={454}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 3.9: User Dropdown Logout option"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -216,11 +251,15 @@ const Chapter3: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             After successfully logging out, you are immediately redirected back to the Landing Page. A brief notification will confirm that you have been securely signed out.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot3_10}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 3.10: Landing Page Logged Out Confirmation"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

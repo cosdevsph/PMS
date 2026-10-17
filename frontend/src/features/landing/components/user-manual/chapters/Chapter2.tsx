@@ -1,15 +1,15 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Step1Img from '@/assets/manual/getting-started/step1-landing-page-navbar.png';
-import Step2Img from '@/assets/manual/getting-started/step2-owner-registration.png';
-import Step3Img from '@/assets/manual/getting-started/step3-verification-email.png';
-import Step4Img from '@/assets/manual/getting-started/step4-otp-verification.png';
-import Step5Img from '@/assets/manual/getting-started/step5-create-password.png';
-import Step6Img from '@/assets/manual/getting-started/step6-clinic-setup-intro.png';
-import Step7Img from '@/assets/manual/getting-started/step7-clinic-information.png';
-import Step8Img from '@/assets/manual/getting-started/step8-save-clinic-setup.png';
-import Step9Img from '@/assets/manual/getting-started/step9-owner-dashboard.png';
+import Step1Img from '@/assets/manual/getting-started/step1-landing-page-navbar.webp';
+import Step2Img from '@/assets/manual/getting-started/step2-owner-registration.webp';
+import Step3Img from '@/assets/manual/getting-started/step3-verification-email.webp';
+import Step4Img from '@/assets/manual/getting-started/step4-otp-verification.webp';
+import Step5Img from '@/assets/manual/getting-started/step5-create-password.webp';
+import Step6Img from '@/assets/manual/getting-started/step6-clinic-setup-intro.webp';
+import Step7Img from '@/assets/manual/getting-started/step7-clinic-information.webp';
+import Step8Img from '@/assets/manual/getting-started/step8-save-clinic-setup.webp';
+import Step9Img from '@/assets/manual/getting-started/step9-owner-dashboard.webp';
 
 const Chapter2: React.FC = () => {
   return (
@@ -27,8 +27,8 @@ const Chapter2: React.FC = () => {
           <p>At the top of the page is the Navigation Bar, which contains several menu links for exploring the website.</p>
           <p>If you are a first-time clinic owner setting up a new account, click the <strong>Sign Up</strong> button.</p>
         </div>
-        <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
-          <img src={Step1Img} alt="Landing Page" className="w-full max-h-[500px] object-contain rounded-lg shadow-sm" />
+        <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+          <img src={Step1Img} width={1353} height={372} decoding="async" alt="Landing Page" className="w-full max-h-[500px] object-contain rounded-lg" />
         </div>
       </div>
 
@@ -44,8 +44,8 @@ const Chapter2: React.FC = () => {
           </ul>
           <p>Once all fields are filled out, click <strong>Create Account</strong> to submit your registration.</p>
         </div>
-        <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
-          <img src={Step2Img} alt="Owner Registration Form" className="w-full max-h-[500px] object-contain rounded-lg shadow-sm" />
+        <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+          <img src={Step2Img} width={1353} height={1782} decoding="async" loading="lazy" alt="Owner Registration Form" className="w-full max-h-[500px] object-contain rounded-lg" />
         </div>
       </div>
 
@@ -63,8 +63,8 @@ const Chapter2: React.FC = () => {
             If you don't see the email within a few minutes, please check your Spam or Junk folders.
           </DocCallout>
         </div>
-        <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
-          <img src={Step3Img} alt="Verification Email" className="w-full max-h-[500px] object-contain rounded-lg shadow-sm" />
+        <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+          <img src={Step3Img} width={1353} height={1696} decoding="async" loading="lazy" alt="Verification Email" className="w-full max-h-[500px] object-contain rounded-lg" />
         </div>
       </div>
 
@@ -79,8 +79,8 @@ const Chapter2: React.FC = () => {
           </ol>
           <p>Successful verification confirms ownership of the registered email address and allows you to proceed.</p>
         </div>
-        <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
-          <img src={Step4Img} alt="OTP Verification Screen" className="w-full max-h-[500px] object-contain rounded-lg shadow-sm" />
+        <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+          <img src={Step4Img} width={1353} height={756} decoding="async" loading="lazy" alt="OTP Verification Screen" className="w-full max-h-[500px] object-contain rounded-lg" />
         </div>
       </div>
 
@@ -97,8 +97,8 @@ const Chapter2: React.FC = () => {
           </ul>
           <p>Once submitted successfully, your account becomes active.</p>
         </div>
-        <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
-          <img src={Step5Img} alt="Create Password Screen" className="w-full max-h-[500px] object-contain rounded-lg shadow-sm" />
+        <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+          <img src={Step5Img} width={1353} height={1226} decoding="async" loading="lazy" alt="Create Password Screen" className="w-full max-h-[500px] object-contain rounded-lg" />
         </div>
       </div>
 
@@ -109,8 +109,8 @@ const Chapter2: React.FC = () => {
           <p>After creating your password successfully, the system automatically redirects you to the <strong>Clinic Setup</strong> page.</p>
           <p>This setup process is required before you can start using the system features.</p>
         </div>
-        <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
-          <img src={Step6Img} alt="Clinic Setup Page" className="w-full max-h-[500px] object-contain rounded-lg shadow-sm" />
+        <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+          <img src={Step6Img} width={3294} height={2066} decoding="async" loading="lazy" alt="Clinic Setup Page" className="w-full max-h-[500px] object-contain rounded-lg" />
         </div>
       </div>
 
@@ -128,8 +128,8 @@ const Chapter2: React.FC = () => {
           </ul>
           <p>Please ensure you complete all required information accurately.</p>
         </div>
-        <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
-          <img src={Step7Img} alt="Clinic Information Form" className="w-full max-h-[500px] object-contain rounded-lg shadow-sm" />
+        <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+          <img src={Step7Img} width={3291} height={2066} decoding="async" loading="lazy" alt="Clinic Information Form" className="w-full max-h-[500px] object-contain rounded-lg" />
         </div>
       </div>
 
@@ -144,8 +144,8 @@ const Chapter2: React.FC = () => {
           </ol>
           <p>The system validates the provided information and provisions your clinic in the database.</p>
         </div>
-        <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
-          <img src={Step8Img} alt="Save Clinic Setup" className="w-full max-h-[500px] object-contain rounded-lg shadow-sm" />
+        <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+          <img src={Step8Img} width={3291} height={626} decoding="async" loading="lazy" alt="Save Clinic Setup" className="w-full max-h-[500px] object-contain rounded-lg" />
         </div>
       </div>
 
@@ -162,8 +162,8 @@ const Chapter2: React.FC = () => {
           </ul>
           <p>This marks the completion of the onboarding process. You can now begin managing your clinic, inviting staff, and registering patients.</p>
         </div>
-        <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
-          <img src={Step9Img} alt="Owner Dashboard" className="w-full max-h-[500px] object-contain rounded-lg shadow-sm" />
+        <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+          <img src={Step9Img} width={3322} height={2066} decoding="async" loading="lazy" alt="Owner Dashboard" className="w-full max-h-[500px] object-contain rounded-lg" />
         </div>
       </div>
     </>

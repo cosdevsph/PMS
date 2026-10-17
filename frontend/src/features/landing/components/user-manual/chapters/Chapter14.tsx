@@ -1,12 +1,12 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot14_1 from '@/assets/manual/Chapter 14/Screenshot 14.1.png';
-import Screenshot14_2 from '@/assets/manual/Chapter 14/Screenshot 14.2.png';
-import Screenshot14_3 from '@/assets/manual/Chapter 14/Screenshot 14.3.png';
-import Screenshot14_4 from '@/assets/manual/Chapter 14/Screenshot 14.4.png';
-import Screenshot14_5 from '@/assets/manual/Chapter 14/Screenshot 14.5.png';
-import Screenshot14_6 from '@/assets/manual/Chapter 14/Screenshot 14.6.png';
+import Screenshot14_1 from '@/assets/manual/Chapter 14/Screenshot 14.1.webp';
+import Screenshot14_2 from '@/assets/manual/Chapter 14/Screenshot 14.2.webp';
+import Screenshot14_3 from '@/assets/manual/Chapter 14/Screenshot 14.3.webp';
+import Screenshot14_4 from '@/assets/manual/Chapter 14/Screenshot 14.4.webp';
+import Screenshot14_5 from '@/assets/manual/Chapter 14/Screenshot 14.5.webp';
+import Screenshot14_6 from '@/assets/manual/Chapter 14/Screenshot 14.6.webp';
 
 const Chapter14: React.FC = () => {
   return (
@@ -99,27 +99,38 @@ const Chapter14: React.FC = () => {
             </li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot14_1}
+              width={1032}
+              height={976}
+              decoding="async"
               alt="Screenshot 14.1: Patient Page View Profile Action"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot14_2}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 14.2: Patient Cases Menu & Cases List Display"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot14_3}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 14.3: Create New Case Modal"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -177,27 +188,39 @@ const Chapter14: React.FC = () => {
             </li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot14_4}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 14.4: Diary Page Patient Selection"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot14_5}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 14.5: Creating Appointment Modal Assigned Case Field"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot14_6}
+              width={1030}
+              height={931}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 14.6: Creating Appointment Modal Inline New Case"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

@@ -1,10 +1,10 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot20_1 from '@/assets/manual/Chapter 20/Screenshot 20.1.png';
-import Screenshot20_2 from '@/assets/manual/Chapter 20/Screenshot 20.2.png';
-import Screenshot20_3 from '@/assets/manual/Chapter 20/Screenshot 20.3.png';
-import Screenshot20_4 from '@/assets/manual/Chapter 20/Screenshot 20.4.png';
+import Screenshot20_1 from '@/assets/manual/Chapter 20/Screenshot 20.1.webp';
+import Screenshot20_2 from '@/assets/manual/Chapter 20/Screenshot 20.2.webp';
+import Screenshot20_3 from '@/assets/manual/Chapter 20/Screenshot 20.3.webp';
+import Screenshot20_4 from '@/assets/manual/Chapter 20/Screenshot 20.4.webp';
 
 const Chapter20: React.FC = () => {
   return (
@@ -67,11 +67,14 @@ const Chapter20: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot20_1}
+              width={3420}
+              height={2002}
+              decoding="async"
               alt="Screenshot 20.1: Clinic Online Booking Selection of Practitioner"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -105,11 +108,15 @@ const Chapter20: React.FC = () => {
             </li>
           </ul>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot20_2}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 20.2: Selecting Clinic Services"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -156,11 +163,15 @@ const Chapter20: React.FC = () => {
             Time slots are validated in real time. If another patient or staff member books the same slot simultaneously, Malasakit immediately detects the conflict and requests the patient select another time.
           </DocCallout>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot20_3}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 20.3: Picking Date and Time"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -233,11 +244,15 @@ const Chapter20: React.FC = () => {
             Because Malasakit checks both email address and Date of Birth upon submission, existing patients are automatically matched to their existing records—preventing accidental duplicate profiles while allowing first-time patients to register seamlessly.
           </DocCallout>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot20_4}
+              width={3420}
+              height={2001}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 20.4: Booking Details and Confirmation"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

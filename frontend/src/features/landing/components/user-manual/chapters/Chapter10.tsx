@@ -1,8 +1,8 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot10_1 from '@/assets/manual/Chapter 10/Screenshot 10.1.png';
-import Screenshot10_2 from '@/assets/manual/Chapter 10/Screenshot 10.2.png';
+import Screenshot10_1 from '@/assets/manual/Chapter 10/Screenshot 10.1.webp';
+import Screenshot10_2 from '@/assets/manual/Chapter 10/Screenshot 10.2.webp';
 
 const Chapter10: React.FC = () => {
   return (
@@ -53,11 +53,14 @@ const Chapter10: React.FC = () => {
             </li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot10_1}
+              width={1032}
+              height={976}
+              decoding="async"
               alt="Screenshot 10.1: Setup Page showing Staff under Users Card"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -101,11 +104,15 @@ const Chapter10: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot10_2}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 10.2: Practitioner List Page with Practitioner Details in the Table"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

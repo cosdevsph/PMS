@@ -1,8 +1,8 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot19_1 from '@/assets/manual/Chapter 19/Screenshot 19.1.png';
-import Screenshot19_2 from '@/assets/manual/Chapter 19/Screenshot 19.2.png';
+import Screenshot19_1 from '@/assets/manual/Chapter 19/Screenshot 19.1.webp';
+import Screenshot19_2 from '@/assets/manual/Chapter 19/Screenshot 19.2.webp';
 
 const Chapter19: React.FC = () => {
   return (
@@ -92,11 +92,14 @@ const Chapter19: React.FC = () => {
             <li>Click <strong>Clinic Link Portal</strong> to view and configure branch-specific public booking portals.</li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot19_1}
+              width={3420}
+              height={2002}
+              decoding="async"
               alt="Screenshot 19.1: Manage Page Display"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -214,11 +217,15 @@ const Chapter19: React.FC = () => {
             Always remember to replace printed posters and update website links immediately after clicking <strong>Regenerate QR Code</strong>, as all prior URLs will cease to function immediately.
           </DocCallout>
 
-          <div className="mt-8 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-8 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot19_2}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 19.2: Clinic Link Portal Page Display"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

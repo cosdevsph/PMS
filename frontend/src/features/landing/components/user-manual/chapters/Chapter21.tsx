@@ -1,11 +1,11 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot21_1 from '@/assets/manual/Chapter 21/Screenshot 21.1.png';
-import Screenshot21_2 from '@/assets/manual/Chapter 21/Screenshot 21.2.png';
-import Screenshot21_3 from '@/assets/manual/Chapter 21/Screenshot 21.3.png';
-import Screenshot21_4 from '@/assets/manual/Chapter 21/Screenshot 21.4.png';
-import Screenshot21_5 from '@/assets/manual/Chapter 21/Screenshot 21.5.png';
+import Screenshot21_1 from '@/assets/manual/Chapter 21/Screenshot 21.1.webp';
+import Screenshot21_2 from '@/assets/manual/Chapter 21/Screenshot 21.2.webp';
+import Screenshot21_3 from '@/assets/manual/Chapter 21/Screenshot 21.3.webp';
+import Screenshot21_4 from '@/assets/manual/Chapter 21/Screenshot 21.4.webp';
+import Screenshot21_5 from '@/assets/manual/Chapter 21/Screenshot 21.5.webp';
 
 const Chapter21: React.FC = () => {
   return (
@@ -72,11 +72,14 @@ const Chapter21: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot21_1}
+              width={858}
+              height={722}
+              decoding="async"
               alt="Screenshot 21.1: Calendar view selecting Appointment and Patient Profile"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -106,11 +109,15 @@ const Chapter21: React.FC = () => {
             <li><strong>Communications:</strong> Review automated reminders and messaging logs.</li>
           </ul>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot21_2}
+              width={1840}
+              height={152}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 21.2: Appointment View Modal, select the Clinical Notes Tab"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -156,11 +163,15 @@ const Chapter21: React.FC = () => {
             If this is the patient's initial session, the History panel displays <em>"No Clinical Notes Found"</em>, allowing the practitioner to begin documentation fresh from the Templates catalog.
           </DocCallout>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot21_3}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 21.3: redirected to Patient Profile > Clinical Note Page"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -207,11 +218,15 @@ const Chapter21: React.FC = () => {
             Clicking on any template card (such as <strong>SOAP Note – OT</strong>) immediately loads the interactive clinical note editor.
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot21_4}
+              width={1414}
+              height={920}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 21.4: Creating a note, select a template"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -281,11 +296,15 @@ const Chapter21: React.FC = () => {
             Finalized clinical notes cannot be deleted or casually edited, ensuring strict medico-legal compliance. If notes are still preliminary, always choose <strong>Save Draft</strong> until all assessments and treatment plans are complete.
           </DocCallout>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot21_5}
+              width={3420}
+              height={2001}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 21.5: Enter Note details > Save Draft or Finalize Note"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

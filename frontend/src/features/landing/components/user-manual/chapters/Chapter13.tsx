@@ -1,11 +1,11 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot13_1 from '@/assets/manual/Chapter 13/Screenshot 13.1.png';
-import Screenshot13_2 from '@/assets/manual/Chapter 13/Screenshot 13.2.png';
-import Screenshot13_3 from '@/assets/manual/Chapter 13/Screenshot 13.3.png';
-import Screenshot13_4 from '@/assets/manual/Chapter 13/Screenshot 13.4.png';
-import Screenshot13_5 from '@/assets/manual/Chapter 13/Screenshot 13.5.png';
+import Screenshot13_1 from '@/assets/manual/Chapter 13/Screenshot 13.1.webp';
+import Screenshot13_2 from '@/assets/manual/Chapter 13/Screenshot 13.2.webp';
+import Screenshot13_3 from '@/assets/manual/Chapter 13/Screenshot 13.3.webp';
+import Screenshot13_4 from '@/assets/manual/Chapter 13/Screenshot 13.4.webp';
+import Screenshot13_5 from '@/assets/manual/Chapter 13/Screenshot 13.5.webp';
 
 const Chapter13: React.FC = () => {
   return (
@@ -80,19 +80,26 @@ const Chapter13: React.FC = () => {
             </li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot13_1}
+              width={1032}
+              height={976}
+              decoding="async"
               alt="Screenshot 13.1: Client Page with Add Client button"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot13_2}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 13.2: Add Client Modal"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -133,27 +140,39 @@ const Chapter13: React.FC = () => {
             </li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot13_3}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 13.3: Calendar Blank Appointment"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot13_4}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 13.4: Booking Pop-up Client Search"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot13_5}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 13.5: Add New Client Modal from Calendar"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

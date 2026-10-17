@@ -1,12 +1,12 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot24_1 from '@/assets/manual/Chapter 24/Screenshot 24.1.png';
-import Screenshot24_2 from '@/assets/manual/Chapter 24/Screenshot 24.2.png';
-import Screenshot24_3 from '@/assets/manual/Chapter 24/Screenshot 24.3.png';
-import Screenshot24_4 from '@/assets/manual/Chapter 24/Screenshot 24.4.png';
-import Screenshot24_5 from '@/assets/manual/Chapter 24/Screenshot 24.5.png';
-import Screenshot24_6 from '@/assets/manual/Chapter 24/Screenshot 24.6.png';
+import Screenshot24_1 from '@/assets/manual/Chapter 24/Screenshot 24.1.webp';
+import Screenshot24_2 from '@/assets/manual/Chapter 24/Screenshot 24.2.webp';
+import Screenshot24_3 from '@/assets/manual/Chapter 24/Screenshot 24.3.webp';
+import Screenshot24_4 from '@/assets/manual/Chapter 24/Screenshot 24.4.webp';
+import Screenshot24_5 from '@/assets/manual/Chapter 24/Screenshot 24.5.webp';
+import Screenshot24_6 from '@/assets/manual/Chapter 24/Screenshot 24.6.webp';
 
 const Chapter24: React.FC = () => {
   return (
@@ -103,11 +103,14 @@ const Chapter24: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot24_1}
+              width={3420}
+              height={2002}
+              decoding="async"
               alt="Screenshot 24.1: Navigate to Reports page via top bar"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -133,11 +136,15 @@ const Chapter24: React.FC = () => {
             <li>To print or download as PDF, click <strong>Print Report</strong> on the top-right corner.</li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot24_2}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 24.2: Uninvoiced Bookings report example"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -164,11 +171,15 @@ const Chapter24: React.FC = () => {
             <li>Click <strong>Print Report</strong> in the top right to print or save a PDF.</li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot24_3}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 24.3: Cancellations report example"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -195,11 +206,15 @@ const Chapter24: React.FC = () => {
             <li>Print or export the client list using <strong>Print Report</strong>.</li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot24_4}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 24.4: Clients and Cases report example"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -226,11 +241,15 @@ const Chapter24: React.FC = () => {
             <li>Click <strong>Print Report</strong> to generate a compliance audit document.</li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot24_5}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 24.5: Clinical Notes report example"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -256,11 +275,15 @@ const Chapter24: React.FC = () => {
             <li>Click <strong>Print Report</strong> in the top-right corner to print or export as PDF.</li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot24_6}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 24.6: Providers and Practice report example"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

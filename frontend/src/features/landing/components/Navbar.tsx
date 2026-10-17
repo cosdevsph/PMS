@@ -189,8 +189,8 @@ export const Navbar: React.FC = () => {
         aria-label="Menu"
         inert={!isMobileMenuOpen}
         onKeyDown={handleDrawerKeyDown}
-        className={`fixed inset-y-0 right-0 w-4/5 max-w-sm bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out motion-reduce:transition-none lg:hidden ${
-          isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-y-0 right-0 w-4/5 max-w-sm bg-white z-50 flex flex-col transition-transform duration-300 ease-in-out motion-reduce:transition-none lg:hidden ${
+          isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full'
         }`}
       >
         <div className="flex items-center justify-between px-6 py-6 border-b border-gray-100">

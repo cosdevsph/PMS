@@ -1,16 +1,16 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot4_1 from '@/assets/manual/Chapter 4/Screenshot 4.1.png';
-import Screenshot4_2 from '@/assets/manual/Chapter 4/Screenshot 4.2.png';
-import Screenshot4_3 from '@/assets/manual/Chapter 4/Screenshot 4.3.png';
-import Screenshot4_4 from '@/assets/manual/Chapter 4/Screenshot 4.4.png';
-import Screenshot4_5 from '@/assets/manual/Chapter 4/Screenshot 4.5.png';
-import Screenshot4_6 from '@/assets/manual/Chapter 4/Screenshot 4.6.png';
-import Screenshot4_7 from '@/assets/manual/Chapter 4/Screenshot 4.7.png';
-import Screenshot4_8 from '@/assets/manual/Chapter 4/Screenshot 4.8.png';
-import Screenshot4_9 from '@/assets/manual/Chapter 4/Screenshot 4.9.png';
-import Screenshot4_10 from '@/assets/manual/Chapter 4/Screenshot 4.10.png';
+import Screenshot4_1 from '@/assets/manual/Chapter 4/Screenshot 4.1.webp';
+import Screenshot4_2 from '@/assets/manual/Chapter 4/Screenshot 4.2.webp';
+import Screenshot4_3 from '@/assets/manual/Chapter 4/Screenshot 4.3.webp';
+import Screenshot4_4 from '@/assets/manual/Chapter 4/Screenshot 4.4.webp';
+import Screenshot4_5 from '@/assets/manual/Chapter 4/Screenshot 4.5.webp';
+import Screenshot4_6 from '@/assets/manual/Chapter 4/Screenshot 4.6.webp';
+import Screenshot4_7 from '@/assets/manual/Chapter 4/Screenshot 4.7.webp';
+import Screenshot4_8 from '@/assets/manual/Chapter 4/Screenshot 4.8.webp';
+import Screenshot4_9 from '@/assets/manual/Chapter 4/Screenshot 4.9.webp';
+import Screenshot4_10 from '@/assets/manual/Chapter 4/Screenshot 4.10.webp';
 
 const Chapter4: React.FC = () => {
   return (
@@ -35,11 +35,14 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             After successfully registering a new Owner account, the system automatically redirects you to the <strong>Clinic Setup</strong> page. This page tracks your progress across four main setup steps.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot4_1}
+              width={3420}
+              height={2002}
+              decoding="async"
               alt="Screenshot 4.1: Entire Clinic Setup page"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -55,11 +58,15 @@ const Chapter4: React.FC = () => {
             <li><strong>Clinic Email:</strong> The official email address used for clinic communications.</li>
             <li><strong>Website (Optional):</strong> A link to your clinic's external website.</li>
           </ul>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot4_2}
+              width={1530}
+              height={1492}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 4.2: Clinic Information section"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -82,11 +89,15 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             At the top of the Clinic Profile section, click <strong>Upload Logo</strong>. The system accepts PNG, JPG, and SVG formats up to 5 MB in size.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot4_3}
+              width={770}
+              height={400}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 4.3: Logo Upload area"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -96,11 +107,15 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Once uploaded, a preview of your logo will appear in the thumbnail box. You can easily click "Change Logo" or "Remove" if you make a mistake. Your logo will be prominently displayed on the Patient Portal, printed Clinical Notes, Invoices, and automated Emails.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot4_4}
+              width={758}
+              height={398}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 4.4: Uploaded logo preview"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -129,11 +144,15 @@ const Chapter4: React.FC = () => {
             <li><strong>Postal Code:</strong> Enter your local ZIP/Postal code.</li>
             <li><strong>Custom Location:</strong> If your location isn't in the standard dropdown lists, click "Location not found? Enter manually" to type it out.</li>
           </ul>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot4_5}
+              width={1496}
+              height={1530}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 4.5: Location Details section"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -143,11 +162,15 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             An interactive map is provided to pin your exact location. As you type your province and city, the map will automatically fly to your general area. Click on the map to drop a pin on your exact building.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot4_6}
+              width={1504}
+              height={1086}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 4.6: Map Picker"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -170,11 +193,15 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             At the bottom of the Clinic Profile section is a toggle for <strong>Email Notifications</strong>. Leaving this enabled ensures the system will send automated appointment reminders, booking confirmations, and welcome messages to your patients. SMS Notifications are currently under development.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot4_7}
+              width={1288}
+              height={246}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 4.7: Preferences section"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -197,11 +224,15 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Ensure that all required fields (marked with a red asterisk <strong>*</strong>) have been completed. If any fields are invalid (such as an incorrect phone number format), they will be highlighted in red.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot4_8}
+              width={1526}
+              height={2930}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 4.8: Completed Clinic Setup form"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -211,11 +242,15 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Scroll to the very bottom of the page and locate the <strong>Save Clinic Setup</strong> button. This button only becomes clickable once Step 1 (Clinic Profile) is completely filled out with valid data. Click it to finalize the process.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot4_9}
+              width={1796}
+              height={410}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 4.9: Save Clinic Setup button"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -225,11 +260,15 @@ const Chapter4: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Upon successfully saving, a success notification will appear at the top of the screen. The system will securely initialize your workspace and automatically redirect you to your primary <strong>Owner Dashboard</strong>.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot4_10}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 4.10: Dashboard after successful setup"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

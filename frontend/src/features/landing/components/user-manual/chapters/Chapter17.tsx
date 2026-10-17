@@ -1,11 +1,11 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot17_1 from '@/assets/manual/Chapter 17/Screenshot 17.1.png';
-import Screenshot17_2 from '@/assets/manual/Chapter 17/Screenshot 17.2.png';
-import Screenshot17_3 from '@/assets/manual/Chapter 17/Screenshot 17.3.png';
-import Screenshot17_4 from '@/assets/manual/Chapter 17/Screenshot 17.4.png';
-import Screenshot17_5 from '@/assets/manual/Chapter 17/Screenshot 17.5.png';
+import Screenshot17_1 from '@/assets/manual/Chapter 17/Screenshot 17.1.webp';
+import Screenshot17_2 from '@/assets/manual/Chapter 17/Screenshot 17.2.webp';
+import Screenshot17_3 from '@/assets/manual/Chapter 17/Screenshot 17.3.webp';
+import Screenshot17_4 from '@/assets/manual/Chapter 17/Screenshot 17.4.webp';
+import Screenshot17_5 from '@/assets/manual/Chapter 17/Screenshot 17.5.webp';
 
 const Chapter17: React.FC = () => {
   return (
@@ -62,11 +62,14 @@ const Chapter17: React.FC = () => {
             </li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot17_1}
+              width={1154}
+              height={1054}
+              decoding="async"
               alt="Screenshot 17.1: Diary showing the existing appointment"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -97,11 +100,15 @@ const Chapter17: React.FC = () => {
             </li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot17_2}
+              width={1606}
+              height={1396}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 17.2: AppointmentView modal showing dropdown recurring appointment"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -138,11 +145,15 @@ const Chapter17: React.FC = () => {
             </li>
           </ul>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot17_3}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 17.3: Inputting details in Recurring appointments modal"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -177,11 +188,15 @@ const Chapter17: React.FC = () => {
             </li>
           </ol>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot17_4}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 17.4: Checking schedule availability and save recurring"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -216,11 +231,15 @@ const Chapter17: React.FC = () => {
             </li>
           </ul>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot17_5}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 17.5: Saved recurring display on calendar"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

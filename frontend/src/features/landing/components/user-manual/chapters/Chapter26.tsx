@@ -1,8 +1,8 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot26_1 from '@/assets/manual/Chapter 26/Screenshot 26.1.png';
-import Screenshot26_2 from '@/assets/manual/Chapter 26/Screenshot 26.2.png';
+import Screenshot26_1 from '@/assets/manual/Chapter 26/Screenshot 26.1.webp';
+import Screenshot26_2 from '@/assets/manual/Chapter 26/Screenshot 26.2.webp';
 
 const Chapter26: React.FC = () => {
   return (
@@ -80,11 +80,14 @@ const Chapter26: React.FC = () => {
             Clicking the <strong>blue headset icon</strong> immediately opens the <strong>Submit Feedback & Reports</strong> modal over your active screen without navigating away from your work.
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot26_1}
+              width={554}
+              height={1990}
+              decoding="async"
               alt="Screenshot 26.1: Right utility panel showing the blue contact support button"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -130,11 +133,15 @@ const Chapter26: React.FC = () => {
             Please avoid including unnecessary patient or confidential clinical information in screenshots. Redact patient names or sensitive details prior to uploading attachments.
           </DocCallout>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot26_2}
+              width={3420}
+              height={2001}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 26.2: Feedback and Reports modal with type, priority, title, description, and attachments"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

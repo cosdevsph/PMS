@@ -1,12 +1,12 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Screenshot15_1 from '@/assets/manual/Chapter 15/Screenshot 15.1.png';
-import Screenshot15_2 from '@/assets/manual/Chapter 15/Screenshot 15.2.png';
-import Screenshot15_3 from '@/assets/manual/Chapter 15/Screenshot 15.3.png';
-import Screenshot15_4 from '@/assets/manual/Chapter 15/Screenshot 15.4.png';
-import Screenshot15_5 from '@/assets/manual/Chapter 15/Screenshot 15.5.png';
-import Screenshot15_6 from '@/assets/manual/Chapter 15/Screenshot 15.6.png';
+import Screenshot15_1 from '@/assets/manual/Chapter 15/Screenshot 15.1.webp';
+import Screenshot15_2 from '@/assets/manual/Chapter 15/Screenshot 15.2.webp';
+import Screenshot15_3 from '@/assets/manual/Chapter 15/Screenshot 15.3.webp';
+import Screenshot15_4 from '@/assets/manual/Chapter 15/Screenshot 15.4.webp';
+import Screenshot15_5 from '@/assets/manual/Chapter 15/Screenshot 15.5.webp';
+import Screenshot15_6 from '@/assets/manual/Chapter 15/Screenshot 15.6.webp';
 
 const Chapter15: React.FC = () => {
   return (
@@ -53,11 +53,14 @@ const Chapter15: React.FC = () => {
             The <strong>Calendar</strong> serves as the central operational hub for Malasakit PMS. From here, clinic owners, practitioners, and front desk personnel can oversee schedules across branches, track arrivals, book appointments, and review daily provider availability at a glance.
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot15_1}
+              width={1032}
+              height={976}
+              decoding="async"
               alt="Screenshot 15.1: Full Calendar Photo"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -76,11 +79,15 @@ const Chapter15: React.FC = () => {
             <strong>Day View</strong> organizes the daily schedule into 15-minute intervals across individual practitioner columns. This allows front desk staff to monitor simultaneous sessions, view active duty hours, identify open slots, and manage incoming patient traffic smoothly throughout the day.
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot15_2}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 15.2: Day View"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -103,11 +110,15 @@ const Chapter15: React.FC = () => {
             <strong>Week View</strong> expands the schedule across seven consecutive days. It provides clinicians and managers with a comprehensive short-term outlook to check upcoming patient volume, prevent provider burnout, and balance appointment bookings across all operating days.
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot15_3}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 15.3: Week View"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -130,11 +141,15 @@ const Chapter15: React.FC = () => {
             <strong>Month View</strong> displays a traditional calendar grid that visually represents appointment density for every day of the month. Clicking on any individual date immediately zooms into that day's detailed Day View for faster drill-down navigation.
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot15_4}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 15.4: Month View"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -153,11 +168,15 @@ const Chapter15: React.FC = () => {
             The <strong>Diary Page</strong> arranges the day's appointments in a clean, chronological list. This format allows practitioners and receptionists to sequentially review patient consultations, check arrival statuses, and review treatment services without relying on grid alignments.
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot15_5}
+              width={1032}
+              height={976}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 15.5: Whole Diary Page"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -199,11 +218,15 @@ const Chapter15: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot15_6}
+              width={810}
+              height={52}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 15.6: Occupancy Statistics"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

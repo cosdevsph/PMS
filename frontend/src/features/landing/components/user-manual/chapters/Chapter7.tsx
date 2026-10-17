@@ -1,12 +1,12 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Diagram7_1 from '@/assets/manual/Chapter 7/Diagram 7.1.png';
-import Screenshot7_1 from '@/assets/manual/Chapter 7/Screenshot 7.1.png';
-import Screenshot7_2 from '@/assets/manual/Chapter 7/Screenshot 7.2.png';
-import Screenshot7_4 from '@/assets/manual/Chapter 7/Screenshot 7.4.png';
-import Screenshot7_6 from '@/assets/manual/Chapter 7/Screenshot 7.6.png';
-import Screenshot7_7 from '@/assets/manual/Chapter 7/Screenshot 7.7.png';
+import Diagram7_1 from '@/assets/manual/Chapter 7/Diagram 7.1.webp';
+import Screenshot7_1 from '@/assets/manual/Chapter 7/Screenshot 7.1.webp';
+import Screenshot7_2 from '@/assets/manual/Chapter 7/Screenshot 7.2.webp';
+import Screenshot7_4 from '@/assets/manual/Chapter 7/Screenshot 7.4.webp';
+import Screenshot7_6 from '@/assets/manual/Chapter 7/Screenshot 7.6.webp';
+import Screenshot7_7 from '@/assets/manual/Chapter 7/Screenshot 7.7.webp';
 
 const Chapter7: React.FC = () => {
   return (
@@ -56,6 +56,9 @@ const Chapter7: React.FC = () => {
         <div className="mt-6 w-full flex justify-center bg-white border border-sky-200 rounded-xl overflow-hidden p-2 shadow-sm">
           <img
             src={Diagram7_1}
+            width={1536}
+            height={1024}
+            decoding="async"
             alt="Diagram 7.1: Multi-Branch RBAC Flow"
             className="w-full max-h-[500px] object-contain rounded-lg"
           />
@@ -83,11 +86,15 @@ const Chapter7: React.FC = () => {
             <li>Access consolidated and branch-specific financial records and performance reports</li>
             <li>Oversee all branch consent forms, public booking links, and QR codes</li>
           </ul>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot7_1}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 7.1: Owner Dashboard"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -112,11 +119,15 @@ const Chapter7: React.FC = () => {
             <li>Configure branch-specific consent agreements and legal disclosures</li>
             <li>Manage branch public booking links and QR codes</li>
           </ul>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot7_2}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 7.2: Manager Dashboard"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -183,11 +194,15 @@ const Chapter7: React.FC = () => {
             Practitioner permissions are strictly scoped to clinical workflows within authorized branches. Practitioners cannot view unassigned branches, modify clinic billing subscriptions, configure system-wide settings, or access staff management. Restricted administrative modules in the sidebar appear disabled or hidden.
           </p>
 
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot7_4}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 7.4: Practitioner Calendar"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -215,11 +230,15 @@ const Chapter7: React.FC = () => {
             <li>Review and process incoming online bookings submitted via public portals</li>
             <li>Manage patient check-ins and appointment attendance statuses</li>
           </ul>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot7_6}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 7.6: Front Desk Dashboard"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -243,11 +262,15 @@ const Chapter7: React.FC = () => {
             <li>Process bulk invoicing batches for corporate or insurance accounts</li>
             <li>Generate financial reports and reconciliation summaries for assigned branches</li>
           </ul>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot7_7}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 7.7: Finance Dashboard"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>

@@ -1,13 +1,13 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
-import Diagram6_1 from '@/assets/manual/Chapter 6/Diagram 6.1.png';
-import Screenshot6_1 from '@/assets/manual/Chapter 6/Screenshot 6.1.png';
-import Screenshot6_2 from '@/assets/manual/Chapter 6/Screenshot 6.2.png';
-import Screenshot6_3 from '@/assets/manual/Chapter 6/Screenshot 6.3.png';
-import Screenshot6_4 from '@/assets/manual/Chapter 6/Screenshot 6.4.png';
-import Screenshot6_5 from '@/assets/manual/Chapter 6/Screenshot 6.5.png';
-import Screenshot6_6 from '@/assets/manual/Chapter 6/Screenshot 6.6.png';
+import Diagram6_1 from '@/assets/manual/Chapter 6/Diagram 6.1.webp';
+import Screenshot6_1 from '@/assets/manual/Chapter 6/Screenshot 6.1.webp';
+import Screenshot6_2 from '@/assets/manual/Chapter 6/Screenshot 6.2.webp';
+import Screenshot6_3 from '@/assets/manual/Chapter 6/Screenshot 6.3.webp';
+import Screenshot6_4 from '@/assets/manual/Chapter 6/Screenshot 6.4.webp';
+import Screenshot6_5 from '@/assets/manual/Chapter 6/Screenshot 6.5.webp';
+import Screenshot6_6 from '@/assets/manual/Chapter 6/Screenshot 6.6.webp';
 
 const Chapter6: React.FC = () => {
   return (
@@ -31,6 +31,9 @@ const Chapter6: React.FC = () => {
         <div className="mt-6 w-full flex justify-center bg-white border border-sky-200 rounded-xl overflow-hidden p-2 shadow-sm">
           <img
             src={Diagram6_1}
+            width={1536}
+            height={1024}
+            decoding="async"
             alt="Diagram 6.1: Branch → Consent Relationship"
             className="w-full max-h-[500px] object-contain rounded-lg"
           />
@@ -50,11 +53,15 @@ const Chapter6: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Navigate to the <strong>Clinic Consent Forms</strong> page. This page lists all branches that you have access to, along with their current consent form status, creator, and last modified date. To begin, click the <strong>Edit</strong> button next to a branch.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot6_1}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 6.1: Clinic Consent Forms page"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -68,11 +75,15 @@ const Chapter6: React.FC = () => {
             <li><strong>Header Content (Optional):</strong> A brief introductory sentence or subtitle, such as "Acknowledgment of Policies and Procedures".</li>
             <li><strong>Body Content (Required):</strong> The main terms and conditions. This is where you outline privacy policies, operational rules, and medical liabilities.</li>
           </ul>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot6_2}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 6.2: Consent Editor"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -82,11 +93,15 @@ const Chapter6: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-6">
             Before saving, click the <strong>Live Preview</strong> button. This opens a realistic mockup of exactly what the patient will see on their mobile device or computer before confirming their booking. Once satisfied, click <strong>Save Configuration</strong>.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot6_3}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 6.3: Live Preview Modal"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -113,11 +128,15 @@ const Chapter6: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-4">
             Staff with access to multiple branches will see an <strong>Assign To</strong> dropdown menu at the top of the modal. They can select any branch under their jurisdiction to configure its specific consent form.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot6_4}
+              width={1338}
+              height={316}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 6.4: Manager (Multiple Branches) - Branch selection dropdown"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
 
@@ -125,11 +144,15 @@ const Chapter6: React.FC = () => {
           <p className="text-gray-700 font-body leading-relaxed mb-4">
             If a manager is only assigned to a single location, the system automatically detects their branch. The dropdown menu is locked and read-only, preventing them from modifying agreements for other branches.
           </p>
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot6_5}
+              width={1448}
+              height={242}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 6.5: Manager (Single Branch) - Locked auto-selected branch"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
@@ -158,11 +181,15 @@ const Chapter6: React.FC = () => {
             <li><strong>Inactive (Disabled):</strong> The consent form is turned off. New patients will bypass the consent step during registration. However, any previously signed historical consent records remain securely stored in the system.</li>
           </ul>
           
-          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot6_6}
+              width={1378}
+              height={470}
+              decoding="async"
+              loading="lazy"
               alt="Screenshot 6.6: Require Consent Signature Toggle"
-              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+              className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
