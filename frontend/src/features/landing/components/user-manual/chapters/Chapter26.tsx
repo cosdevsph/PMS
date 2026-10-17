@@ -1,181 +1,157 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Screenshot26_1 from '@/assets/manual/Chapter 26/Screenshot 26.1.png';
+import Screenshot26_2 from '@/assets/manual/Chapter 26/Screenshot 26.2.png';
 
 const Chapter26: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how to monitor clinic performance, track daily operations, and analyze business trends using the centralized Dashboard.
+        Learn how to reach Malasakit support, submit bug reports or feature feedback directly within the application, and contact our team via email.
       </p>
 
-      {/* IMPORTANT CONCEPT — Dashboard Overview */}
-      <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-4">Dashboard Overview</h3>
-        
-        <p className="text-gray-700 font-body mb-4">
-          The Dashboard serves as your clinic's primary operational hub. Upon signing in, it instantly consolidates complex clinic data—such as appointments, patient growth, and financial metrics—into easy-to-read widgets, statistics, and charts. This enables owners and managers to make rapid, data-driven decisions.
-        </p>
-
-        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] mb-6 text-center overflow-x-auto">
-          <p className="text-sm font-semibold text-gray-800 mb-2">Data Visualization Flow</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-[13px] text-gray-600 font-mono">
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">Clinic Activity</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200">Dashboard Widgets</span>
-            <span className="text-sky-400">→</span>
-            <div className="flex flex-col gap-1">
-              <span className="px-3 py-1 bg-amber-50 rounded border border-amber-200">KPIs</span>
-              <span className="px-3 py-1 bg-amber-50 rounded border border-amber-200">Charts</span>
-            </div>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 font-bold rounded border border-emerald-200">Business Insights</span>
+      {/* DIRECT EMAIL & CONTACT SUPPORT BANNER */}
+      <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12 shadow-[0_2px_12px_rgb(14,165,233,0.08)]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <span className="px-2.5 py-1 bg-sky-600 text-white text-xs font-bold uppercase rounded-md tracking-wider">
+              Direct Support
+            </span>
+            <h3 className="text-xl font-bold text-sky-950 mt-2 mb-1">Need Assistance? We're Here to Help</h3>
+            <p className="text-gray-700 font-body text-sm leading-relaxed">
+              Aside from the in-app support widget, you can always reach our dedicated support desk directly via email.
+            </p>
+          </div>
+          <div className="shrink-0 bg-white border border-sky-200 rounded-xl p-4 shadow-sm text-center sm:text-left">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Official Support Email</p>
+            <a
+              href="mailto:malasakitsolutions@gmail.com"
+              className="text-base sm:text-lg font-bold text-sky-600 hover:text-sky-700 font-mono underline"
+            >
+              malasakitsolutions@gmail.com
+            </a>
           </div>
         </div>
-
-        <ScreenshotPlaceholder label="Diagram 26.1: Dashboard Overview. Caption: 'The Dashboard transforms clinic data into meaningful insights for daily decision-making.'" />
       </div>
 
 
-      {/* SECTION 26.1 — KPIs */}
+      {/* SECTION 26.1 — Right Utility Panel */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        26.1 Key Performance Indicators (KPIs)
+        26.1 Utility Panel & In-App Contact Support
       </h3>
-      <p className="text-gray-700 font-body mb-6">At-a-glance operational metrics.</p>
+      <p className="text-gray-700 font-body mb-6">
+        Access quick communication tools and the support launcher from the persistent right-side panel.
+      </p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Positioned at the top of the dashboard, KPI cards provide instant access to the clinic's most critical pulse points. These cards automatically recalculate in real-time as clinic activity occurs throughout the day.
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            On the right side of every page in the application, you will find the persistent utility bar with quick-access tabs:
           </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Depending on your role and permissions, your dashboard may display KPIs such as:
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li><strong>Today's Appointments:</strong> Total patients scheduled for the current day.</li>
-            <li><strong>Total Patients:</strong> The overall size of the clinic's patient registry.</li>
-            <li><strong>Revenue:</strong> Gross financial intake for a designated period.</li>
-            <li><strong>Outstanding Invoices:</strong> Total uncollected funds requiring follow-up.</li>
-          </ul>
 
-          <ScreenshotPlaceholder label="Screenshot 26.1: Dashboard overview. Highlight KPI cards. Caption: 'KPI cards provide a quick overview of the clinic's most important operational metrics.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 26.2: KPI Flow. Caption: 'Key Performance Indicators summarize important clinic information in a single view.'" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div className="flex items-center gap-3 p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50">
+              <span className="w-4 h-4 rounded-full bg-emerald-500 shrink-0"></span>
+              <div>
+                <p className="text-xs font-bold text-emerald-950">Green Tab</p>
+                <p className="text-xs text-gray-600">Messages & Chat</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3.5 rounded-xl border border-amber-200 bg-amber-50/50">
+              <span className="w-4 h-4 rounded-full bg-amber-500 shrink-0"></span>
+              <div>
+                <p className="text-xs font-bold text-amber-950">Orange Tab</p>
+                <p className="text-xs text-gray-600">Notifications & Alerts</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3.5 rounded-xl border border-sky-300 bg-sky-50">
+              <span className="w-4 h-4 rounded-full bg-sky-500 shrink-0"></span>
+              <div>
+                <p className="text-xs font-bold text-sky-950">Blue Tab (Headset)</p>
+                <p className="text-xs text-sky-700 font-medium">Contact Support Launcher</p>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            Clicking the <strong>blue headset icon</strong> immediately opens the <strong>Submit Feedback & Reports</strong> modal over your active screen without navigating away from your work.
+          </p>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot26_1}
+              alt="Screenshot 26.1: Right utility panel showing the blue contact support button"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
         </div>
       </div>
 
-      <DocCallout type="info">
-        Dashboard KPIs refresh automatically as clinic activity changes, providing up-to-date operational information without requiring manual page reloads.
-      </DocCallout>
 
-
-      {/* SECTION 26.2 — Statistics */}
+      {/* SECTION 26.2 — Feedback and Reports Modal */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        26.2 Statistical Summaries
+        26.2 Feedback and Reports Modal
       </h3>
-      <p className="text-gray-700 font-body mb-6">Monitoring trends over selected time periods.</p>
+      <p className="text-gray-700 font-body mb-6">
+        Submit detailed bug reports, questions, or product enhancement requests with optional screenshot attachments.
+      </p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Beneath the immediate KPIs, Statistical Widgets summarize clinic activity over broader time horizons (e.g., weekly or monthly). These summaries help administrators identify trends and evaluate overall clinic health.
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Common statistical summaries include metrics like <strong>Completed Appointments</strong> versus <strong>Cancelled Appointments</strong>, tracking <strong>DNA (Did Not Attend)</strong> rates to evaluate patient compliance, and measuring the volume of <strong>Online Bookings</strong> versus manual front-desk registrations.
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            When the modal appears, fill out the following fields to help our support and technical engineering team resolve your inquiry quickly:
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 26.2: Statistics section. Highlight Summary cards. Caption: 'Statistical summaries help monitor clinic activity and operational performance.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 26.3: Statistics Flow. Caption: 'Statistics transform operational data into meaningful summaries.'" />
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body mb-6">
+            <li>
+              <strong>Type:</strong> Select the category of your submission (e.g., <em>Bug Report</em>, <em>Feature Request</em>, or <em>General Inquiry</em>).
+            </li>
+            <li>
+              <strong>Priority:</strong> Choose the appropriate urgency level (e.g., <em>Low</em>, <em>Medium</em>, <em>High</em>, or <em>Urgent</em>).
+            </li>
+            <li>
+              <strong>Title:</strong> Enter a concise summary of the issue or feedback.
+            </li>
+            <li>
+              <strong>Description:</strong> Provide a clear explanation. If reporting an anomaly, include the steps to reproduce the behavior.
+            </li>
+            <li>
+              <strong>Attachments (Optional):</strong> Click <strong>+ Add File</strong> to attach screenshots, error images, or relevant documents.
+            </li>
+            <li>
+              Click <strong>Submit Report</strong> to send your ticket directly to our engineering support queue.
+            </li>
+          </ol>
+
+          <DocCallout type="important" title="Privacy Warning">
+            Please avoid including unnecessary patient or confidential clinical information in screenshots. Redact patient names or sensitive details prior to uploading attachments.
+          </DocCallout>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot26_2}
+              alt="Screenshot 26.2: Feedback and Reports modal with type, priority, title, description, and attachments"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
         </div>
       </div>
 
-      <DocCallout type="tip">
-        Review dashboard statistics regularly. Identifying a sudden spike in cancellations or DNA rates early allows management to proactively address operational issues.
-      </DocCallout>
-
-
-      {/* SECTION 26.3 — Charts */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        26.3 Visual Analytics
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Identifying patterns through visual graphs.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Visual representations make it significantly easier to identify patterns compared to viewing raw spreadsheet numbers. The Dashboard's Charts transform operational data into actionable visual insights.
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Interactive charts may visualize <strong>Appointment Trends</strong> (identifying peak days or hours), track <strong>Patient Growth</strong> over quarters, or analyze <strong>Revenue Trends</strong> to project future financial health. Users can often interact with these charts by adjusting date ranges or hovering over specific data points for exact figures.
-          </p>
-
-          <ScreenshotPlaceholder label="Screenshot 26.3: Dashboard charts. Highlight Primary analytics chart. Caption: 'Charts visualize clinic performance over time.'" />
-          <ScreenshotPlaceholder label="Screenshot 26.4: Dashboard analytics. Highlight Trend graphs. Caption: 'Visual analytics help identify performance patterns and operational trends.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 26.4: Visual Analytics. Caption: 'Charts convert operational data into actionable visual insights.'" />
-          </div>
-        </div>
-      </div>
-
-      <DocCallout type="important">
-        While charts are excellent for high-level decision-making, they should always be interpreted together with detailed Reports for comprehensive financial or clinical analysis.
-      </DocCallout>
-
-
-      {/* SECTION 26.4 — Role-Based Visibility */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        26.4 Role-Based Dashboard Visibility
-      </h3>
-      <p className="text-gray-700 font-body mb-6">How permissions shape the dashboard experience.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Because Malasakit utilizes strict Role-Based Access Control (RBAC), the Dashboard dynamically adapts its widgets and data scope based on the logged-in user's role and assigned branch:
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="p-5 bg-sky-50 rounded-xl border border-sky-200">
-              <h4 className="font-bold text-sky-900 mb-2">Owner</h4>
-              <p className="text-sm text-gray-700">Views an organization-wide dashboard aggregating data across <em>all</em> clinic branches.</p>
-            </div>
-            <div className="p-5 bg-gray-50 rounded-xl border border-gray-200">
-              <h4 className="font-bold text-gray-900 mb-2">Manager</h4>
-              <p className="text-sm text-gray-700">Views statistics and KPIs exclusively for their specifically assigned clinic branch(es).</p>
-            </div>
-            <div className="p-5 bg-gray-50 rounded-xl border border-gray-200">
-              <h4 className="font-bold text-gray-900 mb-2">Practitioner</h4>
-              <p className="text-sm text-gray-700">Views personal operational data, focusing on their specific appointments, workload, and schedule.</p>
-            </div>
-            <div className="p-5 bg-gray-50 rounded-xl border border-gray-200">
-              <h4 className="font-bold text-gray-900 mb-2">Front Desk & Finance</h4>
-              <p className="text-sm text-gray-700">Front Desk sees operational appointment metrics, while Finance sees restricted billing summaries.</p>
-            </div>
-          </div>
-
-          <ScreenshotPlaceholder label="Screenshot 26.5: Dashboard viewed by an Owner. Highlight Organization-wide statistics. Caption: 'Owners can view organization-wide dashboard information across all clinic branches.'" />
-          <ScreenshotPlaceholder label="Screenshot 26.6: Dashboard viewed by a Manager. Highlight Branch-specific statistics. Caption: 'Managers only see dashboard information for their assigned clinic branches.'" />
-        </div>
-      </div>
 
       {/* CHAPTER SUMMARY */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned how to interpret clinic performance using the Dashboard. You should now understand:
+        You now know how to reach out for assistance or submit feedback in Malasakit:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li>How <strong>KPI Cards</strong> summarize the most critical metrics in real-time.</li>
-        <li>How <strong>Statistical Summaries</strong> help monitor operational activity and patient compliance over time.</li>
-        <li>How visual <strong>Charts</strong> transform raw data into actionable business insights.</li>
-        <li>How the system enforces <strong>Role-Based Visibility</strong> to restrict dashboard scope for Managers and Practitioners.</li>
+        <li><strong>26.1 Utility Panel:</strong> Click the blue headset icon on the right edge of any screen to open in-app support.</li>
+        <li><strong>26.2 Feedback & Reports Modal:</strong> Specify the type, priority, title, description, and attach screenshots before clicking <strong>Submit Report</strong>.</li>
+        <li><strong>Direct Support Email:</strong> Contact us anytime directly at <a href="mailto:malasakitsolutions@gmail.com" className="text-sky-600 font-bold underline font-mono">malasakitsolutions@gmail.com</a>.</li>
       </ul>
     </>
   );

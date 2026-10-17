@@ -90,42 +90,6 @@ const videoGuides: VideoGuide[] = [
     title: 'Reports & Analytics',
     videoUrl: '/videos/guide-9-setup.mp4',
     description: 'Topics: Revenue reports, Occupancy reports, Business performance metrics, Clinic insights.',
-  },
-  {
-    id: 'guide-10',
-    tag: 'Help Article #10',
-    title: 'Inventory Management',
-    description: 'Topics: Inventory tracking, Stock management, Low stock alerts, Inventory reminders.',
-  },
-  {
-    id: 'guide-11',
-    tag: 'Help Article #11',
-    title: 'User Management & Permissions',
-    description: 'Topics: Staff accounts, User permissions, Access controls, Administrator accounts.',
-  },
-  {
-    id: 'guide-12',
-    tag: 'Help Article #12',
-    title: 'Managing Documents & Attachments',
-    description: 'Topics: Uploading files, Managing patient documents, Secure document storage.',
-  },
-  {
-    id: 'guide-13',
-    tag: 'Help Article #13',
-    title: 'Multi-Branch Management & Reporting',
-    description: 'Topics: Branch administration, Branch access, Clinician allocation, Branch-specific reports, Consolidated reporting, Business insights.',
-  },
-  {
-    id: 'guide-14',
-    tag: 'Help Article #14',
-    title: 'Audit Logs',
-    description: 'Topics: User activity tracking, Audit history, Accountability, Reviewing system activity.',
-  },
-  {
-    id: 'guide-15',
-    tag: 'Help Article #15',
-    title: 'Security & Data Protection',
-    description: 'Topics: HIPAA-aligned security practices, Role-based access controls, Data protection, Privacy features, Data backups, Security best practices.',
   }
 ];
 

@@ -1,171 +1,257 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Screenshot22_1 from '@/assets/manual/Chapter 22/Screenshot 22.1.png';
+import Screenshot22_2 from '@/assets/manual/Chapter 22/Screenshot 22.2.png';
+import Screenshot22_3 from '@/assets/manual/Chapter 22/Screenshot 22.3.png';
+import Screenshot22_4 from '@/assets/manual/Chapter 22/Screenshot 22.4.png';
 
 const Chapter22: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how to securely export, print, and share patient Clinical Notes using Malasakit's standardized medical report layouts.
+        Learn how to locate patient clinical notes, export professional PDF documents, print physical medical reports, and securely dispatch notes via email directly from Malasakit PMS.
       </p>
 
-      {/* IMPORTANT CONCEPT — Clinical Note Export Workflow */}
+      {/* QUICK OVERVIEW FLOW */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-4">Clinical Note Export Workflow</h3>
-        
-        <p className="text-gray-700 font-body mb-4">
-          Whether you need to file a physical record, send documentation to a referring physician, or securely email a copy directly to the patient, Malasakit handles the entire export process. Most importantly, every export method funnels through the same backend generator, guaranteeing that your printed notes, PDF downloads, and email attachments always share the exact same professional medical layout.
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Export & Email Workflow Overview</h3>
+        <p className="text-gray-700 font-body mb-6">
+          Printing or emailing a consultation report follows four simple, integrated steps:
         </p>
 
-        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] mb-6 text-center overflow-x-auto">
-          <p className="text-sm font-semibold text-gray-800 mb-2">Standardized Export Path</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-[13px] text-gray-600 font-mono">
-            <span className="px-3 py-1.5 bg-gray-50 rounded border border-gray-200">View Clinical Note</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200">Choose Method</span>
-            <span className="text-sky-400">→</span>
-            <div className="flex flex-col gap-1">
-              <span className="px-3 py-1 bg-amber-50 rounded border border-amber-200">Print</span>
-              <span className="px-3 py-1 bg-amber-50 rounded border border-amber-200">PDF Download</span>
-              <span className="px-3 py-1 bg-amber-50 rounded border border-amber-200">Email Note</span>
-            </div>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 font-bold rounded border border-emerald-200">Professional Clinical Report</span>
+        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Document Distribution Steps</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">22.1 Clinical Note Page</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">22.2 Select Print or Email Icon</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">22.3 Print Preview & PDF</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">22.4 Send Direct Email</span>
           </div>
         </div>
-
-        <ScreenshotPlaceholder label="Diagram 22.1: Clinical Note Export Workflow. Caption: 'Every export method produces the same standardized clinical document.'" />
       </div>
 
 
-      {/* SECTION 22.1 — Print */}
+      {/* SECTION 22.1 — Navigate to Clinical Note Page */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        22.1 Printing Notes
+        22.1 Navigate to Clinical Note Page
       </h3>
-      <p className="text-gray-700 font-body mb-6">Generating physical records for clinic files.</p>
+      <p className="text-gray-700 font-body mb-6">Access the patient's clinical history timeline and past consultation records.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            When reviewing a Clinical Note, practitioners can instantly trigger a print job by selecting the <strong>Print Clinical Note</strong> action. 
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Malasakit intercepts the print request, silently generates a high-resolution, A4-optimized document, and immediately opens your browser's native Print Preview dialog. The generated report includes your clinic's header, full patient demographics, appointment details, and the structured clinical documentation.
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            To view, export, or share a clinical note, first open the patient's record by selecting <strong>Clinical note</strong> from the patient profile sidebar (or by clicking the <em>Clinical Notes</em> tab from an active appointment):
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 22.1: View Clinical Note. Highlight Print Clinical Note button. Caption: 'The Print button generates a professional clinical report for printing.'" />
-          <ScreenshotPlaceholder label="Screenshot 22.2: Print Preview. Highlight Generated A4 document. Caption: 'Clinical Notes are displayed in a professional print layout before printing.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 22.2: Print Workflow. Caption: 'Printing always uses the standardized clinical report template.'" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">Patient & Case Context</h5>
+              <ul className="text-xs space-y-1.5 text-gray-700 font-body">
+                <li><strong>Breadcrumb Header:</strong> Identifies the active medical case (e.g. <em>John Doe — LOW BACKPAIN</em>).</li>
+                <li><strong>Patient Sidebar:</strong> Shows avatar, patient name, and client ID (e.g. <em>20261004-0002</em>).</li>
+                <li><strong>History Tab:</strong> Displays session count (e.g. <em>3 out of 3 Sessions</em>) with quick <em>Expand all Notes</em> and <em>Collapse all Notes</em> controls.</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">Note Card Overview</h5>
+              <ul className="text-xs space-y-1.5 text-gray-700 font-body">
+                <li><strong>Session & Date:</strong> Consultation timestamp, date, and appointment name.</li>
+                <li><strong>Practitioner Info:</strong> Name, role, contact information, and clinic branch.</li>
+                <li><strong>Clinical Content:</strong> Template name, documented values, and interactive body chart drawings.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot22_1}
+              alt="Screenshot 22.1: Navigate to Clinical Note Page"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
         </div>
       </div>
 
-      <DocCallout type="tip">
-        Always review the print preview to ensure the documentation fits correctly on the page and that no sensitive internal remarks are accidentally sent to the printer.
-      </DocCallout>
 
-
-      {/* SECTION 22.2 — PDF */}
+      {/* SECTION 22.2 — Select desired Note and navigate to Print icon or Email icon */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        22.2 PDF Generation
+        22.2 Select Desired Note: Print or Email Actions
       </h3>
-      <p className="text-gray-700 font-body mb-6">Downloading digital copies for external sharing.</p>
+      <p className="text-gray-700 font-body mb-6">Choose between physical printing, PDF export, or direct email dispatch.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            If you need to store the Clinical Note on a local drive, upload it to an external specialist portal, or archive it digitally, you can export the note as a PDF.
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            The PDF export uses the exact same rendering engine as the Print function. This ensures that the downloaded file maintains strict A4 formatting, pristine clinic branding, and standardized medical record layouts regardless of which device or operating system the recipient uses to open the file.
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            On the top-right corner of each clinical note header card, four action icons provide immediate document controls:
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 22.3: Generated PDF. Highlight Professional A4 layout. Caption: 'Exported PDFs maintain consistent formatting across every Clinical Note.'" />
-          <ScreenshotPlaceholder label="Screenshot 22.4: PDF preview. Highlight Patient information and Clinical Note sections. Caption: 'The exported PDF includes clinic branding, patient information, appointment details, and structured clinical documentation.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 22.3: PDF Export. Caption: 'PDF exports preserve formatting and provide consistent documentation.'" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="p-1.5 rounded-lg bg-blue-100 text-blue-700 text-sm">🖨️</span>
+                <h5 className="font-bold text-blue-950 text-sm">Print Icon (Print / Export PDF)</h5>
+              </div>
+              <p className="text-xs text-gray-700 leading-relaxed">
+                Clicking the <strong>Print icon</strong> opens the Print Preview modal, allowing you to generate an A4 clinical document to print physically or download as a PDF.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="p-1.5 rounded-lg bg-teal-100 text-teal-700 text-sm">✉️</span>
+                <h5 className="font-bold text-teal-950 text-sm">Email Icon (Send to Email)</h5>
+              </div>
+              <p className="text-xs text-gray-700 leading-relaxed">
+                Clicking the <strong>Email icon</strong> opens the direct email dialog, pre-loaded with the patient's email and a ready-to-send PDF attachment.
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500 mb-6">
+            <em>Note: The adjacent pencil icon enables editing for authorized staff, and the copy icon duplicates note structure for recurring sessions.</em>
+          </p>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot22_2}
+              alt="Screenshot 22.2: Select desired Note and navigate to Print icon or Email icon"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
         </div>
       </div>
 
-      <DocCallout type="info">
-        Because the PDF export is identical to the printed version, you never have to worry about layout discrepancies when sharing records digitally.
-      </DocCallout>
 
-
-      {/* SECTION 22.3 — Email */}
+      {/* SECTION 22.3 — Print Preview: Download as PDF or Print buttons */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        22.3 Emailing Notes
+        22.3 Print Preview: Download as PDF or Print Buttons
       </h3>
-      <p className="text-gray-700 font-body mb-6">Securely dispatching records to patients or providers.</p>
+      <p className="text-gray-700 font-body mb-6">Review the formatted A4 medical layout before printing or exporting.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Malasakit includes a built-in email engine, allowing practitioners to securely dispatch Clinical Notes directly from the View window without ever opening an external email client. 
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Clicking the <strong>Send Email</strong> button opens a secure modal where you can define recipients. The system automatically suggests the patient's registered email address (if available) alongside other clinic staff. You can customize the subject line and the email body to provide additional context before securely dispatching the message.
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Clicking the <strong>Print icon</strong> displays the <strong>Print Preview</strong> modal, showing an exact representation of how the clinical note will appear on paper or inside a PDF viewer:
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 22.5: View Clinical Note. Highlight Send Email button. Caption: 'Clinical Notes can be securely shared through email.'" />
-          <ScreenshotPlaceholder label="Screenshot 22.6: Send Clinical Note modal. Highlight Recipient, Subject, Body. Caption: 'The email dialog allows practitioners to customize the outgoing message before sending.'" />
-          <ScreenshotPlaceholder label="Screenshot 22.7: Attachment preview. Highlight Generated PDF. Caption: 'The generated Clinical Note PDF is automatically attached before sending.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 22.4: Email Workflow. Caption: 'Clinical Notes are securely shared using a standardized PDF attachment.'" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">Document Layout & Standards</h5>
+              <ul className="text-xs space-y-1.5 text-gray-700 font-body">
+                <li><strong>Clinic Header:</strong> High-resolution clinic logo, branch name (e.g. <em>Bacolod Clinic</em>), and contact details.</li>
+                <li><strong>Practitioner & Document Info:</strong> Provider name, administrative title, and document type (e.g. <em>SOAP Note – OT</em>).</li>
+                <li><strong>Patient & Consultation Meta:</strong> Patient name, date of consultation, and session identifier.</li>
+                <li><strong>Embedded Charts:</strong> Full-resolution body charts with all anatomical drawings and notes perfectly rendered.</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">Output Actions</h5>
+              <ul className="text-xs space-y-2 text-gray-700 font-body">
+                <li>
+                  <strong>Download PDF:</strong> Click the <strong>Download PDF</strong> button to save an electronic <code>.pdf</code> file directly to your computer for archival or external specialist sharing.
+                </li>
+                <li>
+                  <strong>Print Note:</strong> Click the blue <strong>Print Note</strong> button to trigger the native browser print dialogue for physical printer output.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <DocCallout type="tip">
+            Because Malasakit compiles the PDF using standardized vector formatting, body chart drawings, text, and logos remain crisp and clear when printed on standard A4 paper.
+          </DocCallout>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot22_3}
+              alt="Screenshot 22.3: Print Preview: Download as PDF or Print buttons"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
         </div>
       </div>
 
-      <DocCallout type="important">
-        Clinical Notes contain highly confidential patient information. Always double-check the recipient's email address before clicking send.
-      </DocCallout>
 
-
-      {/* SECTION 22.4 — Attachments */}
+      {/* SECTION 22.4 — Sending email directly modal */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        22.4 Automated Attachments
+        22.4 Sending Email Directly Modal
       </h3>
-      <p className="text-gray-700 font-body mb-6">How email attachments are formatted and named.</p>
+      <p className="text-gray-700 font-body mb-6">Dispatch clinical reports directly to the patient or external recipients via email.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            When you send a Clinical Note via email, the system automatically runs the PDF generator in the background. The resulting professional A4 document is seamlessly attached to the outgoing email.
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            To maintain administrative consistency, the system applies a standardized naming convention to the attachment (e.g., <code>clinical-note-[patient-name].pdf</code>). When the recipient opens the file, they receive the exact same high-quality report that a practitioner would print inside the clinic.
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Clicking the <strong>Email icon</strong> opens the <strong>Send Clinical Note via Email</strong> modal, allowing you to email the documentation instantly without leaving Malasakit:
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 22.8: Attachment preview. Highlight PDF filename. Caption: 'Every emailed Clinical Note includes a standardized PDF attachment.'" />
-          <ScreenshotPlaceholder label="Screenshot 22.9: Opened attachment. Highlight Complete PDF document. Caption: 'Recipients receive the same professional report that practitioners print inside the clinic.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 22.5: Attachment Flow. Caption: 'Email attachments preserve document consistency and formatting.'" />
+          <div className="space-y-4 mb-6">
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">1. Recipient Management (To *)</h5>
+              <p className="text-xs text-gray-700 leading-relaxed mb-2">
+                By default, the <strong>To *</strong> field is automatically pre-filled with the client/patient's registered email address (e.g. <code className="text-xs bg-gray-100 px-1 py-0.5 rounded text-gray-800">john.doe@gmail.com</code>).
+              </p>
+              <ul className="text-xs space-y-1 text-gray-600 list-disc pl-4">
+                <li>Press <em>Enter</em>, <em>Space</em>, or <em>comma</em> to add multiple recipients (such as referring doctors or family members).</li>
+                <li>Click the <strong>✕</strong> on any tag to remove an address.</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">2. Subject & Customizable Message</h5>
+              <div className="space-y-2 text-xs text-gray-700 font-body">
+                <div>
+                  <strong>Subject:</strong> Automatically formatted as <em>Clinical Note – [Date]</em> (e.g. <em>Clinical Note – Oct 17, 2026</em>), but completely editable.
+                </div>
+                <div>
+                  <strong>Customizable Message:</strong> Comes pre-populated with a polite template addressing the patient by name. Clinicians can freely edit the text to include personalized recovery advice, medication instructions, or follow-up reminders.
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">3. Automatic PDF Attachment & Sending</h5>
+              <p className="text-xs text-gray-700 leading-relaxed mb-2">
+                The clinical note is automatically compiled and attached as a standardized PDF document (e.g. <strong>ClinicalNote_John-Doe.pdf</strong> · 426.0 KB).
+              </p>
+              <p className="text-xs text-gray-600">
+                Click <strong>Send Email</strong> to securely dispatch the report. The patient will receive the email with the attached PDF in their inbox immediately.
+              </p>
+            </div>
+          </div>
+
+          <DocCallout type="warning">
+            Clinical notes contain sensitive medical information. Always verify recipient email addresses carefully before clicking <strong>Send Email</strong>.
+          </DocCallout>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot22_4}
+              alt="Screenshot 22.4: Sending email directly modal"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
         </div>
       </div>
 
-      <DocCallout type="warning">
-        Only send Clinical Notes to authorized recipients (such as the patient themselves or verified referring physicians). Unauthorized sharing of medical documents violates healthcare privacy regulations.
-      </DocCallout>
 
       {/* CHAPTER SUMMARY */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned how to properly export and share Clinical Notes. You should now understand:
+        In this chapter, you learned how to export, print, and email Clinical Notes in Malasakit PMS. You should now understand:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li>How to generate physical records using the <strong>Print</strong> functionality.</li>
-        <li>How to download notes as standardized <strong>PDFs</strong> for external specialist portals.</li>
-        <li>How to securely share documentation using the built-in <strong>Email Clinical Note</strong> feature.</li>
-        <li>Why all export methods share the exact same professional A4 clinical report layout.</li>
+        <li>How to <strong>navigate to the Clinical Note page</strong> and inspect consultation history.</li>
+        <li>Where to find the <strong>Print icon</strong> and <strong>Email icon</strong> on any clinical note header.</li>
+        <li>How to use <strong>Print Preview</strong> to print physical copies or <strong>Download PDF</strong> files.</li>
+        <li>How to use the <strong>Send Clinical Note via Email</strong> modal, manage recipients, customize messages, and dispatch automatic PDF attachments.</li>
       </ul>
     </>
   );

@@ -1,178 +1,315 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
-import { ScreenshotPlaceholder } from '../ScreenshotPlaceholder';
+
+import Screenshot18_1 from '@/assets/manual/Chapter 18/Screenshot 18.1.png';
+import Screenshot18_2 from '@/assets/manual/Chapter 18/Screenshot 18.2.png';
+import Screenshot18_3 from '@/assets/manual/Chapter 18/Screenshot 18.3.png';
+import Screenshot18_4 from '@/assets/manual/Chapter 18/Screenshot 18.4.png';
+import Screenshot18_5 from '@/assets/manual/Chapter 18/Screenshot 18.5.png';
+import Screenshot18_6 from '@/assets/manual/Chapter 18/Screenshot 18.6.png';
+import Screenshot18_7 from '@/assets/manual/Chapter 18/Screenshot 18.7.png';
 
 const Chapter18: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how to manage the lifecycle of an appointment, handle reschedules and cancellations, and accurately track patient attendance.
+        Learn how to manage existing appointments in Malasakit PMS through the Appointment View modal, including viewing and editing details, handling cancellations, and updating attendance and booking statuses.
       </p>
 
-      {/* IMPORTANT CONCEPT — Appointment Lifecycle */}
+      {/* QUICK OVERVIEW FLOW */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-4">The Appointment Lifecycle</h3>
-        
-        <p className="text-gray-700 font-body mb-4">
-          Creating an appointment is only the beginning. As patients confirm, arrive, complete their treatment, or fail to show up, the appointment must be updated to reflect its true state. This active management keeps the clinic schedule accurate while ensuring that Patient Cases, Occupancy statistics, Clinical Notes, and Invoices remain perfectly synchronized.
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Appointment Management Overview</h3>
+        <p className="text-gray-700 font-body mb-6">
+          Managing an appointment throughout its lifecycle involves seven key actions within the Appointment View interface:
         </p>
 
-        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] mb-6 text-center overflow-x-auto">
-          <p className="text-sm font-semibold text-gray-800 mb-2">Lifecycle Progression</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-[13px] text-gray-600 font-mono">
-            <span className="px-3 py-1.5 bg-amber-50 rounded border border-amber-200">Pending</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200">Confirmed</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 rounded border border-sky-200">Arrived</span>
-            <span className="text-sky-400">→</span>
-            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 font-bold rounded border border-emerald-200">Completed</span>
-          </div>
-          <div className="flex items-center justify-center gap-4 mt-2 text-[12px] text-gray-500 font-mono">
-            <span>Exceptions:</span>
-            <span className="px-2 py-1 bg-gray-50 rounded border border-gray-200">Rescheduled</span>
-            <span className="px-2 py-1 bg-gray-50 rounded border border-gray-200">Cancelled</span>
-            <span className="px-2 py-1 bg-red-50 text-red-700 rounded border border-red-200">DNA</span>
+        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Workflow Sequence</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">18.1 View Modal</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">18.2 Action Dropdown</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">18.3 View Details</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">18.4 Edit Details</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">18.5 Cancel Modal</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">18.6 Status Menu</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">18.7 Arrival Status</span>
           </div>
         </div>
-
-        <ScreenshotPlaceholder label="Diagram 18.1: Appointment Lifecycle. Caption: 'Appointments progress through different stages depending on patient attendance and clinic workflow.'" />
       </div>
 
 
-      {/* SECTION 18.1 — Appointment Status */}
+      {/* SECTION 18.1 — Appointment View Modal */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        18.1 Managing Status
+        18.1 Appointment View Modal
       </h3>
-      <p className="text-gray-700 font-body mb-6">Tracking the patient's journey through the clinic.</p>
+      <p className="text-gray-700 font-body mb-6">Open and inspect the centralized appointment dashboard.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Authorized clinic staff can update an appointment's status directly from the Appointment Details modal. Malasakit tracks two distinct layers of status to ensure accurate reporting:
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li><strong>Booking Status:</strong> Indicates the overall state of the booking (<em>Pending, Confirmed, Cancelled, Completed</em>).</li>
-            <li><strong>Arrival Status:</strong> Indicates the physical attendance of the patient on the day of the appointment (<em>No Status, Arrived, DNA</em>).</li>
-          </ul>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            When a status is updated, the Calendar immediately refreshes to reflect the change visually (e.g., changing colors or displaying checkmarks for Arrived patients).
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Clicking any booked appointment card on the <strong>Diary</strong> or <strong>Calendar</strong> opens the full <strong>Appointment View</strong> modal. This dashboard serves as the single source of truth for the consultation, displaying patient demographics, attendance flags, service details, and quick action shortcuts.
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 18.1: Appointment Details modal. Highlight Appointment status section. Caption: 'Appointment status reflects the patient's current stage within the clinical workflow.'" />
-          <ScreenshotPlaceholder label="Screenshot 18.2: Status selection menu. Highlight Available status options. Caption: 'Authorized users can update appointment status according to clinic workflow.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 18.2: Status Progression. Caption: 'Appointments progress through defined workflow stages during patient treatment.'" />
+          <ol className="list-decimal pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li>Locate the appointment on the Diary schedule.</li>
+            <li>Click the appointment card to open the <strong>Appointment View</strong> modal.</li>
+            <li>Review the patient header, appointment timing, and clinical status badges.</li>
+          </ol>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot18_1}
+              alt="Screenshot 18.1: Appointment View Modal"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+
+      {/* SECTION 18.2 — Display the Appointment Dropdown in the Appointment View modal */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        18.2 Display the Appointment Dropdown in the Appointment View Modal
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Access additional appointment management actions from the header menu.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            The action dropdown in the top header of the Appointment View modal provides fast access to operational commands:
+          </p>
+
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li><strong>Cancel Appointment:</strong> Open the cancellation flow with reason capture.</li>
+            <li><strong>Add Recurring Appointments:</strong> Launch the multi-week recurring appointment generator.</li>
+            <li><strong>Rebook Appointment:</strong> Duplicate appointment settings for a fast future follow-up.</li>
+          </ul>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot18_2}
+              alt="Screenshot 18.2: Display the Appointment Dropdown in the Appointment View modal"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+
+      {/* SECTION 18.3 — Appointment Details Display */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        18.3 Appointment Details Display
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Review complete consultation information, timing, and clinical assignments.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            The <strong>Appointment Details</strong> panel provides a comprehensive breakdown of all administrative and clinical parameters:
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">Clinical & Service Information</h5>
+              <ul className="text-xs space-y-1.5 text-gray-700 font-body">
+                <li><strong>Practitioner:</strong> Assigned healthcare provider.</li>
+                <li><strong>Service:</strong> Consultation or treatment type and duration.</li>
+                <li><strong>Assigned Case:</strong> Connected medical case and session progress.</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">Schedule & Location</h5>
+              <ul className="text-xs space-y-1.5 text-gray-700 font-body">
+                <li><strong>Date & Time:</strong> Appointment date, start time, and end time.</li>
+                <li><strong>Branch Location:</strong> Clinic branch where the consultation takes place.</li>
+                <li><strong>Notes:</strong> Internal booking remarks and chief complaints.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot18_3}
+              alt="Screenshot 18.3: Appointment Details Display"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+
+      {/* SECTION 18.4 — Edit Appointment Details Display */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        18.4 Edit Appointment Details Display
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Modify consultation parameters, services, or internal notes.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Authorized staff can update booking details whenever treatment plans or schedules change:
+          </p>
+
+          <ol className="list-decimal pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li>Click the <strong>Edit</strong> button within the appointment details view.</li>
+            <li>Modify the service type, practitioner, scheduled time, or case assignment.</li>
+            <li>Add or update internal appointment notes and symptoms.</li>
+            <li>Click <strong>Save Changes</strong> to instantly update the booking across the calendar.</li>
+          </ol>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot18_4}
+              alt="Screenshot 18.4: Edit Appointment Details Display"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+
+      {/* SECTION 18.5 — Cancel Appointment Modal, Entering Reason of cancellation, and Confirm */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        18.5 Cancel Appointment Modal, Entering Reason of Cancellation, and Confirm
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Safely remove appointments from the schedule while maintaining a clear audit trail.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            When a patient cancels a visit, use the cancellation workflow to immediately reopen the slot for other bookings:
+          </p>
+
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Select Cancel Appointment:</strong> Open the options dropdown in Appointment View and choose <strong>Cancel Appointment</strong>.
+            </li>
+            <li>
+              <strong>Cancel Appointment Modal Appears:</strong> The system opens the confirmation modal to prevent accidental cancellations.
+            </li>
+            <li>
+              <strong>Enter Cancellation Reason:</strong> Select or type the specific reason for cancellation (e.g., Patient Request, Sickness, Rescheduled, or Emergency).
+            </li>
+            <li>
+              <strong>Confirm Cancellation:</strong> Click <strong>Confirm Cancellation</strong>. The appointment is removed from the active calendar grid, and the slot becomes instantly available for new bookings while preserving the historical record in the patient's file.
+            </li>
+          </ol>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot18_5}
+              alt="Screenshot 18.5: Cancel Appointment Modal, Entering Reason of cancellation, and Confirm"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
         </div>
       </div>
 
       <DocCallout type="info">
-        Appointment status updates automatically synchronize with other areas of the system. For instance, only Completed or Confirmed appointments correctly reflect in historical Occupancy statistics and Patient Cases.
+        Cancelled appointments are never permanently deleted from patient history; they remain visible in the patient's case timeline for clinical governance and attendance tracking.
       </DocCallout>
 
 
-      {/* SECTION 18.2 — Reschedule */}
+      {/* SECTION 18.6 — Appointment View Modal displaying the Status menu */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        18.2 Rescheduling
+        18.6 Appointment View Modal Displaying the Status Menu
       </h3>
-      <p className="text-gray-700 font-body mb-6">Moving an appointment to a new date and time.</p>
+      <p className="text-gray-700 font-body mb-6">Update the primary booking lifecycle status.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            When a patient requests a different time slot, you should <strong>Reschedule</strong> the appointment rather than deleting and recreating it. Rescheduling preserves the appointment's history and ensures any linked clinical notes or prepayments remain attached.
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            To reschedule, open the Appointment Details, choose the Reschedule action, and select a new available date and time. Malasakit will perform the standard availability validation against the practitioner's Duty Hours before confirming the move.
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            The booking status dropdown controls the overall operational state of the appointment:
           </p>
 
-          <ScreenshotPlaceholder label="Screenshot 18.3: Appointment Details showing the Reschedule action. Highlight Reschedule option. Caption: 'Appointments can be moved to another available schedule.'" />
-          <ScreenshotPlaceholder label="Screenshot 18.4: Reschedule dialog. Highlight New date and time selection. Caption: 'Select a new available schedule before confirming the reschedule.'" />
-          <ScreenshotPlaceholder label="Screenshot 18.5: Calendar after rescheduling. Highlight Updated appointment location. Caption: 'The Calendar immediately reflects the rescheduled appointment.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 18.3: Reschedule Flow. Caption: 'Rescheduling preserves appointment history while updating the schedule.'" />
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li><strong>Pending:</strong> Tentative booking awaiting final patient confirmation.</li>
+            <li><strong>Confirmed:</strong> Patient has confirmed attendance.</li>
+            <li><strong>Completed:</strong> Treatment consultation has finished and is ready for billing.</li>
+            <li><strong>Cancelled:</strong> Appointment was cancelled prior to the session.</li>
+          </ul>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot18_6}
+              alt="Screenshot 18.6: Appointment View Modal displaying the Status menu"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+
+      {/* SECTION 18.7 — Arrival Status Dropdown */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        18.7 Arrival Status Dropdown
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Track real-time patient physical arrival and attendance at the clinic.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Front Desk staff update the <strong>Arrival Status</strong> as patients check in on the day of their appointment:
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50">
+              <h5 className="font-bold text-emerald-900 mb-1 text-sm flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                Arrived
+              </h5>
+              <p className="text-xs text-emerald-800 font-body">
+                Indicates the patient is in the waiting room. Instantly alerts the treating practitioner on their Diary view that the patient is ready.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl border border-red-200 bg-red-50/50">
+              <h5 className="font-bold text-red-900 mb-1 text-sm flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                DNA (Did Not Arrive)
+              </h5>
+              <p className="text-xs text-red-800 font-body">
+                Marks a no-show. The appointment card highlights in red on the calendar and logs the missed visit in the patient's attendance record.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 w-full flex justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-2">
+            <img
+              src={Screenshot18_7}
+              alt="Screenshot 18.7: Arrival Status Dropdown"
+              className="w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+            />
           </div>
         </div>
       </div>
 
       <DocCallout type="tip">
-        Always verify practitioner availability before confirming a rescheduled appointment, especially if moving the patient to a completely different week.
+        Keeping Arrival Status up-to-date ensures seamless communication between reception and practitioners without requiring intercom calls or physical walk-ins.
       </DocCallout>
 
-
-      {/* SECTION 18.3 — Cancellation */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        18.3 Cancellation
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Removing appointments from the active schedule.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Appointments may be cancelled when a consultation will no longer occur. To prevent accidental deletions, the system requires you to confirm the cancellation and provide a brief cancellation reason.
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Once cancelled, the appointment is removed from the active Calendar grid, immediately freeing up the practitioner's time slot for other patients. However, the cancelled record remains visible within the Patient Case to preserve a complete historical audit of the patient's activity.
-          </p>
-
-          <ScreenshotPlaceholder label="Screenshot 18.6: Appointment Details showing the Cancel Appointment action. Highlight Cancel button. Caption: 'Appointments may be cancelled when the consultation will no longer occur.'" />
-          <ScreenshotPlaceholder label="Screenshot 18.7: Cancellation confirmation dialog. Highlight Confirmation message. Caption: 'The system requests confirmation before permanently updating appointment status.'" />
-          <ScreenshotPlaceholder label="Screenshot 18.8: Calendar after cancellation. Highlight Updated calendar. Caption: 'Cancelled appointments are immediately reflected throughout the scheduling system.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 18.4: Cancellation Flow. Caption: 'Cancellation automatically updates all connected scheduling components.'" />
-          </div>
-        </div>
-      </div>
-
-      <DocCallout type="important">
-        Cancelled appointments remain part of the patient's historical activity in their Patient Case, ensuring front desk staff can review how often a patient cancels their bookings.
-      </DocCallout>
-
-
-      {/* SECTION 18.4 — DNA (Did Not Arrive) */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        18.4 Did Not Arrive (DNA)
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Handling no-shows and missed appointments.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            When a patient fails to attend a scheduled appointment without prior cancellation, the Arrival Status should be explicitly marked as <strong>DNA (Did Not Arrive)</strong>.
-          </p>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Marking an appointment as DNA is a critical administrative action. Visually, the Calendar overrides the appointment color to bright red, instantly alerting clinic staff to the missed visit. Behind the scenes, the system tracks this DNA status to power clinic reporting, calculate true practitioner utilization, and accurately build the patient's attendance history. 
-          </p>
-
-          <ScreenshotPlaceholder label="Screenshot 18.9: Appointment marked as DNA. Highlight DNA status. Caption: 'Appointments can be marked as Did Not Arrive when the patient misses the consultation.'" />
-          <ScreenshotPlaceholder label="Screenshot 18.10: Appointment Details showing Arrival Status. Highlight Attendance controls. Caption: 'Attendance status helps clinics accurately monitor patient visits.'" />
-          
-          <div className="mt-8">
-            <ScreenshotPlaceholder label="Diagram 18.5: DNA Tracking. Caption: 'DNA appointments remain part of the patient's appointment history while supporting clinic reporting.'" />
-          </div>
-        </div>
-      </div>
-
-      <DocCallout type="info">
-        Recording DNA appointments accurately is essential. It improves occupancy reporting and provides a clear audit trail for patients who chronically miss their scheduled treatments.
-      </DocCallout>
 
       {/* CHAPTER SUMMARY */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned how to manage the lifecycle of an appointment. You should now understand:
+        In this chapter, you learned how to manage existing appointments in Malasakit PMS:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li>The difference between <strong>Booking Status</strong> and <strong>Arrival Status</strong>.</li>
-        <li>How to safely <strong>Reschedule</strong> appointments while preserving linked clinical data.</li>
-        <li>How to <strong>Cancel</strong> appointments to free up calendar slots while preserving patient history.</li>
-        <li>Why marking missed appointments as <strong>DNA (Did Not Arrive)</strong> is critical for accurate clinic reporting.</li>
+        <li>Opening the centralized <strong>Appointment View Modal</strong> from the Diary.</li>
+        <li>Accessing options through the <strong>Appointment Dropdown</strong> menu.</li>
+        <li>Reviewing and editing consultation parameters via <strong>Appointment Details</strong>.</li>
+        <li>Cancelling bookings cleanly with required reasons using the <strong>Cancel Appointment Modal</strong>.</li>
+        <li>Updating the overall <strong>Booking Status</strong> (Pending, Confirmed, Completed).</li>
+        <li>Tracking real-time patient reception and no-shows using the <strong>Arrival Status Dropdown</strong> (Arrived, DNA).</li>
       </ul>
     </>
   );
