@@ -5,8 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { billingApi, type ClinicService } from '@/features/billing/billing.api';
 import { checkRecurringAvailability } from '../appointment.api';
 import type { Appointment } from '@/types';
-import { axiosInstance } from '@/lib/axios';
-import { ConfirmRecurringContinue } from './ConfirmRecurringContinue';
 
 interface Props {
   isOpen: boolean;
@@ -89,9 +87,6 @@ export const AddRecurringAppointments: React.FC<Props> = ({
   // Track whether slots are stale (form changed since last check)
   const [slotsStale, setSlotsStale] = useState(false);
 
-  const [showWarningModal, setShowWarningModal] = useState(false);
-  const [pendingRecurringData, setPendingRecurringData] = useState<RecurringAppointmentData | null>(null);
-  const [pendingSessionCounts, setPendingSessionCounts] = useState({ package: 0, existing: 0, new: 0 });
 
   // Fetch clinic services
   const { data: clinicServices = [], isLoading: loadingServices } = useQuery<ClinicService[]>({
@@ -264,32 +259,6 @@ export const AddRecurringAppointments: React.FC<Props> = ({
       patient_case:     appointment.patient_case,
       is_rebook:        true,
     };
-
-    if (appointment.patient_case) {
-      try {
-        const response = await axiosInstance.get(`/patient-cases/${appointment.patient_case}/`);
-        const ptCase = response.data;
-        const effectiveLimit = ptCase.approved_sessions;
-        const isUnlimited = ptCase.is_unlimited;
-
-        if (!isUnlimited && effectiveLimit !== null) {
-          const totalAfter = ptCase.completed_sessions + finalDates.length;
-          if (totalAfter > effectiveLimit) {
-            setPendingRecurringData(recurringData);
-            setPendingSessionCounts({
-              package: effectiveLimit,
-              existing: ptCase.completed_sessions,
-              new: finalDates.length,
-            });
-            setShowWarningModal(true);
-            setIsSaving(false);
-            return;
-          }
-        }
-      } catch (e) {
-        console.error('Failed to validate session limit:', e);
-      }
-    }
 
     executeSave(recurringData);
   };
@@ -722,23 +691,6 @@ export const AddRecurringAppointments: React.FC<Props> = ({
         </div>
       </div>
       </div>
-      <ConfirmRecurringContinue
-        isOpen={showWarningModal}
-        packageSessions={pendingSessionCounts.package}
-        existingSessions={pendingSessionCounts.existing}
-        newSessions={pendingSessionCounts.new}
-        onCancel={() => {
-          setShowWarningModal(false);
-          setPendingRecurringData(null);
-        }}
-        onContinue={() => {
-          setShowWarningModal(false);
-          if (pendingRecurringData) {
-            setIsSaving(true);
-            executeSave(pendingRecurringData);
-          }
-        }}
-      />
     </>
   );
 };

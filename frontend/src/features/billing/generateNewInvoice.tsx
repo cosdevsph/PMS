@@ -36,6 +36,9 @@ import { PMSInvoiceTemplate, type InvoiceClinicInfo, type NextAppointmentInfo } 
 import { PHILIPPINE_BANKS, requiresBankSelection } from '@/data/philippineBanks';
 import { getPatientCases, getCasePaymentSummary, type CasePaymentSummary } from '@/features/patients/patientCases.api';
 
+/** Must match COVERED_SUFFIX in backend/apps/patients/services/package_service.py. */
+const PRIVATE_PACKAGE_COVERED_SUFFIX = ' (Covered by Private Package Session)';
+
 interface EditableItem {
   id?: number;
   description: string;
@@ -232,6 +235,8 @@ export default function GenerateNewInvoice() {
     // For subsequent package appointments, we still add the item so the invoice isn't blank,
     // but we will force its price to 0 later before adding it to state.
     const isSubsequentPackage = appointment.is_covered_by_package && (appointment.package_invoices_count || 0) > 0;
+    // Explicitly assigned to a Private Package Session: no service charge (the server enforces this too).
+    const isPrivatePackageCovered = !!appointment.private_package_id;
 
     // First try to match by exact service ID if available
     let matchedService = undefined;
@@ -248,6 +253,15 @@ export default function GenerateNewInvoice() {
     }
 
     const description = matchedService?.name || appointment.service_name || appointment.appointment_type || '';
+
+    if (isPrivatePackageCovered) {
+      setItems([{
+        description: `${description}${PRIVATE_PACKAGE_COVERED_SUFFIX}`,
+        quantity: 1,
+        unit_price: 0,
+      }]);
+      return;
+    }
 
     setItems([{
       description: isSubsequentPackage ? `${description} (Covered by Package)` : description,
@@ -777,7 +791,9 @@ export default function GenerateNewInvoice() {
                             onChange={(e) => handleUpdateItem(index, 'unit_price', Number(e.target.value))}
                             min="0"
                             step="0.01"
-                            className="w-full px-2 py-2 text-sm bg-gray-100 rounded border-none focus:ring-1 focus:ring-sky-500 text-center"
+                            disabled={item.description.endsWith(PRIVATE_PACKAGE_COVERED_SUFFIX)}
+                            title={item.description.endsWith(PRIVATE_PACKAGE_COVERED_SUFFIX) ? 'Covered by a Private Package Session' : undefined}
+                            className="w-full px-2 py-2 text-sm bg-gray-100 rounded border-none focus:ring-1 focus:ring-sky-500 text-center disabled:opacity-60 disabled:cursor-not-allowed"
                           />
                         </td>
                         <td className="py-2 px-2 w-[15%] align-top">

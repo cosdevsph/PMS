@@ -22,13 +22,8 @@ export interface Appointment {
   patient_case: number | null;
   patient_case_title?: string | null;
   patient_case_payer?: string | null;
-  case_remaining_sessions: number | null;
-  case_is_unlimited: boolean;
   case_session_number?: number | null;
-  case_approved_sessions?: number | null;
-  effective_session_limit?: number | null;
   session_limit_source?: 'CASE' | 'PACKAGE' | null;
-  session_display?: string | null;
   package_invoices_count?: number;
 
   status: 'SCHEDULED' | 'CONFIRMED' | 'CHECKED_IN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' | 'ARRIVED' | 'DNA';
@@ -45,6 +40,9 @@ export interface Appointment {
   reminder_sent_at: string | null;
   has_invoice:      boolean; // Whether this appointment has an invoice
   is_covered_by_package?: boolean;
+  /** Private Package Session this appointment is assigned to, if any (explicit assignment only). */
+  private_package_id?: number | null;
+  private_package_title?: string | null;
   package_invoice_id?: number | null;
   confirmation_sent?: boolean;
   confirmation_sent_at?: string | null;

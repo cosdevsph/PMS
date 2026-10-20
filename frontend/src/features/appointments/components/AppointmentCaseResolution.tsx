@@ -81,10 +81,6 @@ export const AppointmentCaseResolution: React.FC = () => {
         primary_practitioner_name: data.primaryPractitionerName || undefined,
         payer: data.payer || undefined,
         alert_notes: data.alertNotes || undefined,
-        approved_sessions: data.approvedSessions,
-        is_unlimited: data.isUnlimited,
-        session_source: data.sessionSource,
-        package_cost: data.packageCost,
         referred_by: data.referredBy || undefined,
         referral_info: data.referralInfo || undefined,
       });

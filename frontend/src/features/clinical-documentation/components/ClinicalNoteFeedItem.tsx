@@ -316,7 +316,7 @@ export const ClinicalNoteFeedItem: React.FC<ClinicalNoteFeedItemProps> = ({
                       {formatDate(appt.date)} — {formatTime(appt.start_time)} — {appt.service_name}
                       {appt.case_session_number && (
                         <span className="text-[10px] 2xl:text-xs font-semibold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded-md ml-2 border border-sky-200 inline-block">
-                          {appt.case_session_number}{appt.case_approved_sessions ? `/${appt.case_approved_sessions}` : ''} Session
+                          Session {appt.case_session_number}
                         </span>
                       )}
                     </>

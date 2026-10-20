@@ -18,10 +18,6 @@ import type { BlockAppointment, Appointment } from '@/types';
 import type { PractitionerAvailability } from '@/features/clinics/clinic.api';
 import { useRebookMode } from './hooks/useRebookMode';
 import { createAppointment } from './appointment.api';
-import { useSessionLimitValidation } from './hooks/useSessionLimitValidation';
-import { SessionAllocationLimitModal } from './components/SessionAllocationLimitModal';
-import { CaseModal } from '@/features/patients/CaseModal';
-import { updatePatientCase } from '@/features/patients/patientCases.api';
 import type { CreateAppointmentData } from '@/types';
 import toast from 'react-hot-toast';
 import { PRACTITIONER_REMOVED_EVENT, PRACTITIONER_UPDATED_EVENT } from '@/events/practitionerEvents';
@@ -47,18 +43,6 @@ export const Diary: React.FC = () => {
   // Guard against rapid double-clicks creating duplicate appointments
   const isRebooking = useRef(false);
 
-  const {
-    validateAndProceed,
-    isLimitModalOpen,
-    closeLimitModal,
-    handleAddSessions,
-    caseDetails,
-    pendingCallback,
-    clearPendingCallback,
-    editCaseOpen,
-    setEditCaseOpen,
-    handleEditCaseClose
-  } = useSessionLimitValidation();
   // Visible loading state while the API request is in-flight
   const [isRebookingInProgress, setIsRebookingInProgress] = useState(false);
   const [showRebookContinueModal, setShowRebookContinueModal] = useState(false);
@@ -784,13 +768,7 @@ export const Diary: React.FC = () => {
         setIsRebookingInProgress(false);
       }
     };
-    validateAndProceed(
-      rebookData.patient_case,
-      () => {
-        proceedWithRebooking();
-      },
-      rebookData.service
-    );
+    proceedWithRebooking();
   };
 
   // ── Effective Practitioner ID for Week View ──────────────────────────────────
@@ -1513,54 +1491,6 @@ export const Diary: React.FC = () => {
           onClose={() => {
             setShowRebookContinueModal(false);
             exitRebook();
-          }}
-        />
-      )}
-      {/* Modals for Session Validation */}
-      <SessionAllocationLimitModal
-        isOpen={isLimitModalOpen}
-        onClose={closeLimitModal}
-        patientCase={caseDetails}
-        onAddSessions={handleAddSessions}
-      />
-      {editCaseOpen && caseDetails && (
-        <CaseModal
-          isOpen={editCaseOpen}
-          onClose={() => {
-            setEditCaseOpen(false);
-            handleEditCaseClose();
-          }}
-          mode="edit"
-          initialValues={caseDetails}
-          autoFocusField="approved_sessions"
-          practitioners={practitioners}
-          loadingPractitioners={loadingPractitioners}
-          onSave={async (updatedData) => {
-            try {
-              const payload = {
-                title: updatedData.title,
-                status: updatedData.status,
-                primary_practitioner: updatedData.primaryPractitionerId ? Number(updatedData.primaryPractitionerId) : undefined,
-                payer: updatedData.payer,
-                alert_notes: updatedData.alertNotes,
-                session_source: updatedData.sessionSource,
-                approved_sessions: updatedData.approvedSessions,
-                is_unlimited: updatedData.isUnlimited,
-                referred_by: updatedData.referredBy,
-                referral_info: updatedData.referralInfo,
-                description: updatedData.description,
-              };
-              await updatePatientCase(caseDetails.id, payload);
-              toast.success('Case updated successfully!');
-              setEditCaseOpen(false);
-
-              if (pendingCallback) {
-                pendingCallback();
-                clearPendingCallback();
-              }
-            } catch (err: any) {
-              toast.error(err.response?.data?.detail || 'Failed to update case');
-            }
           }}
         />
       )}

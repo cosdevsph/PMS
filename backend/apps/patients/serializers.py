@@ -146,6 +146,22 @@ class PortalServiceSerializer(serializers.ModelSerializer):
         return None
 
 
+def public_portal_services(main_clinic):
+    """
+    Services a clinic exposes for public online booking.
+    Single source of truth for the portal listing, the practitioner service
+    list and booking validation, so a service hidden in one place can't be
+    booked through another.
+    """
+    return ClinicService.objects.filter(
+        clinic=main_clinic,
+        is_active=True,
+        show_in_portal=True,
+        is_deleted=False,
+        is_package=False,
+    )
+
+
 class PortalPractitionerSerializer(serializers.Serializer):
     """
     Serializes practitioner data for the public portal response.
@@ -214,10 +230,12 @@ class PortalPractitionerSerializer(serializers.Serializer):
         return obj.availability
 
     def get_services(self, obj):
-        """Return list of services assigned to this practitioner."""
+        """Return list of publicly bookable services assigned to this practitioner."""
         return [
             {'id': svc.id, 'name': svc.name}
-            for svc in getattr(obj, 'prefetched_services', obj.services.filter(is_deleted=False, is_active=True))
+            for svc in getattr(obj, 'prefetched_services', obj.services.filter(
+                is_deleted=False, is_active=True, show_in_portal=True, is_package=False,
+            ))
         ]
 
 
@@ -321,13 +339,7 @@ class PortalLinkPublicSerializer(serializers.ModelSerializer):
         # The clinic context is now the specific branch. Wait, services might be assigned 
         # to the main clinic. Let's use obj.clinic.main_clinic for services if they are shared.
         main_clinic = obj.clinic.main_clinic
-        services = ClinicService.objects.filter(
-            clinic=main_clinic,
-            is_active=True,
-            show_in_portal=True,
-            is_deleted=False,
-            is_package=False,
-        ).order_by('discipline', 'name')
+        services = public_portal_services(main_clinic).order_by('discipline', 'name')
 
         if not services.exists():
             return []
@@ -389,7 +401,9 @@ class PortalLinkPublicSerializer(serializers.ModelSerializer):
             if 'PRACTITIONER' in p.user.get_effective_roles()
         ]
         for p in practitioners_list:
-            p.prefetched_services = list(p.services.filter(is_deleted=False, is_active=True))
+            p.prefetched_services = list(p.services.filter(
+                is_deleted=False, is_active=True, show_in_portal=True, is_package=False,
+            ))
 
         serialized = PortalPractitionerSerializer(
             practitioners_list,
@@ -469,10 +483,14 @@ class PortalBookingCreateSerializer(serializers.ModelSerializer):
             # Force the branch to match the portal's clinic context
             attrs['branch'] = portal_link.clinic
 
-            if attrs.get('service'):
-                # Service must be available at this clinic
-                pass
-        
+            service = attrs.get('service')
+            if service and not public_portal_services(
+                portal_link.clinic.main_clinic
+            ).filter(pk=service.pk).exists():
+                raise serializers.ValidationError(
+                    {'service': 'This service is not available for online booking.'}
+                )
+
         # Minor validation
         is_returning = self.context.get('is_returning_patient', False)
         if not is_returning and attrs.get('patient_date_of_birth'):
@@ -783,57 +801,32 @@ class PatientCaseSerializer(serializers.ModelSerializer):
             'package_invoice', 'package_cost', 'amount_paid',
             'outstanding_balance', 'package_status', 'is_archived'
         ]
+        # Case session limits and Case-level packages were retired (prepaid sessions now live in
+        # Private Package Sessions). The old columns are kept as history and are read-only here.
         read_only_fields = [
-            'id', 'created_at', 'updated_at', 'completed_sessions', 
+            'id', 'created_at', 'updated_at', 'completed_sessions',
             'remaining_sessions', 'progress_text', 'allocation_status',
             'effective_session_limit', 'session_limit_source',
+            'approved_sessions', 'is_unlimited', 'session_source',
+            'package_invoice', 'package_cost', 'amount_paid',
             'outstanding_balance', 'package_status', 'is_archived'
         ]
 
-    def validate_approved_sessions(self, value):
-        if self.instance and value is not None:
-            if value < self.instance.completed_sessions:
-                raise serializers.ValidationError(
-                    f"Approved sessions ({value}) cannot be less than completed sessions ({self.instance.completed_sessions})."
-                )
-        return value
-
-    def _get_stats(self, obj):
-        if not hasattr(obj, '_session_stats'):
-            from apps.patients.services.session_engine import SessionEngine
-            latest_apt = obj.case_appointments.order_by('-created_at').first()
-            service = latest_apt.service if latest_apt else None
-            obj._session_stats = SessionEngine.get_session_stats(obj, service=service)
-        return obj._session_stats
-
+    # Retired limit fields keep their names so existing clients do not break, but no longer carry a limit.
     def get_remaining_sessions(self, obj) -> int | None:
-        return self._get_stats(obj).get('remaining_sessions')
+        return None
 
     def get_progress_text(self, obj) -> str:
-        return self._get_stats(obj).get('progress_text', '')
+        return ''
 
     def get_allocation_status(self, obj) -> str:
-        return self._get_stats(obj).get('allocation_status', 'ACTIVE')
+        return 'ACTIVE'
 
     def get_effective_session_limit(self, obj) -> int | None:
-        return self._get_stats(obj).get('approved_sessions')
+        return None
 
     def get_session_limit_source(self, obj) -> str:
-        return self._get_stats(obj).get('allocation_source', 'MANUAL')
-
-    def validate(self, attrs):
-        approved = attrs.get('approved_sessions', getattr(self.instance, 'approved_sessions', None) if self.instance else None)
-        
-        if approved is not None and approved < 0:
-            raise serializers.ValidationError({'approved_sessions': 'Approved sessions cannot be negative.'})
-            
-        if self.instance and approved is not None:
-            completed = self.instance.completed_sessions
-            if approved < completed:
-                raise serializers.ValidationError(
-                    {'approved_sessions': f'Cannot reduce approved sessions below completed sessions ({completed}).'}
-                )
-        return attrs
+        return obj.session_source
 
     def get_primary_practitioner_name(self, obj) -> str | None:
         if obj.primary_practitioner and obj.primary_practitioner.user:

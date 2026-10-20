@@ -286,6 +286,7 @@ export function MergePatientsModal({ isOpen, onClose, initialPrimaryPatient, onM
                     <StatCard label="Appointments" count={previewData.appointments} />
                     <StatCard label="Clinical Notes" count={previewData.clinical_notes} />
                     <StatCard label="Invoices" count={previewData.invoices} />
+                    <StatCard label="Private Packages" count={previewData.private_packages ?? 0} />
                     <StatCard label="Documents" count={previewData.attachments} />
                     <StatCard label="Letters" count={previewData.letters} />
                   </div>

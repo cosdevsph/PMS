@@ -3,7 +3,6 @@ from django.utils import timezone
 from apps.patients.models import Patient
 from apps.clinics.models import Practitioner
 from apps.records.models import ClinicalNote
-from apps.patients.services.session_engine import SessionEngine
 
 class LetterGeneratorService:
     """
@@ -57,11 +56,11 @@ class LetterGeneratorService:
         '{{case.notes}}': lambda p, pr, n, c, a, l: c.description if c else '',
         
         # Case -> Sessions
-        '{{case.sessions.approved_sessions}}': lambda p, pr, n, c, a, l: str(c.approved_sessions) if c and c.approved_sessions is not None else '',
-        '{{case.sessions.package_sessions}}': lambda p, pr, n, c, a, l: str(a.service.session_allocation) if a and getattr(a, 'service', None) and getattr(a.service, 'is_package', False) and getattr(a.service, 'session_allocation', None) is not None else '',
-        '{{case.sessions.sessions_used}}': lambda p, pr, n, c, a, l: str(c.completed_sessions) if c else '',
-        '{{case.sessions.sessions_remaining}}': lambda p, pr, n, c, a, l: str(SessionEngine.get_session_stats(c, getattr(a, 'service', None)).get('remaining_sessions', '')) if c and SessionEngine.get_session_stats(c, getattr(a, 'service', None)).get('remaining_sessions') is not None else '',
-        '{{case.sessions.session_allocation}}': lambda p, pr, n, c, a, l: str(SessionEngine.get_session_stats(c, getattr(a, 'service', None)).get('approved_sessions', '')) if c and SessionEngine.get_session_stats(c, getattr(a, 'service', None)).get('approved_sessions') is not None else '',
+        '{{case.sessions.approved_sessions}}': lambda p, pr, n, c, a, l: '',  # retired: Case session limits
+        '{{case.sessions.package_sessions}}': lambda p, pr, n, c, a, l: '',  # retired: Case session limits
+        '{{case.sessions.sessions_used}}': lambda p, pr, n, c, a, l: '',  # retired: Case session limits
+        '{{case.sessions.sessions_remaining}}': lambda p, pr, n, c, a, l: '',  # retired: Case session limits
+        '{{case.sessions.session_allocation}}': lambda p, pr, n, c, a, l: '',  # retired: Case session limits
         
         # Case -> Referral
         '{{case.referral.doctor}}': lambda p, pr, n, c, a, l: c.referred_by if c else '',

@@ -38,6 +38,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
     has_invoice = serializers.SerializerMethodField()
     is_covered_by_package = serializers.SerializerMethodField()
     package_invoice_id = serializers.SerializerMethodField()
+    private_package_id = serializers.SerializerMethodField()
+    private_package_title = serializers.SerializerMethodField()
     
     patient_case = serializers.PrimaryKeyRelatedField(
         queryset=PatientCase.objects.all(), required=False, allow_null=True
@@ -66,6 +68,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'date', 'start_time', 'end_time', 'duration_minutes',
             'chief_complaint', 'notes', 'patient_notes',
             'reminder_sent', 'reminder_sent_at', 'has_invoice', 'is_covered_by_package', 'package_invoice_id',
+            'private_package_id', 'private_package_title',
             'confirmation_sent', 'confirmation_sent_at', 'confirmation_status',
             'patient_reply', 'patient_reply_at', 'is_responded', 'response_value',
             'dna_followup_sent', 'dna_followup_sent_at',
@@ -81,6 +84,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'id', 'branch_id', 'clinic_name', 'patient_name', 'practitioner_name', 'practitioner_avatar', 'location_name',
             'service_name', 'service_color', 'service_duration',
             'created_by_name', 'updated_by_name', 'has_invoice', 'is_covered_by_package', 'package_invoice_id',
+            'private_package_id', 'private_package_title',
             'patient_case_title', 'patient_case_payer',
             'case_remaining_sessions', 'case_is_unlimited', 'package_invoices_count', 'case_session_number', 'case_approved_sessions',
             'effective_session_limit', 'session_limit_source', 'session_display',
@@ -95,6 +99,19 @@ class AppointmentSerializer(serializers.ModelSerializer):
             return True
         return obj.session_logs.filter(action='USED').exists()
         
+    def _private_package(self, obj):
+        # Reverse one-to-one: missing row raises an AttributeError subclass, so getattr's default applies.
+        usage = getattr(obj, 'private_package_usage', None)
+        return usage.item.package if usage else None
+
+    def get_private_package_id(self, obj) -> int | None:
+        package = self._private_package(obj)
+        return package.id if package else None
+
+    def get_private_package_title(self, obj) -> str | None:
+        package = self._private_package(obj)
+        return package.title if package else None
+
     def get_package_invoice_id(self, obj) -> int | None:
         if obj.patient_case_id and obj.patient_case.session_source == 'PACKAGE':
             return obj.patient_case.package_invoice_id
@@ -152,42 +169,27 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 obj._cached_session_stats = {}
         return obj._cached_session_stats
 
+    # ── Retired: Case session limits ──────────────────────────────────────────
+    # Session limits on Cases were retired (prepaid sessions now live in Private
+    # Package Sessions). These fields keep their names so existing clients do not
+    # break, but they no longer carry a limit. `session_limit_source` is kept
+    # because the legacy package-Case invoice screen still reads it.
     def get_case_approved_sessions(self, obj) -> int | None:
-        stats = self._get_session_stats(obj)
-        return stats.get('approved_sessions')
+        return None
 
     def get_effective_session_limit(self, obj) -> int | None:
-        stats = self._get_session_stats(obj)
-        return stats.get('approved_sessions')
+        return None
 
     def get_session_limit_source(self, obj) -> str | None:
-        stats = self._get_session_stats(obj)
-        return stats.get('allocation_source')
+        return self._get_session_stats(obj).get('allocation_source')
 
     def get_case_remaining_sessions(self, obj) -> int | None:
-        stats = self._get_session_stats(obj)
-        return stats.get('remaining_sessions')
+        return None
 
     def get_case_is_unlimited(self, obj) -> bool:
-        stats = self._get_session_stats(obj)
-        return stats.get('is_unlimited', False)
+        return False
 
     def get_session_display(self, obj) -> str | None:
-        if not obj.patient_case_id:
-            return None
-        
-        stats = self._get_session_stats(obj)
-        if stats.get('is_unlimited'):
-            return "∞ Sessions"
-            
-        session_num = self.get_case_session_number(obj)
-        effective_limit = stats.get('approved_sessions')
-        
-        if session_num is not None and effective_limit is not None:
-            return f"{session_num}/{effective_limit} Sessions"
-        elif session_num is not None:
-            return f"{session_num} Sessions"
-            
         return None
 
     def get_practitioner_avatar(self, obj) -> str | None:
@@ -269,24 +271,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
             patient = data.get('patient')
             if patient and patient_case and patient_case.patient_id != patient.id:
                 raise serializers.ValidationError({"patient_case": "The selected case does not belong to the selected patient."})
-
-        # ── Session Allocation Hard Limit Validation ──────────────────────────
-        patient_case = data.get('patient_case') or (self.instance.patient_case if self.instance else None)
-        if patient_case:
-            is_new = self.instance is None
-            case_changed = self.instance and self.instance.patient_case != patient_case
-            
-            if is_new or case_changed:
-                from apps.patients.services.session_engine import SessionEngine
-                service = data.get('service') or (self.instance.service if self.instance else None)
-                stats = SessionEngine.get_session_stats(patient_case, service=service)
-                
-                if not stats.get('is_unlimited') and stats.get('approved_sessions') is not None:
-                    remaining = stats.get('remaining_sessions')
-                    if remaining is not None and remaining <= 0:
-                        raise serializers.ValidationError({
-                            'detail': 'This case has reached its effective session allocation.'
-                        })
 
         # ── Practitioner Availability & Duty End Time Validation ──────────────
         appt_date = data.get('date') or (self.instance.date if self.instance else None)

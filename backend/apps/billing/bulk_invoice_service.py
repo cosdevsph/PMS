@@ -55,6 +55,10 @@ def _build_appointment_qs(params: dict, target_ids: list[int]):
     if params.get('skip_existing', True):
         qs = qs.filter(billing_invoices__isnull=True)
 
+    # Appointments assigned to a Private Package Session are already paid for by
+    # the package invoice, so bulk invoicing must never bill them again.
+    qs = qs.filter(private_package_usage__isnull=True)
+
     return qs
 
 

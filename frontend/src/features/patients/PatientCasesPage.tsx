@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderKanban, Plus, Clock, FileText, CheckCircle, Search } from 'lucide-react';
+import { FolderKanban, Plus, FileText, CheckCircle, Search } from 'lucide-react';
 import { usePatientProfileContext } from './context/PatientProfileContext';
 import { CaseModal } from './CaseModal';
 import type { PatientCaseStatus } from '@/types/patient';
@@ -191,34 +191,6 @@ export const PatientCasesPage = () => {
                     <span>Practitioner: <strong>{c.primary_practitioner_name || 'Unassigned'}</strong></span>
                   </div>
                   
-                  <div className="flex flex-col gap-1 mt-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                        <Clock className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="font-medium">{c.progress_text}</span>
-                      </div>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                        c.allocation_status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' :
-                        c.allocation_status === 'EXHAUSTED' ? 'bg-red-100 text-red-700' :
-                        'bg-sky-100 text-sky-700'
-                      }`}>
-                        {c.allocation_status}
-                      </span>
-                    </div>
-                    {!c.is_unlimited && (c.effective_session_limit || c.approved_sessions) && (
-                      <div className="w-full bg-gray-100 rounded-full h-1 mt-0.5 overflow-hidden">
-                        <div 
-                          className={`h-1 rounded-full transition-all ${
-                            (c.remaining_sessions || 0) === 0 ? 'bg-red-500' : 
-                            (c.remaining_sessions || 0) <= 2 ? 'bg-amber-500' : 
-                            'bg-emerald-500'
-                          }`}
-                          style={{ width: `${Math.min(100, (c.completed_sessions / (c.effective_session_limit || c.approved_sessions || 1)) * 100)}%` }}
-                        ></div>
-                      </div>
-                    )}
-                  </div>
-
                   <div className="flex items-center justify-between gap-2 text-xs text-gray-600 mt-2">
                     <div className="flex items-center gap-2">
                       <FileText className="w-3.5 h-3.5 text-gray-400" />
@@ -298,10 +270,6 @@ export const PatientCasesPage = () => {
               alert_notes: data.alertNotes,
               referred_by: data.referredBy,
               referral_info: data.referralInfo,
-              session_source: data.sessionSource,
-              approved_sessions: data.isUnlimited ? undefined : data.approvedSessions || undefined,
-              is_unlimited: data.isUnlimited,
-              package_cost: data.packageCost,
             });
             await refreshCases();
             setIsCreateCaseOpen(false);
@@ -332,17 +300,13 @@ export const PatientCasesPage = () => {
               alert_notes: data.alertNotes,
               referred_by: data.referredBy,
               referral_info: data.referralInfo,
-              session_source: data.sessionSource,
-              approved_sessions: data.isUnlimited ? undefined : data.approvedSessions || undefined,
-              is_unlimited: data.isUnlimited,
-              package_cost: data.packageCost,
             });
             await refreshCases();
             setIsEditCaseOpen(false);
             setCaseToEdit(null);
             toast.success('Case updated successfully');
-          } catch (error: any) {
-            toast.error(error.response?.data?.approved_sessions?.[0] || 'Failed to update case');
+          } catch {
+            toast.error('Failed to update case');
           }
         }}
         practitioners={practitioners}

@@ -552,14 +552,6 @@ const CaseDropdown = ({ insertVariable }: { insertVariable: (id: string, label: 
     { label: 'Notes', value: '{{case.notes}}' },
   ];
 
-  const sessionItems = [
-    { label: 'Approved Sessions', value: '{{case.sessions.approved_sessions}}' },
-    { label: 'Package Sessions', value: '{{case.sessions.package_sessions}}' },
-    { label: 'Sessions Used', value: '{{case.sessions.sessions_used}}' },
-    { label: 'Sessions Remaining', value: '{{case.sessions.sessions_remaining}}' },
-    { label: 'Session Allocation', value: '{{case.sessions.session_allocation}}' },
-  ];
-
   const referralItems = [
     { label: 'Doctor', value: '{{case.referral.doctor}}' },
     { label: 'Referral Date', value: '{{case.referral.date}}' },
@@ -600,36 +592,6 @@ const CaseDropdown = ({ insertVariable }: { insertVariable: (id: string, label: 
             {activeSubMenu === 'case' && (
               <div className="absolute left-full top-0 mt-0 ml-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg focus:outline-none py-1">
                 {caseItems.map((v) => (
-                  <Menu.Item key={v.value}>
-                    {({ active }) => (
-                      <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => insertVariable(v.value, v.label)}
-                        className={`w-full text-left px-4 py-2 text-sm ${active ? 'bg-sky-50 text-sky-700' : 'text-gray-700'}`}
-                      >
-                        {v.label}
-                      </button>
-                    )}
-                  </Menu.Item>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Sessions Submenu */}
-          <div
-            className="relative"
-            onMouseEnter={() => handleMouseEnter('sessions')}
-            onMouseLeave={handleMouseLeave}
-          >
-            <div className="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-sky-50 cursor-default">
-              Sessions
-              <span className="text-gray-400">&gt;</span>
-            </div>
-            {activeSubMenu === 'sessions' && (
-              <div className="absolute left-full top-0 mt-0 ml-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg focus:outline-none py-1">
-                {sessionItems.map((v) => (
                   <Menu.Item key={v.value}>
                     {({ active }) => (
                       <button

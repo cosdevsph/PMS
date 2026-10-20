@@ -63,6 +63,7 @@ import PatientProfileLayout from '@/features/patients/PatientProfileLayout';
 import PatientProfilePage from '@/features/patients/PatientProfilePage';
 import { PatientAppointmentsPage } from '@/features/patients/PatientAppointmentsPage';
 import PatientInvoicesPage from '@/features/patients/pages/PatientInvoicesPage';
+import PatientPrivatePackagesPage from '@/features/patients/pages/PatientPrivatePackagesPage';
 import PatientCasesPage from '@/features/patients/PatientCasesPage';
 import ClinicalDocumentationWorkspace from '@/features/clinical-documentation/ClinicalDocumentationWorkspace';
 import { PatientDocumentsPage } from '@/features/patients/PatientDocumentsPage';
@@ -317,6 +318,7 @@ function App() {
             <Route path="cases/:caseId/clinical-documentation/*" element={<ClinicalDocumentationWorkspace />} />
             <Route path="cases/:caseId" element={<Navigate to="clinical-documentation" replace />} />
             <Route path="invoices" element={<PatientInvoicesPage />} />
+            <Route path="private-packages" element={<PatientPrivatePackagesPage />} />
             <Route path="notes" element={<Navigate to="../clinical/notes" replace />} />
             <Route path="documents" element={<PatientDocumentsPage />} />
             <Route path="communications" element={<PatientCommunicationHistoryPage />} />

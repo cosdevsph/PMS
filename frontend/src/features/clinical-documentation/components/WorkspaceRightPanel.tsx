@@ -13,7 +13,7 @@ import type { ClinicalNote, ClinicalTemplate } from '@/types/clinicalTemplate';
 import type { Appointment } from '@/types';
 
 export const WorkspaceRightPanel = () => {
-  const { patient, cases, refreshCases } = usePatientProfileContext();
+  const { patient, refreshCases } = usePatientProfileContext();
   const { selectedCaseId, refreshTrigger, triggerRefresh, setEditorContext, activeRightTab, setActiveRightTab } = useClinicalWorkspace();
 
   const [notes, setNotes] = useState<ClinicalNote[]>([]);
@@ -150,21 +150,7 @@ export const WorkspaceRightPanel = () => {
             ) : (
               <>
                 <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center">
-                    {(() => {
-                      const currentCase = cases.find(c => c.id === selectedCaseId);
-                      if (currentCase && (currentCase.approved_sessions !== null || currentCase.completed_sessions > 0)) {
-                        return (
-                          <span className="text-xs 2xl:text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-md border border-slate-200">
-                            {currentCase.is_unlimited || !currentCase.approved_sessions
-                              ? `${currentCase.completed_sessions} Session${currentCase.completed_sessions !== 1 ? 's' : ''}`
-                              : `${currentCase.completed_sessions} out of ${currentCase.approved_sessions} Sessions`}
-                          </span>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
+                  <div />
                   <div className="flex justify-end gap-2">
                     <button
                     onClick={() => setExpandedNoteIds(new Set(notes.map(n => n.id)))}

@@ -10,7 +10,8 @@ from apps.patients.models import (
     PatientConsent, 
     PatientConsentDocument, 
     ClientFormRequest,
-    PatientMergeLog
+    PatientMergeLog,
+    PrivatePackageSession,
 )
 from apps.appointments.models import Appointment, RebookingLink
 from apps.records.models import ClinicalNote as RecordsClinicalNote, OutcomeMeasure, Attachment, CaseDocument
@@ -44,6 +45,7 @@ class PatientMergeService:
             "appointments": Appointment.objects.filter(patient=duplicate).count(),
             "clinical_notes": RecordsClinicalNote.objects.filter(patient=duplicate).count() + TemplatesClinicalNote.objects.filter(patient=duplicate).count(),
             "invoices": Invoice.objects.filter(patient=duplicate).count(),
+            "private_packages": PrivatePackageSession.objects.filter(patient=duplicate).count(),
             "attachments": Attachment.objects.filter(patient=duplicate).count() + CaseDocument.objects.filter(patient=duplicate).count(),
             "letters": Letter.objects.filter(patient=duplicate).count(),
             "communications": CommunicationLog.objects.filter(patient=duplicate).count(),
@@ -79,6 +81,7 @@ class PatientMergeService:
         transferred['patient_consents'] = cls._transfer(PatientConsent, duplicate, primary)
         transferred['patient_consent_documents'] = cls._transfer(PatientConsentDocument, duplicate, primary)
         transferred['client_form_requests'] = cls._transfer(ClientFormRequest, duplicate, primary)
+        transferred['private_package_sessions'] = cls._transfer(PrivatePackageSession, duplicate, primary)
 
         # 2. Appointments App
         transferred['appointments'] = cls._transfer(Appointment, duplicate, primary)

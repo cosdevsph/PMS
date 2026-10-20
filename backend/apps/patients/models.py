@@ -894,3 +894,225 @@ class PatientMergeLog(TimeStampedModel):
             raise ValueError("PatientMergeLog entries are immutable and cannot be modified.")
             
         super().save(*args, **kwargs)
+
+
+# ─── Private Package Sessions ─────────────────────────────────────────────────
+# A prepaid package agreed onsite between a practitioner and a patient. It
+# belongs to the patient (not to a Case) and lists clinic services with a
+# quantity each. One session = one appointment. Remaining sessions are always
+# computed from the usage rows, never stored. See
+# docs/development/features/private-package-sessions.md.
+
+def _counted_usages(usages):
+    """
+    Usages that currently consume a session: the appointment still exists and
+    is not cancelled. A cancelled or deleted appointment therefore returns its
+    session automatically; a no-show / DNA stays used.
+    """
+    return usages.filter(
+        appointment__isnull=False,
+        appointment__is_deleted=False,
+    ).exclude(appointment__status='CANCELLED')
+
+
+class PrivatePackageSession(TimeStampedModel):
+    """A prepaid package of sessions owned by a patient."""
+
+    STATUS_CHOICES = [
+        ('ACTIVE',    'Active'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+
+    patient = models.ForeignKey(
+        'patients.Patient',
+        on_delete=models.PROTECT,
+        related_name='private_packages',
+    )
+    clinic = models.ForeignKey(
+        'clinics.Clinic',
+        on_delete=models.PROTECT,
+        related_name='private_packages',
+        help_text='Branch where the package was agreed.',
+    )
+    title = models.CharField(max_length=200)
+    price = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text='Agreed package price. Overrides the individual service prices.',
+    )
+    notes = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    invoice = models.ForeignKey(
+        'billing.Invoice',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='private_package_sessions',
+        help_text='The package invoice (one invoice at the package price).',
+    )
+    source_case = models.ForeignKey(
+        'patients.PatientCase',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='converted_private_packages',
+        help_text='Set only for a package converted from a legacy package Case (convert_package_cases).',
+    )
+    created_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='created_private_packages',
+    )
+    modified_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='modified_private_packages',
+    )
+
+    class Meta:
+        db_table = 'private_package_sessions'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['patient', 'status']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(price__gte=0),
+                name='private_package_price_gte_0',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.title} (patient {self.patient_id})"
+
+    @property
+    def total_sessions(self) -> int:
+        return self.items.aggregate(total=models.Sum('quantity'))['total'] or 0
+
+    @property
+    def used_sessions(self) -> int:
+        return _counted_usages(
+            PrivatePackageSessionUsage.objects.filter(item__package=self)
+        ).count()
+
+    @property
+    def remaining_sessions(self) -> int:
+        """Total minus used. Not clamped, so inconsistent data is visible."""
+        return self.total_sessions - self.used_sessions
+
+
+class PrivatePackageSessionItem(models.Model):
+    """One clinic service in a package and how many sessions of it are included."""
+
+    package = models.ForeignKey(
+        PrivatePackageSession,
+        on_delete=models.CASCADE,
+        related_name='items',
+    )
+    service = models.ForeignKey(
+        'clinic_services.Service',
+        on_delete=models.PROTECT,
+        related_name='private_package_items',
+    )
+    quantity = models.PositiveIntegerField(help_text='Number of sessions of this service in the package.')
+
+    class Meta:
+        db_table = 'private_package_session_items'
+        ordering = ['id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['package', 'service'],
+                name='private_package_item_unique_service',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity__gte=1),
+                name='private_package_item_quantity_gte_1',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.service_id} x{self.quantity} (package {self.package_id})"
+
+    @property
+    def used(self) -> int:
+        return _counted_usages(self.usages).count()
+
+    @property
+    def remaining(self) -> int:
+        return self.quantity - self.used
+
+
+class PrivatePackageSessionUsage(TimeStampedModel):
+    """
+    Links one appointment to one package item. Created only by an explicit
+    assignment by an authorized user, never automatically. An appointment can
+    use at most one session (OneToOne).
+    """
+
+    item = models.ForeignKey(
+        PrivatePackageSessionItem,
+        on_delete=models.PROTECT,
+        related_name='usages',
+    )
+    appointment = models.OneToOneField(
+        'appointments.Appointment',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='private_package_usage',
+    )
+    created_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='private_package_usages',
+    )
+
+    class Meta:
+        db_table = 'private_package_session_usages'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Usage item {self.item_id} -> appointment {self.appointment_id}"
+
+
+class PrivatePackageSessionAuditLog(TimeStampedModel):
+    """Audit trail for a Private Package Session (who did what, and when)."""
+
+    ACTION_CHOICES = [
+        ('CREATED',                'Package Created'),
+        ('UPDATED',                'Package Updated'),
+        ('STATUS_CHANGED',         'Status Changed'),
+        ('APPOINTMENT_ASSIGNED',   'Appointment Assigned'),
+        ('APPOINTMENT_UNASSIGNED', 'Appointment Unassigned'),
+    ]
+
+    package = models.ForeignKey(
+        PrivatePackageSession,
+        on_delete=models.CASCADE,
+        related_name='audit_logs',
+    )
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='private_package_audit_logs',
+    )
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES)
+    appointment = models.ForeignKey(
+        'appointments.Appointment',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='private_package_audit_logs',
+    )
+    changes = models.JSONField(default=dict, blank=True, help_text='Field-level changes, e.g. {"price": {"from": "100", "to": "150"}}.')
+    reason = models.TextField(blank=True, default='')
+
+    class Meta:
+        db_table = 'private_package_session_audit_logs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['package', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"[{self.action}] package {self.package_id}"

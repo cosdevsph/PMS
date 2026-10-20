@@ -1679,11 +1679,6 @@ const CalendarComponent: React.FC<CalendarProps> = ({
             <ReminderResponseDot appointment={apt} />
             <span className={!col.useHex ? col.text : ''}>
               {apt.patient_name}
-              {apt.session_display ? (
-                <span className="opacity-80 font-medium ml-1">
-                  ({apt.session_display})
-                </span>
-              ) : null}
             </span>
           </div>
           {!compact && (
@@ -1718,23 +1713,6 @@ const CalendarComponent: React.FC<CalendarProps> = ({
               style={col.useHex ? { color: col.subTextColor } : {}}
             >
               <span className={!col.useHex ? 'text-white/80' : ''}>{col.label}</span>
-            </div>
-          )}
-          {(apt.case_remaining_sessions !== null || apt.case_is_unlimited) && !compact && (
-            <div className="mt-1 flex">
-              {apt.case_is_unlimited ? (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/20 text-white backdrop-blur-sm shadow-sm border border-white/10 flex items-center gap-1">
-                  ∞ Sessions
-                </span>
-              ) : (
-                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold shadow-sm border ${apt.case_remaining_sessions === 0 ? 'bg-red-500/90 text-white border-red-400' :
-                  apt.case_remaining_sessions === 1 ? 'bg-orange-500/90 text-white border-orange-400' :
-                    apt.case_remaining_sessions === 2 ? 'bg-yellow-400/90 text-yellow-900 border-yellow-300' :
-                      'bg-white/20 text-white backdrop-blur-sm border-white/10'
-                  }`}>
-                  {apt.case_remaining_sessions === 0 ? 'Allocation Exhausted' : `${apt.case_remaining_sessions} Sessions Remaining`}
-                </span>
-              )}
             </div>
           )}
           {!compact && isPortalBooking(apt) && (
@@ -2046,11 +2024,6 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           <ReminderResponseDot appointment={apt} />
           <span className={!col.useHex ? col.text : ''}>
             {formatTime12Hour(apt.start_time)} · {apt.patient_name}
-            {apt.session_display ? (
-              <span className="opacity-80 font-medium ml-1">
-                ({apt.session_display})
-              </span>
-            ) : null}
           </span>
         </div>
         {apt.service_name && (

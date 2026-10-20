@@ -351,6 +351,7 @@ export interface PatientMergePreview {
   appointments: number;
   clinical_notes: number;
   invoices: number;
+  private_packages?: number;
   attachments: number;
   letters: number;
   communications: number;

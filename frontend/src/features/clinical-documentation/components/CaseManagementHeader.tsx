@@ -1,19 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { History, Plus, Receipt } from 'lucide-react';
+import { Plus, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { usePatientProfileContext } from '@/features/patients/context/PatientProfileContext';
 import { CaseModal } from '@/features/patients/CaseModal';
-import { AddCaseSessionModal } from '@/features/patients/components/AddCaseSessionModal';
-import { RemoveCaseSessionModal } from '@/features/patients/components/RemoveCaseSessionModal';
-import { CaseSessionHistoryModal } from '@/features/patients/components/CaseSessionHistoryModal';
-import { RemoveLimitModal } from '@/features/patients/components/RemoveLimitModal';
 import {
   createPatientCase,
   updatePatientCase,
-  addCaseSessions,
-  removeCaseSessions,
-  removeCaseSessionLimit,
 } from '@/features/patients/patientCases.api';
 import { getPractitioners, type Practitioner } from '@/features/clinics/clinic.api';
 import type { PatientCase, PatientCaseStatus } from '@/types/patient';
@@ -38,11 +31,6 @@ export const CaseManagementHeader: React.FC<CaseManagementHeaderProps> = ({
   const [editingCase, setEditingCase] = useState<PatientCase | undefined>();
   const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
   const [loadingPractitioners, setLoadingPractitioners] = useState(false);
-
-  const [addSessionCaseId, setAddSessionCaseId] = useState<number | null>(null);
-  const [removeSessionCaseId, setRemoveSessionCaseId] = useState<number | null>(null);
-  const [removeLimitCaseId, setRemoveLimitCaseId] = useState<number | null>(null);
-  const [historyCaseId, setHistoryCaseId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchPractitioners = async () => {
@@ -74,10 +62,6 @@ export const CaseManagementHeader: React.FC<CaseManagementHeaderProps> = ({
         description: formData.description || '',
         referred_by: formData.referredBy || undefined,
         referral_info: formData.referralInfo || undefined,
-        approved_sessions: formData.approvedSessions,
-        is_unlimited: formData.isUnlimited,
-        session_source: formData.sessionSource,
-        package_cost: formData.packageCost,
         status: formData.status,
       };
       const newCase = await createPatientCase(data);
@@ -100,10 +84,6 @@ export const CaseManagementHeader: React.FC<CaseManagementHeaderProps> = ({
         description: formData.description || '',
         referred_by: formData.referredBy || undefined,
         referral_info: formData.referralInfo || undefined,
-        approved_sessions: formData.approvedSessions,
-        is_unlimited: formData.isUnlimited,
-        session_source: formData.sessionSource,
-        package_cost: formData.packageCost,
         status: formData.status,
       };
       await updatePatientCase(editingCase.id, data);
@@ -122,43 +102,6 @@ export const CaseManagementHeader: React.FC<CaseManagementHeaderProps> = ({
       await refreshCases();
     } catch {
       toast.error('Failed to update case status');
-    }
-  };
-
-  // Session Actions
-  const handleSaveAddSessions = async (amount: number) => {
-    if (!addSessionCaseId) return;
-    try {
-      await addCaseSessions(addSessionCaseId, amount);
-      toast.success(`Added ${amount} sessions`);
-      await refreshCases();
-      setAddSessionCaseId(null);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to add sessions');
-    }
-  };
-
-  const handleSaveRemoveSessions = async (amount: number) => {
-    if (!removeSessionCaseId) return;
-    try {
-      await removeCaseSessions(removeSessionCaseId, amount);
-      toast.success(`Removed ${amount} sessions`);
-      await refreshCases();
-      setRemoveSessionCaseId(null);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to remove sessions');
-    }
-  };
-
-  const handleSaveRemoveSessionLimit = async () => {
-    if (!removeLimitCaseId) return;
-    try {
-      await removeCaseSessionLimit(removeLimitCaseId);
-      toast.success('Session limit removed successfully');
-      await refreshCases();
-      setRemoveLimitCaseId(null);
-    } catch {
-      toast.error('Failed to remove session limit');
     }
   };
 
@@ -260,84 +203,9 @@ export const CaseManagementHeader: React.FC<CaseManagementHeaderProps> = ({
               </div>
             </div>
 
-            {/* Session Tracking & Billing UI */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Session Tracking UI */}
-              <div className="p-4 bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-sky-100/50 flex flex-col gap-3 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-sky-500" />
-                
-                <div className="flex flex-col gap-4 h-full">
-                  {/* Row 1: Title & Buttons */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2 min-w-max">
-                      <History className="w-4 h-4 text-sky-500" />
-                      Session Tracking
-                    </h3>
-                    
-                    <div className="flex flex-wrap gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setAddSessionCaseId(selectedCase.id)}
-                        className="text-[10px] px-2 py-1.5 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:text-sky-800 rounded-md font-medium transition-colors border border-sky-100 uppercase tracking-wide"
-                      >
-                        + Add
-                      </button>
-                      {selectedCase.approved_sessions !== null && selectedCase.approved_sessions > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setRemoveSessionCaseId(selectedCase.id)}
-                          className="text-[10px] px-2 py-1.5 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 rounded-md font-medium transition-colors border border-orange-100 uppercase tracking-wide"
-                        >
-                          - Remove
-                        </button>
-                      )}
-                      {selectedCase.approved_sessions !== null && (
-                        <button
-                          type="button"
-                          onClick={() => setRemoveLimitCaseId(selectedCase.id)}
-                          className="text-[10px] px-2 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-md font-medium transition-colors border border-red-100 uppercase tracking-wide"
-                        >
-                          No Limit
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setHistoryCaseId(selectedCase.id)}
-                        className="text-[10px] px-2 py-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-800 rounded-md font-medium transition-colors border border-slate-200 flex items-center gap-1 uppercase tracking-wide"
-                      >
-                        <History className="w-3 h-3" />
-                        Logs
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Statuses */}
-                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-gray-50/50 p-2.5 rounded-lg border border-gray-100 w-fit mt-auto">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">Completed</span>
-                      <span className="text-base font-bold text-gray-900 leading-none">{selectedCase.completed_sessions}</span>
-                    </div>
-                    
-                    {selectedCase.approved_sessions !== null && (
-                      <>
-                        <div className="h-3 w-px bg-gray-200" />
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">Approved</span>
-                          <span className="text-base font-bold text-gray-900 leading-none">{selectedCase.approved_sessions}</span>
-                        </div>
-                        <div className="h-3 w-px bg-gray-200" />
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">Remaining</span>
-                          <span className={`text-base font-bold leading-none ${selectedCase.remaining_sessions === 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                            {selectedCase.remaining_sessions}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
+            {/* Legacy package billing (read-only). Case session limits were retired; prepaid sessions
+                now live in Private Package Sessions on the Patient Profile. */}
+            <div className="grid grid-cols-1 gap-4">
               {/* Package Billing UI */}
               {selectedCase.session_source === 'PACKAGE' && (
                 <div className="p-4 bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(16,185,129,0.1)] border border-emerald-100/50 flex flex-col gap-3 relative overflow-hidden">
@@ -412,41 +280,6 @@ export const CaseManagementHeader: React.FC<CaseManagementHeaderProps> = ({
                   />
       )}
 
-      {addSessionCaseId && (
-        <AddCaseSessionModal
-          isOpen={addSessionCaseId !== null}
-          onClose={() => setAddSessionCaseId(null)}
-          caseTitle={cases.find(c => c.id === addSessionCaseId)?.title || ''}
-          onSave={handleSaveAddSessions}
-        />
-      )}
-
-      {removeSessionCaseId && (
-        <RemoveCaseSessionModal
-          isOpen={removeSessionCaseId !== null}
-          onClose={() => setRemoveSessionCaseId(null)}
-          caseTitle={cases.find(c => c.id === removeSessionCaseId)?.title || ''}
-          onRemove={handleSaveRemoveSessions}
-        />
-      )}
-
-      {removeLimitCaseId && (
-        <RemoveLimitModal
-          isOpen={removeLimitCaseId !== null}
-          onClose={() => setRemoveLimitCaseId(null)}
-          caseTitle={cases.find(c => c.id === removeLimitCaseId)?.title || ''}
-          onConfirm={handleSaveRemoveSessionLimit}
-        />
-      )}
-
-      {historyCaseId && (
-        <CaseSessionHistoryModal
-          isOpen={historyCaseId !== null}
-          onClose={() => setHistoryCaseId(null)}
-          caseId={historyCaseId}
-          caseTitle={cases.find(c => c.id === historyCaseId)?.title || ''}
-        />
-      )}
     </div>
   );
 };

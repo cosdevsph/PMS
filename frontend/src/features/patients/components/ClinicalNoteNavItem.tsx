@@ -123,11 +123,6 @@ export const ClinicalNoteNavItem = () => {
                                 {isSelected && <Check className="w-3.5 h-3.5 text-sky-200 shrink-0" />}
                                 <span className="truncate">{c.title}</span>
                               </div>
-                              {!c.is_unlimited && (c.effective_session_limit) && (
-                                <div className="text-[11px] text-sky-200 mt-0.5 ml-5">
-                                  Completed {c.completed_sessions} / {c.effective_session_limit}
-                                </div>
-                              )}
                             </div>
                           </button>
                         </li>

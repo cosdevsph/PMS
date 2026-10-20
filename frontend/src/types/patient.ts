@@ -92,14 +92,7 @@ export interface PatientCase {
   primary_practitioner_name: string | null;
   payer: PatientCasePayer;
   alert_notes: string;
-  approved_sessions: number | null;
-  completed_sessions: number;
-  remaining_sessions: number | null;
-  progress_text: string;
-  allocation_status: 'ACTIVE' | 'EXHAUSTED' | 'UNLIMITED';
-  is_unlimited: boolean;
   session_source: 'MANUAL' | 'PACKAGE';
-  effective_session_limit: number | null;
   session_limit_source: 'CASE' | 'PACKAGE';
   referred_by: string;
   referral_info: string;

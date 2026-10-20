@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Calendar, FolderKanban, MessageSquare, Settings, UserCircle2, Receipt, Files } from 'lucide-react';
+import { Calendar, FolderKanban, MessageSquare, Settings, UserCircle2, Receipt, Files, Package } from 'lucide-react';
 import { Navigate, NavLink, Outlet, useParams, useLocation } from 'react-router-dom';
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout';
 import { ClinicalNoteNavItem } from './components/ClinicalNoteNavItem';
@@ -115,6 +115,11 @@ const PatientProfileShell = ({ patientId }: { patientId: number }) => {
               label="Invoices"
               to={`/patients/${patientId}/invoices`}
               icon={<Receipt className="w-4 h-4" />}
+            />
+            <NavItem
+              label="Private Package Sessions"
+              to={`/patients/${patientId}/private-packages`}
+              icon={<Package className="w-4 h-4" />}
             />
             <NavItem
               label="Communication History"

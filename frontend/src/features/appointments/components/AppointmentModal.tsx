@@ -70,9 +70,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     title: '',
     status: 'OPEN' as any,
     payer: '' as any,
-    approvedSessions: 1 as number | '',
-    packageCost: '' as number | '',
-    isUnlimited: false,
     referredBy: '',
     referralInfo: '',
   });
@@ -160,9 +157,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         title: '',
         status: 'OPEN',
         payer: '',
-        approvedSessions: 1,
-        packageCost: '',
-        isUnlimited: false,
         referredBy: '',
         referralInfo: '',
       });
@@ -323,20 +317,12 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
       if (isCreatingInlineCase) {
         try {
-          const sessionsNum = inlineCaseData.isUnlimited ? undefined : (inlineCaseData.approvedSessions === '' ? 1 : Number(inlineCaseData.approvedSessions));
-          const hasPackage = inlineCaseData.isUnlimited || (typeof sessionsNum === 'number' && sessionsNum >= 2);
-          const packageCostNum = (hasPackage && inlineCaseData.packageCost !== '') ? Number(inlineCaseData.packageCost) : undefined;
-
           const savedCase = await createPatientCase({
             patient: Number(formData.patient),
             title: inlineCaseData.title,
             status: inlineCaseData.status,
             primary_practitioner: formData.practitioner ? Number(formData.practitioner) : undefined,
             payer: inlineCaseData.payer || undefined,
-            approved_sessions: sessionsNum,
-            is_unlimited: inlineCaseData.isUnlimited,
-            session_source: hasPackage ? 'PACKAGE' : 'MANUAL',
-            package_cost: packageCostNum,
             referred_by: inlineCaseData.referredBy || undefined,
             referral_info: inlineCaseData.referralInfo || undefined,
           });
@@ -572,9 +558,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                                 title: '',
                                 status: 'OPEN',
                                 payer: '',
-                                approvedSessions: 1,
-                                packageCost: '',
-                                isUnlimited: false,
                                 referredBy: '',
                                 referralInfo: '',
                               });
@@ -606,73 +589,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                             </select>
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 gap-3">
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">Pre-Approved Sessions</label>
-                            <input
-                              type="number"
-                              disabled={inlineCaseData.isUnlimited}
-                              value={inlineCaseData.isUnlimited ? '' : inlineCaseData.approvedSessions}
-                              onChange={e => {
-                                const val = e.target.value === '' ? '' : Number(e.target.value);
-                                setInlineCaseData(prev => ({
-                                  ...prev,
-                                  approvedSessions: val,
-                                  packageCost: (prev.isUnlimited || (typeof val === 'number' && val >= 2)) ? prev.packageCost : ''
-                                }));
-                              }}
-                              className={inputBase}
-                              min={1}
-                              placeholder={inlineCaseData.isUnlimited ? 'Unlimited' : '1'}
-                            />
-                            <label className="flex items-center gap-2 mt-1.5 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={inlineCaseData.isUnlimited}
-                                onChange={e => {
-                                  const checked = e.target.checked;
-                                  setInlineCaseData(prev => ({
-                                    ...prev,
-                                    isUnlimited: checked,
-                                    packageCost: (!checked && (typeof prev.approvedSessions !== 'number' || prev.approvedSessions < 2)) ? '' : prev.packageCost
-                                  }));
-                                }}
-                                className="rounded border-gray-300 text-sky-600 focus:ring-sky-500"
-                              />
-                              <span className="text-xs text-gray-600">Unlimited sessions</span>
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* ── Price of Case Package: appears if unlimited sessions or pre-approved sessions is 2 or higher ── */}
-                        {(inlineCaseData.isUnlimited || (typeof inlineCaseData.approvedSessions === 'number' && inlineCaseData.approvedSessions >= 2)) && (
-                          <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">
-                              Price of Case Package <span className="text-xs font-normal text-gray-500">(Manual Entry)</span>
-                            </label>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">₱</span>
-                              <input
-                                type="number"
-                                min={0}
-                                step="0.01"
-                                value={inlineCaseData.packageCost}
-                                onChange={e => setInlineCaseData(prev => ({
-                                  ...prev,
-                                  packageCost: e.target.value === '' ? '' : Number(e.target.value)
-                                }))}
-                                className={`${inputBase} pl-8`}
-                                placeholder="e.g., 5000"
-                              />
-                            </div>
-                            <p className="mt-1 text-[11px] text-gray-500">
-                              {inlineCaseData.isUnlimited
-                                ? 'Total package price for unlimited sessions.'
-                                : `Total package price for all ${inlineCaseData.approvedSessions} pre-approved sessions.`}
-                            </p>
-                          </div>
-                        )}
-
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Referred By</label>
@@ -693,11 +609,6 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                             {patientCases.map(c => (
                               <option key={c.id} value={c.id}>
                                 {c.title} — {c.status}
-                                {c.is_unlimited
-                                  ? ' (Unlimited)'
-                                  : c.approved_sessions
-                                    ? ` (${c.completed_sessions}/${c.approved_sessions} sessions${c.package_cost ? ` • ₱${Number(c.package_cost).toLocaleString()}` : ''})`
-                                    : ''}
                               </option>
                             ))}
                             <option value="__create__">+ Create New Case</option>

@@ -34,6 +34,7 @@ import { CaseModal, type CaseFormData } from '@/features/patients/CaseModal';
 import type { Practitioner } from '@/features/clinics/clinic.api';
 
 import { AppointmentEditForm } from './AppointmentEditForm';
+import { AppointmentPrivatePackageCard } from './AppointmentPrivatePackageCard';
 import { CancelAppointmentModal } from './CancelAppointmentModal';
 import { AddRecurringAppointments } from './AddRecurringAppointments';
 import { SendInvoiceEmailModal } from '@/features/patients/components/SendInvoiceEmailModal';
@@ -331,7 +332,6 @@ const ClinicalCaseWorkspace = React.forwardRef<
       primary_practitioner_name: data.primaryPractitionerName || undefined,
       payer: data.payer || undefined,
       alert_notes: data.alertNotes || undefined,
-      approved_sessions: data.approvedSessions,
       referred_by: data.referredBy || undefined,
       referral_info: data.referralInfo || undefined,
     }).then(async (created) => {
@@ -360,7 +360,6 @@ const ClinicalCaseWorkspace = React.forwardRef<
       primary_practitioner_name: data.primaryPractitionerName || undefined,
       payer: data.payer || undefined,
       alert_notes: data.alertNotes || undefined,
-      approved_sessions: data.approvedSessions,
       referred_by: data.referredBy || undefined,
       referral_info: data.referralInfo || undefined,
     }).then(() => {
@@ -1855,6 +1854,12 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
                     onDirtyChange={setApptDirty}
                   />
                 </div>
+
+                <AppointmentPrivatePackageCard
+                  appointment={appointment}
+                  hasInvoice={!!hasInvoice || !!appointment.has_invoice}
+                  onChanged={handleInlineApptSaved}
+                />
 
                 {(caseDirty || (apptDirty && !isTerminal)) && (
                   <div className="flex justify-end pt-1">

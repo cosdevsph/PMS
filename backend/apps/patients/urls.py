@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .package_views import PrivatePackageSessionViewSet
 from .views import (
     PatientViewSet, IntakeFormViewSet, PortalBookingDiaryView,
     ServiceCategoryViewSet, PortalServiceViewSet,
@@ -21,6 +22,7 @@ router.register(r'portal-services',    PortalServiceViewSet,     basename='porta
 router.register(r'portal-links',       PortalLinkViewSet,        basename='portal-link')
 router.register(r'portal-bookings',    PortalBookingAdminViewSet, basename='portal-booking')
 router.register(r'patient-cases',      PatientCaseViewSet,       basename='patient-case')
+router.register(r'private-packages',   PrivatePackageSessionViewSet, basename='private-package')
 
 urlpatterns = [
     path('', include(router.urls)),

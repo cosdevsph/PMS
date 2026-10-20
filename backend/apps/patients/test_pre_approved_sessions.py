@@ -9,7 +9,6 @@ from apps.clinics.models import Clinic, Practitioner
 from apps.clinics.services.models import Service
 from apps.clinics.services.serializers import ServiceSerializer
 from apps.patients.models import Patient, PatientCase, SessionConsumptionLog
-from apps.patients.services.case_service import consume_case_session, restore_case_session
 from apps.patients.services.session_engine import SessionEngine
 from apps.appointments.models import Appointment
 from apps.appointments.serializers import AppointmentSerializer
@@ -19,8 +18,9 @@ from apps.billing.views import InvoiceViewSet
 
 class PreApprovedSessionsRegressionTests(TestCase):
     """
-    Automated regression test suite verifying the deprecation of package services
-    and the introduction of case-level pre-approved sessions.
+    Regression tests for the retired service-level packages and the invoice treatment of
+    appointments that already consumed a legacy pre-approved session. (Case session limits
+    themselves were retired; see test_case_limit_retirement.py.)
     """
 
     def setUp(self):
@@ -142,204 +142,6 @@ class PreApprovedSessionsRegressionTests(TestCase):
         self.assertNotIn(legacy_package, portal_qs)
 
     # ──────────────────────────────────────────────────────────────────────────
-    # 3. Case-Level Pre-Approved Sessions
-    # ──────────────────────────────────────────────────────────────────────────
-
-    def test_case_approved_sessions_creation_and_stats(self):
-        """Case with pre-approved sessions initializes with correct stats."""
-        case = PatientCase.objects.create(
-            patient=self.patient,
-            title="Stroke Rehabilitation",
-            approved_sessions=10,
-            completed_sessions=0,
-            is_unlimited=False
-        )
-        self.assertEqual(case.approved_sessions, 10)
-        self.assertEqual(case.completed_sessions, 0)
-        self.assertEqual(case.remaining_sessions, 10)
-
-        # SessionEngine inspection
-        stats = SessionEngine.get_session_stats(case)
-        self.assertEqual(stats['approved_sessions'], 10)
-        self.assertEqual(stats['remaining_sessions'], 10)
-        self.assertEqual(stats['allocation_source'], 'MANUAL')
-        self.assertEqual(stats['allocation_status'], 'ACTIVE')
-
-    def test_case_edit_and_unlimited_sessions(self):
-        """Editing approved sessions or setting unlimited reflects accurately."""
-        case = PatientCase.objects.create(
-            patient=self.patient,
-            title="Knee Post-Op",
-            approved_sessions=6,
-            completed_sessions=2,
-            is_unlimited=False
-        )
-        self.assertEqual(case.remaining_sessions, 4)
-
-        # Allocate 4 more sessions
-        case.approved_sessions = 10
-        case.save(update_fields=['approved_sessions'])
-        case.refresh_from_db()
-        self.assertEqual(case.remaining_sessions, 8)
-
-        # Switch to unlimited
-        case.is_unlimited = True
-        case.save(update_fields=['is_unlimited'])
-        case.refresh_from_db()
-        self.assertIsNone(case.remaining_sessions)
-        stats = SessionEngine.get_session_stats(case)
-        self.assertEqual(stats['allocation_status'], 'UNLIMITED')
-
-    # ──────────────────────────────────────────────────────────────────────────
-    # 4. Appointment Session Consumption & Idempotency
-    # ──────────────────────────────────────────────────────────────────────────
-
-    def test_appointment_booking_consumes_session_atomically(self):
-        """Booking an appointment consumes 1 pre-approved session."""
-        case = PatientCase.objects.create(
-            patient=self.patient,
-            title="Spinal Recovery",
-            approved_sessions=3,
-            completed_sessions=0,
-            is_unlimited=False
-        )
-
-        appointment = Appointment.objects.create(
-            clinic=self.clinic,
-            patient=self.patient,
-            practitioner=self.practitioner,
-            service=self.service,
-            patient_case=case,
-            date=date.today(),
-            start_time=time(9, 0),
-            end_time=time(9, 45),
-            status='SCHEDULED'
-        )
-
-        # Consume session
-        consumed = consume_case_session(appointment, user=self.user)
-        self.assertTrue(consumed)
-
-        case.refresh_from_db()
-        self.assertEqual(case.completed_sessions, 1)
-        self.assertEqual(case.remaining_sessions, 2)
-
-        # Verify audit log
-        log = SessionConsumptionLog.objects.filter(appointment=appointment, patient_case=case).first()
-        self.assertIsNotNone(log)
-        self.assertEqual(log.action, 'USED')
-
-        # Idempotency check: consuming again for the same appointment does NOT increment
-        second_call = consume_case_session(appointment, user=self.user)
-        self.assertTrue(second_call)
-        case.refresh_from_db()
-        self.assertEqual(case.completed_sessions, 1)
-        self.assertEqual(case.remaining_sessions, 2)
-
-    # ──────────────────────────────────────────────────────────────────────────
-    # 5. Boundary & Exhaustion Safety
-    # ──────────────────────────────────────────────────────────────────────────
-
-    def test_case_session_boundary_and_exhaustion(self):
-        """Sessions cannot drop below 0; remaining sessions never become negative."""
-        case = PatientCase.objects.create(
-            patient=self.patient,
-            title="Ankle Sprain",
-            approved_sessions=1,
-            completed_sessions=0,
-            is_unlimited=False
-        )
-
-        appt1 = Appointment.objects.create(
-            clinic=self.clinic,
-            patient=self.patient,
-            practitioner=self.practitioner,
-            service=self.service,
-            patient_case=case,
-            date=date.today(),
-            start_time=time(10, 0),
-            end_time=time(10, 45),
-            status='SCHEDULED'
-        )
-        self.assertTrue(consume_case_session(appt1, user=self.user))
-        case.refresh_from_db()
-        self.assertEqual(case.completed_sessions, 1)
-        self.assertEqual(case.remaining_sessions, 0)
-        stats = SessionEngine.get_session_stats(case)
-        self.assertEqual(stats['allocation_status'], 'EXHAUSTED')
-
-        # Attempt to consume with a second appointment when quota is exhausted
-        appt2 = Appointment.objects.create(
-            clinic=self.clinic,
-            patient=self.patient,
-            practitioner=self.practitioner,
-            service=self.service,
-            patient_case=case,
-            date=date.today(),
-            start_time=time(14, 0),
-            end_time=time(14, 45),
-            status='SCHEDULED'
-        )
-        consumed_second = consume_case_session(appt2, user=self.user)
-        self.assertFalse(consumed_second)
-
-        case.refresh_from_db()
-        self.assertEqual(case.completed_sessions, 1)
-        self.assertEqual(case.remaining_sessions, 0)
-
-    # ──────────────────────────────────────────────────────────────────────────
-    # 6. Cancellation & Deletion Restoration
-    # ──────────────────────────────────────────────────────────────────────────
-
-    def test_appointment_cancellation_restores_consumed_session(self):
-        """Cancelling or deleting an appointment restores the pre-approved session."""
-        case = PatientCase.objects.create(
-            patient=self.patient,
-            title="Wrist Rehab",
-            approved_sessions=5,
-            completed_sessions=0,
-            is_unlimited=False
-        )
-
-        appointment = Appointment.objects.create(
-            clinic=self.clinic,
-            patient=self.patient,
-            practitioner=self.practitioner,
-            service=self.service,
-            patient_case=case,
-            date=date.today(),
-            start_time=time(11, 0),
-            end_time=time(11, 45),
-            status='SCHEDULED'
-        )
-        consume_case_session(appointment, user=self.user)
-        case.refresh_from_db()
-        self.assertEqual(case.completed_sessions, 1)
-
-        # Restore session (simulating cancellation)
-        restored = restore_case_session(appointment, user=self.user, reason="Appointment cancelled")
-        self.assertTrue(restored)
-
-        case.refresh_from_db()
-        self.assertEqual(case.completed_sessions, 0)
-        self.assertEqual(case.remaining_sessions, 5)
-
-        # Verify restoration log
-        restore_log = SessionConsumptionLog.objects.filter(
-            appointment=appointment,
-            patient_case=case,
-            action='REMOVED'
-        ).first()
-        self.assertIsNotNone(restore_log)
-        self.assertIn("cancelled", restore_log.reason.lower())
-
-        # Repeated restoration returns False and does not drop completed below 0
-        second_restore = restore_case_session(appointment, user=self.user)
-        self.assertFalse(second_restore)
-        case.refresh_from_db()
-        self.assertEqual(case.completed_sessions, 0)
-
-    # ──────────────────────────────────────────────────────────────────────────
     # 7. Zero-Rated Invoices for Covered Sessions
     # ──────────────────────────────────────────────────────────────────────────
 
@@ -368,7 +170,12 @@ class PreApprovedSessionsRegressionTests(TestCase):
             status='SCHEDULED',
             appointment_type='THERAPY'
         )
-        consume_case_session(covered_appt, user=self.user)
+        # Legacy data: this appointment consumed a pre-approved session before Case session
+        # limits were retired. (Nothing creates such a log any more, but old appointments that
+        # were already covered must still be billed as promised.)
+        SessionConsumptionLog.objects.create(
+            patient_case=case, appointment=covered_appt, action='USED', created_by=self.user,
+        )
 
         # Create invoice via InvoiceViewSet.create_from_appointment
         view = InvoiceViewSet.as_view({'post': 'create_from_appointment'})
@@ -426,69 +233,6 @@ class PreApprovedSessionsRegressionTests(TestCase):
         self.assertEqual(item.unit_price, self.service.price)
         self.assertNotIn("(Covered by Pre-Approved Session)", item.description)
         self.assertEqual(invoice.total_amount, self.service.price)
-
-    # ──────────────────────────────────────────────────────────────────────────
-    # 8. Multi-Case Isolation Per Patient
-    # ──────────────────────────────────────────────────────────────────────────
-
-    def test_multiple_cases_per_patient_quota_isolation(self):
-        """Multiple cases for the same patient have strictly isolated quotas."""
-        case_a = PatientCase.objects.create(
-            patient=self.patient,
-            title="Case A: Left Knee",
-            approved_sessions=5,
-            completed_sessions=0,
-            is_unlimited=False
-        )
-        case_b = PatientCase.objects.create(
-            patient=self.patient,
-            title="Case B: Right Shoulder",
-            approved_sessions=3,
-            completed_sessions=0,
-            is_unlimited=False
-        )
-
-        appt_a = Appointment.objects.create(
-            clinic=self.clinic,
-            patient=self.patient,
-            practitioner=self.practitioner,
-            service=self.service,
-            patient_case=case_a,
-            date=date.today(),
-            start_time=time(9, 0),
-            end_time=time(9, 45),
-            status='SCHEDULED'
-        )
-        consume_case_session(appt_a, user=self.user)
-
-        case_a.refresh_from_db()
-        case_b.refresh_from_db()
-
-        # Case A consumed 1, Case B untouched
-        self.assertEqual(case_a.completed_sessions, 1)
-        self.assertEqual(case_a.remaining_sessions, 4)
-        self.assertEqual(case_b.completed_sessions, 0)
-        self.assertEqual(case_b.remaining_sessions, 3)
-
-        # Now book and consume for Case B
-        appt_b = Appointment.objects.create(
-            clinic=self.clinic,
-            patient=self.patient,
-            practitioner=self.practitioner,
-            service=self.service,
-            patient_case=case_b,
-            date=date.today(),
-            start_time=time(11, 0),
-            end_time=time(11, 45),
-            status='SCHEDULED'
-        )
-        consume_case_session(appt_b, user=self.user)
-
-        case_a.refresh_from_db()
-        case_b.refresh_from_db()
-        self.assertEqual(case_a.completed_sessions, 1)
-        self.assertEqual(case_b.completed_sessions, 1)
-        self.assertEqual(case_b.remaining_sessions, 2)
 
     # ──────────────────────────────────────────────────────────────────────────
     # 9. Appointment Serializer Rejection of Legacy Package Services

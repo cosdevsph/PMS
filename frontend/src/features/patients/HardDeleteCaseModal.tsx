@@ -87,8 +87,6 @@ export const HardDeleteCaseModal = ({ isOpen, onClose, caseObj, onSuccess }: Har
                 <li className="flex justify-between"><span>Letters:</span> <strong>{impact.letters}</strong></li>
                 <li className="flex justify-between"><span>Documents:</span> <strong>{impact.documents}</strong></li>
                 <li className="flex justify-between"><span>Invoices:</span> <strong>{impact.invoices}</strong></li>
-                <li className="flex justify-between"><span>Completed Sessions:</span> <strong>{impact.completed_sessions}</strong></li>
-                <li className="flex justify-between"><span>Remaining Sessions:</span> <strong>{impact.remaining_sessions}</strong></li>
               </ul>
             ) : null}
             

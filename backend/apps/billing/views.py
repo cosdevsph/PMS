@@ -8,10 +8,12 @@ from django.template.response import TemplateResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.appointments.models import Appointment
+from apps.patients.services import package_service
 from .authentication import QueryParamJWTAuthentication
 from .bulk_invoice_service import preview_bulk_invoice, run_bulk_invoice
 from .filters import AppointmentPrintFilter, InvoiceBatchFilter, InvoiceFilter
@@ -97,6 +99,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         )
 
         inline_items = self.request.data.get('inline_items', [])
+        if instance.appointment_id:
+            # A package-covered appointment has no service charge (decided: server-side).
+            inline_items = package_service.cover_service_line(instance.appointment, inline_items)
         if inline_items:
             for item_data in inline_items:
                 InvoiceItem.objects.create(
@@ -255,6 +260,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                         patient.save(update_fields=['account_notes'])
 
                     items = data.get('items', [])
+                    # A package-covered appointment has no service charge: the server
+                    # prices that line at 0 whatever the client sent.
+                    items = package_service.cover_service_line(appt, items)
                     if items:
                         for item_data in items:
                             InvoiceItem.objects.create(
@@ -1039,6 +1047,14 @@ class InvoiceItemViewSet(viewsets.ModelViewSet):
         return self.queryset.filter(invoice__clinic_id__in=all_branch_ids)
 
     def perform_update(self, serializer):
+        item = serializer.instance
+        if item.description.endswith(package_service.COVERED_SUFFIX):
+            new_price = Decimal(str(serializer.validated_data.get('unit_price', item.unit_price)))
+            if new_price != 0:
+                raise ValidationError({
+                    'unit_price': 'This line is covered by a Private Package Session and cannot be charged. '
+                                  'Remove the appointment from the package first if it should be billed.',
+                })
         instance = serializer.save()
         instance.invoice.update_totals()
 

@@ -214,8 +214,7 @@ def _confirm_portal_booking(booking, confirmed_by_user):
     booking.appointment = appointment
     booking.save(update_fields=['appointment'])
 
-    # ── 4. Link or create PatientCase and consume pre-approved session if available ──
-    from apps.patients.services.case_service import consume_case_session
+    # ── 4. Link or create the PatientCase (appointments need a Case) ──
     if not appointment.patient_case:
         # Find active open case for this patient
         existing_case = PatientCase.objects.filter(
@@ -238,9 +237,6 @@ def _confirm_portal_booking(booking, confirmed_by_user):
 
         appointment.patient_case = existing_case
         appointment.save(update_fields=['patient_case'])
-
-    # Attempt to consume a pre-approved session from the case if available
-    consume_case_session(appointment, user=confirmed_by_user)
 
     return patient, appointment
 
@@ -2200,138 +2196,6 @@ class PatientCaseViewSet(viewsets.ModelViewSet):
         main_clinic = user.clinic.main_clinic
         all_branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
         return self.queryset.filter(patient__clinic_id__in=all_branch_ids)
-
-    @action(detail=True, methods=['post'])
-    @transaction.atomic
-    def add_sessions(self, request, pk=None):
-        patient_case = self.get_object()
-        try:
-            amount = int(request.data.get('amount', 0))
-            if amount <= 0:
-                return Response({'error': 'Amount must be greater than 0.'}, status=status.HTTP_400_BAD_REQUEST)
-        except (ValueError, TypeError):
-            return Response({'error': 'Invalid amount.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        previous_limit = patient_case.approved_sessions
-        if patient_case.approved_sessions is None:
-            patient_case.approved_sessions = amount
-        else:
-            patient_case.approved_sessions += amount
-        patient_case.save(update_fields=['approved_sessions'])
-
-        patient_case.is_unlimited = False
-        patient_case.save(update_fields=['approved_sessions', 'is_unlimited'])
-
-        from apps.patients.models import SessionConsumptionLog
-        SessionConsumptionLog.objects.create(
-            patient_case=patient_case,
-            created_by=request.user,
-            action='ADDED',
-            reason=f'Manually added {amount} sessions'
-        )
-
-        PatientCaseSessionLog.objects.create(
-            patient_case=patient_case,
-            user=request.user,
-            action='ADDED_SESSIONS',
-            amount=amount,
-            previous_limit=previous_limit,
-            new_limit=patient_case.approved_sessions
-        )
-        return Response(self.get_serializer(patient_case).data)
-
-    @action(detail=True, methods=['post'])
-    @transaction.atomic
-    def remove_sessions(self, request, pk=None):
-        patient_case = self.get_object()
-        try:
-            amount = int(request.data.get('amount', 0))
-            if amount <= 0:
-                return Response({'error': 'Amount must be greater than 0.'}, status=status.HTTP_400_BAD_REQUEST)
-        except (ValueError, TypeError):
-            return Response({'error': 'Invalid amount.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if patient_case.approved_sessions is None:
-            return Response({'error': 'Cannot remove sessions from an unlimited case.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        previous_limit = patient_case.approved_sessions
-        patient_case.approved_sessions = max(0, patient_case.approved_sessions - amount)
-        patient_case.save(update_fields=['approved_sessions'])
-
-        from apps.patients.models import SessionConsumptionLog
-        SessionConsumptionLog.objects.create(
-            patient_case=patient_case,
-            created_by=request.user,
-            action='REMOVED',
-            reason=f'Manually removed {amount} sessions'
-        )
-
-        PatientCaseSessionLog.objects.create(
-            patient_case=patient_case,
-            user=request.user,
-            action='REMOVED_SESSIONS',
-            amount=amount,
-            previous_limit=previous_limit,
-            new_limit=patient_case.approved_sessions
-        )
-        return Response(self.get_serializer(patient_case).data)
-
-    @action(detail=True, methods=['post'])
-    @transaction.atomic
-    def remove_limit(self, request, pk=None):
-        patient_case = self.get_object()
-        previous_limit = patient_case.approved_sessions
-        patient_case.approved_sessions = None
-        patient_case.is_unlimited = True
-        patient_case.save(update_fields=['approved_sessions', 'is_unlimited'])
-
-        from apps.patients.models import SessionConsumptionLog
-        SessionConsumptionLog.objects.create(
-            patient_case=patient_case,
-            created_by=request.user,
-            action='ADDED',
-            reason='Removed session limit (Unlimited)'
-        )
-
-        PatientCaseSessionLog.objects.create(
-            patient_case=patient_case,
-            user=request.user,
-            action='REMOVED_LIMIT',
-            amount=None,
-            previous_limit=previous_limit,
-            new_limit=None
-        )
-        return Response(self.get_serializer(patient_case).data)
-
-    @action(detail=True, methods=['post'])
-    @transaction.atomic
-    def reset_allocation(self, request, pk=None):
-        patient_case = self.get_object()
-        
-        # Reset completely
-        previous_limit = patient_case.approved_sessions
-        patient_case.approved_sessions = 0
-        patient_case.completed_sessions = 0
-        patient_case.is_unlimited = False
-        patient_case.save(update_fields=['approved_sessions', 'completed_sessions', 'is_unlimited'])
-        
-        from apps.patients.models import SessionConsumptionLog
-        SessionConsumptionLog.objects.create(
-            patient_case=patient_case,
-            created_by=request.user,
-            action='REMOVED',
-            reason='Allocation fully reset'
-        )
-
-        PatientCaseSessionLog.objects.create(
-            patient_case=patient_case,
-            user=request.user,
-            action='REMOVED_SESSIONS',
-            amount=previous_limit,
-            previous_limit=previous_limit,
-            new_limit=0
-        )
-        return Response(self.get_serializer(patient_case).data)
 
     @action(detail=True, methods=['get'])
     def session_logs(self, request, pk=None):
