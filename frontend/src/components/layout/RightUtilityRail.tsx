@@ -11,7 +11,7 @@ import { MessageSquare, Bell, Headphones } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { UserFeedbackModal } from '@/features/support/components/UserFeedbackModal';
 
-const ALLOWED_ROLES = ['ADMIN', 'STAFF', 'PRACTITIONER', 'ADMIN_ASSISTANT'] as const;
+const ALLOWED_ROLES = ['OWNER', 'STAFF', 'PRACTITIONER', 'BRANCH_MANAGER'] as const;
 
 export const RightUtilityRail: React.FC = () => {
   const [activePanel, setActivePanel] = useState<'NONE' | 'MESSAGES' | 'NOTIFICATIONS'>('NONE');

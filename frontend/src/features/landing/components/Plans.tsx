@@ -1,65 +1,19 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Building2, Check, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { SectionHeader } from './public/SectionHeader';
-import { BillingToggle } from './public/pricing/BillingToggle';
 import { PlanCard } from './public/pricing/PlanCard';
+import { PricingExplainer } from './public/pricing/PricingExplainer';
 import { Reveal } from './motion/Reveal';
-
-interface PricingTier {
-  id: string;
-  name: string;
-  badge?: string;
-  clinicians: string;
-  branches: string;
-  monthlyPrice: number;
-  annualPrice: number;
-  annualSavings: string;
-  branchAddonMonthly: number;
-  description: string;
-  highlight?: boolean;
-}
-
-const TIERS: PricingTier[] = [
-  {
-    id: 'starter',
-    name: 'Starter Plan',
-    clinicians: 'Up to 4 clinicians',
-    branches: '1 branch included',
-    monthlyPrice: 3999,
-    annualPrice: 43000,
-    annualSavings: 'Save ₱4,988/yr',
-    branchAddonMonthly: 2000,
-    description: 'Perfect for single clinics and boutique group practices.',
-  },
-  {
-    id: 'growth',
-    name: 'Growth Plan',
-    badge: 'Most Popular',
-    clinicians: 'Up to 8 clinicians',
-    branches: '1 branch included',
-    monthlyPrice: 6999,
-    annualPrice: 75000,
-    annualSavings: 'Save ₱8,988/yr',
-    branchAddonMonthly: 2500,
-    description: 'Ideal for expanding multi-discipline practices.',
-    highlight: true,
-  },
-  {
-    id: 'professional',
-    name: 'Professional Plan',
-    clinicians: 'Up to 12 clinicians',
-    branches: '1 branch included',
-    monthlyPrice: 9999,
-    annualPrice: 108000,
-    annualSavings: 'Save ₱11,988/yr',
-    branchAddonMonthly: 3000,
-    description: 'Built for high-volume polyclinics and multi-site centers.',
-  },
-];
+import {
+  ANNUAL_DISCOUNT_PERCENT,
+  BRANCH_LINE,
+  COMMITMENT_MONTHS,
+  PRICING_TIERS,
+  annualSavings,
+  formatPeso,
+} from '../data/pricing';
 
 export const Plans: React.FC = () => {
-  const [isAnnual, setIsAnnual] = useState(false);
-
   return (
     <section id="plans" aria-labelledby="plans-title" className="py-20 sm:py-28 bg-trust-harbor relative overflow-hidden scroll-mt-28">
       {/* Subtle brand glow */}
@@ -79,16 +33,12 @@ export const Plans: React.FC = () => {
             </span>
           }
           title="Plans Tailored to Your Clinic’s Scale"
-          description="All plans include 100% full system access and unlimited admin accounts. 12-month commitment with flexible monthly or annual billing."
+          description={`All plans include 100% full system access and unlimited Owner, Branch Manager and staff accounts. ${COMMITMENT_MONTHS}-month minimum term, paid monthly or annually (annual saves ${ANNUAL_DISCOUNT_PERCENT}%).`}
         />
-
-        <div className="mt-8 flex justify-center">
-          <BillingToggle isAnnual={isAnnual} onChange={setIsAnnual} />
-        </div>
 
         {/* Pricing Cards Grid */}
         <ul className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-md md:max-w-none mx-auto">
-          {TIERS.map((tier, index) => (
+          {PRICING_TIERS.map((tier, index) => (
             <Reveal as="li" key={tier.id} delay={index * 80} className="h-full">
               <PlanCard
                 tone="dark"
@@ -96,18 +46,21 @@ export const Plans: React.FC = () => {
                 badge={tier.badge}
                 highlight={tier.highlight}
                 description={tier.description}
-                priceLabel={`₱${(isAnnual ? tier.annualPrice : tier.monthlyPrice).toLocaleString('en-PH')}`}
-                periodLabel={isAnnual ? '/ year' : '/ month'}
-                savingsLabel={isAnnual ? tier.annualSavings : undefined}
-                highlights={[
-                  { icon: Users, label: tier.clinicians, emphasis: true },
+                priceOptions={[
+                  { label: 'Monthly', price: formatPeso(tier.monthly), period: '/ month' },
                   {
-                    icon: Building2,
-                    label: tier.branches,
-                    sublabel: `+₱${tier.branchAddonMonthly.toLocaleString('en-PH')}/mo per extra branch`,
+                    label: 'Annual',
+                    tag: `${ANNUAL_DISCOUNT_PERCENT}% off`,
+                    price: formatPeso(tier.annual),
+                    period: '/ year',
+                    note: `Save ${formatPeso(annualSavings(tier))} a year`,
                   },
+                ]}
+                highlights={[
+                  { icon: Users, label: `Up to ${tier.clinicianLimit} clinicians`, emphasis: true },
+                  { icon: Building2, label: BRANCH_LINE },
                   { icon: ShieldCheck, label: '100% Full Feature Parity', emphasis: true },
-                  { icon: Check, label: 'Unlimited Admin Accounts' },
+                  { icon: Check, label: 'Unlimited Owner, Branch Manager and Staff Accounts' },
                 ]}
                 ctaLabel="Start 14-Day Free Trial"
                 ctaTo="/register"
@@ -117,6 +70,8 @@ export const Plans: React.FC = () => {
           ))}
         </ul>
 
+        <PricingExplainer tone="dark" />
+
         {/* Enterprise & Custom Scale Callout */}
         <div className="mt-12 rounded-3xl bg-white/[0.06] ring-1 ring-white/10 p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-start sm:items-center gap-4">
@@ -125,26 +80,26 @@ export const Plans: React.FC = () => {
             </div>
             <div>
               <h3 className="text-xl font-bold text-white font-heading">
-                Enterprise & Healthcare Networks
+                Custom Plan & Healthcare Networks
               </h3>
               <p className="mt-1 text-sm text-white/75 font-body max-w-2xl leading-relaxed">
-                Need more than 12 clinicians, bespoke branch networks, dedicated onboarding, or custom integrations? We offer tailored enterprise agreements.
+                Need more than 12 clinicians or a larger multi-branch network? Contact us and we will quote a plan that fits.
               </p>
             </div>
           </div>
 
           <a
-            href="mailto:support@malasakitpms.ph?subject=Enterprise%20Inquiry"
+            href="mailto:support@malasakitpms.ph?subject=Custom%20Plan%20Inquiry"
             className="w-full md:w-auto text-center px-6 py-3 rounded-xl bg-white text-trust-harbor hover:bg-clinical-cloud font-bold text-sm whitespace-nowrap transition-colors shadow-md font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-trust-harbor"
           >
-            Contact Enterprise Sales
+            Contact Us About a Custom Plan
           </a>
         </div>
 
-        {/* Commitment & Features Banner */}
+        {/* Commitment banner */}
         <div className="mt-12 text-center">
           <p className="text-sm text-white/70 font-body">
-            All paid plans include a <strong className="text-white/90">12-month contract commitment</strong> with flexible monthly or annual billing options.
+            All paid plans have a <strong className="text-white/90">{COMMITMENT_MONTHS}-month minimum term</strong>, paid monthly or annually.
           </p>
         </div>
       </div>

@@ -87,7 +87,7 @@ const Chapter9: React.FC = () => {
       </div>
 
       <DocCallout type="info">
-        Only clinic <strong>Owners</strong> (Administrators) have permission to open and configure the Permission Groups page. Restricted roles cannot modify group settings.
+        Only clinic <strong>Owners</strong> have permission to open and configure the Permission Groups page. Restricted roles cannot modify group settings.
       </DocCallout>
 
 
@@ -106,7 +106,7 @@ const Chapter9: React.FC = () => {
             <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold uppercase tracking-wider">
               System Protected
             </span>
-            <h4 className="text-xl font-bold text-gray-900 font-heading">1. Owner (Administrator)</h4>
+            <h4 className="text-xl font-bold text-gray-900 font-heading">1. Owner</h4>
           </div>
           <p className="text-gray-700 font-body leading-relaxed mb-4">
             The <strong>Owner</strong> permission group grants full, unrestricted administrative and clinical authority across all clinic branches.
@@ -148,17 +148,17 @@ const Chapter9: React.FC = () => {
         </div>
       </div>
 
-      {/* Group 2: Manager */}
+      {/* Group 2: Branch Manager */}
       <div className="space-y-8 mb-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <div className="flex items-center gap-3 mb-4">
             <span className="px-3 py-1 rounded-full bg-violet-100 text-violet-800 border border-violet-200 text-xs font-bold uppercase tracking-wider">
               Management
             </span>
-            <h4 className="text-xl font-bold text-gray-900 font-heading">2. Manager (Admin Assistant)</h4>
+            <h4 className="text-xl font-bold text-gray-900 font-heading">2. Branch Manager</h4>
           </div>
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            The <strong>Manager</strong> group is designed for administrative leaders overseeing day-to-day operations for their authorized clinic branches.
+            The <strong>Branch Manager</strong> group is designed for administrative leaders overseeing day-to-day operations for their authorized clinic branches.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
@@ -192,7 +192,7 @@ const Chapter9: React.FC = () => {
               height={976}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 9.4: Manager (Admin Assistant) Permission Group Settings"
+              alt="Screenshot 9.4: Branch Manager Permission Group Settings"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -364,7 +364,7 @@ const Chapter9: React.FC = () => {
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
         <li>Navigating to <strong>Setup</strong> &rarr; <strong>Users Card</strong> &rarr; <strong>Permissions</strong> to find the Permission Groups page.</li>
         <li>The system-wide governance of the <strong>Owner</strong> group.</li>
-        <li>The operational and staff oversight of the <strong>Manager (Admin Assistant)</strong> group.</li>
+        <li>The operational and staff oversight of the <strong>Branch Manager</strong> group.</li>
         <li>The dedicated clinical treatment authority of the <strong>Practitioner</strong> group.</li>
         <li>The scheduling and intake focus of the <strong>Front Desk (Staff)</strong> group.</li>
         <li>The billing, invoicing, and revenue focus of the <strong>Finance</strong> group.</li>

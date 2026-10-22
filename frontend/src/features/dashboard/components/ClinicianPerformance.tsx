@@ -74,7 +74,7 @@ function isoToday(): string {
 
 export const ClinicianPerformance: React.FC = () => {
   const { user } = useAuth();
-  // Multi-role aware: ADMIN+PRACTITIONER users have role='ADMIN' but roles=['ADMIN','PRACTITIONER']
+  // Multi-role aware: OWNER+PRACTITIONER users have role='OWNER' but roles=['OWNER','PRACTITIONER']
   const userRoles = user?.roles && user.roles.length > 0 ? user.roles : (user?.role ? [user.role] : []);
   const isPractitioner = userRoles.includes('PRACTITIONER');
 
@@ -233,7 +233,7 @@ export const ClinicianPerformance: React.FC = () => {
           ))}
         </div>
 
-        {/* Provider dropdown (Admin/Staff only) */}
+        {/* Provider dropdown (Owner/Staff only) */}
         {!isPractitioner && data && data.providers.length > 1 && (
           <div className="relative">
             <select

@@ -40,22 +40,54 @@ class PlansCatalogAndPricingTestCase(TestCase):
         self.assertEqual(monthly['total_pesos'], Decimal('3999.00'))
 
         annual = calculate_subscription_amount(PLAN_STARTER, CYCLE_ANNUAL)
-        self.assertEqual(annual['total_centavos'], 4300000)
-        self.assertEqual(annual['total_pesos'], Decimal('43000.00'))
+        self.assertEqual(annual['total_centavos'], 4318920)
+        self.assertEqual(annual['total_pesos'], Decimal('43189.20'))
+
+    def test_growth_plus_one_branch_matches_the_published_example(self):
+        """Growth ₱6,999 + 1 additional branch ₱2,000 = ₱8,999/month."""
+        calc = calculate_subscription_amount(PLAN_GROWTH, CYCLE_MONTHLY, additional_branches=1)
+        self.assertEqual(calc['base_plan_centavos'], 699900)
+        self.assertEqual(calc['additional_branch_centavos'], 200000)
+        self.assertEqual(calc['total_pesos'], Decimal('8999.00'))
 
     def test_growth_pricing_with_additional_branches(self):
         calc = calculate_subscription_amount(PLAN_GROWTH, CYCLE_MONTHLY, additional_branches=2)
         self.assertEqual(calc['base_plan_centavos'], 699900)
-        self.assertEqual(calc['additional_branch_centavos'], 500000)
-        self.assertEqual(calc['total_centavos'], 1199900)
-        self.assertEqual(calc['total_pesos'], Decimal('11999.00'))
+        self.assertEqual(calc['additional_branch_centavos'], 400000)
+        self.assertEqual(calc['total_centavos'], 1099900)
+        self.assertEqual(calc['total_pesos'], Decimal('10999.00'))
 
-    def test_professional_pricing_annual_with_branches(self):
+    def test_enterprise_tier_annual_pricing_with_branches(self):
+        """The 12-clinician tier (internal code PROFESSIONAL) is shown to customers as 'Enterprise'."""
         calc = calculate_subscription_amount(PLAN_PROFESSIONAL, CYCLE_ANNUAL, additional_branches=1)
-        self.assertEqual(calc['base_plan_centavos'], 10800000)
-        self.assertEqual(calc['additional_branch_centavos'], 3600000)
-        self.assertEqual(calc['total_centavos'], 14400000)
-        self.assertEqual(calc['total_pesos'], Decimal('144000.00'))
+        self.assertEqual(calc['plan_name'], 'Enterprise')
+        self.assertEqual(calc['base_plan_centavos'], 10798920)
+        self.assertEqual(calc['additional_branch_centavos'], 2160000)
+        self.assertEqual(calc['total_centavos'], 12958920)
+        self.assertEqual(calc['total_pesos'], Decimal('129589.20'))
+
+    def test_additional_branch_costs_the_same_on_every_tier(self):
+        for code in (PLAN_STARTER, PLAN_GROWTH, PLAN_PROFESSIONAL):
+            with self.subTest(code):
+                monthly = calculate_subscription_amount(code, CYCLE_MONTHLY, additional_branches=3)
+                annual = calculate_subscription_amount(code, CYCLE_ANNUAL, additional_branches=3)
+                self.assertEqual(monthly['additional_branch_centavos'], 3 * 200000)
+                self.assertEqual(annual['additional_branch_centavos'], 3 * 2160000)
+
+    def test_annual_billing_is_exactly_ten_percent_off_everywhere(self):
+        """Annual = monthly x 12 x 0.90 for each plan and for the branch add-on."""
+        for code in (PLAN_STARTER, PLAN_GROWTH, PLAN_PROFESSIONAL):
+            with self.subTest(code):
+                monthly = calculate_subscription_amount(code, CYCLE_MONTHLY, additional_branches=1)
+                annual = calculate_subscription_amount(code, CYCLE_ANNUAL, additional_branches=1)
+                self.assertEqual(annual['base_plan_centavos'] * 10, monthly['base_plan_centavos'] * 12 * 9)
+                self.assertEqual(annual['additional_branch_centavos'] * 10, monthly['additional_branch_centavos'] * 12 * 9)
+
+    def test_customer_facing_plan_names(self):
+        self.assertEqual(
+            [get_plan_metadata(c)['name'] for c in (PLAN_STARTER, PLAN_GROWTH, PLAN_PROFESSIONAL, PLAN_ENTERPRISE)],
+            ['Starter', 'Growth', 'Enterprise', 'Custom'],
+        )
 
     def test_enterprise_pricing(self):
         with self.assertRaises(ValueError):
@@ -85,6 +117,13 @@ class PlansCatalogAndPricingTestCase(TestCase):
         self.assertIn(PLAN_GROWTH, plan_ids)
         self.assertIn(PLAN_PROFESSIONAL, plan_ids)
         self.assertIn(PLAN_ENTERPRISE, plan_ids)
+        for plan in summary:
+            self.assertEqual(plan['annual_discount_percent'], 10)
+            self.assertEqual(plan['commitment_months'], 12)
+        by_id = {p['id']: p for p in summary}
+        self.assertEqual(by_id[PLAN_STARTER]['annual_price_pesos'], Decimal('43189.20'))
+        self.assertEqual(by_id[PLAN_GROWTH]['annual_savings_pesos'], Decimal('8398.80'))
+        self.assertEqual(by_id[PLAN_PROFESSIONAL]['additional_branch_monthly_pesos'], Decimal('2000'))
 
 
 class SubscriptionModelTestCase(TestCase):
@@ -95,8 +134,8 @@ class SubscriptionModelTestCase(TestCase):
             password='Password123!',
             first_name='Practice',
             last_name='Owner',
-            role='ADMIN',
-            roles=['ADMIN'],
+            role='OWNER',
+            roles=['OWNER'],
             clinic=self.clinic,
         )
 
@@ -159,8 +198,8 @@ class ClinicianAllocationEngineTestCase(TestCase):
             password='Password123!',
             first_name='Alpha',
             last_name='Owner',
-            role='ADMIN',
-            roles=['ADMIN'],
+            role='OWNER',
+            roles=['OWNER'],
             clinic=self.main_clinic,
         )
         # Staff only (non-clinical)
@@ -198,7 +237,7 @@ class ClinicianAllocationEngineTestCase(TestCase):
         self.assertEqual(usage['archived_allocations'], 0)
 
     def test_multi_branch_practitioner_allocation(self):
-        # 1 Practitioner assigned to Branch A + Branch B = 2 allocations
+        # 1 Practitioner assigned to Branch A + Branch B still uses ONE shared clinician seat
         dr_santos = User.objects.create_user(
             email='santos@alpha.com',
             password='Password123!',
@@ -214,11 +253,12 @@ class ClinicianAllocationEngineTestCase(TestCase):
         UserBranchAccess.objects.create(user=dr_santos, branch=self.branch_b)
 
         usage = get_clinician_allocations_for_clinic(self.main_clinic)
-        self.assertEqual(usage['total_allocations'], 2)
+        self.assertEqual(usage['total_allocations'], 1)
+        self.assertEqual(usage['active_allocations'], 1)
 
     def test_multi_role_owner_plus_practitioner(self):
         # Promoting owner to Admin + Practitioner consumes 1 allocation
-        self.owner.roles = ['ADMIN', 'PRACTITIONER']
+        self.owner.roles = ['OWNER', 'PRACTITIONER']
         self.owner.save()
         Practitioner.objects.create(user=self.owner, clinic=self.main_clinic, license_number='PRC-OWN')
 
@@ -293,6 +333,44 @@ class EntitlementEnforcementTestCase(TestCase):
         with self.assertRaises(ClinicianLimitReachedException):
             check_clinician_capacity(self.clinic, additional_allocations=1)
 
+    def _clinician(self, n, clinic, branches=()):
+        u = User.objects.create_user(
+            email=f'shared{n}@beta.com', password='Password123!', first_name='Dr.', last_name=f'S{n}',
+            role='PRACTITIONER', roles=['PRACTITIONER'], clinic=self.clinic, clinic_branch=clinic,
+        )
+        Practitioner.objects.create(user=u, clinic=self.clinic, license_number=f'PRC-S{n}')
+        for branch in branches:
+            UserBranchAccess.objects.create(user=u, branch=branch)
+        return u
+
+    def test_clinician_limit_is_shared_across_branches(self):
+        """Growth (8 clinicians) with 2 branches: any split is fine; only a 9th clinician moves them up a tier."""
+        self.sub.activate_plan(PLAN_GROWTH, billing_cycle=CYCLE_MONTHLY, additional_branches=1)
+        branch_b = Clinic.objects.create(name='Beta Branch B', parent_clinic=self.clinic, is_main_branch=False)
+
+        for n in range(1, 4):           # 3 at the main branch
+            self._clinician(n, self.clinic)
+        for n in range(4, 9):           # 5 at branch B (a 5 / 3 split, not 4 / 4)
+            self._clinician(n, branch_b)
+
+        self.assertEqual(get_clinician_allocations_for_clinic(self.clinic)['total_allocations'], 8)
+        self.assertEqual(self.sub.effective_clinician_limit, 8)
+        with self.assertRaises(ClinicianLimitReachedException):
+            check_clinician_capacity(self.clinic, additional_allocations=1)
+
+    def test_a_clinician_working_at_two_branches_uses_one_seat(self):
+        self.sub.activate_plan(PLAN_GROWTH, billing_cycle=CYCLE_MONTHLY, additional_branches=1)
+        branch_b = Clinic.objects.create(name='Beta Branch B', parent_clinic=self.clinic, is_main_branch=False)
+        for n in range(1, 8):           # 7 clinicians
+            self._clinician(n, self.clinic)
+        floater = self._clinician(8, self.clinic, branches=[self.clinic, branch_b])   # works at both
+
+        usage = get_clinician_allocations_for_clinic(self.clinic)
+        self.assertEqual(usage['total_allocations'], 8)       # the floater counts once, not twice
+        self.assertEqual(usage['clinical_users_count'], 8)
+        self.assertEqual(floater.branch_accesses.count(), 2)
+        check_clinician_capacity(self.clinic, additional_allocations=0)   # still within the limit
+
     def test_branch_limit_enforcement(self):
         # 1 branch already exists (main clinic)
         # Attempting to add 1 more branch when allowed=1 must be BLOCKED
@@ -318,8 +396,8 @@ class ServerSideAPIEnforcementTestCase(TestCase):
             password='AdminPassword123!',
             first_name='Admin',
             last_name='User',
-            role='ADMIN',
-            roles=['ADMIN'],
+            role='OWNER',
+            roles=['OWNER'],
             clinic=self.clinic,
         )
         self.client.force_authenticate(user=self.owner)

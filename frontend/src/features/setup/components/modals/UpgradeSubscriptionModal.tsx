@@ -25,6 +25,9 @@ interface UpgradeSubscriptionModalProps {
   onClose: () => void;
   currentSubscription?: SubscriptionStatusResponse | null;
   plans: PlanCatalogItem[];
+  /** Plan and billing cycle the customer clicked on, preselected when the dialog opens. */
+  presetPlan?: string;
+  presetCycle?: BillingCycle;
   onStartCheckout: (payload: {
     plan: string;
     billing_cycle: BillingCycle;
@@ -33,31 +36,37 @@ interface UpgradeSubscriptionModalProps {
   isStartingCheckout: boolean;
 }
 
-export const UpgradeSubscriptionModal: React.FC<UpgradeSubscriptionModalProps> = ({
-  isOpen,
+/** Mounted fresh each time the dialog opens, so it starts from the clicked plan and cycle. */
+export const UpgradeSubscriptionModal: React.FC<UpgradeSubscriptionModalProps> = ({ isOpen, ...rest }) => {
+  if (!isOpen) return null;
+  return <UpgradeSubscriptionModalBody {...rest} />;
+};
+
+const UpgradeSubscriptionModalBody: React.FC<Omit<UpgradeSubscriptionModalProps, 'isOpen'>> = ({
   onClose,
   currentSubscription,
   plans,
+  presetPlan,
+  presetCycle,
   onStartCheckout,
   isStartingCheckout,
 }) => {
   const [selectedCycle, setSelectedCycle] = useState<BillingCycle>(
-    currentSubscription?.billing_cycle === 'ANNUAL' ? 'ANNUAL' : 'MONTHLY',
+    presetCycle ?? (currentSubscription?.billing_cycle === 'ANNUAL' ? 'ANNUAL' : 'MONTHLY'),
   );
 
-  // Default to Growth if Starter or Trial, or keep current plan
+  // Preselect the clicked plan; otherwise keep the current plan, or Growth for Starter/Trial
   const initialPlan =
-    currentSubscription?.plan && ['STARTER', 'GROWTH', 'PROFESSIONAL'].includes(currentSubscription.plan)
+    presetPlan ??
+    (currentSubscription?.plan && ['STARTER', 'GROWTH', 'PROFESSIONAL'].includes(currentSubscription.plan)
       ? currentSubscription.plan
-      : 'GROWTH';
+      : 'GROWTH');
   const [selectedPlanCode, setSelectedPlanCode] = useState<string>(initialPlan);
 
   const [additionalBranches, setAdditionalBranches] = useState<number>(
     currentSubscription?.additional_branches || 0,
   );
   const [termsAgreed, setTermsAgreed] = useState<boolean>(true);
-
-  if (!isOpen) return null;
 
   // Filter out Enterprise or non-public for standard self-serve checkout
   const selfServePlans = plans.filter((p) => p.id !== 'ENTERPRISE');
@@ -118,7 +127,7 @@ export const UpgradeSubscriptionModal: React.FC<UpgradeSubscriptionModalProps> =
                   Select Your Subscription Plan
                 </h2>
                 <p className="text-xs text-gray-600 mt-0.5">
-                  12-month contract commitment with flexible monthly or annual billing. All plans include 100% full features.
+                  12-month minimum term, paid monthly or annually (annual saves 10%). All plans include 100% full features.
                 </p>
               </div>
             </div>
@@ -132,43 +141,6 @@ export const UpgradeSubscriptionModal: React.FC<UpgradeSubscriptionModalProps> =
               <X className="w-5 h-5" />
             </button>
           </div>
-
-          {/* Billing Cycle Switch */}
-          <div className="mt-5 flex items-center justify-center">
-            <div className="inline-flex p-1 bg-gray-100 rounded-xl border border-gray-200">
-              <button
-                type="button"
-                onClick={() => setSelectedCycle('MONTHLY')}
-                className={`px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                  selectedCycle === 'MONTHLY'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Monthly Billing
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCycle('ANNUAL')}
-                className={`relative px-5 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-                  selectedCycle === 'ANNUAL'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <span>Annual Billing</span>
-                <span
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    selectedCycle === 'ANNUAL'
-                      ? 'bg-emerald-700 text-emerald-100'
-                      : 'bg-emerald-100 text-emerald-800'
-                  }`}
-                >
-                  Save ~10%
-                </span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Modal Body */}
@@ -178,8 +150,6 @@ export const UpgradeSubscriptionModal: React.FC<UpgradeSubscriptionModalProps> =
             {selfServePlans.map((plan) => {
               const isSelected = selectedPlanCode === plan.id;
               const isCurrent = currentSubscription?.plan === plan.id && !currentSubscription?.is_trial;
-              const price = isAnnual ? plan.annual_price_pesos : plan.monthly_price_pesos;
-              const period = isAnnual ? '/ year' : '/ month';
 
               return (
                 <div
@@ -210,30 +180,60 @@ export const UpgradeSubscriptionModal: React.FC<UpgradeSubscriptionModalProps> =
                     </div>
                     <p className="text-xs text-gray-500 mt-1 min-h-[32px]">{plan.description}</p>
 
-                    <div className="mt-4 pt-3 border-t border-gray-100">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-extrabold text-gray-900">
-                          {formatCurrency(price)}
-                        </span>
-                        <span className="text-xs text-gray-500 font-medium">{period}</span>
-                      </div>
-                      {isAnnual && plan.annual_savings_pesos && (
-                        <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">
-                          Save {formatCurrency(plan.annual_savings_pesos)} per year
-                        </p>
-                      )}
+                    <div className="mt-4 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2">
+                      {(['MONTHLY', 'ANNUAL'] as BillingCycle[]).map((cycle) => {
+                        const optionPrice = cycle === 'ANNUAL' ? plan.annual_price_pesos : plan.monthly_price_pesos;
+                        const chosen = isSelected && selectedCycle === cycle;
+                        return (
+                          <button
+                            key={cycle}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPlanCode(plan.id);
+                              setSelectedCycle(cycle);
+                            }}
+                            aria-pressed={chosen}
+                            className={`text-left rounded-lg border-2 p-2.5 transition-colors ${
+                              chosen
+                                ? 'border-emerald-600 bg-emerald-50'
+                                : cycle === 'ANNUAL'
+                                  ? 'border-emerald-200 hover:border-emerald-400'
+                                  : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 flex items-center gap-1">
+                              {cycle === 'ANNUAL' ? 'Annual' : 'Monthly'}
+                              {cycle === 'ANNUAL' && (
+                                <span className="px-1 py-px rounded bg-emerald-600 text-white text-[9px]">
+                                  {plan.annual_discount_percent ?? 10}% off
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-lg font-extrabold text-gray-900 leading-tight mt-0.5">
+                              {formatCurrency(optionPrice)}
+                            </p>
+                            <p className="text-[10px] text-gray-500">
+                              {cycle === 'ANNUAL' ? '/ year' : '/ month'}
+                              {cycle === 'ANNUAL' && plan.annual_savings_pesos
+                                ? ` · save ${formatCurrency(plan.annual_savings_pesos)}`
+                                : ''}
+                            </p>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     <div className="mt-4 space-y-2 text-xs text-gray-700">
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span className="font-semibold text-gray-900">
-                          Up to {plan.clinician_limit} clinicians
+                          Up to {plan.clinician_limit} clinicians (shared across branches)
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-sky-600 shrink-0" />
-                        <span>{plan.included_branches} branch included</span>
+                        <span>{plan.included_branches} branch included + {formatCurrency(plan.additional_branch_monthly_pesos)}/mo per additional branch</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -241,7 +241,7 @@ export const UpgradeSubscriptionModal: React.FC<UpgradeSubscriptionModalProps> =
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Check className="w-4 h-4 text-gray-500 shrink-0" />
-                        <span>Unlimited Admin accounts</span>
+                        <span>Unlimited Owner, Branch Manager and staff accounts</span>
                       </div>
                     </div>
                   </div>
@@ -272,8 +272,8 @@ export const UpgradeSubscriptionModal: React.FC<UpgradeSubscriptionModalProps> =
                   <h4 className="text-sm font-bold text-gray-900">Additional Branch Locations</h4>
                 </div>
                 <p className="text-xs text-gray-600 mt-1 max-w-xl">
-                  Need more than {selectedPlan?.included_branches || 1} branch? Add extra branch locations to your clinic.
-                  Rate for {selectedPlan?.name}:{' '}
+                  Need more than {selectedPlan?.included_branches || 1} branch? Each additional branch is the same price on every plan, and your clinician limit is shared across all branches (a clinician working at several branches counts once).
+                  Rate:{' '}
                   <span className="font-semibold text-gray-900">
                     {formatCurrency(branchRate)} {isAnnual ? '/ year' : '/ month'} per branch
                   </span>
@@ -324,15 +324,15 @@ export const UpgradeSubscriptionModal: React.FC<UpgradeSubscriptionModalProps> =
               </div>
               <div>
                 <p className="text-xs font-bold text-indigo-950">
-                  Need more than 12 clinicians or a tailored hospital system?
+                  Need more than 12 clinicians or a larger multi-branch network?
                 </p>
                 <p className="text-[11px] text-indigo-700">
-                  Explore our Enterprise tier with custom capacity, dedicated SLA, and white-glove onboarding.
+                  Ask us about a Custom plan with tailored capacity and pricing.
                 </p>
               </div>
             </div>
             <a
-              href="mailto:support@malasakitpms.ph?subject=Enterprise%20Plan%20Inquiry"
+              href="mailto:support@malasakitpms.ph?subject=Custom%20Plan%20Inquiry"
               className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline whitespace-nowrap px-3 py-1.5 rounded-lg border border-indigo-200 bg-white transition-colors"
             >
               Contact Sales
@@ -388,7 +388,7 @@ export const UpgradeSubscriptionModal: React.FC<UpgradeSubscriptionModalProps> =
                 className="mt-0.5 h-4 w-4 rounded-sm border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
               <label htmlFor="commitment-terms" className="text-xs text-gray-600 leading-relaxed cursor-pointer select-none">
-                I understand that Malasakit plans carry a <strong>12-month contract commitment</strong> with flexible {isAnnual ? 'annual' : 'monthly'} billing. Subscription activates immediately upon completed payment.
+                I understand that Malasakit plans have a <strong>12-month minimum term</strong>, paid {isAnnual ? 'annually' : 'monthly'}. Paying monthly does not allow month-to-month cancellation: a cancellation request takes effect at the end of the current term. The subscription activates immediately upon completed payment.
               </label>
             </div>
           </div>

@@ -65,7 +65,7 @@ export const CookiePolicy: React.FC = () => {
             <li><strong>Analytics:</strong> Google Analytics for usage tracking and analysis</li>
             <li><strong>Payments:</strong> Payment processors for secure transaction handling</li>
             <li><strong>Social Media:</strong> Integration with social media platforms</li>
-            <li><strong>Customer Support:</strong> Live chat and support tools</li>
+            <li><strong>Customer Support:</strong> Support ticket and AI assistant tools</li>
           </ul>
         </>
       ),
@@ -172,7 +172,6 @@ export const CookiePolicy: React.FC = () => {
           <LegalContactCard>
             <p className="font-semibold text-gray-900">{SystemBranding.companyName}</p>
             <p>Email: privacy@malasakit.com</p>
-            <p>Phone: +63 9457 123 456</p>
             <p>Address: Bacolod City, Negros Occidental, Philippines</p>
           </LegalContactCard>
         </>

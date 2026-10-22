@@ -10,7 +10,7 @@ import {
   arrow,
   autoUpdate,
 } from '@floating-ui/react';
-import { getPatients, createPatient } from '@/features/patients/patient.api';
+import { getPatients, createPatient, searchBookingPatients } from '@/features/patients/patient.api';
 import { PatientModal } from '@/features/patients/components/PatientModal';
 import type { Patient, CreatePatientData } from '@/types';
 import { useSubscriptionAccess } from '@/features/setup/hooks/useSubscriptionAccess';
@@ -33,6 +33,8 @@ interface SelectOptionModalProps {
   pendingSlot?: PendingSlot | null;
   practitionerName?: string;
   anchorRect?: DOMRect;
+  /** Branch opened through "Other Branches' Diary" (edit): find its patients with the booking lookup. */
+  bookingLookupBranchId?: number | null;
 }
 
 type TabType = 'appointment' | 'event' | 'note';
@@ -66,7 +68,7 @@ export const SelectOptionModal: React.FC<SelectOptionModalProps> = ({
   onSelectNote,
   pendingSlot,
   practitionerName,
-  anchorRect,
+  anchorRect, bookingLookupBranchId = null,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('appointment');
   const [firstName, setFirstName] = useState('');
@@ -122,15 +124,20 @@ export const SelectOptionModal: React.FC<SelectOptionModalProps> = ({
     setLoadingPatients(true);
     try {
       const searchTerm = [first, last].filter(Boolean).join(' ');
-      const response = await getPatients({ search: searchTerm, is_active: true, page_size: 50 });
-      setPatients(response.results || []);
+      if (bookingLookupBranchId) {
+        const found = await searchBookingPatients(bookingLookupBranchId, { search: searchTerm });
+        setPatients(found as unknown as Patient[]);
+      } else {
+        const response = await getPatients({ search: searchTerm, is_active: true, page_size: 50 });
+        setPatients(response.results || []);
+      }
       setShowDropdown(true);
     } catch {
       setPatients([]);
     } finally {
       setLoadingPatients(false);
     }
-  }, []);
+  }, [bookingLookupBranchId]);
 
   useEffect(() => {
     // If a patient is already selected and the input matches their name, don't trigger a new search

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+import { useAuthStore } from '@/store/auth.store';
 import { useSubscription } from '@/features/setup/hooks/useSubscription';
 import {
   getSafeDaysRemaining,
@@ -33,6 +34,7 @@ import {
   getTrialProgressPercent,
 } from './subscription.utils';
 import { UpgradeSubscriptionModal } from '../../components/modals/UpgradeSubscriptionModal';
+import { SubscriptionTermCard } from '../../components/SubscriptionTermCard';
 
 export const Subscription: React.FC = () => {
   const {
@@ -45,10 +47,22 @@ export const Subscription: React.FC = () => {
     plans,
     startCheckout,
     isStartingCheckout,
+    requestCancellation,
+    isRequestingCancellation,
+    withdrawCancellation,
+    isWithdrawingCancellation,
   } = useSubscription();
 
+  const { user } = useAuthStore();
+  const isOwner = !!user && (user.roles?.includes('OWNER') || user.role === 'OWNER');
+
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
-  const [plansCycle, setPlansCycle] = useState<BillingCycle>('MONTHLY');
+  // The plan/cycle a customer clicked on, so the checkout dialog opens with it selected.
+  const [preset, setPreset] = useState<{ plan?: string; cycle?: BillingCycle }>({});
+  const openUpgrade = (plan?: string, cycle?: BillingCycle) => {
+    setPreset({ plan, cycle });
+    setUpgradeModalOpen(true);
+  };
 
   const daysRemaining = getSafeDaysRemaining(subscription);
   const isActive = isSubscriptionActive(subscription);
@@ -360,7 +374,7 @@ export const Subscription: React.FC = () => {
               <div className="rounded-lg bg-slate-50 border border-slate-100 p-2.5 flex items-start gap-2">
                 <Info className="w-3.5 h-3.5 text-slate-500 mt-0.5 shrink-0" />
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  <strong>Multi-branch note:</strong> Practitioners assigned to multiple branches consume 1 allocation per branch. Only permanently deleted accounts release a clinician allocation.
+                  <strong>Shared across branches:</strong> your clinician limit covers all branches together, so you can split clinicians between them however you like. A clinician who works at several branches counts once. Only permanently deleted accounts release a clinician allocation.
                 </p>
               </div>
 
@@ -417,7 +431,7 @@ export const Subscription: React.FC = () => {
               <div className="rounded-lg bg-slate-50 border border-slate-100 p-2.5 flex items-start gap-2">
                 <Info className="w-3.5 h-3.5 text-slate-500 mt-0.5 shrink-0" />
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  <strong>Branch Add-on:</strong> 1 branch is included in your plan. Additional branches can be added for ₱2,000 – ₱3,000/month depending on your plan tier.
+                  <strong>Branch Add-on:</strong> 1 branch is included in your plan. Each additional branch is ₱2,000/month (₱21,600/year with annual billing) on every plan.
                 </p>
               </div>
 
@@ -436,7 +450,7 @@ export const Subscription: React.FC = () => {
             </div>
           </div>
 
-          {/* Unlimited Admins Benefit Banner */}
+          {/* Unlimited Owner / Branch Manager / Staff accounts banner */}
           <div className="mt-4 p-4 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
@@ -444,7 +458,7 @@ export const Subscription: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs font-bold text-emerald-950">
-                  Unlimited Administrator & Staff Accounts Included
+                  Unlimited Owner, Branch Manager & Staff Accounts Included
                 </p>
                 <p className="text-[11px] text-emerald-700 mt-0.5">
                   Receptionists, clinic managers, billing staff, and clinic owners do not consume clinician allocations.
@@ -454,62 +468,36 @@ export const Subscription: React.FC = () => {
           </div>
         </div>
 
+        {/* ── 12-month term & cancellation ─────────────────────────────────── */}
+        <div className="mt-8">
+          <SubscriptionTermCard
+            subscription={subscription}
+            isOwner={isOwner}
+            onRequestCancellation={requestCancellation}
+            onWithdrawCancellation={() => withdrawCancellation()}
+            isRequesting={isRequestingCancellation}
+            isWithdrawing={isWithdrawingCancellation}
+          />
+        </div>
+
         {/* ── Available Subscription Plans Grid ─────────────────────────────── */}
         <div className="mt-12 pt-8 border-t border-gray-200">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
               <h3 className="text-lg font-bold text-gray-900">Compare Plans & Pricing Tiers</h3>
               <p className="text-xs text-gray-500 mt-0.5">
-                All plans include 100% full feature access with a 12-month commitment.
+                All plans include 100% full feature access with a {plans[0]?.commitment_months ?? 12}-month commitment, paid monthly or annually (annual saves {plans[0]?.annual_discount_percent ?? 10}%).
               </p>
             </div>
 
-            {/* Monthly / Annual Toggle */}
-            <div className="inline-flex p-1 bg-gray-100 rounded-xl border border-gray-200 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setPlansCycle('MONTHLY')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                  plansCycle === 'MONTHLY'
-                    ? 'bg-white text-gray-900 shadow-2xs'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                type="button"
-                onClick={() => setPlansCycle('ANNUAL')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-                  plansCycle === 'ANNUAL'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <span>Annual</span>
-                <span
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    plansCycle === 'ANNUAL'
-                      ? 'bg-emerald-700 text-white'
-                      : 'bg-emerald-100 text-emerald-800'
-                  }`}
-                >
-                  Save ~10%
-                </span>
-              </button>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             {plans.map((plan) => {
               const isCurrent =
                 subscription.plan?.toUpperCase() === plan.id.toUpperCase() && !subscription.is_trial;
-              const isAnnual = plansCycle === 'ANNUAL';
-              const price = isAnnual ? plan.annual_price_pesos : plan.monthly_price_pesos;
-              const branchAddonPrice = isAnnual
-                ? plan.additional_branch_annual_pesos
-                : plan.additional_branch_monthly_pesos;
-
+              const isCustom = plan.id === 'ENTERPRISE';
+              const discount = plan.annual_discount_percent ?? 10;
               return (
                 <div
                   key={plan.id}
@@ -538,28 +526,44 @@ export const Subscription: React.FC = () => {
                     </div>
                     <p className="text-xs text-gray-500 mt-1 min-h-[32px]">{plan.description}</p>
 
-                    {/* Price Block */}
+                    {/* Price Block: monthly and annual side by side */}
                     <div className="mt-4 pt-3 border-t border-gray-100">
-                      {plan.id === 'ENTERPRISE' ? (
+                      {isCustom ? (
                         <div>
                           <span className="text-2xl font-extrabold text-gray-900">Custom</span>
                           <p className="text-xs text-gray-500 mt-0.5">Tailored pricing</p>
                         </div>
                       ) : (
-                        <div>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-extrabold text-gray-900">
-                              {formatCurrency(price)}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {isAnnual ? '/ year' : '/ month'}
-                            </span>
-                          </div>
-                          {isAnnual && plan.annual_savings_pesos && (
-                            <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">
-                              Save {formatCurrency(plan.annual_savings_pesos)} / yr
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openUpgrade(plan.id, 'MONTHLY')}
+                            className="text-left rounded-lg border border-gray-200 p-2.5 hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors"
+                            aria-label={`Pay ${plan.name} monthly`}
+                          >
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Monthly</p>
+                            <p className="text-lg font-extrabold text-gray-900 leading-tight mt-0.5">
+                              {formatCurrency(plan.monthly_price_pesos)}
                             </p>
-                          )}
+                            <p className="text-[10px] text-gray-500">/ month</p>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openUpgrade(plan.id, 'ANNUAL')}
+                            className="text-left rounded-lg border border-emerald-300 bg-emerald-50/50 p-2.5 hover:border-emerald-500 transition-colors relative"
+                            aria-label={`Pay ${plan.name} annually, ${discount} percent off`}
+                          >
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 flex items-center gap-1">
+                              Annual
+                              <span className="px-1 py-px rounded bg-emerald-600 text-white text-[9px]">{discount}% off</span>
+                            </p>
+                            <p className="text-lg font-extrabold text-gray-900 leading-tight mt-0.5">
+                              {formatCurrency(plan.annual_price_pesos)}
+                            </p>
+                            <p className="text-[10px] text-emerald-700 font-semibold">
+                              / year{plan.annual_savings_pesos ? ` · save ${formatCurrency(plan.annual_savings_pesos)}` : ''}
+                            </p>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -576,11 +580,12 @@ export const Subscription: React.FC = () => {
                         <Building2 className="w-4 h-4 text-sky-600 shrink-0" />
                         <span>
                           {plan.included_branches} branch included
-                          {branchAddonPrice && (
+                          {plan.additional_branch_monthly_pesos ? (
                             <span className="text-gray-500 block text-[11px]">
-                              (+{formatCurrency(branchAddonPrice)} {isAnnual ? '/yr' : '/mo'} per extra branch)
+                              + {formatCurrency(plan.additional_branch_monthly_pesos)}/mo per additional branch
+                              {plan.additional_branch_annual_pesos ? ` (${formatCurrency(plan.additional_branch_annual_pesos)}/yr)` : ''}
                             </span>
-                          )}
+                          ) : null}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -589,15 +594,15 @@ export const Subscription: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Check className="w-4 h-4 text-gray-500 shrink-0" />
-                        <span>Unlimited Admin accounts</span>
+                        <span>Unlimited Owner, Branch Manager and staff accounts</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-6 pt-4 border-t border-gray-100">
-                    {plan.id === 'ENTERPRISE' ? (
+                    {isCustom ? (
                       <a
-                        href="mailto:support@malasakitpms.ph?subject=Enterprise%20Inquiry"
+                        href="mailto:support@malasakitpms.ph?subject=Custom%20Plan%20Inquiry"
                         className="w-full inline-flex items-center justify-center py-2 px-3 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200"
                       >
                         Contact Sales
@@ -605,7 +610,7 @@ export const Subscription: React.FC = () => {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setUpgradeModalOpen(true)}
+                        onClick={() => openUpgrade(plan.id)}
                         className={`w-full py-2 px-3 text-xs font-bold rounded-lg transition-colors ${
                           isCurrent
                             ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -626,6 +631,8 @@ export const Subscription: React.FC = () => {
       {/* ── Upgrade / Plan Selection Modal ────────────────────────────────────── */}
       <UpgradeSubscriptionModal
         isOpen={upgradeModalOpen}
+        presetPlan={preset.plan}
+        presetCycle={preset.cycle}
         onClose={() => setUpgradeModalOpen(false)}
         currentSubscription={subscription}
         plans={plans}

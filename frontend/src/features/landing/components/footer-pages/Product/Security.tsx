@@ -4,48 +4,52 @@ import { PublicPageLayout } from '../../public/PublicPageLayout';
 import { PageHeader } from '../../public/PageHeader';
 import { CtaBand, ctaBandButtonClass } from '../../public/CtaBand';
 import { Reveal } from '../../motion/Reveal';
+import { SUPPORT_EMAIL } from '../../../data/support';
 
 export const Security: React.FC = () => {
+  // Only describe controls that exist in the product. Do not add certifications or infrastructure
+  // claims (SOC 2, ISO 27001, uptime, backup targets, 24/7 monitoring) unless they are true and documented.
   const securityFeatures = [
     {
       icon: Lock,
-      title: 'End-to-End Encryption',
-      description: 'All patient data is encrypted using industry-standard AES-256 encryption both in transit and at rest.'
+      title: 'Encrypted Clinical Notes',
+      description: 'The content of clinical notes is encrypted before it is stored, so it is not kept as plain text in the database.'
     },
     {
       icon: Shield,
-      title: 'HIPAA Compliance',
-      description: 'Full compliance with HIPAA regulations to protect patient privacy and maintain data integrity.'
+      title: 'Data Privacy & HIPAA-Aligned Practices',
+      description: 'Malasakit is built to help clinics meet the Philippine Data Privacy Act, and Malasakit Systems incorporates HIPAA-aligned security practices.'
     },
     {
       icon: Eye,
       title: 'Access Control',
-      description: 'Role-based access control ensures staff can only view data they are authorized to access.'
+      description: 'Role-based access control and branch assignments ensure staff only see the information they are authorized to access.'
     }
   ];
 
-  const certifications = ['HIPAA', 'SOC 2 Type II', 'ISO 27001', 'GDPR Compliant'];
+  const approach = [
+    'Philippine Data Privacy Act (RA 10173)',
+    'HIPAA-aligned practices',
+    'Patient privacy consent records',
+    'Audit & version history',
+  ];
 
   const practices = [
     {
-      title: 'Regular Security Audits',
-      description: 'We conduct regular third-party security audits to identify and address vulnerabilities.',
+      title: 'Role-Based Permissions',
+      description: 'Owners, managers, practitioners, staff, finance and read-only users each get only the access their role needs.',
     },
     {
-      title: 'Secure Infrastructure',
-      description: 'Our infrastructure is hosted on AWS with multi-region redundancy and automatic backups.',
+      title: 'Patient Consent',
+      description: 'Data privacy consent is captured and stored with a signature, for online bookings and in the clinic.',
     },
     {
-      title: 'Data Backup & Recovery',
-      description: 'Automatic daily backups with recovery point objectives (RPO) of less than 1 hour.',
+      title: 'Audit & Version History',
+      description: 'Clinical notes and invoices keep a version history showing what changed, when and by whom.',
     },
     {
-      title: 'Incident Response',
-      description: '24/7 security monitoring and incident response team for immediate threat mitigation.',
-    },
-    {
-      title: 'Staff Training',
-      description: 'All team members undergo regular security training and background checks.',
+      title: 'Secure Sign-In',
+      description: 'Token-based sessions with automatic sign-out after a period of inactivity.',
     },
   ];
 
@@ -77,19 +81,20 @@ export const Security: React.FC = () => {
           })}
         </ul>
 
-        {/* Certifications */}
-        <section aria-labelledby="certifications-title" className="text-center">
-          <h2 id="certifications-title" className="text-3xl tracking-tight text-gray-900 font-display mb-8">Certifications & Compliance</h2>
+        {/* Compliance approach */}
+        <section aria-labelledby="compliance-title" className="text-center">
+          <h2 id="compliance-title" className="text-3xl tracking-tight text-gray-900 font-display mb-8">Our Compliance Approach</h2>
           <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {certifications.map((cert, index) => (
-              <li
-                key={index}
-                className="rounded-2xl bg-clinical-cloud ring-1 ring-gray-200/60 p-6"
-              >
-                <p className="font-bold text-trust-harbor font-heading">{cert}</p>
+            {approach.map((item) => (
+              <li key={item} className="rounded-2xl bg-clinical-cloud ring-1 ring-gray-200/60 p-6">
+                <p className="font-bold text-trust-harbor font-heading">{item}</p>
               </li>
             ))}
           </ul>
+          <p className="mt-6 max-w-3xl mx-auto text-sm text-steady-slate leading-relaxed font-body">
+            These are tools and practices to support your clinic&apos;s own compliance. Clinics remain responsible for how they collect, use and share patient
+            information. Malasakit Systems does not currently hold a formal HIPAA, SOC 2 or ISO 27001 certification.
+          </p>
         </section>
 
         {/* Security Practices */}
@@ -106,9 +111,9 @@ export const Security: React.FC = () => {
         </section>
 
         {/* Contact Security */}
-        <CtaBand title="Have Security Questions?" description="Our security team is ready to address your concerns">
-          <a href="mailto:security@malasakit.com" className={ctaBandButtonClass}>
-            Contact Security Team
+        <CtaBand title="Have Security or Privacy Questions?" description="Send us a message and we will get back to you within one business day">
+          <a href={`mailto:${SUPPORT_EMAIL}?subject=Security%20Question`} className={ctaBandButtonClass}>
+            Contact Support
           </a>
         </CtaBand>
       </div>

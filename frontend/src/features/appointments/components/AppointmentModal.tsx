@@ -5,7 +5,7 @@ import {
   AlertCircle, UserPlus, Stethoscope, Building2, Lock, Layers,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { getPatients, createPatient } from '@/features/patients/patient.api';
+import { getPatients, createPatient, searchBookingPatients } from '@/features/patients/patient.api';
 import { getPatientCases, createPatientCase } from '@/features/patients/patientCases.api';
 import type { PatientCase } from '@/types/patient';
 import { PatientModal } from '@/features/patients/components/PatientModal';
@@ -30,6 +30,8 @@ interface AppointmentModalProps {
     duration: number;
   } | null;
   selectedClinicBranchId?: number | null;
+  /** Branch opened through "Other Branches' Diary" (edit): load its patients and open cases with the booking lookup. */
+  bookingLookupBranchId?: number | null;
   /** Pre-select the practitioner from the active calendar filter. The user can still change it. */
   defaultPractitionerId?: number | null;
   /** Pre-select the patient from SelectOptionModal search. */
@@ -50,11 +52,13 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   selectedSlot,
   selectedClinicBranchId,
   defaultPractitionerId,
-  defaultPatientId,
+  defaultPatientId, bookingLookupBranchId = null,
 }) => {
   const { user } = useAuthStore();
 
   const [patients, setPatients] = useState<Patient[]>([]);
+  // Open cases returned with the booking lookup (the case API is limited to the user's own branches).
+  const [lookupCases, setLookupCases] = useState<Record<number, PatientCase[]>>({});
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -177,8 +181,16 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const loadPatients = async () => {
     setLoadingPatients(true);
     try {
-      const response = await getPatients({ is_active: true, page_size: 1000 });
-      setPatients(response.results || []);
+      if (bookingLookupBranchId) {
+        const found = await searchBookingPatients(bookingLookupBranchId, defaultPatientId ? { patient: Number(defaultPatientId) } : {});
+        setLookupCases(Object.fromEntries(
+          found.map((p) => [p.id, p.cases.map((c) => ({ id: c.id, title: c.title, status: 'OPEN' }) as unknown as PatientCase)]),
+        ));
+        setPatients(found as unknown as Patient[]);
+      } else {
+        const response = await getPatients({ is_active: true, page_size: 1000 });
+        setPatients(response.results || []);
+      }
     } catch {
       toast.error('Failed to load patients');
     } finally {
@@ -195,7 +207,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       }
       setLoadingCases(true);
       try {
-        const cases = await getPatientCases(Number(formData.patient));
+        const cases: PatientCase[] = bookingLookupBranchId
+          ? (lookupCases[Number(formData.patient)] ?? [])
+          : await getPatientCases(Number(formData.patient));
         const activeCases = cases.filter(c => c.status !== 'DISCHARGED');
         setPatientCases(activeCases);
         setFormData(prev => ({ ...prev, patient_case: '' }));
@@ -206,7 +220,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       }
     };
     fetchCases();
-  }, [formData.patient]);
+  }, [formData.patient, bookingLookupBranchId, lookupCases]);
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -630,7 +644,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                           <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                           <div>
                             <p className="text-sm font-semibold text-amber-800 mb-1">No services configured</p>
-                            <p className="text-xs text-amber-700">Ask an admin to add clinic services under <strong>Setup → Clinic Services</strong>.</p>
+                            <p className="text-xs text-amber-700">Ask the Owner to add clinic services under <strong>Setup → Clinic Services</strong>.</p>
                           </div>
                         </div>
                       </div>
@@ -705,7 +719,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                         : bookablePractitioners.length === 0
                           ? selectedClinicBranchId
                             ? 'No practitioners assigned to this branch.'
-                            : 'No practitioners available. Contact admin to add practitioners.'
+                            : 'No practitioners available. Contact the Owner to add practitioners.'
                           : 'Select a practitioner or leave unassigned to assign later.'}
                     </p>
                   </div>

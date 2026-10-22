@@ -15,10 +15,10 @@ from apps.patients.package_serializers import (
 )
 from apps.patients.services import package_service
 
-# Owner (ADMIN), Manager (ADMIN_ASSISTANT), Staff and Practitioner may create and
+# Owner, Branch Manager (BRANCH_MANAGER), Staff and Practitioner may create and
 # edit Private Package Sessions (decision D3, 2026-10-20). The role list is used
 # instead of a feature key because Staff only has `client_cases: view` by default.
-PACKAGE_WRITE_ROLES = ['ADMIN', 'ADMIN_ASSISTANT', 'STAFF', 'PRACTITIONER']
+PACKAGE_WRITE_ROLES = ['OWNER', 'BRANCH_MANAGER', 'STAFF', 'PRACTITIONER']
 
 
 def _client_ip(request) -> str:

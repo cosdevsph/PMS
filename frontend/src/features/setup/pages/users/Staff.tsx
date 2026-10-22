@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Users, UserPlus, RefreshCw, Search } from 'lucide-react';
 import { StaffTable }              from './components/StaffTable';
 import { CreateStaffAccountModal } from '../../components/modals/CreateStaffAccountModal';
@@ -24,13 +24,26 @@ export const Staff: React.FC = () => {
   const [clinicianLimitInfo, setClinicianLimitInfo]           = useState<ClinicianLimitInfo | null>(null);
 
   const currentUser = useAuthStore(s => s.user);
-  const { isOwner, isManager, managerBranches } = usePermissions();
+  const { isOwner, isBranchManager, managerBranches } = usePermissions();
 
   const {
     staff, loading, error,
     createStaff, updateStaff, deleteStaff, permanentDeleteStaff,
     toggleStaffStatus, refreshStaff,
   } = useStaffManagement();
+
+  // Which Branch Manager manages each clinic (a clinic can have only one).
+  const branchManagers = useMemo(() => {
+    const map: Record<number, { id: number; name: string }> = {};
+    for (const s of staff) {
+      const roles = s.roles && s.roles.length > 0 ? s.roles : [s.role];
+      if (!roles.includes('BRANCH_MANAGER')) continue;
+      for (const b of s.manager_branches ?? []) {
+        map[b.id] = { id: s.id, name: `${s.first_name} ${s.last_name}`.trim() };
+      }
+    }
+    return map;
+  }, [staff]);
 
   const handleDeleteClick = async (staffMember: StaffMember) => {
     setStaffToDelete(staffMember);
@@ -105,7 +118,7 @@ export const Staff: React.FC = () => {
 
   // Determine branch scope text
   let scopeText = "Viewing Staff For: All Branches";
-  if (isManager && !isOwner) {
+  if (isBranchManager && !isOwner) {
     if (managerBranches.length > 0) {
       scopeText = `Viewing Staff For: ${managerBranches.map(b => b.name).join(', ')}`;
     } else {
@@ -201,6 +214,7 @@ export const Staff: React.FC = () => {
         onSubmit={handleModalSubmit}
         editingStaff={selectedStaff}
         currentUserId={currentUser?.id}
+        branchManagers={branchManagers}
       />
       
       {staffToDelete && (

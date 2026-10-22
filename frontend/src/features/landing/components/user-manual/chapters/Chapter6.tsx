@@ -124,7 +124,7 @@ const Chapter6: React.FC = () => {
             When configuring a consent form, the system enforces Role-Based Access Control (RBAC) to ensure staff can only modify forms for branches they are assigned to.
           </p>
           
-          <h5 className="font-bold text-gray-900 mb-2 mt-6">For Clinic Owners & Regional Managers</h5>
+          <h5 className="font-bold text-gray-900 mb-2 mt-6">For Clinic Owners & Branch Managers (Multiple Branches)</h5>
           <p className="text-gray-700 font-body leading-relaxed mb-4">
             Staff with access to multiple branches will see an <strong>Assign To</strong> dropdown menu at the top of the modal. They can select any branch under their jurisdiction to configure its specific consent form.
           </p>
@@ -135,12 +135,12 @@ const Chapter6: React.FC = () => {
               height={316}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 6.4: Manager (Multiple Branches) - Branch selection dropdown"
+              alt="Screenshot 6.4: Branch Manager (Multiple Branches) - Branch selection dropdown"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
 
-          <h5 className="font-bold text-gray-900 mb-2 mt-8">For Single-Branch Managers</h5>
+          <h5 className="font-bold text-gray-900 mb-2 mt-8">For Branch Managers with a Single Branch</h5>
           <p className="text-gray-700 font-body leading-relaxed mb-4">
             If a manager is only assigned to a single location, the system automatically detects their branch. The dropdown menu is locked and read-only, preventing them from modifying agreements for other branches.
           </p>
@@ -151,7 +151,7 @@ const Chapter6: React.FC = () => {
               height={242}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 6.5: Manager (Single Branch) - Locked auto-selected branch"
+              alt="Screenshot 6.5: Branch Manager (Single Branch) - Locked auto-selected branch"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>

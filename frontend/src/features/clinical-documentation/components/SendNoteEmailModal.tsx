@@ -220,7 +220,7 @@ export const SendNoteEmailModal: React.FC<SendNoteEmailModalProps> = ({
         const usersResponse = await axiosInstance.get('/users/');
         const users = usersResponse.data.results || usersResponse.data;
         const userSuggestions = (users as User[])
-          .filter((u: User) => u.email && (u.role === 'STAFF' || u.role === 'ADMIN'))
+          .filter((u: User) => u.email && (u.role === 'STAFF' || u.role === 'OWNER'))
           .map((u: User) => ({
             name: `${u.first_name} ${u.last_name}`,
             email: u.email,

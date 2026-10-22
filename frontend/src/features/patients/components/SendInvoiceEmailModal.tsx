@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { roleLabel } from '@/lib/roles';
 import { X, Mail, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useClinicSettings } from '@/hooks/useClinicSettings';
@@ -279,7 +280,7 @@ export const SendInvoiceEmailModal: React.FC<SendInvoiceEmailModalProps> = ({
                             </div>
                           </div>
                           <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded whitespace-nowrap ml-2">
-                            {suggestion.role}
+                            {roleLabel(suggestion.role)}
                           </span>
                         </button>
                       ))

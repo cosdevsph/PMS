@@ -102,14 +102,18 @@ interface CalendarProps {
   practitionerAvailability?: PractitionerAvailability;
   /** Full availability map for ALL practitioners: { practitionerId: availability } */
   allAvailabilities?: Record<number, PractitionerAvailability>;
-  // ── Compare Mode (Admin only, Day/Week views) ───────────────────────────
+  // ── Compare Mode (Owner only, Day/Week views) ───────────────────────────
   compareMode?: boolean;
   compareAvailabilityA?: PractitionerAvailability;
   compareAvailabilityB?: PractitionerAvailability;
   comparePractitionerNames?: [string, string];
   comparePractitionerIdA?: number | null;
   comparePractitionerIdB?: number | null;
-  /** Admin-only: intercept double-click / drag-select instead of opening AppointmentModal internally */
+  /** Owner-only: intercept double-click / drag-select instead of opening AppointmentModal internally */
+  /** View-only mode (e.g. another branch's Diary opened with View access): no creating, moving, resizing or editing. */
+  readOnly?: boolean;
+  /** The open branch is one the user was granted (not their own): hide links into patient records. */
+  otherBranchAccess?: boolean;
   onSlotAction?: (slot: { date: Date; time: string; hour: number; minutes: number; duration: number; practitionerId?: number | null }, anchorRect?: DOMRect) => void;
   /** Increment to trigger a refetch of appointments (e.g. after creating one from outside Calendar) */
   appointmentRefreshKey?: number;
@@ -287,6 +291,8 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   comparePractitionerIdA,
   comparePractitionerIdB,
   onSlotAction,
+  readOnly = false,
+  otherBranchAccess = false,
   appointmentRefreshKey,
   onRecurringCreated,
   onLiveStatusChange,
@@ -841,11 +847,12 @@ const CalendarComponent: React.FC<CalendarProps> = ({
 
   const {
     blockDragState,
-    startBlockHold,
+    startBlockHold: startBlockHoldRaw,
     cancelBlockHold,
     onBlockDragMove,
     onBlockDropOnSlot,
   } = useBlockAppointmentDrag(handleBlockRescheduleRequest);
+  const startBlockHold: typeof startBlockHoldRaw = readOnly ? () => {} : startBlockHoldRaw;
 
   const handleNoteRescheduleRequest = useCallback((
     note: CalendarNote,
@@ -858,21 +865,23 @@ const CalendarComponent: React.FC<CalendarProps> = ({
 
   const {
     noteDragState,
-    startNoteDrag,
+    startNoteDrag: startNoteDragRaw,
     cancelNoteDrag,
     onNoteDragMove,
     onNoteDropOnSlot,
   } = useNoteDrag(handleNoteRescheduleRequest);
+  const startNoteDrag: typeof startNoteDragRaw = readOnly ? () => {} : startNoteDragRaw;
 
   // ── Resize ────────────────────────────────────────────────────────────────
   const {
     isResizing,
-    startResize,
+    startResize: startResizeRaw,
     onResizeMove,
     commitResize,
     cancelResize,
     getPreviewTimes,
   } = useResize();
+  const startResize: typeof startResizeRaw = readOnly ? () => {} : startResizeRaw;
 
   // Commit resize: call API directly (no confirm dialog needed)
   const handleResizeCommit = useCallback(async () => {
@@ -1130,6 +1139,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   };
 
   const handleMouseDown = (_date: Date, slot: CalendarSlot) => {
+    if (readOnly) return;
     if (dragState.isDragging || blockDragState.isDragging || noteDragState.isDragging || isResizing) return;
     isDraggingRef.current = false;
     dragStartTimeRef.current = Date.now();
@@ -1191,6 +1201,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   };
 
   const handleDoubleClick = (date: Date, slot: CalendarSlot, element?: HTMLElement) => {
+    if (readOnly) return;
     if (dragState.isDragging || dragState.isHolding || blockDragState.isDragging || blockDragState.isHolding || noteDragState.isDragging || isResizing) return;
     if (onSlotAction) {
       const rect = element?.getBoundingClientRect();
@@ -1204,6 +1215,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
   // These are identical to handleDoubleClick / handleMouseUp but pass the
   // column's practitioner id through onSlotAction so Diary can pre-fill it.
   const handleColumnDoubleClick = (date: Date, slot: CalendarSlot, practId: number | null, element?: HTMLElement) => {
+    if (readOnly) return;
     if (dragState.isDragging || dragState.isHolding || blockDragState.isDragging || blockDragState.isHolding || noteDragState.isDragging || isResizing) return;
     if (onSlotAction) {
       const rect = element?.getBoundingClientRect();
@@ -1555,7 +1567,9 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           }
         }}
         onRecurringCreated={onRecurringCreated}
-        onRebook={onRebook}
+        onRebook={readOnly ? undefined : onRebook}
+        readOnly={readOnly}
+        hideProfileLinks={otherBranchAccess}
       />
       {/* Conflict Modal for block drag/reschedule */}
       <ConflictModal
@@ -1608,7 +1622,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     const col = getBlockColors(apt);
     const isDragged = dragState.draggedAppointment?.id === apt.id;
     const isHeld = dragState.isHolding && dragState.draggedAppointment?.id === apt.id;
-    const canDrag = apt.status !== 'CANCELLED' && apt.status !== 'COMPLETED';
+    const canDrag = !readOnly && apt.status !== 'CANCELLED' && apt.status !== 'COMPLETED';
 
     // Live resize preview — overrides original times while dragging
     const resizeOvr = getPreviewTimes('appointment', apt.id);
@@ -1985,7 +1999,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     const col = getBlockColors(apt);
     const isDragged = dragState.draggedAppointment?.id === apt.id;
     const isHeld = dragState.isHolding && dragState.draggedAppointment?.id === apt.id;
-    const canDrag = apt.status !== 'CANCELLED' && apt.status !== 'COMPLETED';
+    const canDrag = !readOnly && apt.status !== 'CANCELLED' && apt.status !== 'COMPLETED';
 
     const containerStyle: React.CSSProperties = col.useHex ? {
       backgroundColor: col.hex,
@@ -2135,7 +2149,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           )}
         </div>
         {/* Right 10% — quick-action strip (only on slots with events) */}
-        {hasEvents && (
+        {hasEvents && !readOnly && (
           <div
             className="w-[10%] h-full cursor-pointer border-l border-gray-100/80 hover:bg-blue-50/60 transition-colors duration-100 flex items-center justify-center group/strip"
             onMouseDown={e => e.stopPropagation()}
@@ -2220,7 +2234,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           {isSelected && <div className="absolute inset-0 bg-sky-200 pointer-events-none" />}
           {isDropTarget && <div className="absolute inset-0 border-b border-dashed border-emerald-300 pointer-events-none" />}
         </div>
-        {hasEvents && (
+        {hasEvents && !readOnly && (
           <div
             className="w-[10%] h-full cursor-pointer border-l border-gray-100/80 hover:bg-blue-50/60 transition-colors duration-100 flex items-center justify-center group/strip"
             onMouseDown={e => e.stopPropagation()}
@@ -2501,7 +2515,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
               {isSelected && <div className="absolute inset-0 bg-sky-200 pointer-events-none" />}
               {isDropTarget && <div className="absolute inset-0 border-b border-dashed border-emerald-300 pointer-events-none" />}
             </div>
-            {hasEvents && (
+            {hasEvents && !readOnly && (
               <div
                 className="w-[10%] h-full cursor-pointer border-l border-gray-100/80 hover:bg-blue-50/60 transition-colors duration-100 flex items-center justify-center group/strip"
                 onMouseDown={e => e.stopPropagation()}
@@ -2931,7 +2945,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
               {isSelected && <div className="absolute inset-0 bg-sky-200 pointer-events-none" />}
               {isDropTarget && <div className="absolute inset-0 border-b border-dashed border-emerald-300 pointer-events-none" />}
             </div>
-            {hasEvents && (
+            {hasEvents && !readOnly && (
               <div
                 className="w-[10%] h-full cursor-pointer border-l border-gray-100/80 hover:bg-blue-50/60 transition-colors duration-100 flex items-center justify-center group/strip"
                 onMouseDown={e => e.stopPropagation()}

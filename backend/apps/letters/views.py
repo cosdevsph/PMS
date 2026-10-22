@@ -115,7 +115,7 @@ class LetterViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = self.queryset.filter(clinic=user.clinic)
         # Practitioners see only their own letters
-        if user.is_practitioner and not user.is_admin:
+        if user.is_practitioner and not user.is_owner:
             qs = qs.filter(practitioner__user=user)
         return qs
 

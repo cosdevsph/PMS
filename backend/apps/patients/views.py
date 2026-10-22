@@ -278,9 +278,9 @@ class PatientViewSet(viewsets.ModelViewSet):
         base_qs = qs.filter(clinic_id__in=all_branch_ids)
 
         # ── RBAC Patient Visibility Scoping ───────────────────────────────
-        if not user.is_admin:
+        if not user.is_owner:
             from django.db.models import Q
-            if user.is_manager:
+            if user.is_branch_manager:
                 assigned_branches = list(user.get_managed_branches().values_list('id', flat=True))
             else:
                 assigned_branches = list(user.branch_accesses.values_list('branch_id', flat=True))
@@ -488,7 +488,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         if not serializer.validated_data.get('home_branch'):
             if user.clinic_branch_id:
                 kwargs['home_branch_id'] = user.clinic_branch_id
-            elif user.is_manager and user.get_managed_branches().exists():
+            elif user.is_branch_manager and user.get_managed_branches().exists():
                 kwargs['home_branch'] = user.get_managed_branches().first()
             elif user.branch_accesses.exists():
                 kwargs['home_branch_id'] = user.branch_accesses.first().branch_id
@@ -642,7 +642,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         base_kwargs = {}
         if user.clinic_branch_id:
             base_kwargs['home_branch_id'] = user.clinic_branch_id
-        elif user.is_manager and user.get_managed_branches().exists():
+        elif user.is_branch_manager and user.get_managed_branches().exists():
             base_kwargs['home_branch'] = user.get_managed_branches().first()
         elif user.branch_accesses.exists():
             base_kwargs['home_branch_id'] = user.branch_accesses.first().branch_id
@@ -1256,7 +1256,7 @@ class IntakeFormViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(patient__clinic=user.clinic)
 
@@ -1310,8 +1310,8 @@ class PortalLinkViewSet(viewsets.ModelViewSet):
         all_branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
         base_qs = self.queryset.filter(clinic_id__in=all_branch_ids)
 
-        if not user.is_admin:
-            if user.is_manager:
+        if not user.is_owner:
+            if user.is_branch_manager:
                 assigned_branches = list(user.get_managed_branches().values_list('id', flat=True))
             else:
                 assigned_branches = list(user.branch_accesses.values_list('branch_id', flat=True))
@@ -1331,8 +1331,8 @@ class PortalLinkViewSet(viewsets.ModelViewSet):
         all_branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
         branches_qs = Clinic.objects.filter(id__in=all_branch_ids, is_active=True, is_deleted=False)
 
-        if not user.is_admin:
-            if user.is_manager:
+        if not user.is_owner:
+            if user.is_branch_manager:
                 assigned_branches = list(user.get_managed_branches().values_list('id', flat=True))
             else:
                 assigned_branches = list(user.branch_accesses.values_list('branch_id', flat=True))
@@ -2179,6 +2179,12 @@ class PublicClientFormSubmitView(APIView):
 
 # ─── Patient Case ViewSet ──────────────────────────────────────────────────────
 
+# Roles allowed to permanently delete a case. Intentionally empty: the check this replaces compared
+# against the codes OWNER and MANAGER, which no user held at the time, so the answer was always 403. The
+# 2026-10-22 Owner / Branch Manager rename keeps that behavior; add ROLE_OWNER here to enable it.
+CASE_HARD_DELETE_ROLES = ()
+
+
 class PatientCaseViewSet(viewsets.ModelViewSet):
     """ViewSet for managing patient clinical cases."""
     queryset = PatientCase.objects.all()
@@ -2284,7 +2290,7 @@ class PatientCaseViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         user = request.user
-        if not user.role in ['OWNER', 'MANAGER']:
+        if user.role not in CASE_HARD_DELETE_ROLES:
             return Response({'detail': 'You do not have permission to permanently delete cases.'}, status=status.HTTP_403_FORBIDDEN)
             
         case = self.get_object()
@@ -2377,3 +2383,69 @@ class PatientMergeExecuteView(APIView):
         except Exception as e:
             # Fallback for unexpected errors during transaction
             return Response({'detail': f'Merge failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class BookingPatientLookupView(APIView):
+    """
+    GET /api/patients/booking-lookup/?branch=<id>&search=<text>[&patient=<id>]
+
+    Lets a user who may CHANGE the Diary of a branch (a Branch Manager with 'Other Branches' Diary'
+    set to edit, or the Owner) find that branch's patients to book them, even though the
+    patient list is limited to the user's own branches. Returns only what booking needs:
+    name, patient number, date of birth and open cases. Patient records, invoices and reports
+    of that branch stay hidden.
+    """
+    permission_classes = [IsAuthenticated]
+    MAX_RESULTS = 50
+
+    def get(self, request):
+        from rest_framework.exceptions import PermissionDenied, ValidationError
+        from apps.accounts.utils.rbac import validate_diary_branch
+
+        user = request.user
+        if not user.clinic:
+            return Response({'results': []})
+        try:
+            branch_id = int(request.query_params.get('branch', ''))
+        except (TypeError, ValueError):
+            raise ValidationError({'branch': 'A branch id is required.'})
+
+        group_ids = set(user.clinic.main_clinic.get_all_branches().values_list('id', flat=True))
+        if branch_id not in group_ids:
+            raise PermissionDenied('You do not have permission to access this branch.')
+        validate_diary_branch(user, branch_id, write=True)
+
+        qs = Patient.objects.filter(
+            clinic_id__in=group_ids, home_branch_id=branch_id,
+            is_deleted=False, is_archived=False, is_active=True,
+        )
+        patient_id = request.query_params.get('patient')
+        if patient_id and patient_id.isdigit():
+            qs = qs.filter(id=int(patient_id))
+        term = (request.query_params.get('search') or '').strip()
+        if term:
+            for word in term.split():
+                qs = qs.filter(
+                    Q(first_name__icontains=word) | Q(last_name__icontains=word) | Q(patient_number__icontains=word)
+                )
+        qs = qs.order_by('last_name', 'first_name')[:self.MAX_RESULTS]
+
+        patients = list(qs)
+        cases = PatientCase.objects.filter(
+            patient__in=patients, status='OPEN', is_archived=False,
+        ).order_by('-created_at')
+        by_patient = {}
+        for case in cases:
+            by_patient.setdefault(case.patient_id, []).append({'id': case.id, 'title': case.title})
+
+        return Response({'results': [
+            {
+                'id': p.id,
+                'first_name': p.first_name,
+                'last_name': p.last_name,
+                'patient_number': p.patient_number,
+                'date_of_birth': p.date_of_birth,
+                'cases': by_patient.get(p.id, []),
+            }
+            for p in patients
+        ]})

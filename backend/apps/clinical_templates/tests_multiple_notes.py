@@ -13,8 +13,8 @@ class MultipleNotesTest(APITestCase):
         self.practitioner_user = User.objects.create_user(email="dr@test.com", password="password", first_name="Dr.", last_name="Santos", clinic=self.clinic, role="PRACTITIONER")
         self.practitioner = Practitioner.objects.create(user=self.practitioner_user, clinic=self.clinic)
         
-        self.bale_torres = User.objects.create_user(email="bale@test.com", password="password", first_name="Bale", last_name="Torres", clinic=self.clinic, clinic_branch=self.clinic, role="ADMIN_ASSISTANT")
-        self.admin_user = User.objects.create_user(email="admin@test.com", password="password", first_name="Maria", last_name="Reyes", clinic=self.clinic, role="ADMIN")
+        self.bale_torres = User.objects.create_user(email="bale@test.com", password="password", first_name="Bale", last_name="Torres", clinic=self.clinic, clinic_branch=self.clinic, role="BRANCH_MANAGER")
+        self.admin_user = User.objects.create_user(email="admin@test.com", password="password", first_name="Maria", last_name="Reyes", clinic=self.clinic, role="OWNER")
         
         self.patient = Patient.objects.create(first_name="John", last_name="Doe", date_of_birth="1990-01-01", clinic=self.clinic)
         self.patient_case = PatientCase.objects.create(patient=self.patient, title="Test Case")

@@ -4,7 +4,7 @@
  * Renders children only when the authenticated user has at least `required`
  * access to `feature`.  Renders `fallback` otherwise (defaults to null).
  *
- * ADMIN users always pass through regardless of feature / required.
+ * OWNER users always pass through regardless of feature / required.
  *
  * Usage:
  *   <PermissionGuard feature="staff_management" required="view">

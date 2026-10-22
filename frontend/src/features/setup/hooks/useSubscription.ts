@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 import {
@@ -61,9 +61,30 @@ export const useCreateCheckout = () => {
 };
 
 export const useSubscription = () => {
+  const queryClient = useQueryClient();
   const statusQuery = useSubscriptionStatus(true);
   const plansQuery = useSubscriptionPlans();
   const checkoutMutation = useCreateCheckout();
+
+  const refreshStatus = () => queryClient.invalidateQueries({ queryKey: SUBSCRIPTION_QUERY_KEYS.status });
+
+  const cancelMutation = useMutation<SubscriptionStatusResponse, unknown, string>({
+    mutationFn: subscriptionApi.requestCancellation,
+    onSuccess: () => {
+      toast.success('Cancellation scheduled for the end of your current term.');
+      refreshStatus();
+    },
+    onError: (error) => toast.error(getErrorMessage(error, 'Unable to schedule the cancellation.')),
+  });
+
+  const withdrawMutation = useMutation<SubscriptionStatusResponse, unknown, void>({
+    mutationFn: () => subscriptionApi.withdrawCancellation(),
+    onSuccess: () => {
+      toast.success('Cancellation request withdrawn. Your subscription will continue.');
+      refreshStatus();
+    },
+    onError: (error) => toast.error(getErrorMessage(error, 'Unable to withdraw the cancellation.')),
+  });
 
   return {
     subscription: statusQuery.data,
@@ -76,6 +97,10 @@ export const useSubscription = () => {
     isLoadingPlans: plansQuery.isLoading,
     startCheckout: checkoutMutation.mutateAsync,
     isStartingCheckout: checkoutMutation.isPending,
+    requestCancellation: cancelMutation.mutateAsync,
+    isRequestingCancellation: cancelMutation.isPending,
+    withdrawCancellation: withdrawMutation.mutateAsync,
+    isWithdrawingCancellation: withdrawMutation.isPending,
   };
 };
 

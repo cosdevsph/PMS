@@ -29,15 +29,25 @@ export const Diary: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const effectiveRoles = (user?.roles && user.roles.length > 0) ? user.roles : (user?.role ? [user.role] : []);
-  const isAdmin = effectiveRoles.includes('ADMIN');
+  const isOwner = effectiveRoles.includes('OWNER');
   const isPractitioner = effectiveRoles.includes('PRACTITIONER');
   const isStaff = effectiveRoles.includes('STAFF');
 
-  const isBranchScopedUser = !isAdmin;
+  const isBranchScopedUser = !isOwner;
+  // Own branches first (the default tab is the first one), then the extra branches the Owner granted.
+  // diary_branches is empty unless the permission group's "Other Branches' Diary" is View or Edit.
+  const ownBranchIds = useMemo(
+    () => (user?.manager_branches || []).map((b: any) => b.id as number),
+    [user?.manager_branches],
+  );
+  const extraBranchIds = useMemo(
+    () => (user?.diary_branches || []).map((b) => b.id).filter((id) => !ownBranchIds.includes(id)),
+    [user?.diary_branches, ownBranchIds],
+  );
   const authorizedBranchIds = useMemo(() => {
     if (!isBranchScopedUser) return null;
-    return (user?.manager_branches || []).map((b: any) => b.id);
-  }, [isBranchScopedUser, user?.manager_branches]);
+    return [...ownBranchIds, ...extraBranchIds];
+  }, [isBranchScopedUser, ownBranchIds, extraBranchIds]);
   // ── Rebook Mode ──────────────────────────────────────────────────
   const { rebookMode, rebookData, startRebook, exitRebook } = useRebookMode();
   // Guard against rapid double-clicks creating duplicate appointments
@@ -111,6 +121,9 @@ export const Diary: React.FC = () => {
 
   const [selectedPractitioner, setSelectedPractitioner] = useState<number | string | null>(null);
   const [selectedClinicBranch, setSelectedClinicBranch] = useState<number | null>(null);
+  // A branch opened through "Other Branches' Diary": read-only at View level, editable at Edit level.
+  const isExtraBranchOpen = selectedClinicBranch !== null && extraBranchIds.includes(selectedClinicBranch);
+  const isReadOnlyBranch = isExtraBranchOpen && user?.diary_other_branches_level !== 'edit';
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [pendingWeekView, setPendingWeekView] = useState(false);
   const [calendarReadyDate, setCalendarReadyDate] = useState<Date | null>(null);
@@ -122,7 +135,7 @@ export const Diary: React.FC = () => {
   // the mini calendar re-locks to the Diary's active month automatically.
   const [miniCalendarOffset, setMiniCalendarOffset] = useState(0);
 
-  // ── Admin Compare Mode State ────────────────────────────────────────────────
+  // ── Owner Compare Mode State ────────────────────────────────────────────────
   const [compareMode, setCompareMode] = useState(false);
   const [comparePractitioners, setComparePractitioners] = useState<[number | string | null, number | string | null]>([null, null]);
   const [showCompareDropdownA, setShowCompareDropdownA] = useState(false);
@@ -250,7 +263,7 @@ export const Diary: React.FC = () => {
         }
       }
     } else {
-      // All-branches practitioner (e.g. Admin with no branch).
+      // All-branches practitioner (e.g. Owner with no branch).
       // Explicitly reset to the first available branch.
       if (!hasAutoSelectedBranch.current && branches.length > 0) {
         hasAutoSelectedBranch.current = true;
@@ -274,7 +287,7 @@ export const Diary: React.FC = () => {
   // IMPORTANT: exempt the logged-in practitioner's own ID (cachedOwnId) from
   // being cleared here.  When a branch tab is selected, usePractitioners refetches
   // for that branch and the own practitioner may temporarily be absent from the
-  // list (e.g. Admin+Practitioner with no branch, or slow network).  The main
+  // list (e.g. Owner+Practitioner with no branch, or slow network).  The main
   // useEffect above will always restore the correct selection; clearing it here
   // causes a race that leaves the filter stuck on "Show All".
   useEffect(() => {
@@ -356,7 +369,7 @@ export const Diary: React.FC = () => {
           }
         }
       } else {
-        // For Admins/Owners, just pick the first available branch
+        // For Owners, just pick the first available branch
         setSelectedClinicBranch(branches[0].id);
       }
     }
@@ -375,7 +388,7 @@ export const Diary: React.FC = () => {
   const practitionerAvailabilityForCalendar = useMemo(() => {
     if (!selectedPractitioner) {
       // No explicit practitioner filter — overlay own schedule only when on the
-      // user's home tab or any assigned branch. For branch-assigned Admin+Practitioners browsing an
+      // user's home tab or any assigned branch. For branch-assigned Owner+Practitioners browsing an
       // unassigned branch, isOwnAssignedClinic is false, so we return undefined
       // and the calendar renders without their availability shading.
       if (isPractitioner && isOwnAssignedClinic) {
@@ -418,15 +431,15 @@ export const Diary: React.FC = () => {
   }, [practitioners, isPractitioner, user, cachedOwnAvailability]);
 
   // Which availability map to pass as allAvailabilities to Calendar:
-  // - Admin: pass map so slots are coloured properly for all practitioners in the branch;
+  // - Owner: pass map so slots are coloured properly for all practitioners in the branch;
   //   when compareMode is active, compare handles its own availabilities.
   // - Practitioner/Staff: single-practitioner overlay via practitionerAvailability prop;
   //   allAvailabilities always undefined (avoids showing every branch practitioner)
   const calendarAllAvailabilities = useMemo(() => {
-    if (!isAdmin) return undefined;
+    if (!isOwner) return undefined;
     if (compareMode) return undefined;
     return availabilityMap;
-  }, [isAdmin, compareMode, availabilityMap]);
+  }, [isOwner, compareMode, availabilityMap]);
 
   // ── Compare mode availability ───────────────────────────────────────────────
   const compareAvailabilityA = useMemo(
@@ -521,13 +534,13 @@ export const Diary: React.FC = () => {
           setSelectedPractitioner(null);
         }
       } else {
-        // Admin or unassigned Practitioner: always clear filter when switching branches
+        // Owner or unassigned Practitioner: always clear filter when switching branches
         setSelectedPractitioner(null);
       }
     }
   };
 
-  // ── Admin Compare Mode Handlers ─────────────────────────────────────────────
+  // ── Owner Compare Mode Handlers ─────────────────────────────────────────────
   const handleSetCompareMode = (enabled: boolean) => {
     setCompareMode(enabled);
     if (!enabled) setComparePractitioners([null, null]);
@@ -615,9 +628,10 @@ export const Diary: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<BlockAppointment | null>(null);
 
   const handleEventClick = useCallback((event: BlockAppointment) => {
+    if (isReadOnlyBranch) return; // block details open an editor; View access only sees the busy time
     setSelectedEvent(event);
     setShowEventViewModal(true);
-  }, []);
+  }, [isReadOnlyBranch]);
 
   const handleEventUpdated = useCallback(() => {
     // Increment the refresh key to trigger Calendar to refetch block appointments
@@ -682,7 +696,7 @@ export const Diary: React.FC = () => {
   }, [calendarAppointments]);
 
   // ── Slot action (double-click or drag-select) → SelectOptionModal ──────
-  // Available to all users: Admin, Practitioner, Staff
+  // Available to all users: Owner, Branch Manager, Practitioner, Staff
   const [anchorRect, setAnchorRect] = useState<DOMRect | undefined>();
   const handleSlotAction = useCallback((slot: {
     date: Date; time: string; hour: number; minutes: number; duration: number;
@@ -774,11 +788,11 @@ export const Diary: React.FC = () => {
   // ── Effective Practitioner ID for Week View ──────────────────────────────────
   // When a PRACTITIONER is logged in and no filter is applied in Week View,
   // ownership should automatically default to the logged-in practitioner rather
-  // than falling back to branch-wide (null).  Admin and Day View are unaffected.
+  // than falling back to branch-wide (null).  Owner and Day View are unaffected.
   //
   //   Priority 1: selectedPractitioner (explicit filter dropdown choice)
   //   Priority 2: cachedOwnId          (logged-in practitioner, Week View only)
-  //   Fallback:   null                 (branch-wide — Admin / Staff / no prac)
+  //   Fallback:   null                 (branch-wide — Owner / Staff / no prac)
   const loggedInPractitionerNumericId: number | null =
     isPractitioner && typeof cachedOwnId === 'number' ? cachedOwnId : null;
 
@@ -792,13 +806,13 @@ export const Diary: React.FC = () => {
     if (view === 'week' && loggedInPractitionerNumericId != null) {
       return loggedInPractitionerNumericId;
     }
-    // Admin / Staff / Month / Day View — keep null (branch-wide or slot-column-based).
+    // Owner / Staff / Month / Day View — keep null (branch-wide or slot-column-based).
     return null;
   }, [selectedPractitioner, view, loggedInPractitionerNumericId]);
 
   const calendarCompareMode = useMemo(
-    () => (isAdmin || isPractitioner || isStaff) && compareMode && !isDuplicateComparePractitioner && (view === 'day' || view === 'week'),
-    [isAdmin, isPractitioner, isStaff, compareMode, isDuplicateComparePractitioner, view],
+    () => (isOwner || isPractitioner || isStaff) && compareMode && !isDuplicateComparePractitioner && (view === 'day' || view === 'week'),
+    [isOwner, isPractitioner, isStaff, compareMode, isDuplicateComparePractitioner, view],
   );
 
   // Day or Week View + specific branch = multi-practitioner split column mode.
@@ -959,6 +973,9 @@ export const Diary: React.FC = () => {
                       </span>
                     )}
                     <span className="text-[10px] text-gray-400">• {branch.city}</span>
+                    {extraBranchIds.includes(branch.id) && user?.diary_other_branches_level !== 'edit' && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded font-medium">View only</span>
+                    )}
                   </button>
                 );
               })}
@@ -1285,7 +1302,9 @@ export const Diary: React.FC = () => {
                 appointmentRefreshKey={appointmentRefreshKey}
                 onRecurringCreated={handleRecurringCreated}
                 onEventClick={handleEventClick}
-                onSlotAction={handleSlotAction}
+                onSlotAction={isReadOnlyBranch ? undefined : handleSlotAction}
+                readOnly={isReadOnlyBranch}
+                otherBranchAccess={isExtraBranchOpen}
                 onAppointmentsReady={setCalendarAppointments}
                 onCalendarReady={setCalendarReadyDate}
                 onLiveStatusChange={setIsCalendarLive}
@@ -1297,7 +1316,7 @@ export const Diary: React.FC = () => {
                 comparePractitionerNames={comparePractitionerNames}
                 comparePractitionerIdA={typeof comparePractitioners[0] === 'number' ? comparePractitioners[0] : null}
                 comparePractitionerIdB={typeof comparePractitioners[1] === 'number' ? comparePractitioners[1] : null}
-                onRebook={startRebook}
+                onRebook={isReadOnlyBranch ? undefined : startRebook}
                 rebookMode={rebookMode && !showRebookContinueModal}
                 rebookPreviewLabel={
                   rebookData
@@ -1328,6 +1347,7 @@ export const Diary: React.FC = () => {
               pendingSlot={pendingSlot}
               practitionerName={getPractitionerName}
               anchorRect={anchorRect}
+              bookingLookupBranchId={isExtraBranchOpen ? selectedClinicBranch : null}
             />
 
             {/* Appointment Modal — opened via SelectOptionModal "Create New Appointment" */}
@@ -1342,6 +1362,7 @@ export const Diary: React.FC = () => {
               }}
               selectedSlot={pendingSlot}
               selectedClinicBranchId={selectedClinicBranch}
+              bookingLookupBranchId={isExtraBranchOpen ? selectedClinicBranch : null}
               defaultPatientId={selectedPatientId}
               defaultPractitionerId={
                 // Priority 1: slot-column practitionerId (Day View split columns)

@@ -131,7 +131,7 @@ export const BranchConsentFormModal: React.FC<BranchConsentFormModalProps> = ({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Assign Clinic Consent Form To</label>
             {!hasMultipleAccessibleBranches ? (
-              // Case A: Manager with 1 branch, or Single Branch Clinic. Auto-selected, disabled, readonly.
+              // Case A: Branch Manager with 1 branch, or Single Branch Clinic. Auto-selected, disabled, readonly.
               <input
                 type="text"
                 value={selectedBranchName}

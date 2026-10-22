@@ -19,7 +19,7 @@ import { useAuthStore } from '@/store/auth.store';
 
 // ── Clinical Role Cards ──────────────────────────────────────────────────────
 
-type ClinicalRoleValue = 'ADMIN' | 'ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'READ_ONLY';
+type ClinicalRoleValue = 'OWNER' | 'BRANCH_MANAGER' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'READ_ONLY';
 
 const ALL_CLINICAL_ROLES: {
   value: ClinicalRoleValue;
@@ -30,29 +30,29 @@ const ALL_CLINICAL_ROLES: {
   bg: string;
   /** If true, only admins (isOwner) can see + select this card */
   ownerOnly?: boolean;
-  /** If true, only Owners can see this card (Managers cannot create Managers) */
+  /** If true, only Owners can see this card (Branch Managers cannot create Branch Managers) */
   managerOnly?: boolean;
   /** Warning shown beneath role card when selected */
   warning?: string;
 }[] = [
   {
-    value: 'ADMIN',
-    label: 'Administrator',
+    value: 'OWNER',
+    label: 'Owner',
     description: 'Full system access',
     icon: Crown,
     ring: 'ring-amber-400',
     bg: 'bg-amber-50 text-amber-700 border-amber-200',
     ownerOnly: true,
-    warning: 'This user will have full system access. At least one Administrator must always exist.',
+    warning: 'This user will have full system access. At least one Owner must always exist.',
   },
   {
-    value: 'ADMIN_ASSISTANT',
-    label: 'Manager',
-    description: 'Branch management & admin',
+    value: 'BRANCH_MANAGER',
+    label: 'Branch Manager',
+    description: 'Branch management & oversight',
     icon: ShieldCheck,
     ring: 'ring-violet-400',
     bg: 'bg-violet-50 text-violet-700 border-violet-200',
-    /** Only Owner can create another Manager. Managers cannot create Managers. */
+    /** Only Owner can create another Branch Manager. Branch Managers cannot create Branch Managers. */
     managerOnly: true,
   },
   {
@@ -227,6 +227,8 @@ interface CreateStaffAccountModalProps {
   currentUserId?:  number;
   /** Optional branches passed from parent (e.g. ClinicSetupPage during onboarding) */
   branches?:       ClinicBranch[];
+  /** Which Branch Manager manages each clinic (clinic id -> manager). A clinic can have only one. */
+  branchManagers?: Record<number, { id: number; name: string }>;
 }
 
 const EMPTY_FORM: CreateStaffData = {
@@ -279,10 +281,10 @@ const SectionTitle: React.FC<{ color?: string; children: React.ReactNode }> = ({
 );
 
 export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = ({
-  isOpen, onClose, onSubmit, editingStaff = null, currentUserId, branches: propBranches,
+  isOpen, onClose, onSubmit, editingStaff = null, currentUserId, branches: propBranches, branchManagers,
 }) => {
   const isEditMode = !!editingStaff;
-  const { isOwner, isManager, managerBranches } = usePermissions();
+  const { isOwner, isBranchManager, managerBranches } = usePermissions();
   const currentUser = useAuthStore(s => s.user);
 
   // Multi-role helpers
@@ -291,12 +293,12 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   const originalRolesRef = useRef<string[]>([]);
 
   // Phase 6/7: Filter role cards based on the actor's authority.
-  // Owner: sees all cards (including ADMIN and ADMIN_ASSISTANT/Manager).
-  // Manager: can see operational roles only — cannot create Owner or another Manager.
+  // Owner: sees all cards (including OWNER and BRANCH_MANAGER/Branch Manager).
+  // Branch Manager: can see operational roles only — cannot create Owner or another Branch Manager.
   // Others: only see operational roles.
   const visibleClinicalRoles = ALL_CLINICAL_ROLES.filter(r => {
-    if (r.ownerOnly && !isOwner)   return false;  // ADMIN card: Owner only
-    if (r.managerOnly && !isOwner) return false;  // Manager card: Owner only (Managers cannot create Managers)
+    if (r.ownerOnly && !isOwner)   return false;  // OWNER card: Owner only
+    if (r.managerOnly && !isOwner) return false;  // Branch Manager card: Owner only (Branch Managers cannot create Branch Managers)
     return true;
   });
 
@@ -354,25 +356,25 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   // Multi-branch scheduling helpers
   const availableBranches = useMemo(() => {
     if (isOwner) return branches;
-    if (isManager) {
+    if (isBranchManager) {
       if (managerBranches && managerBranches.length > 0) return managerBranches as any[];
       if (currentUser?.clinic_branch) return branches.filter(b => b.id === currentUser.clinic_branch);
       return branches;
     }
     if (currentUser?.clinic_branch) return branches.filter(b => b.id === currentUser.clinic_branch);
     return branches;
-  }, [isOwner, isManager, branches, managerBranches, currentUser?.clinic_branch]);
+  }, [isOwner, isBranchManager, branches, managerBranches, currentUser?.clinic_branch]);
 
   const defaultBranchId = useMemo(() => {
     if (formData.clinic_branch) return Number(formData.clinic_branch);
-    if (isManager && !isOwner) {
+    if (isBranchManager && !isOwner) {
       if (currentUser?.clinic_branch) return currentUser.clinic_branch;
       if (managerBranches && managerBranches.length > 0) return managerBranches[0].id;
     }
     if (availableBranches.length > 0) return availableBranches[0].id;
     if (branches.length > 0) return branches[0].id;
     return null;
-  }, [formData.clinic_branch, isManager, isOwner, currentUser?.clinic_branch, managerBranches, availableBranches, branches]);
+  }, [formData.clinic_branch, isBranchManager, isOwner, currentUser?.clinic_branch, managerBranches, availableBranches, branches]);
 
   const uniqueAssignedBranchIds = useMemo(() => {
     const ids = new Set<number>();
@@ -425,26 +427,20 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     });
   }, [defaultBranchId]);
 
-  // Phase 8: Auto-assign branch for Branch Managers.
-  // When the actor is a Branch Manager, pre-populate clinic_branch
-  // so the user inherits the manager's assigned branch automatically.
+  // A Branch Manager may place new staff in ANY clinic they manage. Default to their primary clinic when
+  // they manage it (else the first one they manage), and keep whatever they pick afterwards.
   useEffect(() => {
-    if (!isEditMode && isManager && !isOwner) {
-      if (currentUser?.clinic_branch) {
-        setFormData(prev => ({
-          ...prev,
-          clinic_branch: currentUser.clinic_branch,
-          branch_ids: [currentUser.clinic_branch as number],
-        }));
-      } else if (managerBranches.length > 0) {
-        setFormData(prev => ({
-          ...prev,
-          clinic_branch: managerBranches[0].id,
-          branch_ids: [managerBranches[0].id],
-        }));
-      }
+    if (!isEditMode && isBranchManager && !isOwner && managerBranches.length > 0) {
+      const managedIds = managerBranches.map(b => b.id);
+      const primary = currentUser?.clinic_branch;
+      const fallback = primary && managedIds.includes(primary) ? primary : managedIds[0];
+      setFormData(prev => {
+        const keep = prev.clinic_branch && managedIds.includes(Number(prev.clinic_branch));
+        const chosen = keep ? Number(prev.clinic_branch) : fallback;
+        return { ...prev, clinic_branch: chosen, branch_ids: [chosen] };
+      });
     }
-  }, [isEditMode, isManager, isOwner, currentUser?.clinic_branch, managerBranches]);
+  }, [isEditMode, isBranchManager, isOwner, currentUser?.clinic_branch, managerBranches]);
 
   // Debounced lookup for existing practitioner by email
   useEffect(() => {
@@ -520,6 +516,8 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
         roles:         displayRoles,
         clinic_branch: editingStaff.clinic_branch  ?? null,
         branch_ids:    editingStaff.manager_branches ? editingStaff.manager_branches.map((b: any) => b.id) : [],
+        // Only the Owner may send this field (the backend rejects it from anyone else).
+        ...(isOwner ? { extra_diary_branch_ids: (editingStaff.extra_diary_branches ?? []).map((b) => b.id) } : {}),
         // Availability
         duty_days:        (editingStaff.duty_days ?? editingStaff.availability?.duty_days ?? DEFAULT_DUTY_DAYS) as DutyDay[],
         lunch_start_time: editingStaff.lunch_start_time ?? editingStaff.availability?.lunch_start_time ?? '12:00',
@@ -559,11 +557,11 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
 
     // Branch is required for all roles — every user must be scoped to a branch.
     // For Branch Managers, we auto-inject their branch, bypassing UI-level requirement checks here.
-    if (!isManager || isOwner) {
-      const isManagerRole = (formData.roles ?? []).includes('ADMIN_ASSISTANT');
+    if (!isBranchManager || isOwner) {
+      const isManagerRole = (formData.roles ?? []).includes('BRANCH_MANAGER');
       if (isManagerRole) {
         if (!formData.branch_ids || formData.branch_ids.length === 0) {
-          e.clinic_branch = 'A Manager must be assigned to at least one branch.';
+          e.clinic_branch = 'A Branch Manager must be assigned to at least one branch.';
         }
       } else if (isPractitioner) {
         if (uniqueAssignedBranchIds.length === 0 && !formData.clinic_branch && !effectiveDefaultBranch) {
@@ -684,7 +682,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     e.preventDefault();
 
     console.log('[CreateStaffAccountModal] Logging before submit:', {
-      role: isOwner ? 'Owner' : isManager ? 'Branch Manager' : 'Staff',
+      role: isOwner ? 'Owner' : isBranchManager ? 'Branch Manager' : 'Staff',
       userBranch: currentUser?.clinic_branch,
       payload: formData
     });
@@ -756,7 +754,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
 
     // Rebuild the full roles array: preserve non-clinical roles that aren't
     // selectable in the card UI (none currently), then add all selected
-    // clinical roles. ADMIN is now a selectable card so it flows through
+    // clinical roles. OWNER is now a selectable card so it flows through
     // the standard clinical-roles path.
     const preservedRoles = originalRolesRef.current.filter(
       r => !CLINICAL_ROLE_VALUES.includes(r as ClinicalRoleValue)
@@ -1136,12 +1134,12 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                       </div>
                     )}
 
-                    {/* ADMIN promotion warning */}
-                    {(formData.roles ?? []).includes('ADMIN') && (
+                    {/* OWNER promotion warning */}
+                    {(formData.roles ?? []).includes('OWNER') && (
                       <div className="flex items-center gap-2 mb-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
                         <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                         <span className="text-xs text-amber-700">
-                          This user will have <strong>full system access</strong>. At least one Administrator must always exist.
+                          This user will have <strong>full system access</strong>. At least one Owner must always exist.
                         </span>
                       </div>
                     )}
@@ -1473,27 +1471,32 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                           </p>
                         </div>
                       </div>
-                    ) : formData.roles.includes('ADMIN_ASSISTANT') ? (
-                      /* ── Manager Scope: Multi-branch Checkboxes ── */
+                    ) : formData.roles.includes('BRANCH_MANAGER') ? (
+                      /* ── Branch Manager Scope: Multi-branch Checkboxes ── */
                       <div className="space-y-2">
                         <p className="text-xs text-gray-500 mb-2">
-                          Select the branches this Manager is authorized to manage.
+                          Select the branches this Branch Manager is authorized to manage.
                         </p>
                         {(isOwner ? branches : managerBranches).map(branch => {
                           const isSelected = formData.branch_ids?.includes(branch.id);
+                          const manager = branchManagers?.[branch.id];
+                          const takenByOther = !!manager && manager.id !== editingStaff?.id;
                           return (
                             <label
                               key={branch.id}
-                              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${
-                                isSelected
-                                  ? 'bg-sky-50 border-sky-300 ring-2 ring-sky-200'
-                                  : 'bg-white border-gray-200 hover:bg-gray-50'
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all ${
+                                takenByOther
+                                  ? 'bg-gray-50 border-gray-200 opacity-70 cursor-not-allowed'
+                                  : isSelected
+                                    ? 'bg-sky-50 border-sky-300 ring-2 ring-sky-200 cursor-pointer'
+                                    : 'bg-white border-gray-200 hover:bg-gray-50 cursor-pointer'
                               }`}
                             >
                               <input
                                 type="checkbox"
                                 value={branch.id}
-                                checked={isSelected}
+                                checked={isSelected && !takenByOther}
+                                disabled={takenByOther}
                                 onChange={(e) => {
                                   const current = formData.branch_ids || [];
                                   if (e.target.checked) {
@@ -1510,6 +1513,11 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                                   <span className="ml-1.5 text-[10px] font-semibold text-sky-600 bg-sky-100 px-1.5 py-0.5 rounded">Main</span>
                                 ) : null}
                                 {branch.city ? <span className="ml-1 text-gray-400">· {branch.city}</span> : null}
+                                {takenByOther ? (
+                                  <span className="ml-2 text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                    Managed by {manager?.name}
+                                  </span>
+                                ) : null}
                               </span>
                             </label>
                           );
@@ -1517,25 +1525,84 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                         {(!formData.branch_ids || formData.branch_ids.length === 0) && (
                           <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
                             <AlertCircle className="w-3.5 h-3.5" />
-                            A Manager must be assigned to at least one branch.
+                            A Branch Manager must be assigned to at least one branch.
                           </p>
+                        )}
+
+                        {/* ── Other branches' Diary (Owner only) ── */}
+                        {isOwner && (
+                          <div className="mt-4 pt-3 border-t border-gray-100 space-y-2">
+                            <p className="text-xs font-semibold text-gray-700">Other branches&apos; Diary access</p>
+                            <p className="text-xs text-gray-500">
+                              Branches this Branch Manager may open in the Diary besides the ones above. It only takes effect when
+                              the Branch Manager&apos;s permission group sets &quot;Other Branches&apos; Diary&quot; to View or Edit.
+                            </p>
+                            {branches.filter(b => !(formData.branch_ids ?? []).includes(b.id)).map(branch => {
+                              const picked = (formData.extra_diary_branch_ids ?? []).includes(branch.id);
+                              return (
+                                <label
+                                  key={branch.id}
+                                  className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+                                    picked ? 'bg-teal-50 border-teal-300 ring-2 ring-teal-100' : 'bg-white border-gray-200 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={picked}
+                                    onChange={(e) => {
+                                      const current = formData.extra_diary_branch_ids ?? [];
+                                      set('extra_diary_branch_ids', e.target.checked
+                                        ? [...current, branch.id]
+                                        : current.filter(id => id !== branch.id));
+                                    }}
+                                    className="accent-teal-500 w-4 h-4 rounded border-gray-300"
+                                  />
+                                  <span className="text-sm text-gray-700">
+                                    {branch.name}
+                                    {branch.city ? <span className="ml-1 text-gray-400">· {branch.city}</span> : null}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
                     ) : (
                       /* ── Operational Roles: Single Primary Branch ── */
                       <>
-                        {/* ── Branch Manager: Inherited Auto-Assignment (read-only) ── */}
-                        {isManager && !isOwner && (
+                        {/* ── Branch Manager: choose among the clinics they manage ── */}
+                        {isBranchManager && !isOwner && managerBranches.length === 1 && (
                           <div className="flex items-center gap-2 px-3 py-2.5 bg-sky-50 border border-sky-200 rounded-lg text-sm text-sky-800">
                             <Lock className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                            <span>
-                              Auto-assigned to your clinic branch.
-                            </span>
+                            <span>Assigned to your clinic: <strong>{managerBranches[0].name}</strong>.</span>
                           </div>
+                        )}
+                        {isBranchManager && !isOwner && managerBranches.length > 1 && (
+                          <>
+                            <select
+                              value={formData.clinic_branch ?? ''}
+                              onChange={e => {
+                                const id = e.target.value ? Number(e.target.value) : null;
+                                set('clinic_branch', id);
+                                if (id) set('branch_ids', [id]);
+                              }}
+                              className={`${selectCls} ${errors.clinic_branch ? 'border-rose-400 ring-2 ring-rose-200' : ''}`}
+                            >
+                              <option value="" disabled>— Select one of your clinics —</option>
+                              {managerBranches.map(b => (
+                                <option key={b.id} value={b.id}>
+                                  {b.name}{b.is_main_branch ? ' (Main)' : ''}{b.city ? ` · ${b.city}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="mt-0.5 text-[10px] text-gray-400">
+                              You manage {managerBranches.length} clinics. Choose which one this person belongs to.
+                            </p>
+                          </>
                         )}
 
                         {/* ── Case C: Owner → full dropdown of all branches ── */}
-                        {(isOwner || (!isManager && managerBranches.length === 0)) && (
+                        {(isOwner || (!isBranchManager && managerBranches.length === 0)) && (
                           <>
                             {loadingBranches ? (
                               <div className={`${selectCls} text-gray-400`}>Loading branches…</div>
@@ -1576,10 +1643,10 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                           </>
                         )}
 
-                        {/* No branches case for Manager */}
-                        {isManager && !isOwner && managerBranches.length === 0 && (
+                        {/* No branches case for Branch Manager */}
+                        {isBranchManager && !isOwner && managerBranches.length === 0 && (
                           <div className={`${selectCls} text-amber-600 bg-amber-50 border-amber-200`}>
-                            You have no branches assigned. Contact an Administrator.
+                            You have no branches assigned. Contact the Owner.
                           </div>
                         )}
                       </>

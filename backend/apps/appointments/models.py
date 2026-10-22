@@ -167,7 +167,7 @@ class Appointment(TimeStampedModel, SoftDeleteModel):
     BOOKING_SOURCE_CHOICES = [
         ('portal',       'Patient Portal'),
         ('staff',        'Staff'),
-        ('admin',        'Admin'),
+        ('owner',        'Owner'),
         ('practitioner', 'Practitioner'),
     ]
 

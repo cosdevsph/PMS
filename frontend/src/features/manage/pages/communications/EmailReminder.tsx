@@ -23,7 +23,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 
 export const EmailReminder: React.FC = () => {
   const { branches, loading, error, refetch } = useClinicBranches();
-  const { isOwner, isManager, canEdit } = usePermissions();
+  const { isOwner, isBranchManager, canEdit } = usePermissions();
 
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [savingBranchId, setSavingBranchId] = useState<number | null>(null);
@@ -34,7 +34,7 @@ export const EmailReminder: React.FC = () => {
   // Check if current user has permission to edit communication settings
   const hasEditPermission =
     isOwner ||
-    isManager ||
+    isBranchManager ||
     canEdit('manage_communications') ||
     canEdit('setup_communication') ||
     canEdit('communication');
@@ -384,7 +384,7 @@ export const EmailReminder: React.FC = () => {
                 <div className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 text-xs">
                   <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>
-                    You have view-only access. Only Administrators and Managers can toggle communication channels.
+                    You have view-only access. Only the Owner and Branch Managers can toggle communication channels.
                   </span>
                 </div>
               )}

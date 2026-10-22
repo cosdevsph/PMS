@@ -54,9 +54,9 @@ export const Login: React.FC = () => {
       // 1. Mandatory first-login password change takes highest priority
       if (response.user.must_change_password) {
         navigate('/change-password', { replace: true });
-      // 2. Admin must complete clinic setup before anything else
+      // 2. Owner must complete clinic setup before anything else
       } else if (
-        (response.user.roles ?? [response.user.role]).includes('ADMIN') &&
+        (response.user.roles ?? [response.user.role]).includes('OWNER') &&
         !response.user.clinic_setup_complete
       ) {
         navigate('/clinic-setup', { replace: true });

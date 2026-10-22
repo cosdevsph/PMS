@@ -29,7 +29,7 @@ class AssignmentFixtureMixin:
     def build_fixture(self):
         self.clinic = Clinic.objects.create(name="Malasakit Health")
         self.other_clinic = Clinic.objects.create(name="Other Clinic")
-        self.admin = self._user("admin@x.com", "ADMIN")
+        self.admin = self._user("admin@x.com", "OWNER")
         self.practitioner = Practitioner.objects.create(
             user=self._user("prac@x.com", "PRACTITIONER"), clinic=self.clinic, consultation_fee=Decimal('500'),
         )
@@ -51,8 +51,8 @@ class AssignmentFixtureMixin:
             email=email, password="testpassword123", first_name="Test", last_name=role.title(),
             clinic=clinic, clinic_branch=clinic, role=role,
         )
-        if role == 'ADMIN_ASSISTANT':   # managers see the branches they are assigned to manage
-            UserBranchAccess.objects.create(user=user, branch=clinic)
+        if role == 'BRANCH_MANAGER':   # managers see the branches they are assigned to manage
+            UserBranchAccess.objects.create(user=user, branch=clinic, is_managed=True)
         return user
 
     def _service(self, name, clinic=None):
@@ -271,7 +271,7 @@ class AssignApiTests(AssignmentFixtureMixin, TestCase):
             self.assertEqual(response.status_code, 400, response.data)
 
     def test_only_the_four_roles_can_assign(self):
-        for role, allowed in (('ADMIN_ASSISTANT', True), ('STAFF', True), ('PRACTITIONER', True),
+        for role, allowed in (('BRANCH_MANAGER', True), ('STAFF', True), ('PRACTITIONER', True),
                               ('FINANCE', False), ('READ_ONLY', False)):
             with self.subTest(role):
                 self.client.force_authenticate(self._user(f"a-{role.lower()}@x.com", role))
@@ -284,7 +284,7 @@ class AssignApiTests(AssignmentFixtureMixin, TestCase):
     def test_other_clinic_cannot_assign_or_unassign(self):
         appt = self._appointment()
         self._assign(appt)
-        self.client.force_authenticate(self._user("out@x.com", "ADMIN", clinic=self.other_clinic))
+        self.client.force_authenticate(self._user("out@x.com", "OWNER", clinic=self.other_clinic))
         self.assertEqual(self._post('assign-appointment', self._appointment(hour=11)).status_code, 404)
         self.assertEqual(self._post('unassign-appointment', appt).status_code, 404)
         self.assertEqual(self.package.remaining_sessions, 2)

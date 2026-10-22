@@ -2,10 +2,12 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 import logging
+from .roles import normalize_role, normalize_roles, normalize_role_payload
+from .utils.rbac import validate_branches_free_for_manager
 from .models import (
     User, Role, Permission, PermissionGroup, FeaturePermission,
     UserBranchAccess,
-    FEATURE_KEYS, ROLE_PRIORITY, _union_permissions,
+    FEATURE_KEYS, ROLE_PRIORITY, _union_permissions, BRANCH_MANAGER_ALWAYS_EDIT,
     derive_permission_group_for_roles,
 )
 from apps.clinics.models import Practitioner
@@ -57,6 +59,10 @@ class PermissionGroupWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model  = PermissionGroup
         fields = ['name', 'description', 'role_template', 'is_protected', 'clinic', 'permissions']
+
+    def to_internal_value(self, data):
+        # Legacy template codes are accepted and converted (see accounts/roles.py).
+        return super().to_internal_value(normalize_role_payload(data))
 
     def validate_permissions(self, value):
         invalid = [k for k in value if k not in FEATURE_KEYS]
@@ -148,20 +154,36 @@ class UserSerializer(serializers.ModelSerializer):
     position         = serializers.CharField(required=False, allow_blank=True)
     discipline       = serializers.CharField(required=False, allow_blank=True)
 
-    # ── Phase 4/9/10: Multi-branch assignment (Manager scope) ─────────────────
-    # Write-only list of branch PKs.  Used when creating/updating a Manager.
+    # ── Phase 4/9/10: Multi-branch assignment (Branch Manager scope) ─────────────────
+    # Write-only list of branch PKs.  Used when creating/updating a Branch Manager.
     # For read, use `manager_branches` (SerializerMethodField below).
     branch_ids      = serializers.ListField(
         child=serializers.IntegerField(),
         required=False,
         allow_empty=True,
         write_only=True,
-        help_text='List of branch IDs to assign to this user (Managers only).',
+        help_text='List of branch IDs to assign to this user (Branch Managers only).',
     )
-    # Read-only: list of branches this Manager is assigned to.
+    # Read-only: list of branches this Branch Manager is assigned to.
     manager_branches = serializers.SerializerMethodField()
-    # Read-only: whether this user holds the Manager (ADMIN_ASSISTANT) role.
-    is_manager       = serializers.SerializerMethodField()
+    # Read-only: whether this user holds the Branch Manager (BRANCH_MANAGER) role.
+    is_branch_manager       = serializers.SerializerMethodField()
+
+    # ── Diary access to other branches (Branch Manager only; set by the Owner) ───────
+    # Write: list of branch PKs the Branch Manager may open in the Diary besides their own.
+    extra_diary_branch_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        allow_empty=True,
+        write_only=True,
+        help_text="Owner only. Branch IDs whose Diary this Branch Manager may open (level from the permission group).",
+    )
+    # Read: branches the Branch Manager has been given (as chosen by the Owner, used by the Owner's form).
+    extra_diary_branches = serializers.SerializerMethodField()
+    # Read: branches the user can currently open in the Diary beyond their own
+    # (empty unless the permission group's 'Other Branches' Diary' is view or edit).
+    diary_branches = serializers.SerializerMethodField()
+    diary_other_branches_level = serializers.SerializerMethodField()
 
     # ── Multi-branch assignments for practitioners & staff ───────────────────
     branch_assignments  = serializers.SerializerMethodField()
@@ -178,8 +200,10 @@ class UserSerializer(serializers.ModelSerializer):
             'password_rotation', 'last_password_change',
             # RBAC
             'permission_group', 'permission_group_name', 'permissions_map',
-            # Manager multi-branch
-            'branch_ids', 'manager_branches', 'is_manager',
+            # Branch Manager multi-branch
+            'branch_ids', 'manager_branches', 'is_branch_manager',
+            # Diary access to other branches
+            'extra_diary_branch_ids', 'extra_diary_branches', 'diary_branches', 'diary_other_branches_level',
             # Multi-branch assignments
             'branch_assignments', 'assigned_branch_ids',
             # Position (for all staff)
@@ -193,6 +217,10 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'password_changed', 'must_change_password']
 
+    def to_internal_value(self, data):
+        # Legacy role codes are accepted and converted (see accounts/roles.py).
+        return super().to_internal_value(normalize_role_payload(data))
+
     def get_permission_group_name(self, obj) -> str | None:
         if obj.permission_group_id:
             return obj.permission_group.name
@@ -200,12 +228,12 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_manager_branches(self, obj) -> list:
         """
-        Return a list of branch dicts for Manager users and Practitioners.
+        Return a list of branch dicts for Branch Manager users and Practitioners.
         Used by the frontend to populate the branch-scope picker and
         by the backend security layer to validate branch assignments.
         """
         effective_roles = obj.get_effective_roles()
-        if 'ADMIN' in effective_roles:
+        if 'OWNER' in effective_roles:
             # Owner sees all branches — return minimal list for reference
             if obj.clinic:
                 return list(
@@ -213,8 +241,11 @@ class UserSerializer(serializers.ModelSerializer):
                 )
             return []
             
-        # For all other roles, they are branch scoped
-        branches = obj.branch_accesses.select_related('branch').values(
+        # Branch Managers: the clinics they manage. All other roles: their assigned branches.
+        rows = obj.branch_accesses
+        if obj.is_branch_manager:
+            rows = rows.filter(is_managed=True)
+        branches = rows.select_related('branch').values(
             'branch__id', 'branch__name', 'branch__city', 'branch__is_main_branch'
         ).order_by('branch__name')
         
@@ -239,8 +270,36 @@ class UserSerializer(serializers.ModelSerializer):
             
         return branch_list
 
-    def get_is_manager(self, obj) -> bool:
-        return obj.is_manager
+    def get_is_branch_manager(self, obj) -> bool:
+        return obj.is_branch_manager
+
+    @staticmethod
+    def _branch_dicts(qs) -> list:
+        return [
+            {'id': b.id, 'name': b.name, 'city': b.city, 'is_main_branch': b.is_main_branch}
+            for b in qs
+        ]
+
+    def get_extra_diary_branches(self, obj) -> list:
+        if not obj.is_branch_manager or obj.is_owner:
+            return []
+        return self._branch_dicts(obj.extra_diary_branches.filter(is_deleted=False).order_by('name'))
+
+    def get_diary_branches(self, obj) -> list:
+        """Extra branches the user may open in the Diary right now (permission level applied)."""
+        from apps.accounts.utils.rbac import get_extra_diary_branch_ids
+        ids = get_extra_diary_branch_ids(obj)
+        if not ids:
+            return []
+        from apps.clinics.models import Clinic
+        return self._branch_dicts(Clinic.objects.filter(id__in=ids).order_by('name'))
+
+    def get_diary_other_branches_level(self, obj) -> str:
+        if obj.has_feature_permission('diary_other_branches', 'edit'):
+            return 'edit'
+        if obj.has_feature_permission('diary_other_branches', 'view'):
+            return 'view'
+        return 'none'
 
     def get_branch_assignments(self, obj) -> list:
         branch_accesses = obj.branch_accesses.select_related('branch').all()
@@ -271,17 +330,22 @@ class UserSerializer(serializers.ModelSerializer):
         Return a flat {feature_key: access_level} dict.
 
         Resolution order:
-        1. ADMIN in roles → all 'edit'.
+        1. OWNER in roles → all 'edit'.
         2. permission_group assigned → use the group's explicit matrix.
         3. Fallback → union of DEFAULT_PERMISSIONS across all assigned roles.
         """
         effective_roles = obj.get_effective_roles()
-        if 'ADMIN' in effective_roles:
+        if 'OWNER' in effective_roles:
             return {key: 'edit' for key in FEATURE_KEYS}
         if obj.permission_group_id:
-            return obj.permission_group.get_permissions_dict()
-        # Union fallback
-        return _union_permissions(effective_roles)
+            permissions = obj.permission_group.get_permissions_dict()
+        else:
+            permissions = _union_permissions(effective_roles)   # union fallback
+        if 'BRANCH_MANAGER' in effective_roles:
+            # Rule 2: a Branch Manager always manages the staff of their own clinics.
+            for key in BRANCH_MANAGER_ALWAYS_EDIT:
+                permissions[key] = 'edit'
+        return permissions
 
     def get_avatar_url(self, obj) -> str | None:
         """Return the full URL for the avatar image."""
@@ -305,7 +369,7 @@ class UserSerializer(serializers.ModelSerializer):
         Returns True if the user's main clinic has completed setup.
         Non-admin users always see True (they don't do setup).
         """
-        if not obj.is_admin:
+        if not obj.is_owner:
             return True
         if obj.clinic:
             return obj.clinic.main_clinic.setup_complete
@@ -314,6 +378,11 @@ class UserSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """Add practitioner/staff availability, discipline, and practitioner_id to the serialized output."""
         data = super().to_representation(instance)
+        # Never return legacy role codes, even for a row that has not been migrated yet.
+        if data.get('role') is not None:
+            data['role'] = normalize_role(data['role'])
+        if isinstance(data.get('roles'), list):
+            data['roles'] = normalize_roles(data['roles'])
         effective_roles = instance.get_effective_roles()
 
         if 'PRACTITIONER' in effective_roles:
@@ -338,7 +407,7 @@ class UserSerializer(serializers.ModelSerializer):
                     instance.pk, exc,
                 )
                 # Graceful fallback: use the User-level discipline field so the
-                # frontend is never handed an empty string for an ADMIN+PRACTITIONER.
+                # frontend is never handed an empty string for an OWNER+PRACTITIONER.
                 data['discipline'] = instance.discipline or 'OCCUPATIONAL_THERAPY'
         elif 'STAFF' in effective_roles:
             # Expose Staff availability stored directly on the User model
@@ -370,6 +439,20 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(e.message)
         return normalize_international_phone(value)
 
+    def _manager_scope(self):
+        """
+        The clinics a Branch Manager actor may place staff in, or None when the actor is not a
+        Branch Manager (the Owner is limited only to their clinic group).
+        """
+        request = self.context.get('request')
+        actor = getattr(request, 'user', None)
+        if not (actor and actor.is_authenticated and actor.is_branch_manager and not actor.is_owner):
+            return None
+        scope = set(actor.get_managed_branch_ids())
+        if not scope and actor.clinic_branch_id:
+            scope.add(actor.clinic_branch_id)   # legacy Branch Manager without managed rows
+        return scope
+
     def validate_clinic_branch(self, value):
         if value is None:
             return value
@@ -380,6 +463,26 @@ class UserSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "The selected branch does not belong to your clinic."
                 )
+        scope = self._manager_scope()
+        if scope is not None and value.id not in scope:
+            raise serializers.ValidationError("You can only use the clinics you manage.")
+        return value
+
+    def validate_permission_group(self, value):
+        """
+        Only the Owner may hand out permission groups freely. Anyone else may not pick an Owner group,
+        a group of another clinic, or change the group they belong to themselves.
+        """
+        request = self.context.get('request')
+        actor = getattr(request, 'user', None)
+        if value is None or not (actor and actor.is_authenticated) or actor.is_owner:
+            return value
+        if value.role_template == 'OWNER':
+            raise serializers.ValidationError("Only the Owner can use the Owner permission group.")
+        if actor.clinic and value.clinic_id != actor.clinic.main_clinic.id:
+            raise serializers.ValidationError("That permission group does not belong to your clinic.")
+        if self.instance is not None and self.instance.pk == actor.pk and value.pk != actor.permission_group_id:
+            raise serializers.ValidationError("You cannot change your own permission group.")
         return value
 
     @staticmethod
@@ -454,6 +557,11 @@ class UserSerializer(serializers.ModelSerializer):
                             raise serializers.ValidationError(
                                 {'duty_schedule': f'Branch #{bid} does not belong to your clinic.'}
                             )
+                        scope = self._manager_scope()
+                        if scope is not None and branch_obj.id not in scope:
+                            raise serializers.ValidationError(
+                                {'duty_schedule': f'Branch #{bid} is not one of the clinics you manage.'}
+                            )
                     except Clinic.DoesNotExist:
                         raise serializers.ValidationError(
                             {'duty_schedule': f'Branch #{bid} does not exist.'}
@@ -494,41 +602,68 @@ class UserSerializer(serializers.ModelSerializer):
                         'lunch_end_time': 'Lunch end time must be after lunch start time.'
                     })
 
-        # ── Phase 5: One Manager per branch constraint ────────────────────────
+        # ── Phase 5: One Branch Manager per branch constraint ────────────────────────
         # Validated here (serializer layer) AND enforced in the view layer with
         # select_for_update() inside a transaction to prevent race conditions.
         incoming_roles = attrs.get('roles') or [attrs.get('role', 'STAFF')]
         branch_ids     = attrs.get('branch_ids', [])
 
-        if 'ADMIN_ASSISTANT' in incoming_roles and branch_ids:
+        if 'BRANCH_MANAGER' in incoming_roles and branch_ids:
             from apps.clinics.models import Clinic
             for branch_id in branch_ids:
-                try:
-                    branch = Clinic.objects.get(pk=branch_id, is_deleted=False)
-                except Clinic.DoesNotExist:
+                if not Clinic.objects.filter(pk=branch_id, is_deleted=False).exists():
                     raise serializers.ValidationError(
                         {'branch_ids': f'Branch ID {branch_id} does not exist.'}
                     )
-                # Check whether another Manager (not this instance) is already assigned
-                existing_qs = UserBranchAccess.objects.filter(
-                    branch=branch,
-                    user__roles__contains=['ADMIN_ASSISTANT'],
-                    user__is_deleted=False,
-                )
-                if self.instance:
-                    existing_qs = existing_qs.exclude(user=self.instance)
-                if existing_qs.exists():
-                    raise serializers.ValidationError(
-                        {'branch_ids':
-                         f'Branch "{branch.name}" already has an assigned Manager. '
-                         f'Only one Manager is allowed per branch.'}
-                    )
+            # Rule: no clinic may have two Branch Managers (shared helper, same message on every path).
+            validate_branches_free_for_manager(branch_ids, exclude_user=self.instance)
 
+
+        attrs = self._validate_extra_diary_branches(attrs)
         return attrs
+
+    def _validate_extra_diary_branches(self, attrs):
+        """Only the Owner may grant extra Diary branches; they must be in the same clinic group."""
+        if 'extra_diary_branch_ids' not in attrs:
+            return attrs
+        request = self.context.get('request')
+        actor = getattr(request, 'user', None)
+        if not (actor and actor.is_authenticated and actor.is_owner):
+            raise serializers.ValidationError(
+                {'extra_diary_branch_ids': 'Only the clinic owner can choose which other branches a Branch Manager may open.'}
+            )
+        ids = list(dict.fromkeys(attrs['extra_diary_branch_ids']))
+        if ids:
+            if not actor.clinic:
+                raise serializers.ValidationError({'extra_diary_branch_ids': 'No clinic found for this account.'})
+            group_ids = set(actor.clinic.main_clinic.get_all_branches().values_list('id', flat=True))
+            bad = [i for i in ids if i not in group_ids]
+            if bad:
+                raise serializers.ValidationError(
+                    {'extra_diary_branch_ids': f'Branch ID(s) {bad} do not belong to your clinic.'}
+                )
+        attrs['extra_diary_branch_ids'] = ids
+        return attrs
+
+    @staticmethod
+    def _apply_extra_diary_branches(user, ids):
+        """
+        Store the picked branches. Only a Branch Manager can hold any, and a branch the Branch Manager
+        already works at is not an "extra" one, so it is dropped.
+        """
+        from apps.clinics.models import Clinic
+        if not user.is_branch_manager or user.is_owner:
+            ids = []
+        own = set(user.branch_accesses.values_list('branch_id', flat=True))
+        if user.clinic_branch_id:
+            own.add(user.clinic_branch_id)
+        keep = [i for i in ids if i not in own]
+        user.extra_diary_branches.set(Clinic.objects.filter(id__in=keep, is_deleted=False))
 
     def create(self, validated_data):
         password  = validated_data.pop('password', None)
         branch_ids = validated_data.pop('branch_ids', [])
+        extra_diary_ids = validated_data.pop('extra_diary_branch_ids', None)
 
         # Ensure roles is set; derive from role if absent.
         roles = validated_data.get('roles')
@@ -557,8 +692,8 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(password)
             user.save()
 
-        # ── Phase 4: Sync UserBranchAccess rows for Managers ─────────────────
-        if branch_ids and 'ADMIN_ASSISTANT' in roles:
+        # ── Phase 4: Sync UserBranchAccess rows for Branch Managers ─────────────────
+        if branch_ids and 'BRANCH_MANAGER' in roles:
             self._sync_branch_accesses(user, branch_ids)
             # Keep clinic_branch FK pointing at primary (first) branch for compat
             if branch_ids:
@@ -570,35 +705,55 @@ class UserSerializer(serializers.ModelSerializer):
                 except Clinic.DoesNotExist:
                     pass
 
+        if extra_diary_ids is not None:
+            self._apply_extra_diary_branches(user, extra_diary_ids)
+
         return user
 
-    # ── Phase 4 helper: sync UserBranchAccess rows ───────────────────────────
+    # ── Branch Manager clinics helper ─────────────────────────────────────────
     @staticmethod
     def _sync_branch_accesses(user, branch_ids: list):
         """
-        Atomically replace all UserBranchAccess rows for `user` with the
-        supplied `branch_ids`.  Wrapped in select_for_update to prevent
-        the race condition that would allow two Managers on the same branch.
+        Make `branch_ids` exactly the clinics `user` manages as Branch Manager.
+
+        * Rule: no clinic may have two Branch Managers. Checked under a row lock here (and enforced by
+          the database constraint) so two concurrent saves cannot both win.
+        * Only managed rows are touched. A practitioner / staff assignment row of the same user is kept
+          (it just stops being managed); a row that only existed for management is deleted.
         """
         from django.db import transaction as db_transaction
+        wanted = set(branch_ids)
         with db_transaction.atomic():
-            # Lock existing rows to prevent concurrent inserts on the same branch
-            existing_ids = list(
-                UserBranchAccess.objects.select_for_update()
-                .filter(user=user)
-                .values_list('branch_id', flat=True)
-            )
-            to_remove = set(existing_ids) - set(branch_ids)
-            to_add    = set(branch_ids) - set(existing_ids)
+            rows = {
+                r.branch_id: r
+                for r in UserBranchAccess.objects.select_for_update().filter(user=user)
+            }
+            # Lock the other managed rows on the wanted clinics, then check the rule.
+            list(UserBranchAccess.objects.select_for_update().filter(branch_id__in=wanted, is_managed=True))
+            validate_branches_free_for_manager(wanted, exclude_user=user)
 
-            if to_remove:
-                UserBranchAccess.objects.filter(user=user, branch_id__in=to_remove).delete()
+            keeps_other_assignments = 'PRACTITIONER' in user.get_effective_roles()
+            for branch_id, row in rows.items():
+                if branch_id in wanted or not row.is_managed:
+                    continue
+                if keeps_other_assignments:
+                    row.is_managed = False
+                    row.save(update_fields=['is_managed'])
+                else:
+                    row.delete()
 
-            if to_add:
-                UserBranchAccess.objects.bulk_create(
-                    [UserBranchAccess(user=user, branch_id=bid) for bid in to_add],
-                    ignore_conflicts=True,
-                )
+            for branch_id in wanted:
+                row = rows.get(branch_id)
+                if row is None:
+                    UserBranchAccess.objects.create(user=user, branch_id=branch_id, is_managed=True)
+                elif not row.is_managed:
+                    row.is_managed = True
+                    row.save(update_fields=['is_managed'])
+
+    @staticmethod
+    def _clear_managed_branches(user):
+        """The user is no longer a Branch Manager: they manage no clinic (assignment rows are kept)."""
+        UserBranchAccess.objects.filter(user=user, is_managed=True).update(is_managed=False)
 
     # ── Multi-Branch helper: sync UserBranchAccess rows for Practitioners ───
     @staticmethod
@@ -700,6 +855,7 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         password   = validated_data.pop('password', None)
         branch_ids = validated_data.pop('branch_ids', None)  # None = not in payload (no change)
+        extra_diary_ids = validated_data.pop('extra_diary_branch_ids', None)
 
         # Fields that live on the Practitioner model (not User) — pull them out
         practitioner_only_fields = ['duty_start_time', 'duty_end_time', 'discipline']
@@ -716,9 +872,9 @@ class UserSerializer(serializers.ModelSerializer):
 
         # Determine effective roles BEFORE calling instance.save(), because the
         # User.save() override normalises instance.role to the highest-priority
-        # entry in instance.roles (e.g. ADMIN beats PRACTITIONER).  Using
-        # instance.role *after* save would therefore always resolve to 'ADMIN'
-        # for Admin+Practitioner users, preventing their schedule from syncing.
+        # entry in instance.roles (e.g. OWNER beats PRACTITIONER).  Using
+        # instance.role *after* save would therefore always resolve to 'OWNER'
+        # for Owner+Practitioner users, preventing their schedule from syncing.
         incoming_roles = validated_data.get('roles', None)
         effective_roles_after = (
             incoming_roles
@@ -753,7 +909,7 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
 
         # Sync Practitioner availability fields when PRACTITIONER is in effective roles.
-        # This handles pure-PRACTITIONER AND Admin+Practitioner users correctly.
+        # This handles pure-PRACTITIONER AND Owner+Practitioner users correctly.
         if 'PRACTITIONER' in effective_roles_after:
             try:
                 practitioner = instance.practitioner_profile
@@ -803,10 +959,10 @@ class UserSerializer(serializers.ModelSerializer):
                     instance.pk, exc,
                 )
 
-        # ── Phase 4: Sync UserBranchAccess rows for Managers (on update) ───────────
+        # ── Phase 4: Sync UserBranchAccess rows for Branch Managers (on update) ───────────
         # branch_ids is None when not present in the payload (no change desired);
         # an empty list means "remove all branch assignments".
-        if branch_ids is not None and 'ADMIN_ASSISTANT' in effective_roles_after:
+        if branch_ids is not None and 'BRANCH_MANAGER' in effective_roles_after:
             self._sync_branch_accesses(instance, branch_ids)
             # Sync clinic_branch FK to the primary (first) branch
             if branch_ids:
@@ -822,6 +978,10 @@ class UserSerializer(serializers.ModelSerializer):
                 instance.clinic_branch = None
                 instance.save(update_fields=['clinic_branch'])
 
+        # Not a Branch Manager (any more): manages no clinic.
+        if 'BRANCH_MANAGER' not in effective_roles_after:
+            self._clear_managed_branches(instance)
+
         # ── Multi-Branch: Sync UserBranchAccess rows for Practitioners ─────────────
         if 'PRACTITIONER' in effective_roles_after:
             sched_to_sync = shared_availability.get('duty_schedule')
@@ -835,6 +995,12 @@ class UserSerializer(serializers.ModelSerializer):
                     lunch_start_time=shared_availability.get('lunch_start_time', '12:00'),
                     lunch_end_time=shared_availability.get('lunch_end_time', '13:00'),
                 )
+
+        # ── Diary access to other branches (re-applied after role/branch changes) ──
+        if extra_diary_ids is not None:
+            self._apply_extra_diary_branches(instance, extra_diary_ids)
+        elif 'BRANCH_MANAGER' not in effective_roles_after or 'OWNER' in effective_roles_after:
+            instance.extra_diary_branches.clear()
 
         return instance
 

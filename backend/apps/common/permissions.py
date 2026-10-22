@@ -1,26 +1,26 @@
 from rest_framework.permissions import BasePermission
 
 
-class IsAdminOrStaffOnly(BasePermission):
+class IsOwnerBranchManagerOrStaff(BasePermission):
     """
     Denies access to users with ONLY the PRACTITIONER role.
-    Allows users who have ADMIN, STAFF, or ADMIN_ASSISTANT in their roles list.
+    Allows users who have OWNER, STAFF, or BRANCH_MANAGER in their roles list.
     """
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
         effective = request.user.get_effective_roles()
-        return bool({'ADMIN', 'STAFF', 'ADMIN_ASSISTANT'} & set(effective))
+        return bool({'OWNER', 'STAFF', 'BRANCH_MANAGER'} & set(effective))
 
 
-class IsAdminOnly(BasePermission):
-    """Only users with the ADMIN role may proceed."""
+class IsOwnerOnly(BasePermission):
+    """Only users with the OWNER role may proceed."""
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        return 'ADMIN' in request.user.get_effective_roles()
+        return 'OWNER' in request.user.get_effective_roles()
 
 
 class IsNotReadOnly(BasePermission):
@@ -53,7 +53,7 @@ class HasRoleIn(BasePermission):
     Usage:
         class MyViewSet(viewsets.ModelViewSet):
             permission_classes  = [IsAuthenticated, HasRoleIn]
-            rbac_allowed_roles  = ['ADMIN', 'ADMIN_ASSISTANT']
+            rbac_allowed_roles  = ['OWNER', 'BRANCH_MANAGER']
     """
 
     def has_permission(self, request, view):

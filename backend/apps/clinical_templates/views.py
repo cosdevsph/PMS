@@ -61,9 +61,9 @@ class ClinicalTemplateViewSet(viewsets.ModelViewSet):
         
         POST /api/templates/{id}/create_version/
         """
-        if not request.user.is_admin:
+        if not request.user.is_owner:
             return Response(
-                {'detail': 'Only administrators can create template versions'},
+                {'detail': 'Only the Owner can create template versions'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -85,9 +85,9 @@ class ClinicalTemplateViewSet(viewsets.ModelViewSet):
         
         POST /api/templates/{id}/archive/
         """
-        if not request.user.is_admin:
+        if not request.user.is_owner:
             return Response(
-                {'detail': 'Only administrators can archive templates'},
+                {'detail': 'Only the Owner can archive templates'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -159,7 +159,7 @@ class ClinicalNoteViewSet(viewsets.ModelViewSet):
             else:
                 return self.queryset.none()
         else:
-            # If not restricted (ADMIN), show all branches in their clinic network
+            # If not restricted (OWNER), show all branches in their clinic network
             if user.clinic:
                 main_clinic = user.clinic.parent_clinic if user.clinic.parent_clinic else user.clinic
                 from django.db.models import Q
@@ -206,7 +206,7 @@ class ClinicalNoteViewSet(viewsets.ModelViewSet):
         note = self.get_object()
         
         # Check permissions - only admin, or the note's practitioner can archive
-        if not (request.user.is_admin or note.practitioner.user == request.user):
+        if not (request.user.is_owner or note.practitioner.user == request.user):
             return Response(
                 {'detail': 'You do not have permission to archive this note'},
                 status=status.HTTP_403_FORBIDDEN
@@ -243,7 +243,7 @@ class ClinicalNoteViewSet(viewsets.ModelViewSet):
             )
         
         # Check permissions
-        if not (request.user.is_admin or request.user.is_superuser):
+        if not (request.user.is_owner or request.user.is_superuser):
             return Response(
                 {'detail': 'You do not have permission to restore this note'},
                 status=status.HTTP_403_FORBIDDEN
@@ -684,7 +684,7 @@ class GlobalClinicalNoteAuditViewSet(viewsets.ReadOnlyModelViewSet):
     Global access to all Clinical Note Audit Logs in the clinic.
     
     Permissions:
-    - Owners/Managers/Staff: See all audit logs in the clinic.
+    - Owners/Branch Managers/Staff: See all audit logs in the clinic.
     - Practitioners: See only audit logs for notes they authored/own.
     """
     queryset = ClinicalNoteAuditLog.objects.all().select_related(
@@ -715,7 +715,7 @@ class GlobalClinicalNoteAuditViewSet(viewsets.ReadOnlyModelViewSet):
             else:
                 return self.queryset.none()
         else:
-            # If not restricted (ADMIN), show all branches in their clinic network
+            # If not restricted (OWNER), show all branches in their clinic network
             if user.clinic:
                 main_clinic = user.clinic.parent_clinic if user.clinic.parent_clinic else user.clinic
                 from django.db.models import Q

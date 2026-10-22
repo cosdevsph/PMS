@@ -20,7 +20,7 @@ class PhilHealthClaimViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(clinic=user.clinic)
     
@@ -68,7 +68,7 @@ class HMOClaimViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(clinic=user.clinic)
     

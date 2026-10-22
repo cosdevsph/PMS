@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status
+from apps.accounts.roles import normalize_role
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -16,7 +17,7 @@ from apps.accounts.models import User
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_ROLES = ('ADMIN', 'STAFF', 'PRACTITIONER')
+ALLOWED_ROLES = ('OWNER', 'STAFF', 'PRACTITIONER')
 
 
 class ConversationViewSet(viewsets.GenericViewSet):
@@ -59,8 +60,8 @@ class ConversationViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['post'])
     def start(self, request):
-        # Only staff / practitioners / admin may message
-        if request.user.role not in ALLOWED_ROLES:
+        # Only staff / practitioners / the Owner may message (same rule as before, legacy code converted)
+        if normalize_role(request.user.role) not in ALLOWED_ROLES:
             return Response(
                 {'detail': 'You do not have permission to send messages.'},
                 status=status.HTTP_403_FORBIDDEN,

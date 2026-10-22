@@ -12,7 +12,7 @@ const Chapter11: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how clinic Owners and Managers configure practitioner duty hours, view schedules across different calendar layouts, and monitor clinic occupancy calculations.
+        Learn how clinic Owners and Branch Managers configure practitioner duty hours, view schedules across different calendar layouts, and monitor clinic occupancy calculations.
       </p>
 
       {/* QUICK OVERVIEW FLOW */}
@@ -48,7 +48,7 @@ const Chapter11: React.FC = () => {
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Clinic Owners and Managers configure practitioner working schedules directly inside the <strong>Create / Edit Staff Account Modal</strong> (<code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 text-sky-700 font-mono">CreateStaffAccountModal</code>):
+            Clinic Owners and Branch Managers configure practitioner working schedules directly inside the <strong>Create / Edit Staff Account Modal</strong> (<code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 text-sky-700 font-mono">CreateStaffAccountModal</code>):
           </p>
 
           <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
@@ -86,7 +86,7 @@ const Chapter11: React.FC = () => {
       </div>
 
       <DocCallout type="info">
-        Only clinic Owners and Managers have access to configure or modify practitioner duty schedules.
+        Only clinic Owners and Branch Managers have access to configure or modify practitioner duty schedules.
       </DocCallout>
 
 

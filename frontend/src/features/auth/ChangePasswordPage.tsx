@@ -77,7 +77,7 @@ export const ChangePasswordPage: React.FC = () => {
 
         // Redirect: admin without clinic setup → /clinic-setup, otherwise /dashboard
         if (
-          (result.user.roles ?? [result.user.role]).includes('ADMIN') &&
+          (result.user.roles ?? [result.user.role]).includes('OWNER') &&
           !result.user.clinic_setup_complete
         ) {
           navigate('/clinic-setup', { replace: true });

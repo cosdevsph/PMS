@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { roleLabel } from '@/lib/roles';
 import { X, Mail, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { getPractitioners, getMyClinic } from '@/features/clinics/clinic.api';
 import { getContacts } from '@/features/contacts/contact.api';
@@ -90,7 +91,7 @@ export const SendConsentFormModal: React.FC<SendConsentFormModalProps> = ({
         const usersResp = await axiosInstance.get('/users/');
         const users = usersResp.data.results || usersResp.data;
         const userSugg = (users as User[])
-          .filter((u) => u.email && (u.role === 'STAFF' || u.role === 'ADMIN'))
+          .filter((u) => u.email && (u.role === 'STAFF' || u.role === 'OWNER'))
           .map((u) => ({
             name: `${u.first_name} ${u.last_name}`,
             email: u.email,
@@ -397,7 +398,7 @@ export const SendConsentFormModal: React.FC<SendConsentFormModalProps> = ({
                           <p className="text-xs text-gray-500 truncate">{s.email}</p>
                         </div>
                         <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded whitespace-nowrap ml-2">
-                          {s.role}
+                          {roleLabel(s.role)}
                         </span>
                       </button>
                     ))}

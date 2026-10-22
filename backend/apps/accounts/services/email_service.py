@@ -54,7 +54,7 @@ class EmailService:
             subject = f'Welcome to Malasakit - Your Account Credentials'
             
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
-<p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">Your admin account for <strong>{company_name}</strong> has been successfully created!</p>
+<p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">Your Owner account for <strong>{company_name}</strong> has been successfully created!</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f9ff;border:1px solid #d0e8f2;border-radius:6px;margin-bottom:20px;">
 <tr><td style="padding:16px 20px;">
 <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#0369a1;margin:0 0 12px;">Your Login Credentials</p>
@@ -84,7 +84,7 @@ class EmailService:
 
 Hello {user_name},
 
-Your admin account for {company_name} has been created!
+Your Owner account for {company_name} has been created!
 
 Email:             {user_email}
 Temporary Password: {password}
@@ -150,7 +150,7 @@ Please do not reply directly to this email."""
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td align="center">
 <a href="{settings.FRONTEND_URL}/login" style="display:inline-block;background:#0891b2;color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 32px;border-radius:6px;">Login Now</a>
 </td></tr></table>
-<p style="font-size:13px;color:#6b7280;margin:0 0 16px;">If you did not request this reset, contact your administrator immediately.</p>
+<p style="font-size:13px;color:#6b7280;margin:0 0 16px;">If you did not request this reset, contact your clinic Owner immediately.</p>
 <p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit Team</strong></p>"""
 
             html_message = EmailService._build_html(icon='🔐', title='Password Reset', accent='#0891b2', body_html=body)
@@ -263,7 +263,7 @@ Please do not reply directly to this email."""
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fffbeb;border:1px solid #f5deb3;border-radius:6px;margin-bottom:20px;">
 <tr><td style="padding:14px 20px;">
 <p style="font-size:13px;color:#92400e;font-weight:600;margin:0 0 6px;">&#9888;&#65039; Did not make this change?</p>
-<p style="font-size:13px;color:#4b5563;margin:0;line-height:1.6;">If you did not update your password, contact your administrator immediately and change your password right away.</p>
+<p style="font-size:13px;color:#4b5563;margin:0;line-height:1.6;">If you did not update your password, contact your clinic Owner immediately and change your password right away.</p>
 </td></tr></table>
 <p style="font-size:14px;color:#4b5563;margin:0;">Best regards,<br/><strong>The Malasakit Team</strong></p>"""
 
@@ -275,7 +275,7 @@ Hello {user_name},
 
 Your account password was successfully changed via Account Settings.
 
-If you did not make this change, contact your administrator immediately.
+If you did not make this change, contact your clinic Owner immediately.
 
 Best regards,
 Malasakit Team
@@ -370,7 +370,7 @@ Please do not reply directly to this email."""
     @staticmethod
     def send_admin_otp_email(user_email: str, user_name: str, otp_code: str, expiration_minutes: int = 5) -> bool:
         """
-        Send a 6-digit OTP verification code to a prospective admin during registration.
+        Send a 6-digit OTP verification code to a prospective Owner during registration.
 
         Parameters
         ----------
@@ -384,7 +384,7 @@ Please do not reply directly to this email."""
 
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
 <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">
-  You requested to create a <strong>Malasakit</strong> admin account.
+  You requested to create a <strong>Malasakit</strong> Owner account.
   Use the verification code below to confirm your email address.
 </p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -422,7 +422,7 @@ Please do not reply directly to this email."""
 
 Hello {user_name},
 
-You requested to create an admin account on Malasakit.
+You requested to create an Owner account on Malasakit.
 
 Your Verification Code: {otp_code}
 
@@ -484,7 +484,7 @@ Please do not reply directly to this email."""
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
 <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">
   Your <strong>{role_label}</strong> account at <strong>{company_name}</strong> has been
-  created by an administrator. Use the temporary credentials below to sign in.
+  created by the clinic Owner. Use the temporary credentials below to sign in.
 </p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
   style="background:#f0f9ff;border:1px solid #d0e8f2;border-radius:6px;margin-bottom:20px;">
@@ -506,7 +506,7 @@ Please do not reply directly to this email."""
     <li>You will be <strong>required to set a permanent password</strong> immediately after signing in.</li>
     <li>You cannot access any module until the password change is complete.</li>
     <li>Never share this password with anyone.</li>
-    <li>If you did not expect this email, contact your clinic administrator immediately.</li>
+    <li>If you did not expect this email, contact your clinic Owner immediately.</li>
   </ul>
 </td></tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -533,7 +533,7 @@ Please do not reply directly to this email."""
 
 Hello {user_name},
 
-Your {role_label} account has been created by an administrator.
+Your {role_label} account has been created by the clinic Owner.
 
 Email:             {user_email}
 Temporary Password: {password}
@@ -596,7 +596,7 @@ Please do not reply directly to this email."""
 
             body = f"""<h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Hello {user_name},</h2>
 <p style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 20px;">
-  An administrator at <strong>{company_name}</strong> has updated the email address
+  The clinic Owner at <strong>{company_name}</strong> has updated the email address
   linked to your Malasakit account. Your new login email is now
   <strong>{user_email}</strong>.
 </p>
@@ -620,7 +620,7 @@ Please do not reply directly to this email."""
     <li>This temporary password is valid for your <strong>first login only</strong> and expires in <strong>48 hours</strong>.</li>
     <li>You will be <strong>required to set a new permanent password</strong> immediately after signing in.</li>
     <li>Never share this temporary password with anyone.</li>
-    <li>If you did not expect this change, contact your clinic administrator immediately.</li>
+    <li>If you did not expect this change, contact your clinic Owner immediately.</li>
   </ul>
 </td></tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -647,7 +647,7 @@ Please do not reply directly to this email."""
 
 Hello {user_name},
 
-An administrator at {company_name} has updated the email address on your Malasakit account.
+The clinic Owner at {company_name} has updated the email address on your Malasakit account.
 
 New Login Email: {user_email}
 Temporary Password: {temp_password}
@@ -657,7 +657,7 @@ Temporary Password: {temp_password}
   - This temporary password expires in 48 hours.
   - You MUST set a permanent password immediately after your first login.
   - Never share this temporary password with anyone.
-  - If you did not expect this change, contact your clinic administrator immediately.
+  - If you did not expect this change, contact your clinic Owner immediately.
 
 Sign in: {settings.FRONTEND_URL}/login
 

@@ -1,12 +1,13 @@
 export type AccessLevel = 'none' | 'view' | 'edit';
 
-export type UserRole = 'ADMIN' | 'ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'READ_ONLY';
+export type UserRole = 'OWNER' | 'BRANCH_MANAGER' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'READ_ONLY';
 
 export type FeatureKey =
   | 'dashboard'
   | 'appointments'
   | 'calendar'
   | 'diary'
+  | 'diary_other_branches'
   | 'clinical_notes'
   | 'client_cases'
   | 'patients'
@@ -79,15 +80,21 @@ export interface User {
   permission_group?:      number | null;
   permission_group_name?: string | null;
   permissions_map?:       PermissionsMap;
-  // Phase 10: Manager multi-branch scope
-  /** True when the user holds the ADMIN_ASSISTANT (Manager) role. */
-  is_manager?:            boolean;
+  // Phase 10: Branch Manager multi-branch scope
+  /** True when the user holds the BRANCH_MANAGER (Branch Manager) role. */
+  is_branch_manager?:            boolean;
   /**
-   * For Owner (ADMIN): all branches in the clinic family.
-   * For Manager (ADMIN_ASSISTANT): only branches they are assigned to manage.
+   * For Owner (OWNER): all branches in the clinic family.
+   * For Branch Manager (BRANCH_MANAGER): only branches they are assigned to manage.
    * For all other roles: empty array.
    */
     manager_branches?:     ManagerBranch[];
+    /** Extra branches whose Diary this Branch Manager may open (empty unless the permission level is view/edit). */
+    diary_branches?:       ManagerBranch[];
+    /** Level of the group row "Other Branches' Diary". */
+    diary_other_branches_level?: AccessLevel;
+    /** Owner's form only: branches picked for this Branch Manager, regardless of level. */
+    extra_diary_branches?: ManagerBranch[];
   // Multi-branch assignment support
   assigned_branch_ids?:  number[];
   assigned_branches?:    Array<{ branch_id: number; branch_name?: string }>;

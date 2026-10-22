@@ -381,3 +381,30 @@ export const assignConsentDocument = async (patientId: number, documentId: numbe
   });
   return response.data;
 };
+
+
+/** A patient of another branch, as returned for booking only (no record access). */
+export interface BookingLookupPatient {
+  id: number;
+  first_name: string;
+  last_name: string;
+  /** Built here so booking screens can use it like a Patient. */
+  full_name: string;
+  patient_number: string;
+  date_of_birth: string;
+  cases: Array<{ id: number; title: string }>;
+}
+
+/**
+ * Find a branch's patients (and their open cases) to book them from the Diary of a branch the user
+ * was granted edit access to. Returns nothing more than booking needs.
+ */
+export const searchBookingPatients = async (
+  branchId: number,
+  params: { search?: string; patient?: number } = {},
+): Promise<BookingLookupPatient[]> => {
+  const response = await axiosInstance.get<{ results: Omit<BookingLookupPatient, 'full_name'>[] }>('/patients/booking-lookup/', {
+    params: { branch: branchId, ...params },
+  });
+  return (response.data.results ?? []).map((p) => ({ ...p, full_name: `${p.first_name} ${p.last_name}`.trim() }));
+};

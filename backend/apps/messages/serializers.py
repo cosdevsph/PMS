@@ -102,7 +102,7 @@ class StartConversationSerializer(serializers.Serializer):
                 pk=value,
                 is_deleted=False,
                 is_active=True,
-                role__in=['STAFF', 'PRACTITIONER', 'ADMIN'],
+                role__in=['STAFF', 'PRACTITIONER', 'OWNER'],
             )
         except User.DoesNotExist:
             raise serializers.ValidationError('Recipient not found or not a staff member.')

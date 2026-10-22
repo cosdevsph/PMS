@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, MessageCircle } from 'lucide-react';
 import { faqs } from '../data/faqs';
+import { SUPPORT_EMAIL } from '../data/support';
 import { SectionHeader } from './public/SectionHeader';
 
 export const FAQ: React.FC = () => {
@@ -64,6 +65,17 @@ export const FAQ: React.FC = () => {
                   <div className="overflow-hidden">
                     <p className="px-5 sm:px-7 pb-6 text-base text-steady-slate leading-relaxed font-body">
                       {faq.answer}
+                      {faq.link && (
+                        <>
+                          {' '}
+                          <a
+                            href={faq.link.href}
+                            className="font-semibold text-care-blue underline underline-offset-4 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-care-blue"
+                          >
+                            {faq.link.label}
+                          </a>
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -79,7 +91,7 @@ export const FAQ: React.FC = () => {
             <p className="text-base font-medium font-body">
               Still have questions?{' '}
               <a
-                href="mailto:support@mespms.com"
+                href={`mailto:${SUPPORT_EMAIL}`}
                 className="font-semibold underline decoration-white/40 underline-offset-4 hover:decoration-white rounded font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 Contact our support team

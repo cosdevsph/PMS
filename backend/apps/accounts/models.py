@@ -3,6 +3,9 @@ from django.db import models
 from django.utils import timezone
 from apps.common.models import TimeStampedModel, SoftDeleteModel
 from apps.common.validators import validate_international_phone
+from apps.accounts.roles import (
+    ROLE_PRIORITY, ROLE_OWNER, ROLE_BRANCH_MANAGER, normalize_role, normalize_roles,
+)
 
 # ── RBAC Feature Keys ─────────────────────────────────────────────────────────
 FEATURE_KEYS = [
@@ -10,6 +13,9 @@ FEATURE_KEYS = [
     'appointments',
     'calendar',
     'diary',
+    # Lets a Branch Manager open the Diary of the extra branches the Owner picked for them
+    # (User.extra_diary_branches). none = own branches only.
+    'diary_other_branches',
     'clinical_notes',
     'client_cases',
     'patients',
@@ -47,12 +53,13 @@ FEATURE_KEYS = [
 # Default permission matrices for each role template
 DEFAULT_PERMISSIONS = {
     'OWNER': {key: 'edit' for key in FEATURE_KEYS},
-    'MANAGER': {
+    'BRANCH_MANAGER': {
         'dashboard': 'edit',
         'appointments': 'edit',
         'calendar': 'edit',
         'diary': 'edit',
-        'clinical_notes': 'view',   # Manager can VIEW clinical notes, not edit
+        'diary_other_branches': 'none',
+        'clinical_notes': 'view',   # Branch Manager can VIEW clinical notes, not edit
         'client_cases': 'edit',
         'patients': 'edit',
         'reports': 'edit',
@@ -89,6 +96,7 @@ DEFAULT_PERMISSIONS = {
         'appointments': 'edit',
         'calendar': 'edit',
         'diary': 'edit',
+        'diary_other_branches': 'none',
         'clinical_notes': 'view',
         'client_cases': 'view',
         'patients': 'edit',
@@ -126,6 +134,7 @@ DEFAULT_PERMISSIONS = {
         'appointments': 'edit',
         'calendar': 'edit',
         'diary': 'edit',
+        'diary_other_branches': 'none',
         'clinical_notes': 'edit',
         'client_cases': 'edit',
         'patients': 'edit',
@@ -162,18 +171,20 @@ DEFAULT_PERMISSIONS = {
 
 # ── Multi-Role Helpers ────────────────────────────────────────────────────────
 
-# Role precedence used to derive the "primary" role field when a user has
-# multiple roles (highest priority wins).
-ROLE_PRIORITY = ['ADMIN', 'ADMIN_ASSISTANT', 'PRACTITIONER', 'STAFF', 'FINANCE', 'READ_ONLY']
+# Features a Branch Manager ALWAYS has Edit on, whatever their permission group says: managing the staff of
+# their own clinics (Rule 2, 2026-10-22). The Owner configures everything else.
+BRANCH_MANAGER_ALWAYS_EDIT = ('staff_management', 'setup_users')
 
-# Permission defaults for ADMIN_ASSISTANT (manager-level) and FINANCE roles.
-# ADMIN_ASSISTANT is the internal slug for the "Manager" role as seen in the UI.
-DEFAULT_PERMISSIONS['ADMIN_ASSISTANT'] = DEFAULT_PERMISSIONS['MANAGER'].copy()
+# Role precedence (ROLE_PRIORITY, from accounts.roles) derives the "primary" role field when a
+# user has multiple roles: the highest priority wins.
+
+# Permission defaults for the FINANCE role. (BRANCH_MANAGER is defined above.)
 DEFAULT_PERMISSIONS['FINANCE'] = {
     'dashboard':    'view',
     'appointments': 'view',
     'calendar':     'view',
     'diary':        'none',
+    'diary_other_branches': 'none',
     'clinical_notes':   'none',
     'client_cases':     'none',
     'patients':         'view',
@@ -211,6 +222,7 @@ DEFAULT_PERMISSIONS['FINANCE'] = {
 DEFAULT_PERMISSIONS['READ_ONLY'] = {key: 'view' for key in FEATURE_KEYS}
 DEFAULT_PERMISSIONS['READ_ONLY'].update({
     'permissions':       'none',
+    'diary_other_branches': 'none',
     'subscriptions':     'none',
     'setup_account':     'none',
     'staff_management':  'none',
@@ -221,8 +233,8 @@ DEFAULT_PERMISSIONS['READ_ONLY'].update({
 # Default permission matrix per role — used for union-based access when a user
 # has no explicit PermissionGroup assigned but holds multiple roles.
 ROLE_DEFAULT_PERMISSIONS = {
-    'ADMIN':           {key: 'edit' for key in FEATURE_KEYS},
-    'ADMIN_ASSISTANT': DEFAULT_PERMISSIONS['ADMIN_ASSISTANT'],
+    'OWNER':           {key: 'edit' for key in FEATURE_KEYS},
+    'BRANCH_MANAGER':  DEFAULT_PERMISSIONS['BRANCH_MANAGER'],
     'PRACTITIONER':    DEFAULT_PERMISSIONS['PRACTITIONER'],
     'STAFF':           DEFAULT_PERMISSIONS['FRONTDESK'],
     'FINANCE':         DEFAULT_PERMISSIONS['FINANCE'],
@@ -237,8 +249,8 @@ REVERSE_ACCESS = {v: k for k, v in ACCESS_LEVELS.items()}
 # Used by derive_permission_group_for_roles() to map each role to its
 # corresponding system PermissionGroup template key.
 _ROLE_TO_PG_TEMPLATE = {
-    'ADMIN':           'ADMIN_ASSISTANT',  # ADMIN users get Admin-Assistant level group
-    'ADMIN_ASSISTANT': 'ADMIN_ASSISTANT',
+    'OWNER':           'BRANCH_MANAGER',   # unchanged behavior: Owners were mapped to the Branch Manager-level group
+    'BRANCH_MANAGER':  'BRANCH_MANAGER',
     'PRACTITIONER':    'PRACTITIONER',
     'STAFF':           'FRONTDESK',        # STAFF users get Frontdesk-level group
     'FINANCE':         'FINANCE',
@@ -251,13 +263,13 @@ def derive_permission_group_for_roles(roles: list, clinic) -> 'PermissionGroup |
     Return the clinic's system PermissionGroup that best matches the given roles.
 
     Selection logic:
-    - Iterates ROLE_PRIORITY (ADMIN → ADMIN_ASSISTANT → PRACTITIONER → STAFF → FINANCE)
+    - Iterates ROLE_PRIORITY (OWNER → BRANCH_MANAGER → PRACTITIONER → STAFF → FINANCE)
     - First matching role in the list determines the template.
     - Looks up the main clinic's system template group for that template key.
     - Returns None if no suitable group is found (e.g. clinic not yet seeded).
 
     Example:
-        roles=["ADMIN", "PRACTITIONER"] → ADMIN_ASSISTANT template group
+        roles=["OWNER", "PRACTITIONER"] → BRANCH_MANAGER template group
         roles=["STAFF", "PRACTITIONER"] → PRACTITIONER template group
         roles=["FINANCE"]              → FINANCE template group
     """
@@ -308,8 +320,7 @@ class PermissionGroup(TimeStampedModel):
     """
     TEMPLATE_CHOICES = [
         ('OWNER',           'Owner'),
-        ('MANAGER',         'Manager'),
-        ('ADMIN_ASSISTANT',  'Admin Assistant'),
+        ('BRANCH_MANAGER',  'Branch Manager'),
         ('FRONTDESK',       'Frontdesk'),
         ('PRACTITIONER',    'Practitioner'),
         ('FINANCE',         'Finance'),
@@ -418,7 +429,7 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('role', 'ADMIN')
+        extra_fields.setdefault('role', 'OWNER')
         return self.create_user(email, password, **extra_fields)
 
 
@@ -426,8 +437,8 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
     """Custom User model with role-based access control"""
     
     ROLE_CHOICES = [
-        ('ADMIN',            'Administrator'),
-        ('ADMIN_ASSISTANT',  'Admin Assistant'),
+        ('OWNER',            'Owner'),
+        ('BRANCH_MANAGER',   'Branch Manager'),
         ('PRACTITIONER',     'Practitioner'),
         ('STAFF',            'Staff'),
         ('FINANCE',          'Finance'),
@@ -539,8 +550,21 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
                   'Overrides role-based defaults for feature-level access.',
     )
 
+    # ── Diary access to branches outside the user's own ────────────────────
+    # Set by the Owner for a Branch Manager (BRANCH_MANAGER). Used only for Diary /
+    # Calendar access, together with the 'diary_other_branches' permission level.
+    # Deliberately NOT UserBranchAccess: that table drives clinician seat counts,
+    # practitioner lists, schedules and the one-Branch-Manager-per-branch rule.
+    extra_diary_branches = models.ManyToManyField(
+        'clinics.Clinic',
+        blank=True,
+        related_name='extra_diary_users',
+        help_text='Branches whose Diary this Branch Manager may open in addition to their own. '
+                  'The level (view/edit) comes from the permission group.',
+    )
+
     # ── Multi-Role: ordered list of assigned roles ─────────────────────────
-    # e.g. ["ADMIN", "PRACTITIONER"] — kept in sync with `role` (primary).
+    # e.g. ["OWNER", "PRACTITIONER"] — kept in sync with `role` (primary).
     roles = models.JSONField(
         default=list,
         blank=True,
@@ -566,6 +590,10 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
         # Always persist email in lowercase to prevent case-sensitive duplicates.
         if self.email:
             self.email = self.email.strip().lower()
+
+        # ── Legacy role codes are converted on the way in (see accounts/roles.py) ──
+        self.role = normalize_role(self.role)
+        self.roles = normalize_roles(self.roles)
 
         # ── Multi-role sync ──────────────────────────────────────────────────
         # Ensure `roles` is a valid, deduplicated list.
@@ -598,18 +626,14 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
         return f"{self.get_full_name()} ({self.email})"
     
     @property
-    def is_admin(self):
-        return 'ADMIN' in (self.roles or [self.role])
-
-    @property
     def is_owner(self):
-        """Alias for is_admin — ADMIN role maps to the Owner permission template."""
-        return self.is_admin
+        """True when the user holds the OWNER role (the clinic owner)."""
+        return ROLE_OWNER in self.get_effective_roles()
 
     @property
-    def is_manager(self):
-        """True when the user holds the ADMIN_ASSISTANT (Manager) role."""
-        return 'ADMIN_ASSISTANT' in (self.roles or [self.role])
+    def is_branch_manager(self):
+        """True when the user holds the BRANCH_MANAGER role."""
+        return ROLE_BRANCH_MANAGER in self.get_effective_roles()
 
     @property
     def is_practitioner(self):
@@ -638,11 +662,17 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
         return not self.password_changed
 
     def get_effective_roles(self) -> list:
-        """Return the canonical roles list, always non-empty."""
+        """
+        Return the canonical roles list, always non-empty.
+
+        Legacy role codes are converted on read (see accounts/roles.py), so a row that has not been
+        migrated yet (a database between a code deploy and `migrate`) still behaves as an Owner /
+        Branch Manager instead of silently losing its access.
+        """
         r = self.roles or []
         if not r and self.role:
-            return [self.role]
-        return r
+            return normalize_roles([self.role])
+        return normalize_roles(r)
 
     def has_feature_permission(self, feature_key: str, required_level: str = 'view') -> bool:
         """
@@ -651,13 +681,18 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
         Access hierarchy: edit > view > none
 
         Resolution order:
-        1. ADMIN in roles → always grant.
-        2. permission_group assigned → use the group's explicit matrix.
-        3. Fallback → union of DEFAULT_PERMISSIONS across all assigned roles.
+        1. OWNER in roles → always grant.
+        2. BRANCH_MANAGER + staff management features → always grant (Rule 2).
+        3. permission_group assigned → use the group's explicit matrix.
+        4. Fallback → union of DEFAULT_PERMISSIONS across all assigned roles.
         """
         effective_roles = self.get_effective_roles()
 
-        if 'ADMIN' in effective_roles:
+        if 'OWNER' in effective_roles:
+            return True
+
+        # Rule 2: a Branch Manager can always manage staff in their own clinics.
+        if 'BRANCH_MANAGER' in effective_roles and feature_key in BRANCH_MANAGER_ALWAYS_EDIT:
             return True
 
         levels = ACCESS_LEVELS
@@ -680,25 +715,37 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
     def can_edit(self, feature_key: str) -> bool:
         return self.has_feature_permission(feature_key, 'edit')
 
+    def get_managed_branch_ids(self):
+        """
+        IDs of the clinics this user manages as Branch Manager (rows with is_managed=True).
+        Practitioner / staff branch assignments are not management and are not included.
+        Empty for every other role; the Owner manages everything and is handled by the callers.
+        """
+        if not self.is_branch_manager:
+            return []
+        return list(self.branch_accesses.filter(is_managed=True).values_list('branch_id', flat=True))
+
     def get_managed_branches(self):
         """
         Return the QuerySet of Clinic branches this user is assigned to manage.
 
-        For ADMIN_ASSISTANT (Manager) users: returns all branches in
-        UserBranchAccess for this user.
+        For BRANCH_MANAGER users: the clinics they manage (UserBranchAccess rows with
+        is_managed=True). One clinic has at most one Branch Manager; one Branch Manager may
+        manage any number of clinics.
 
-        For ADMIN (Owner) users: returns all branches of their clinic family.
+        For OWNER users: returns all branches of their clinic family.
 
         For all other roles: returns an empty QuerySet.
         """
         from apps.clinics.models import Clinic
-        if self.is_admin:
+        if self.is_owner:
             if self.clinic:
                 return self.clinic.get_all_branches()
             return Clinic.objects.none()
-        if self.is_manager:
+        if self.is_branch_manager:
             return Clinic.objects.filter(
                 user_branch_accesses__user=self,
+                user_branch_accesses__is_managed=True,
                 is_deleted=False,
             )
         return Clinic.objects.none()
@@ -740,9 +787,9 @@ class UserBranchAccess(TimeStampedModel):
     """
     Many-to-many junction table between Users and Clinic branches.
 
-    Primary purpose: express a Manager's (ADMIN_ASSISTANT) scope — i.e. which
-    branches they are responsible for.  One Manager may own many branches, but
-    each branch may only have ONE Manager (enforced in the serializer layer).
+    Primary purpose: express a Branch Manager's (BRANCH_MANAGER) scope — i.e. which
+    branches they are responsible for.  One Branch Manager may own many branches, but
+    each branch may only have ONE Branch Manager (enforced in the serializer layer).
 
     Also used to express multi-branch assignments for operational roles in
     future phases (currently operational users keep the single clinic_branch FK).
@@ -806,6 +853,11 @@ class UserBranchAccess(TimeStampedModel):
         db_index=True,
         help_text='Active status of this branch assignment'
     )
+    is_managed = models.BooleanField(
+        default=False,
+        help_text='True when this user is the Branch Manager of this clinic. A clinic can have at most one '
+                  'managed row (database constraint). Practitioner / staff assignments stay False.',
+    )
 
     class Meta:
         db_table = 'user_branch_access'
@@ -815,6 +867,14 @@ class UserBranchAccess(TimeStampedModel):
             models.Index(fields=['user', 'branch']),
             models.Index(fields=['branch']),
             models.Index(fields=['user', 'is_active']),
+        ]
+        constraints = [
+            # Rule: no clinic may have two Branch Managers.
+            models.UniqueConstraint(
+                fields=['branch'],
+                condition=models.Q(is_managed=True),
+                name='one_branch_manager_per_clinic',
+            ),
         ]
 
     def __str__(self):

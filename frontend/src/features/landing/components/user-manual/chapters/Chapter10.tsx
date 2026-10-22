@@ -8,7 +8,7 @@ const Chapter10: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how clinic Owners and Managers access the Practitioner directory under the Setup module and review clinician profile details.
+        Learn how clinic Owners and Branch Managers access the Practitioner directory under the Setup module and review clinician profile details.
       </p>
 
       {/* QUICK OVERVIEW FLOW */}
@@ -67,7 +67,7 @@ const Chapter10: React.FC = () => {
       </div>
 
       <DocCallout type="info">
-        Only clinic Owners and authorized Managers have permission to access the Setup module and manage practitioner accounts.
+        Only clinic Owners and authorized Branch Managers have permission to access the Setup module and manage practitioner accounts.
       </DocCallout>
 
 
@@ -97,7 +97,7 @@ const Chapter10: React.FC = () => {
               <h5 className="font-bold text-gray-900 mb-1 text-sm">Operational Columns</h5>
               <ul className="text-xs space-y-1.5 text-gray-700 font-body">
                 <li><strong>Contact:</strong> Email address and direct mobile number.</li>
-                <li><strong>Role(s):</strong> Assigned permission badges (e.g., Practitioner, Manager).</li>
+                <li><strong>Role(s):</strong> Assigned permission badges (e.g., Practitioner, Branch Manager).</li>
                 <li><strong>Status:</strong> Active or Inactive status toggle.</li>
                 <li><strong>Actions:</strong> Quick controls to edit profile, configure duty hours, or archive.</li>
               </ul>

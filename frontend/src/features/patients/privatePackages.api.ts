@@ -104,7 +104,7 @@ export interface PrivatePackageHistoryEntry {
  * Mirrors PACKAGE_WRITE_ROLES in backend/apps/patients/package_views.py; the
  * backend is the real gate, this only hides buttons.
  */
-export const PRIVATE_PACKAGE_WRITE_ROLES = ['ADMIN', 'ADMIN_ASSISTANT', 'STAFF', 'PRACTITIONER'];
+export const PRIVATE_PACKAGE_WRITE_ROLES = ['OWNER', 'BRANCH_MANAGER', 'STAFF', 'PRACTITIONER'];
 
 export const canManagePrivatePackages = (user: Pick<User, 'role' | 'roles'> | null | undefined): boolean => {
   if (!user) return false;

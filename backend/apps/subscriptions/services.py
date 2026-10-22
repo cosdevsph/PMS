@@ -4,7 +4,7 @@ Authoritative Subscription, Plan Entitlement, and Allocation Engine.
 Enforces:
   1. Clinician Capacity across the clinic family.
   2. Multi-branch assignments multiplier (1 allocation per assigned branch).
-  3. Multi-role clinician allocations (Practitioner, Admin+Practitioner, Staff+Practitioner).
+  3. Multi-role clinician allocations (Practitioner, Owner+Practitioner, Staff+Practitioner).
   4. Active, Inactive, and Archived (soft-deleted) counting rules.
   5. Branch Entitlement limits (included + purchased additional branches).
   6. Concurrency protection via select_for_update() row locking.
@@ -121,9 +121,9 @@ def get_clinician_allocations_for_clinic(clinic: Clinic) -> Dict[str, Any]:
 
     Rules:
       1. Clinician Definition: User with PRACTITIONER capability (Practitioner,
-         Admin+Practitioner, Staff+Practitioner). Non-clinical roles consume 0.
-      2. Multi-Branch Multiplier: A practitioner assigned to N branches consumes
-         N clinician allocations.
+         Owner+Practitioner, Staff+Practitioner). Non-clinical roles consume 0.
+      2. Shared across branches: the clinician limit belongs to the whole clinic
+         group. A practitioner counts ONCE, however many branches they work at.
       3. Active / Inactive / Archived:
          - Active practitioner -> COUNTS
          - Inactive practitioner -> COUNTS
@@ -171,16 +171,8 @@ def get_clinician_allocations_for_clinic(clinic: Clinic) -> Dict[str, Any]:
 
         clinical_users_count += 1
 
-        # Multi-branch assignment calculation
-        # Distinct branches the user is assigned to within this clinic family
-        assigned_branches = set(
-            user.branch_accesses.filter(branch_id__in=branch_ids).values_list('branch_id', flat=True)
-        )
-        if user.clinic_branch_id and user.clinic_branch_id in branch_ids:
-            assigned_branches.add(user.clinic_branch_id)
-
-        # If no explicit branch is assigned, default to 1 allocation on main branch
-        user_allocations = max(1, len(assigned_branches))
+        # One seat per clinician, whatever number of branches they are assigned to.
+        user_allocations = 1
 
         # Check if user is archived (soft-deleted)
         is_archived = (
@@ -318,6 +310,7 @@ def get_subscription_usage_summary(clinic: Clinic) -> Dict[str, Any]:
         sub.start_trial()
 
     now = timezone.now()
+    sub.apply_scheduled_cancellation()
     if sub.status == Subscription.STATUS_ACTIVE and sub.end_date < now:
         sub.expire()
 
@@ -331,6 +324,13 @@ def get_subscription_usage_summary(clinic: Clinic) -> Dict[str, Any]:
         'status': sub.status,
         'billing_cycle': sub.billing_cycle,
         'commitment_months': sub.commitment_months,
+        'term_start': sub.term_start,
+        'term_end': sub.term_end,
+        'cancellation_pending': sub.cancellation_pending,
+        'cancellation_requested_at': sub.cancellation_requested_at,
+        'cancellation_effective_at': sub.cancellation_effective_at,
+        'cancellation_reason': sub.cancellation_reason,
+        'can_request_cancellation': sub.can_request_cancellation(),
         'is_trial': sub.is_trial,
         'start_date': sub.start_date,
         'end_date': sub.end_date,

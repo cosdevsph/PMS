@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, Facebook, Twitter, Linkedin } from 'lucide-react';
+import { Mail, MapPin, Facebook, Twitter, Linkedin } from 'lucide-react';
 import MESLogo from '@/assets/malasakit/Primary Logo - White.svg';
 
 const linkFocus = 'rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-care-blue';
@@ -25,7 +25,7 @@ export const Footer: React.FC = () => {
     legal: [
       { label: 'Privacy Policy', href: '/privacy-policy' },
       { label: 'Terms of Service', href: '/terms-of-service' },
-      { label: 'OWASP Compliance', href: '/owasp-compliance' },
+      { label: 'Security Practices', href: '/owasp-compliance' },
       { label: 'Cookie Policy', href: '/cookie-policy' }
     ]
   };
@@ -72,10 +72,6 @@ export const Footer: React.FC = () => {
               <a href="mailto:malasakitsolutions@gmail.com" className={`flex items-center w-fit text-base text-white/85 hover:text-white transition-colors font-body break-all ${linkFocus}`}>
                 <Mail className="w-5 h-5 mr-3 text-healing-mint shrink-0" aria-hidden="true" />
                 malasakitsolutions@gmail.com
-              </a>
-              <a href="tel:+639457123456" className={`flex items-center w-fit text-base text-white/85 hover:text-white transition-colors font-body ${linkFocus}`}>
-                <Phone className="w-5 h-5 mr-3 text-healing-mint shrink-0" aria-hidden="true" />
-                +63 9457 123 456
               </a>
               <div className="flex items-start text-base">
                 <MapPin className="w-5 h-5 mr-3 mt-0.5 shrink-0 text-healing-mint" aria-hidden="true" />

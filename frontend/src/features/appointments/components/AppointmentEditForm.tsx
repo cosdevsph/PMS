@@ -221,7 +221,7 @@ export const AppointmentEditForm: React.FC<AppointmentEditFormProps> = ({
         />
       </div>
 
-      {/* ── Arrival Status (Admin/Staff only) ── */}
+      {/* ── Arrival Status (Owner/Staff only) ── */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-1.5">
           Arrival Status

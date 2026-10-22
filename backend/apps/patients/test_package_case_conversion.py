@@ -28,7 +28,7 @@ class ConversionTests(TestCase):
         self.clinic = Clinic.objects.create(name="Malasakit Health")
         self.admin = User.objects.create_user(
             email="admin@x.com", password="testpassword123", first_name="A", last_name="D",
-            clinic=self.clinic, role="ADMIN",
+            clinic=self.clinic, role="OWNER",
         )
         self.practitioner = Practitioner.objects.create(
             user=User.objects.create_user(

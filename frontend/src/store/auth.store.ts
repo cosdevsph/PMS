@@ -5,6 +5,7 @@ import type { User, AuthTokens, AuthState } from '@/types';
 import { authService } from '@/services/authService';
 import { queryClient } from '@/lib/queryClient';
 import { invalidateClinicSettingsCache } from '@/hooks/useClinicSettings';
+import { normalizeUser } from '@/lib/roles';
 
 const AUTH_API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
@@ -78,7 +79,8 @@ export const useAuthStore = create<AuthStore>()(
       isLoading: true,
       permissionsVersion: 0,
 
-      setAuth: (user, tokens) => {
+      setAuth: (rawUser, tokens) => {
+        const user = normalizeUser(rawUser);
         localStorage.setItem('access_token', tokens.access);
         localStorage.setItem('refresh_token', tokens.refresh);
         localStorage.setItem('user', JSON.stringify(user));
@@ -114,7 +116,8 @@ export const useAuthStore = create<AuthStore>()(
         });
       },
 
-      updateUser: (user) => {
+      updateUser: (rawUser) => {
+        const user = normalizeUser(rawUser);
         // 1. Update standalone 'user' key
         localStorage.setItem('user', JSON.stringify(user));
 
@@ -222,6 +225,8 @@ export const useAuthStore = create<AuthStore>()(
             freshUser = JSON.parse(userStr);
           }
 
+          freshUser = normalizeUser(freshUser);
+
           // Sync fresh user to localStorage for subsequent cold-starts
           localStorage.setItem('user', JSON.stringify(freshUser));
 
@@ -257,6 +262,11 @@ export const useAuthStore = create<AuthStore>()(
         tokens: state.tokens,
         isAuthenticated: state.isAuthenticated,
       }),
+      // A cached login from before the Owner / Branch Manager rename still holds the old role codes.
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<AuthState>;
+        return { ...current, ...saved, user: saved.user ? normalizeUser(saved.user) : (current.user ?? null) };
+      },
     }
   )
 );

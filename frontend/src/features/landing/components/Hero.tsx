@@ -13,6 +13,10 @@ const capabilities = [
   { icon: CreditCard, label: 'Billing & Invoicing' },
 ];
 
+/** Shared by all three hero buttons so they read as one group: identical height, padding, radius, type and icon size. */
+const ctaBase =
+  'group inline-flex h-12 sm:h-14 w-full items-center justify-center gap-2.5 px-4 rounded-xl text-sm sm:text-base font-bold font-heading whitespace-nowrap transition-all duration-200 motion-reduce:transform-none';
+
 const ctaFocus =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-care-blue';
 
@@ -98,33 +102,33 @@ export const Hero: React.FC = () => {
               </span>
             </h1>
 
-            {/* Call-to-Actions — primary, secondary, tertiary */}
-            <div className="mt-8 sm:mt-10 w-full max-w-lg flex flex-col items-center lg:items-start gap-5">
-              <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3">
+            {/* Call-to-Actions: one group of three equal buttons (same size, shape, alignment and spacing) */}
+            <div className="mt-8 sm:mt-10 w-full max-w-xl">
+              <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Link
                   to="/register"
-                  className={`group inline-flex items-center justify-center gap-2.5 px-8 py-3.5 sm:py-4 text-base font-bold text-care-blue bg-white rounded-xl hover:bg-clinical-cloud active:bg-gray-100 transition-all duration-200 shadow-xl shadow-trust-harbor/20 hover:shadow-2xl hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none font-heading ${ctaFocus}`}
+                  className={`${ctaBase} text-care-blue bg-white shadow-xl shadow-trust-harbor/20 hover:bg-clinical-cloud active:bg-gray-100 hover:-translate-y-0.5 active:translate-y-0 ${ctaFocus}`}
                 >
                   <span>Start Trial</span>
-                  <ArrowRight className="w-4 h-4 text-care-blue group-hover:translate-x-1 motion-reduce:transform-none transition-transform duration-200" aria-hidden="true" />
+                  <ArrowRight className="w-4 h-4 shrink-0 text-care-blue group-hover:translate-x-1 motion-reduce:transform-none transition-transform duration-200" aria-hidden="true" />
                 </Link>
 
                 <Link
                   to="/demo"
-                  className={`group inline-flex items-center justify-center gap-2 px-8 py-3.5 sm:py-4 text-base font-semibold text-white bg-white/10 ring-1 ring-inset ring-white/40 rounded-xl hover:bg-white/15 hover:ring-white/60 active:bg-white/20 transition-all duration-200 font-heading ${ctaFocus}`}
+                  className={`${ctaBase} text-white bg-transparent ring-1 ring-inset ring-white/50 hover:bg-white/10 hover:ring-white/70 active:bg-white/15 ${ctaFocus}`}
                 >
-                  <Play className="w-4 h-4 text-healing-mint fill-healing-mint/30 group-hover:scale-110 motion-reduce:transform-none transition-transform duration-200" aria-hidden="true" />
-                  <span>Watch Demo</span>
+                  <Play className="w-4 h-4 shrink-0 text-healing-mint fill-healing-mint/30" aria-hidden="true" />
+                  <span>Video Guides</span>
+                </Link>
+
+                <Link
+                  to="/user-manual"
+                  className={`${ctaBase} text-white bg-transparent ring-1 ring-inset ring-white/50 hover:bg-white/10 hover:ring-white/70 active:bg-white/15 ${ctaFocus}`}
+                >
+                  <BookOpen className="w-4 h-4 shrink-0 text-healing-mint" aria-hidden="true" />
+                  <span>User Manual</span>
                 </Link>
               </div>
-
-              <Link
-                to="/user-manual"
-                className={`group inline-flex items-center gap-2 rounded-lg px-1 py-1 text-sm sm:text-base font-semibold text-white/90 hover:text-white transition-colors duration-200 font-heading ${ctaFocus}`}
-              >
-                <BookOpen className="w-4 h-4 text-white/80 group-hover:text-white transition-colors duration-200" aria-hidden="true" />
-                <span className="underline decoration-white/30 underline-offset-4 group-hover:decoration-white">Learn How It Works</span>
-              </Link>
             </div>
 
             {/* Healthcare Capability Anchors */}

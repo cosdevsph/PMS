@@ -51,6 +51,67 @@ When something changes, update this file in place and add a CHANGELOG entry. Rec
 
 Architecture Decision Records, newest first. Each one: date, decision, context, alternatives considered, consequences, status (`Accepted` / `Superseded (YYYY-MM-DD)`).
 
+### ADR-005: A Branch Manager's clinics are flagged rows, and the database enforces one manager per clinic
+
+**Date:** 2026-10-22 · **Status:** Accepted and implemented. **Not yet deployed:** `accounts.0026` and `0027` are unapplied on the development database.
+
+**Context.** `UserBranchAccess` holds every kind of branch link: manager scope, practitioner schedules and plain assignments, and it drives seat counts and schedules. Treating all of a Branch Manager's rows as "clinics they manage" let a practitioner assignment count as management, and "one Branch Manager per clinic" was only checked on one save path with no database backing.
+
+**Decision.** Add `is_managed` to `UserBranchAccess`; a Branch Manager manages exactly their managed rows, and any number of them is allowed. A partial unique constraint (`branch` where `is_managed`) enforces one manager per clinic, and a single helper produces the same message on every path (it names the current manager). The migration backfills existing manager rows and stops, changing nothing, if a clinic already has two. A Branch Manager's staff-management access is fixed in code (`BRANCH_MANAGER_ALWAYS_EDIT`) rather than left to a permission group, and the Owner group is hidden and locked because the Owner has no permission settings.
+
+**Alternatives considered.**
+- *A separate table of managed clinics:* rejected; it would duplicate rows that already exist and every reader of `branch_accesses` would need two sources.
+- *A foreign key `Clinic.branch_manager`:* not chosen; it would move manager scope out of the table that every current reader already uses, while the flag is a smaller change that keeps one source of truth.
+- *Let the permission group decide staff access:* rejected by the owner (Rule 2: always).
+
+**Consequences.** Every place that reads "the clinics a Branch Manager manages" must use `get_managed_branch_ids()` / `get_managed_branches()`, not `branch_accesses`. Access-style checks that ask "which clinics may this user open" still use all rows. Production data with two managers on one clinic must be fixed before migrating.
+
+### ADR-004: Role codes are OWNER and BRANCH_MANAGER; legacy codes are input aliases only
+
+**Date:** 2026-10-22 · **Status:** Accepted and implemented. **Not yet deployed:** migrations `accounts.0025`, `support.0004` and `appointments.0023` are unapplied on the development database.
+
+**Context.** The same two roles were called Admin / Administrator / Owner and Admin Assistant / Manager / Branch Manager in different places, and the stored codes (`ADMIN`, `ADMIN_ASSISTANT`, plus a duplicate `MANAGER` permission-group template) did not match what the owner calls them. The codes were used in about 180 places and stored in users, permission groups, the role-change audit log and support tickets.
+
+**Decision.** One vocabulary everywhere: Owner (`OWNER`) and Branch Manager (`BRANCH_MANAGER`). Codes live in `accounts/roles.py` (backend) and `lib/roles.ts` (frontend). Data migrations convert users (`role`, `roles`), permission-group templates (the `MANAGER` and `ADMIN_ASSISTANT` templates are merged), the seeded group name "Admin Assistant", the audit log, support tickets and the appointment booking source `admin`; each has a reverse. Legacy codes are accepted as **input** (serializers, `User.save()`, role endpoints, and the frontend auth store for cached logins) so a tab or script from before the deploy keeps working, and are never returned. The frontend is deployed first. `manage.py report_role_codes` counts stored codes before and after.
+
+**Alternatives considered.**
+- *Labels only:* rejected; the database and API would keep saying ADMIN.
+- *No aliases:* rejected; any open browser tab would break at deploy time.
+- *Renaming API paths and the `unlimited_admins` field too:* deferred; no user-visible gain and it would break older frontends during the rollout.
+
+**Consequences.** Four old checks compared against codes nobody held (support-feedback "see all", comment visibility, permanent case delete); the rename would have switched them on, so they were made explicitly inert (`FEEDBACK_ADMIN_ROLES`, `CASE_HARD_DELETE_ROLES`, both empty) and recorded as findings. Practitioner list cache keys moved to `practitioners_v2_*` so cached lists with old codes are not served. The aliases are to be removed in a later release. Legacy codes are also converted on **read** (`User.get_effective_roles()`, the user serializer output, and the frontend's response normalizer) so rows that have not been migrated yet still behave as Owner / Branch Manager; only database-level lookups need the migration.
+
+### ADR-003: Other-branch Diary access is a per-user list plus a permission-group level
+
+**Date:** 2026-10-22 · **Status:** Accepted and implemented. **Not yet deployed:** `accounts.0024` is unapplied on the development database.
+
+**Context.** Managers were limited to their `UserBranchAccess` branches. The owner wanted a setting on the Permission Groups page to let Managers open other branches' Diary, with the Owner choosing which branches. `UserBranchAccess` also drives clinician seat counts, practitioner lists, schedules and the one-Manager-per-branch rule, and permission groups are shared by many users.
+
+**Decision.** Two parts. The **level** (none / view / edit) is a new permission-group feature key, `diary_other_branches`. The **branches** are a new many-to-many `User.extra_diary_branches`, set only by the Owner and kept only for Managers. A helper (`get_diary_branch_ids(user, write)`) returns own branches plus the extra ones when the level allows (view for reads, edit for writes); only the Diary, Calendar notes and blocks use it. Patients, invoices and reports keep using the user's own branches, and booking reaches other-branch patients through a narrow lookup endpoint.
+
+**Alternatives considered.**
+- *Reuse `UserBranchAccess` with a flag:* rejected; it would change seat counts, schedules and the manager-per-branch rule.
+- *A branch list on the permission group:* rejected; groups are shared, but the branches differ per Manager.
+- *Full branch access (patients, invoices, reports):* rejected by the owner; too much data exposure for a Diary need.
+
+**Consequences.** One additive migration. A branch granted this way is not a managed branch. Read and write lists differ, so any new Diary-like endpoint must use `DiaryBranchScopeMixin` or the helper. The Diary "View" level is read-only only for granted branches; own-branch read-only is not built (CHANGELOG F7).
+
+### ADR-002: Subscriptions track a 12-month term; cancellation is scheduled for term end
+
+**Date:** 2026-10-21 · **Status:** Accepted and implemented. **Not yet deployed:** `subscriptions.0004` and `0005` are unapplied on the development database.
+
+**Context.** Plans carry a 12-month minimum commitment, but the code stored it without using it: each payment reset `start_date` and extended `end_date` by 30 or 365 days, so the term could not be known, and no cancellation existed. Public copy said "cancel anytime".
+
+**Decision.** Add `term_start` and `term_end` to `Subscription`, set when a paid plan is activated and no term is running. Add a cancellation request that always resolves to `cancellation_effective_at = term_end`. When that date passes, the status becomes `CANCELLED` the next time the subscription is read (the same lazy approach as expiry). Requests, withdrawals and the effective moment are recorded in `SubscriptionEvent`. Prices stay in `plans.py`; the public site mirrors them in one frontend data file.
+
+**Alternatives considered.**
+- *Cancel at the end of the billing period:* rejected; for monthly payers it means month-to-month, which contradicts the 12-month term.
+- *Immediate cancellation with a fee:* rejected by the owner; end of term, no refund.
+- *Celery beat job to enforce cancellation:* deferred; lazy enforcement matches how expiry already works and needs no new infrastructure.
+- *Fetch public prices from the API:* not possible without a login-free endpoint, so the mirror file is kept and documented.
+
+**Consequences.** Two additive migrations. `start_date` keeps its old meaning (last payment) and must not be read as the term start. Existing paid subscriptions need `backfill_subscription_terms`. Renewal after the first term is not automated.
+
 ### ADR-001: Prepaid packages are patient-level Private Package Sessions
 
 **Date:** 2026-10-20 · **Status:** Accepted and implemented (data model, service layer, API, Patient Profile UI, appointment assignment, covered billing, retirement of Case session limits, conversion command). **Not yet deployed:** migrations `patients.0042` and `0043` are unapplied on the development database. Transfers are not built (undecided).

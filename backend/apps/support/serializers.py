@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .permissions import has_feedback_admin_access
 from .models import UserFeedback, UserFeedbackAttachment, UserFeedbackComment, UserFeedbackStatusHistory
 
 
@@ -60,9 +61,8 @@ class UserFeedbackSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         comments = obj.comments.all()
         if request and request.user:
-            effective = request.user.get_effective_roles()
-            # If not admin, only show non-internal comments
-            if 'OWNER' not in effective and 'MANAGER' not in effective:
+            # Only roles in FEEDBACK_ADMIN_ROLES (currently none) see internal comments
+            if not has_feedback_admin_access(request.user):
                 comments = comments.filter(is_internal=False)
         return UserFeedbackCommentSerializer(comments, many=True).data
 

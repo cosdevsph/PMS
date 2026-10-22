@@ -25,7 +25,7 @@ const Chapter7: React.FC = () => {
         
         <ol className="list-decimal pl-6 space-y-2 text-gray-700 font-body mb-6 font-medium">
           <li>
-            <strong>Role Permissions (What you can do):</strong> Assigned roles (e.g., Practitioner, Manager, Front Desk, Finance) determine which features, modules, and administrative tools are unlocked.
+            <strong>Role Permissions (What you can do):</strong> Assigned roles (e.g., Practitioner, Branch Manager, Front Desk, Finance) determine which features, modules, and administrative tools are unlocked.
           </li>
           <li>
             <strong>Branch Authorization (Where you can do it):</strong> Assigned clinic branches determine which physical clinic locations, patient records, appointment calendars, and reports you are authorized to view and manage.
@@ -68,7 +68,7 @@ const Chapter7: React.FC = () => {
 
       {/* SECTION 7.1 — Owner */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        7.1 Owner (Administrator)
+        7.1 Owner
       </h3>
       <p className="text-gray-700 font-body mb-6">The highest level of administrative access across the entire organization.</p>
 
@@ -101,16 +101,16 @@ const Chapter7: React.FC = () => {
       </div>
 
 
-      {/* SECTION 7.2 — Manager (Admin Assistant) */}
+      {/* SECTION 7.2 — Branch Manager */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        7.2 Manager (Admin Assistant)
+        7.2 Branch Manager
       </h3>
       <p className="text-gray-700 font-body mb-6">Administrative leaders overseeing operations for designated clinic branches.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-6">
-            <strong>Managers</strong> act as operational administrators for the specific branches assigned to their account. A Manager can be assigned to oversee a single branch or multiple regional branches.
+            <strong>Branch Managers</strong> act as operational administrators for the specific branches assigned to their account. A Branch Manager can be assigned to oversee a single branch or multiple regional branches.
           </p>
           <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
             <li>Manage practitioners, front desk, and finance staff assigned to their authorized branches</li>
@@ -126,7 +126,7 @@ const Chapter7: React.FC = () => {
               height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 7.2: Manager Dashboard"
+              alt="Screenshot 7.2: Branch Manager Dashboard"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -134,7 +134,7 @@ const Chapter7: React.FC = () => {
       </div>
 
       <DocCallout type="info">
-        If a Manager is assigned to a single branch, the branch selector is locked to that location. If assigned to multiple branches, a dropdown allows seamless switching between authorized branches. Managers can never view or modify unassigned branches.
+        If a Branch Manager is assigned to a single branch, the branch selector is locked to that location. If assigned to multiple branches, a dropdown allows seamless switching between authorized branches. Branch Managers can never view or modify unassigned branches.
       </DocCallout>
 
 
@@ -293,7 +293,7 @@ const Chapter7: React.FC = () => {
             <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
               <h5 className="font-bold text-gray-900 mb-2">Union-Based Feature Access</h5>
               <p className="text-sm text-gray-700 font-body leading-relaxed">
-                When a user holds multiple roles, the system evaluates the union of permissions across each role. The highest privilege level (<code className="text-xs bg-gray-200 px-1 py-0.5 rounded">none &lt; view &lt; edit</code>) always takes precedence. For example, a Manager who is also a Practitioner can edit both clinical notes and staff assignments.
+                When a user holds multiple roles, the system evaluates the union of permissions across each role. The highest privilege level (<code className="text-xs bg-gray-200 px-1 py-0.5 rounded">none &lt; view &lt; edit</code>) always takes precedence. For example, a Branch Manager who is also a Practitioner can edit both clinical notes and staff assignments.
               </p>
             </div>
             <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
@@ -307,7 +307,7 @@ const Chapter7: React.FC = () => {
       </div>
 
       <DocCallout type="important">
-        Assigning multiple roles never overrides branch security. A user who is both a Manager and Practitioner can only manage and treat patients in their authorized branches.
+        Assigning multiple roles never overrides branch security. A user who is both a Branch Manager and Practitioner can only manage and treat patients in their authorized branches.
       </DocCallout>
 
 
@@ -324,10 +324,10 @@ const Chapter7: React.FC = () => {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Example 1: Manager */}
+            {/* Example 1: Branch Manager */}
             <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
-              <h5 className="font-bold text-gray-900 mb-2 border-b border-gray-200 pb-2">Example 1: Regional Manager</h5>
-              <p className="text-xs text-gray-500 mb-1"><strong>Role:</strong> Manager (Admin Assistant)</p>
+              <h5 className="font-bold text-gray-900 mb-2 border-b border-gray-200 pb-2">Example 1: Branch Manager (Multiple Branches)</h5>
+              <p className="text-xs text-gray-500 mb-1"><strong>Role:</strong> Branch Manager</p>
               <p className="text-xs text-gray-500 mb-3"><strong>Branches:</strong> Branch 1 & Branch 2</p>
               <ul className="text-sm space-y-1.5 font-body">
                 <li className="text-emerald-700">✔ Full manager access in Branch 1</li>
@@ -355,7 +355,7 @@ const Chapter7: React.FC = () => {
             {/* Example 3: Owner */}
             <div className="p-5 rounded-xl border border-blue-200 bg-blue-50/50">
               <h5 className="font-bold text-blue-900 mb-2 border-b border-blue-200 pb-2">Example 3: System Owner</h5>
-              <p className="text-xs text-blue-700 mb-1"><strong>Role:</strong> Owner (Administrator)</p>
+              <p className="text-xs text-blue-700 mb-1"><strong>Role:</strong> Owner</p>
               <p className="text-xs text-blue-700 mb-3"><strong>Branches:</strong> System-Wide (All Branches)</p>
               <ul className="text-sm space-y-1.5 font-body">
                 <li className="text-blue-800">✔ Unrestricted access to all branches</li>
@@ -380,7 +380,7 @@ const Chapter7: React.FC = () => {
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
         <li>The system-wide administrative governance of the <strong>Owner</strong> role.</li>
-        <li>The branch-level operational responsibilities of a <strong>Manager</strong> across authorized locations.</li>
+        <li>The branch-level operational responsibilities of a <strong>Branch Manager</strong> across authorized locations.</li>
         <li>How <strong>Practitioners</strong> practice across multiple branches using a single user account with independent duty hours.</li>
         <li>How cross-branch conflict prevention keeps multi-branch practitioner schedules synchronized.</li>
         <li>The scheduling intake duties of <strong>Front Desk</strong> staff and billing workflows of <strong>Finance</strong> specialists.</li>

@@ -45,6 +45,8 @@ export interface PlanCatalogItem {
   additional_branch_monthly_pesos: number | null;
   additional_branch_annual_pesos: number | null;
   annual_savings_pesos: number | null;
+  /** Annual billing discount, in percent (10). */
+  annual_discount_percent?: number;
   commitment_months: number;
   features_included: string[];
   unlimited_admins: boolean;
@@ -55,6 +57,15 @@ export interface SubscriptionStatusResponse {
   plan_name?: string;
   billing_cycle?: BillingCycle;
   commitment_months?: number;
+  /** Start / end of the current 12-month minimum term (null on trials). */
+  term_start?: string | null;
+  term_end?: string | null;
+  /** A cancellation is scheduled; it takes effect at the end of the term, never earlier. */
+  cancellation_pending?: boolean;
+  cancellation_requested_at?: string | null;
+  cancellation_effective_at?: string | null;
+  cancellation_reason?: string;
+  can_request_cancellation?: boolean;
   status: SubscriptionState;
   is_trial: boolean;
   is_active?: boolean;
@@ -104,6 +115,17 @@ export const subscriptionApi = {
    * Returns the checkout_url to redirect the user to for payment.
    * Secret keys never leave the backend.
    */
+  /** Owner only. Schedules cancellation for the end of the current term. */
+  requestCancellation: async (reason: string): Promise<SubscriptionStatusResponse> => {
+    const { data } = await axiosInstance.post('/subscription/cancel/', { reason });
+    return data;
+  },
+
+  withdrawCancellation: async (): Promise<SubscriptionStatusResponse> => {
+    const { data } = await axiosInstance.post('/subscription/cancel/withdraw/');
+    return data;
+  },
+
   createCheckout: async (payload?: CreateCheckoutPayload): Promise<CheckoutSessionResponse> => {
     const { data } = await axiosInstance.post('/subscription/checkout/create/', payload || {
       plan: 'STARTER',

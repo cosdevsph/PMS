@@ -1,16 +1,21 @@
 """
 Centralized source of truth for Malasakit PMS subscription plans, entitlements, and pricing.
 
-Standard Plans:
-  - Starter:      4 clinicians, 1 included branch | ₱3,999/mo,  ₱43,000/yr | Add'l branch: ₱2,000/mo, ₱24,000/yr
-  - Growth:       8 clinicians, 1 included branch | ₱6,999/mo,  ₱75,000/yr | Add'l branch: ₱2,500/mo, ₱30,000/yr
-  - Professional: 12 clinicians, 1 included branch | ₱9,999/mo, ₱108,000/yr | Add'l branch: ₱3,000/mo, ₱36,000/yr
-  - Enterprise:   Custom clinicians, Custom branches, Custom pricing
+Public names (internal plan codes in brackets; codes never change, so stored subscriptions stay valid):
+  - Starter    [STARTER]:      up to 4 clinicians  | ₱3,999/mo | ₱43,189.20/yr
+  - Growth     [GROWTH]:       up to 8 clinicians  | ₱6,999/mo | ₱75,589.20/yr
+  - Enterprise [PROFESSIONAL]: up to 12 clinicians | ₱9,999/mo | ₱107,989.20/yr
+  - Custom     [ENTERPRISE]:   custom clinicians, custom branches, custom pricing (contact sales)
 
-Pricing Rule:
-  - Standard plans include 100% full feature access and unlimited admin accounts.
-  - Pricing is driven by Clinician capacity + Branch capacity.
-  - Minimum commitment: 12 months.
+Pricing rules:
+  - Annual billing = monthly x 12 x 0.90 (exactly 10% off).
+  - 1 branch is included in every plan. Each additional branch costs ₱2,000/mo or ₱21,600/yr
+    (10% off) on ALL tiers.
+  - The clinician limit is shared across all branches of a clinic. A clinician who works at several
+    branches counts once. A clinic only moves to the next tier when its total clinician count exceeds
+    the plan limit.
+  - Standard plans include 100% full feature access and unlimited Owner, Branch Manager and staff accounts.
+  - Minimum commitment: 12 months, paid monthly or annually.
   - All amounts in centavos (PHP 1.00 = 100 centavos) for PayMongo integration.
 """
 from decimal import Decimal
@@ -27,8 +32,8 @@ PLAN_CHOICES = (
     (PLAN_TRIAL, 'Free Trial'),
     (PLAN_STARTER, 'Starter'),
     (PLAN_GROWTH, 'Growth'),
-    (PLAN_PROFESSIONAL, 'Professional'),
-    (PLAN_ENTERPRISE, 'Enterprise'),
+    (PLAN_PROFESSIONAL, 'Enterprise'),
+    (PLAN_ENTERPRISE, 'Custom'),
 )
 
 # ── Billing Cycles ────────────────────────────────────────────────────────────
@@ -42,6 +47,11 @@ BILLING_CYCLE_CHOICES = (
 
 # ── Minimum Commitment ────────────────────────────────────────────────────────
 MINIMUM_COMMITMENT_MONTHS = 12
+
+# ── Annual discount and branch add-on (single source of truth) ─────────────────
+ANNUAL_DISCOUNT_PERCENT = 10
+ADDITIONAL_BRANCH_MONTHLY_CENTAVOS = 200000    # ₱2,000.00 for every tier
+ADDITIONAL_BRANCH_ANNUAL_CENTAVOS = 2160000    # ₱21,600.00 (₱2,000 x 12, 10% off)
 
 # ── Master Plan Catalog ───────────────────────────────────────────────────────
 PLAN_CATALOG: Dict[str, Dict[str, Any]] = {
@@ -69,9 +79,9 @@ PLAN_CATALOG: Dict[str, Dict[str, Any]] = {
         'clinician_limit': 4,
         'included_branches': 1,
         'monthly_price_centavos': 399900,            # ₱3,999.00
-        'annual_price_centavos': 4300000,            # ₱43,000.00 (Save ₱4,988/yr)
-        'additional_branch_monthly_centavos': 200000, # ₱2,000.00
-        'additional_branch_annual_centavos': 2400000, # ₱24,000.00
+        'annual_price_centavos': 4318920,            # ₱43,189.20 (10% off ₱47,988; save ₱4,798.80/yr)
+        'additional_branch_monthly_centavos': ADDITIONAL_BRANCH_MONTHLY_CENTAVOS,
+        'additional_branch_annual_centavos': ADDITIONAL_BRANCH_ANNUAL_CENTAVOS,
         'trial_days': 0,
         'features_included': True,
         'unlimited_admins': True,
@@ -85,9 +95,9 @@ PLAN_CATALOG: Dict[str, Dict[str, Any]] = {
         'clinician_limit': 8,
         'included_branches': 1,
         'monthly_price_centavos': 699900,            # ₱6,999.00
-        'annual_price_centavos': 7500000,            # ₱75,000.00 (Save ₱8,988/yr)
-        'additional_branch_monthly_centavos': 250000, # ₱2,500.00
-        'additional_branch_annual_centavos': 3000000, # ₱30,000.00
+        'annual_price_centavos': 7558920,            # ₱75,589.20 (10% off ₱83,988; save ₱8,398.80/yr)
+        'additional_branch_monthly_centavos': ADDITIONAL_BRANCH_MONTHLY_CENTAVOS,
+        'additional_branch_annual_centavos': ADDITIONAL_BRANCH_ANNUAL_CENTAVOS,
         'trial_days': 0,
         'features_included': True,
         'unlimited_admins': True,
@@ -95,15 +105,15 @@ PLAN_CATALOG: Dict[str, Dict[str, Any]] = {
     },
     PLAN_PROFESSIONAL: {
         'id': PLAN_PROFESSIONAL,
-        'name': 'Professional',
+        'name': 'Enterprise',
         'badge': 'Advanced Operations',
         'description': 'Complete clinical infrastructure for high-volume practices and medical centers.',
         'clinician_limit': 12,
         'included_branches': 1,
         'monthly_price_centavos': 999900,            # ₱9,999.00
-        'annual_price_centavos': 10800000,           # ₱108,000.00 (Save ₱11,988/yr)
-        'additional_branch_monthly_centavos': 300000, # ₱3,000.00
-        'additional_branch_annual_centavos': 3600000, # ₱36,000.00
+        'annual_price_centavos': 10798920,           # ₱107,989.20 (10% off ₱119,988; save ₱11,998.80/yr)
+        'additional_branch_monthly_centavos': ADDITIONAL_BRANCH_MONTHLY_CENTAVOS,
+        'additional_branch_annual_centavos': ADDITIONAL_BRANCH_ANNUAL_CENTAVOS,
         'trial_days': 0,
         'features_included': True,
         'unlimited_admins': True,
@@ -111,7 +121,7 @@ PLAN_CATALOG: Dict[str, Dict[str, Any]] = {
     },
     PLAN_ENTERPRISE: {
         'id': PLAN_ENTERPRISE,
-        'name': 'Enterprise',
+        'name': 'Custom',
         'badge': 'Custom Scale',
         'description': 'Tailored capacity, custom branch networks, and dedicated enterprise support.',
         'clinician_limit': None,  # Custom configurable per subscription
@@ -238,6 +248,7 @@ def get_all_plans_summary() -> List[Dict[str, Any]]:
             'additional_branch_annual_pesos': (Decimal(p['additional_branch_annual_centavos']) / Decimal(100)) if p['additional_branch_annual_centavos'] is not None else None,
             'annual_savings_pesos': annual_savings,
             'commitment_months': MINIMUM_COMMITMENT_MONTHS,
+            'annual_discount_percent': ANNUAL_DISCOUNT_PERCENT,
             'features_included': p['features_included'],
             'unlimited_admins': p['unlimited_admins'],
         })

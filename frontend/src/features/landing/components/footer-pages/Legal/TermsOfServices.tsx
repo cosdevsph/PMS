@@ -54,7 +54,7 @@ export const TermsOfServices: React.FC = () => {
           <li>Use the Service only for lawful purposes</li>
           <li>Not upload or store illegal content</li>
           <li>Maintain accurate patient records</li>
-          <li>Comply with HIPAA and healthcare privacy regulations</li>
+          <li>Comply with the Philippine Data Privacy Act and other applicable healthcare privacy regulations</li>
           <li>Not attempt to gain unauthorized access to the Service</li>
         </ul>
       ),
@@ -84,8 +84,15 @@ export const TermsOfServices: React.FC = () => {
             account. All fees are exclusive of applicable taxes.
           </p>
           <p>
-            You may cancel your subscription at any time. Cancellation will take effect at the end of your current
-            billing period. No refunds will be issued for partial months.
+            Paid subscriptions have a minimum term of twelve (12) months. You may pay monthly, or pay annually in advance
+            at the discounted annual price. Paying monthly does not give you the right to cancel month to month.
+          </p>
+          <p>
+            You may request cancellation at any time during the term. A cancellation takes effect at the end of your
+            current twelve (12) month term, not immediately. You keep access to the Service until then, and you remain
+            responsible for the fees for the remainder of the term. No refunds will be issued for any unused part of a
+            term or billing period. Cancellation requests can be made and withdrawn by the clinic owner in the
+            Subscription settings.
           </p>
         </>
       ),
@@ -157,7 +164,6 @@ export const TermsOfServices: React.FC = () => {
           <LegalContactCard>
             <p className="font-semibold text-gray-900">{SystemBranding.companyName}</p>
             <p>Email: legal@malasakit.com</p>
-            <p>Phone: +63 9457 123 456</p>
             <p>Address: Bacolod City, Negros Occidental, Philippines</p>
           </LegalContactCard>
         </>

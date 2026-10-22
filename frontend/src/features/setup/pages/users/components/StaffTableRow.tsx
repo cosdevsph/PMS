@@ -1,4 +1,5 @@
 import React from 'react';
+import { normalizeRole, roleLabel } from '@/lib/roles';
 import { Edit2, Trash2, Mail, Phone, ToggleLeft, ToggleRight } from 'lucide-react';
 import type { StaffMember } from '../../../types/staff.types';
 import { DISCIPLINE_OPTIONS } from '../../../types/staff.types';
@@ -13,21 +14,12 @@ interface Props {
 }
 
 const ROLE_BADGE: Record<string, string> = {
-  ADMIN:           'bg-amber-50  text-amber-700  border-amber-200',
-  ADMIN_ASSISTANT: 'bg-violet-50 text-violet-700 border-violet-200',
+  OWNER:           'bg-amber-50  text-amber-700  border-amber-200',
+  BRANCH_MANAGER: 'bg-violet-50 text-violet-700 border-violet-200',
   PRACTITIONER:    'bg-purple-50 text-purple-700 border-purple-200',
   STAFF:           'bg-sky-50    text-sky-700    border-sky-200',
   FINANCE:         'bg-green-50  text-green-700  border-green-200',
   READ_ONLY:       'bg-gray-50   text-gray-500   border-gray-200',
-};
-
-const ROLE_LABEL: Record<string, string> = {
-  ADMIN:           'Administrator',
-  ADMIN_ASSISTANT: 'Admin Asst.',
-  PRACTITIONER:    'Practitioner',
-  STAFF:           'Staff',
-  FINANCE:         'Finance',
-  READ_ONLY:       'Read-Only',
 };
 
 export const StaffTableRow: React.FC<Props> = ({
@@ -38,12 +30,12 @@ export const StaffTableRow: React.FC<Props> = ({
 
   const effectiveRoles = staff.roles && staff.roles.length > 0 ? staff.roles : [staff.role];
   const isMe     = currentUserId != null && staff.id === currentUserId;
-  const isAdmin  = effectiveRoles.includes('ADMIN');
+  const isOwner  = effectiveRoles.some(r => normalizeRole(r) === 'OWNER');
 
   const activeAssignments = (staff.branch_assignments ?? []).filter(b => b.is_active);
   const assignedBranchNames = activeAssignments.length > 0
     ? activeAssignments.map(b => b.branch_name).filter(Boolean) as string[]
-    : (staff.clinic_branch_name ? [staff.clinic_branch_name] : (isAdmin ? ['All Branches'] : []));
+    : (staff.clinic_branch_name ? [staff.clinic_branch_name] : (isOwner ? ['All Branches'] : []));
 
   return (
     <tr className="hover:bg-sky-50/40 transition-colors">
@@ -120,9 +112,9 @@ export const StaffTableRow: React.FC<Props> = ({
           {((staff.roles && staff.roles.length > 0) ? staff.roles : [staff.role]).map(r => (
             <span
               key={r}
-              className={`px-2 py-0.5 rounded-full text-xs font-medium border ${ROLE_BADGE[r] ?? 'bg-gray-50 text-gray-500 border-gray-200'}`}
+              className={`px-2 py-0.5 rounded-full text-xs font-medium border ${ROLE_BADGE[normalizeRole(r)] ?? 'bg-gray-50 text-gray-500 border-gray-200'}`}
             >
-              {ROLE_LABEL[r] ?? r}
+              {roleLabel(r)}
             </span>
           ))}
         </div>

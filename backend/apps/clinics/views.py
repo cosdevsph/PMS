@@ -16,7 +16,7 @@ from .serializers import (
     ClinicConsentFormSerializer,
     ClinicConsentFormCreateSerializer,
 )
-from apps.common.permissions import IsAdminOrStaffOnly
+from apps.common.permissions import IsOwnerBranchManagerOrStaff
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
 
     queryset           = Clinic.objects.filter(is_deleted=False)
     serializer_class   = ClinicSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrStaffOnly]
+    permission_classes = [IsAuthenticated, IsOwnerBranchManagerOrStaff]
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     filter_backends    = [DjangoFilterBackend, filters.SearchFilter]
     search_fields      = ['name', 'city', 'province', 'branch_code']
@@ -41,7 +41,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             if user.clinic:
                 main_clinic = user.clinic.main_clinic
                 return self.queryset.filter(
@@ -49,8 +49,8 @@ class ClinicViewSet(viewsets.ModelViewSet):
                 )
             return self.queryset
         
-        if user.is_manager:
-            allowed_branches = list(user.branch_accesses.values_list('branch_id', flat=True))
+        if user.is_branch_manager:
+            allowed_branches = list(user.get_managed_branch_ids())
             return self.queryset.filter(Q(id=user.clinic_id) | Q(id__in=allowed_branches))
 
         if user.clinic and (
@@ -212,9 +212,9 @@ class ClinicViewSet(viewsets.ModelViewSet):
     def create_branch(self, request, pk=None):
         main_clinic = self.get_object()
 
-        if not request.user.is_admin or request.user.clinic.main_clinic.id != main_clinic.id:
+        if not request.user.is_owner or request.user.clinic.main_clinic.id != main_clinic.id:
             return Response(
-                {'detail': 'Only clinic administrators can create branches.'},
+                {'detail': 'Only the clinic Owner can create branches.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -272,9 +272,9 @@ class ClinicViewSet(viewsets.ModelViewSet):
         """
         clinic = self.get_object()
 
-        if not request.user.is_admin:
+        if not request.user.is_owner:
             return Response(
-                {'detail': 'Only administrators can update the clinic profile.'},
+                {'detail': 'Only the Owner can update the clinic profile.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -323,11 +323,11 @@ class ClinicViewSet(viewsets.ModelViewSet):
         """Manage the consent form strictly for this specific branch."""
         branch = self.get_object()
 
-        # RBAC Check: Manager must have access to this branch
+        # RBAC Check: Branch Manager must have access to this branch
         user = request.user
-        if not user.is_admin:
-            if user.is_manager:
-                allowed_branches = list(user.branch_accesses.values_list('branch_id', flat=True))
+        if not user.is_owner:
+            if user.is_branch_manager:
+                allowed_branches = list(user.get_managed_branch_ids())
                 if branch.id not in allowed_branches:
                     return Response({'detail': 'You do not have permission to manage this branch.'}, status=status.HTTP_403_FORBIDDEN)
             else:
@@ -374,7 +374,7 @@ class PractitionerViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(clinic=user.clinic)
 
@@ -431,13 +431,13 @@ class PractitionerViewSet(viewsets.ModelViewSet):
 class LocationViewSet(viewsets.ModelViewSet):
     queryset           = Location.objects.filter(is_deleted=False)
     serializer_class   = LocationSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrStaffOnly]
+    permission_classes = [IsAuthenticated, IsOwnerBranchManagerOrStaff]
     filter_backends    = [DjangoFilterBackend]
     filterset_fields   = ['clinic', 'is_active']
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(clinic=user.clinic)
 
@@ -450,7 +450,7 @@ class ClinicConsentFormViewSet(viewsets.ModelViewSet):
 
     queryset = ClinicConsentForm.objects.all()
     serializer_class = ClinicConsentFormSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrStaffOnly]
+    permission_classes = [IsAuthenticated, IsOwnerBranchManagerOrStaff]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['clinic', 'is_active']
 

@@ -152,7 +152,7 @@ class ClinicalNote(TimeStampedModel, SoftDeleteModel):
     Individual clinical notes created from templates.
     
     Architecture Decisions:
-    - Content is encrypted at field level for HIPAA compliance
+    - Content is encrypted at field level (HIPAA-aligned practice)
     - Template reference is FK but content is independent (clone pattern)
     - Version tracking ensures audit trail
     - One-to-one with Appointment for easy navigation

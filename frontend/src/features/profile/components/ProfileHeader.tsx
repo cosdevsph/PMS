@@ -1,9 +1,10 @@
 import React from 'react';
 import { UserCircle, BadgeCheck } from 'lucide-react';
 import type { User } from '@/types/auth';
+import { roleLabel } from '@/lib/roles';
 
 const ROLE_META: Record<string, { label: string; color: string }> = {
-  ADMIN:        { label: 'Administrator',  color: 'bg-sky-100    text-sky-700'   },
+  OWNER:        { label: 'Owner',          color: 'bg-sky-100    text-sky-700'   },
   PRACTITIONER: { label: 'Practitioner',   color: 'bg-violet-100  text-violet-700' },
   STAFF:        { label: 'Staff',          color: 'bg-slate-100   text-slate-600'  },
 };
@@ -13,7 +14,7 @@ interface ProfileHeaderProps {
 }
 
 export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
-  const meta = ROLE_META[user.role] ?? { label: user.role, color: 'bg-gray-100 text-gray-600' };
+  const meta = ROLE_META[user.role] ?? { label: roleLabel(user.role), color: 'bg-gray-100 text-gray-600' };
 
   return (
     <div className="flex-shrink-0 border-b border-gray-200 bg-white/90 backdrop-blur-sm px-6 lg:px-8 py-5">

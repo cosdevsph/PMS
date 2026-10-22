@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { roleLabel } from '@/lib/roles';
 import { X, Mail, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { getPrintNote, sendClinicalNoteEmail } from '../clinical-templates.api';
 import { getPractitioners } from '@/features/clinics/clinic.api';
@@ -76,7 +77,7 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
         const usersResponse = await axiosInstance.get('/users/');
         const users = usersResponse.data.results || usersResponse.data;
         const userSuggestions = (users as User[])
-          .filter((u: User) => u.email && (u.role === 'STAFF' || u.role === 'ADMIN'))
+          .filter((u: User) => u.email && (u.role === 'STAFF' || u.role === 'OWNER'))
           .map((u: User) => ({
             name: `${u.first_name} ${u.last_name}`,
             email: u.email,
@@ -394,7 +395,7 @@ export const SendClinicalNoteModal: React.FC<SendClinicalNoteModalProps> = ({
                           <p className="text-xs text-gray-500 truncate">{suggestion.email}</p>
                         </div>
                         <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded whitespace-nowrap ml-2">
-                          {suggestion.role}
+                          {roleLabel(suggestion.role)}
                         </span>
                       </button>
                     ))}

@@ -5,7 +5,7 @@ export interface ClinicUser {
   id: number;          // The actual user ID from the backend
   name: string;
   email: string;
-  role: 'ADMIN' | 'PRACTITIONER' | 'STAFF';
+  role: 'OWNER' | 'PRACTITIONER' | 'STAFF';
   avatar?: string | null;  // Avatar URL
 }
 
@@ -14,7 +14,7 @@ interface BackendUser {
   first_name: string;
   last_name: string;
   email: string;
-  role: 'ADMIN' | 'PRACTITIONER' | 'STAFF';
+  role: 'OWNER' | 'PRACTITIONER' | 'STAFF';
   avatar?: string | null;
 }
 
@@ -38,7 +38,7 @@ const mapAndSortUsers = (userList: BackendUser[]): ClinicUser[] => {
     avatar: user.avatar || null,
   }));
 
-  const roleOrder = { ADMIN: 1, PRACTITIONER: 2, STAFF: 3 };
+  const roleOrder = { OWNER: 1, PRACTITIONER: 2, STAFF: 3 };
   mappedUsers.sort((a, b) => {
     const roleCompare = roleOrder[a.role] - roleOrder[b.role];
     if (roleCompare !== 0) return roleCompare;

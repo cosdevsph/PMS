@@ -203,7 +203,7 @@ const Chapter12: React.FC = () => {
               <p className="text-xs text-gray-600">Can view all patient records across all clinic branches system-wide.</p>
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
-              <h5 className="font-bold text-gray-900 mb-1">Manager & Front Desk</h5>
+              <h5 className="font-bold text-gray-900 mb-1">Branch Manager & Front Desk</h5>
               <p className="text-xs text-gray-600">Can view patients registered at or attending their assigned clinic branches.</p>
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">

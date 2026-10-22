@@ -45,6 +45,287 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-10-22 — Branch Manager clinics: one manager per clinic, staff management, Owner has no permission settings
+
+**Status:** Implemented and tested. **Not applied to the development database or production:** migrations `accounts.0026_user_branch_access_is_managed` and `0027_one_branch_manager_per_clinic` (after `0024` and `0025`, which are also still unapplied on dev). Nothing committed.
+**Module / feature:** Roles and permissions (Owner / Branch Manager); Setup → Staff and Permissions. See FEATURES "Roles & permissions" and ADR-005.
+
+**Original behavior:** A Branch Manager's clinics were all their `UserBranchAccess` rows, which also hold practitioner assignments, so a Branch Manager who practised at another clinic wrongly "occupied" it. "One Branch Manager per clinic" was checked only when a user was saved with `branch_ids`; `PUT /users/{id}/roles/` and other paths skipped it, and nothing in the database enforced it. A Branch Manager creating staff was forced into their primary clinic and could not move staff. Their access to the Staff page followed their group's Staff Management / Setup – Users levels. The Owner group was listed and editable on the Permissions page and could be duplicated or assigned.
+**Problem / requirement:** Owner decisions (2026-10-22): the Owner has no permission settings and always has full access (the Owner group is hidden); a Branch Manager can manage any number of clinics; no clinic may have two Branch Managers; a Branch Manager always manages the staff of their own clinics, choosing among their own clinics.
+**Reason for the change:** Make the clinic-ownership rule real (database-enforced, one clear message on every path) and stop depending on a permission group for something that must always be true.
+
+**Files modified (backend):**
+- `accounts/models.py`: `UserBranchAccess.is_managed` and the constraint `one_branch_manager_per_clinic`; `User.get_managed_branch_ids()`; `get_managed_branches()` uses managed rows only; `BRANCH_MANAGER_ALWAYS_EDIT` (`staff_management`, `setup_users`) applied in `has_feature_permission`.
+- `accounts/migrations/0026` (field + backfill + duplicate stop), `0027` (constraint).
+- `accounts/utils/rbac.py`: `find_manager_conflicts`, `validate_branches_free_for_manager` (shared by the serializer, the roles endpoint and the views).
+- `accounts/serializers.py`: Rule 1 validation via the helper; `_sync_branch_accesses` rewritten (locks rows, keeps a practitioner assignment when management ends, deletes a row that existed only for management); `_clear_managed_branches`; `manager_branches` shows managed clinics for Branch Managers; clinic scope for Branch Manager actors (`clinic_branch` and practitioner schedule blocks); `validate_permission_group`; `permissions_map` applies the always-edit rule.
+- `accounts/views.py`: `create` (Branch Manager picks any managed clinic, default primary, foreign clinic → 403), `update` (moves staff between managed clinics; never changes which clinics anyone manages), `manage_roles` (optional `branch_ids`, rule check, frees clinics when the role is removed), archive frees managed clinics, scope reads use managed clinics (`clinics/views.py` too), debug `print` calls removed; `PermissionGroupViewSet`: Owner group hidden from list/retrieve, refused for create/update/delete/duplicate/assign for everyone, Owners take no group, a Branch Manager cannot change another Branch Manager's group.
+- Tests: `accounts/test_branch_manager_rules.py` (28 new); fixtures in `patients` and `accounts` tests now mark manager rows as managed.
+
+**Files modified (frontend):** `hooks/usePermissions.ts` (always-edit for Branch Managers), `Permissions.tsx` (no Owner card, no Owner template, hints on the two staff rows, intro line), `Staff.tsx` (builds clinic → manager map), `CreateStaffAccountModal.tsx` (Branch Manager picks among managed clinics; clinics held by another Branch Manager are disabled and show "Managed by <name>").
+
+**Database / migrations:** `0026` adds `is_managed` (default False) and backfills it True for every branch-access row of a non-deleted Branch Manager (those rows came from the manager form). If a clinic already has two such managers the migration **stops, changes nothing** and prints each clinic with its managers; the owner removes the extra one and migrates again. Archived managers never block. `0027` adds the partial unique constraint. Reverse of `0026` is a no-op (the column is dropped); reverse of `0027` drops the constraint.
+**API / data contract:** `PUT /api/users/{id}/roles/` accepts `branch_ids` when BRANCH_MANAGER is being set (400 with the current manager's name when a clinic is taken). `manager_branches` now lists managed clinics. `POST/PATCH /api/users/` by a Branch Manager: `clinic_branch` may be any managed clinic. `permission_group` on users: non-Owners cannot pick the Owner group, another clinic's group, or change their own. Permission-group endpoints answer 403 for any change to the Owner group and 400 for assigning it or assigning a group to an Owner.
+
+**Business rules & decisions:** see FEATURES. Decided here: "managed" is a flag on the branch-access row (so practitioner assignments are not management); archiving or un-roling a Branch Manager frees their clinics; a deactivated (not archived) Branch Manager keeps theirs.
+
+**Tests executed** (from `backend/`, `virt` environment):
+- `manage.py test`, one app per command: `apps.accounts` → 80 OK (52 + 28 new); `apps.patients` → 141 OK; `apps.subscriptions` 49, `apps.common` 16, `apps.records` 7, `apps.support` 4, `apps.gateway` 49, `apps.smsgateway` 22, `apps.billing` 6 → all OK; `apps.clinical_templates` → 7 tests, 1 pre-existing error. `check` and `makemigrations --check` clean.
+- New tests cover: several clinics per manager; the database constraint; Rule 1 on every path (user save, create, roles endpoint with rollback, role removal, archive); a practitioner assignment is not management; staff creation per own clinic, refused for a foreign clinic, move between own clinics only; staff edit stays with a group that says none; the Owner group hidden, locked and not assignable; the backfill and the duplicate stop (the migration leaves no column behind). Mutation checks (each reverted): Rule 1 helper disabled → failures; always-edit removed → failure; clinic scope removed → failure; Owner group listable → failure.
+- **Migration rehearsal** on a `pg_dump` copy of the development database (scratch DB, `REDIS_URL=` empty, dropped afterwards; your database was only read): `0026` and `0027` applied; the two Branch Managers (different clinics) became managed; a second manager for a clinic was then refused by the database.
+- Frontend: `tsc` clean; `eslint` on the 4 changed files has the same finding count as `HEAD`.
+- Manual (isolated stack on the migrated copy, headless Chromium + live API): API as Owner giving Branch Manager 1's Clinic 2 to Branch Manager 2 → 400 "Clinic "Flow Clinic 2" already has a Branch Manager (Flow BM1 Flow)"; Permissions page shows no Owner card and says the Owner is not configured there; the Owner's form for Branch Manager 2 shows Clinics 1 and 2 disabled "Managed by Flow BM1 Flow" and Clinic 3 ticked; as Branch Manager 1 (group says no access to staff management, users, permissions or subscriptions) Setup still shows Users → Staff, the form offers exactly Clinic 1 and Clinic 2 ("You manage 2 clinics…") with no Owner or Branch Manager role cards, and via the API creating staff in Clinic 1 and 2 → 201, in Clinic 3 → 403, moving staff Clinic 2 → 1 → 200 and → 3 → 400; `permissions_map` shows staff_management and setup_users `edit`, subscriptions `none`. Typing a complete new-staff form through the browser did not register in my automation, so the create path was confirmed through the API rather than the form's submit button.
+
+**Known limitations / unresolved issues:**
+- Run `python manage.py migrate` on dev; until `0026` is applied the code errors on any branch-access query (the column does not exist).
+- **Before deploying to production**, check for clinics with two Branch Managers, because the migration stops on them (see runbook).
+- A Branch Manager who also practises: removing a clinic from their managed list keeps the row as a practitioner assignment.
+- The Setup → Permissions page for a Branch Manager still follows the `permissions` level (view-only banner at None); only staff management and Setup – Users are always edit.
+- Branch Manager staff scope is "staff whose branch or assignment is one of the managed clinics"; a staff member assigned to both a managed and a foreign clinic stays visible and editable.
+- The assign-branch / update-branch-assignment (practitioner assignment) endpoints keep their previous scope rule (managed clinics ∪ primary clinic).
+- Real-time updates and reports were not reviewed for the new managed-clinic meaning.
+
+**Production runbook (migrations run automatically on deploy):**
+1. On the **current** production code, before deploying, list clinics with more than one Branch Manager: `python manage.py shell -c "from collections import defaultdict; from django.db.models import Q; from apps.accounts.models import UserBranchAccess as R; seen=defaultdict(list); [seen[r.branch.name].append(r.user.email) for r in R.objects.filter(Q(user__roles__contains=['BRANCH_MANAGER'])|Q(user__roles__contains=['ADMIN_ASSISTANT']), user__is_deleted=False).select_related('user','branch')]; print({k:v for k,v in seen.items() if len(v)>1} or 'no clinic has two Branch Managers')"`. For each clinic listed, remove the extra manager's branch assignment (Setup → Staff) or change their role.
+2. Back up the database.
+3. Deploy (frontend first, then backend). The migrations apply automatically; if one stops, the message lists the clinics.
+4. Smoke test: Owner → Staff (Branch Manager rows show their clinics; a taken clinic is disabled in another manager's form); Branch Manager → Staff → New Staff Member (clinic choice) and the Diary.
+5. Rollback: redeploy the previous backend and run `python manage.py migrate accounts 0025` (drops the flag and constraint); data is otherwise untouched.
+
+**Regression risks:** anything that reads a Branch Manager's `branch_accesses` as "their clinics" (now `is_managed` only: patient and package visibility, Diary scope, staff list, clinics list); tests or scripts creating manager rows without `is_managed=True`; staff forms for Branch Managers with one clinic (locked notice) versus several (select).
+
+---
+
+## 2026-10-22 — Follow-up: legacy role codes shown raw in the Staff table (rows not migrated yet)
+
+**Status:** Implemented and tested. Migrations still **not applied** to the development database.
+**Module / feature:** Roles (Owner / Branch Manager) — display and read-time handling. Follows "Rename roles: Admin → Owner, Admin Assistant → Branch Manager".
+
+**Original behavior:** On the development database (rows still hold `ADMIN` / `ADMIN_ASSISTANT` because the rename migration has not been run), the Staff table's ROLE(S) column printed the raw codes: the badge lookup did `ROLE_LABEL[r] ?? r` and the staff list was not converted the way the logged-in user is. The same raw-code display existed in the invoice, consent, client-form and clinical-note email pickers and in chat. Worse, the backend read a legacy `ADMIN` row as nobody (`is_owner` was False).
+**Problem / requirement:** Owner report: the table must show Owner and Branch Manager (the report wrote "Branch Owner", taken to mean Branch Manager, the name decided on 2026-10-22).
+**Reason for the change:** The rename must be safe in the window between deploying the code and running `migrate`, in production as well as development.
+
+**Files modified:**
+- Backend: `accounts/models.py` (`get_effective_roles()` converts legacy codes on read; `is_owner` and `is_branch_manager` use it), `accounts/serializers.py` (user output never returns legacy codes), `appointments/views.py` (practitioner and staff payloads), `messages/views.py` (same rule as before, legacy code converted), `accounts/test_role_rename.py` (3 new tests).
+- Frontend: `lib/roles.ts` (`roleLabel`, `normalizeRolesDeep`), `lib/axios.ts` (every API response is normalized), and the role displays in `StaffTableRow.tsx`, `TopNavigation.tsx`, `ProfileHeader.tsx`, `ChatWindow.tsx`, `ContactList.tsx`, `SendInvoiceEmailModal.tsx`, `SendConsentFormModal.tsx`, `SendClientFormModal.tsx`, `SendClinicalNoteModal.tsx` (they use `roleLabel`; an unknown code is shown in Title Case, never raw).
+
+**Database / migrations:** None new. **API / data contract:** User payloads return `OWNER` / `BRANCH_MANAGER` even for rows not yet migrated.
+
+**Business rules & decisions:** Legacy codes are aliases on read as well as on input until the aliases are removed. Database-level lookups (`roles__contains=['OWNER']`, `role__in=[...]`) cannot convert, so they only match after `migrate`: the "last Owner" protection counts, the Owner-without-branch rule in the practitioner list, and the messaging contact list. Run `migrate` promptly after a deploy (production runs it automatically).
+
+**Tests executed:** `manage.py test apps.accounts` → 52 OK (49 + 3 new); `apps.patients` 141, `subscriptions` 49, `common` 16, `records` 7, `support` 4, `gateway` 49, `smsgateway` 22, `billing` 6 → all OK; `apps.clinical_templates` → 7 tests, 1 pre-existing error. `check` and `makemigrations --check` clean. Mutation check: `get_effective_roles` stops converting → 1 failure; restored → OK. Frontend: `tsc` clean; `eslint` on the 11 edited files has the same finding count as `HEAD` for each. `normalizeRolesDeep` and `roleLabel` run directly on a legacy payload (esbuild + node, not a committed test): pass. Manual: scratch copy of the dev database with only `accounts.0024` applied and three users written with the old codes (as in your database); the login API returned `OWNER`, and the Staff table showed Owner, Practitioner, Branch Manager and Owner with no raw codes and no console errors; the scratch DB and stack were removed afterwards.
+
+**Known limitations / unresolved issues:** The database-level lookups above still need `migrate`. The response normalizer converts any `role`, `user_role` or `roles` value equal to `ADMIN` / `ADMIN_ASSISTANT` in every API response; it and the other aliases are removed in the later clean-up release.
+**Regression risks:** Any non-role response field named `role`, `user_role` or `roles` that legitimately holds `ADMIN` (none found).
+
+---
+
+## 2026-10-22 — Rename roles: Admin → Owner, Admin Assistant → Branch Manager (codes, data and wording)
+
+**Status:** Implemented and tested. **Not applied to the development database or production:** migrations `accounts.0025_rename_roles_owner_branch_manager`, `support.0004_rename_role_snapshots` and `appointments.0023_booking_source_owner` (and `accounts.0024`, still unapplied on dev). Nothing committed.
+**Module / feature:** Roles and permissions (all apps); landing/manual/AI assistant wording. See FEATURES "Roles & permissions (Owner / Branch Manager)" and ADR-004. Earlier entries in this file use the old names; they are history.
+
+**Original behavior:** The same two roles were named Admin / Administrator / Owner and Admin Assistant / Manager / Branch Manager in different places. Stored codes were `ADMIN` and `ADMIN_ASSISTANT` (plus a duplicate `MANAGER` permission-group template with identical defaults), used in about 180 places across about 55 files and stored in users, permission groups, the role-change audit log, support tickets and the appointment booking source.
+**Problem / requirement:** Owner decision (2026-10-22): use only "Owner" and "Branch Manager" everywhere, in the database and the whole system, for local development and production data. Choices made: rename codes and labels with legacy codes accepted as input for a transition period; merge the `MANAGER` and `ADMIN_ASSISTANT` templates into `BRANCH_MANAGER`; convert history (audit log, support tickets); production runs migrations automatically on deploy.
+**Reason for the change:** One vocabulary removes confusion for owners, staff and support, and the stored data matches the screens.
+
+**Files modified (backend):**
+- `apps/accounts/roles.py` (new): role constants, `LEGACY_ROLE_ALIASES`, `LEGACY_TEMPLATE_ALIASES`, `normalize_role`, `normalize_roles`, `normalize_template`, `normalize_role_payload`.
+- `apps/accounts/models.py`: new `ROLE_CHOICES` / `TEMPLATE_CHOICES`, `DEFAULT_PERMISSIONS` and `ROLE_DEFAULT_PERMISSIONS` keys, `User.save()` converts legacy codes, `User.is_owner` and `User.is_branch_manager` replace `is_admin` / `is_manager`.
+- `apps/accounts/serializers.py`, `views.py`, `signals.py`, `utils/rbac.py`; `apps/common/permissions.py` (`IsOwnerOnly`, `IsOwnerBranchManagerOrStaff`); and every other literal or check in `appointments`, `patients`, `messages`, `notifications`, `support`, `clinics`, `subscriptions`, `clinical_templates`, `reports`, plus the tests. The API field `is_manager` is now `is_branch_manager`.
+- Wording: error messages, emails and the AI assistant prompt (`common/services/gemini_service.py`).
+- Migrations (new): `accounts/0025` (schema choices + data), `support/0004`, `appointments/0023` (booking source `admin` → `owner`). Each has a reverse.
+- `accounts/management/commands/report_role_codes.py` (new, read-only; `--strict` fails if a legacy code remains).
+- Cache: practitioner list keys are now `practitioners_v2_*` so cached lists with old codes are never served.
+- Tests (new): `accounts/test_role_rename.py` (10).
+
+**Files modified (frontend):** `lib/roles.ts` (new: constants, labels, `normalizeUser` and friends); `store/auth.store.ts` and `services/authService.ts` (cached and fetched users are normalized, so a login saved before the deploy still works); `types/auth.ts`, `usePermissions.ts`, `Permissions.tsx` (one "Branch Manager" template), `PermissionGroupService.ts`, `CreateStaffAccountModal.tsx`, `StaffTableRow.tsx`, `TopNavigation.tsx`, `ProfileHeader.tsx`, `Diary.tsx` and about 20 more files for literals and wording; pricing and plan copy ("Unlimited Owner, Branch Manager and staff accounts"); user manual chapters 1, 6–12 and 25 (screenshots in the manual still show the old labels).
+
+**Database / migrations:** `accounts.0025` converts `users.role` and `users.roles`, `permission_groups.role_template` (`ADMIN_ASSISTANT` and `MANAGER` → `BRANCH_MANAGER`), the seeded group name "Admin Assistant" → "Branch Manager" (if the clinic already has a group of that name the seeded one becomes "Branch Manager (default)"; names people chose are never touched) and its default description, and `user_role_change_log` (`role`, `roles_before`, `roles_after`). `support.0004` converts `user_role`; `appointments.0023` converts booking source `admin` → `owner`. Mapping tables are written inside the migrations (not imported). The reverse maps back; the `MANAGER` / `ADMIN_ASSISTANT` template merge cannot be split again, so reversed groups come back as `ADMIN_ASSISTANT`.
+**API / data contract:** Roles and templates are returned as `OWNER` / `BRANCH_MANAGER`; legacy codes are accepted on input (user create/update, `PUT /users/{id}/roles/`, permission-group create/update). User payloads: `is_manager` → `is_branch_manager`. **Deliberately unchanged:** the owner-registration paths (`register-admin`, `send-admin-otp`, `verify-admin-otp`), the plans field `unlimited_admins`, and the "System Admin" label on support tickets (renaming them would break older frontends during the rollout and gives no user-visible gain).
+
+**Business rules & decisions:**
+- Names: Owner and Branch Manager only; never Admin, Administrator, Admin Assistant or Manager for these roles.
+- Legacy codes are input aliases only and are removed in a later release (follow-up).
+- Behavior is meant to be identical apart from names. Exception handled on purpose: four existing checks compared against `OWNER` / `MANAGER`, codes no user ever held, so they never matched (support feedback "see all", internal-comment visibility, and permanent deletion of cases). The rename would have switched them on, so they were made explicitly inert with empty tuples (`FEEDBACK_ADMIN_ROLES`, `CASE_HARD_DELETE_ROLES`) and recorded as findings below. Owner decision: keep behavior identical.
+- Retained as before: Owners are still mapped to the Branch Manager template group when a group is derived from roles (the Owner bypasses group checks anyway).
+
+**Tests executed** (from `backend/`, `virt` environment, throwaway test databases):
+- `manage.py test`, one app per command: `apps.accounts` → 49 OK (39 earlier + 10 new); `apps.patients` → 141 OK; `apps.subscriptions` → 49 OK; `apps.common` → 16 OK; `apps.billing` → 6 OK; `apps.records` → 7 OK; `apps.support` → 4 OK; `apps.smsgateway` → 22 OK; `apps.gateway` → 49 OK; `apps.messages` → 0 tests. `apps.clinical_templates` → 7 tests, **1 error** (`test_print_note_displays_creator`), **pre-existing**.
+- `manage.py check` → no issues. `makemigrations --check --dry-run` → No changes detected.
+- New tests cover: forward and backward conversion of every table (including the group-name conflict and custom names), the report command (clean and with a planted legacy value), booking source conversion, legacy codes on input (model, role endpoint, permission-group template), the new seeded group, and a source scan that fails if a legacy role code appears outside `roles.py` and migrations. The first run of these tests caught a real bug in my migration (`bulk_update` on the wrong object), fixed.
+- Mutation checks (each reverted): no normalization in `User.save()` → 1 failure; migration skips the audit log → 1 failure; serializer stops accepting legacy templates → 1 failure.
+- **Migration rehearsal** on a `pg_dump` copy of the development database (scratch DB, `REDIS_URL=` empty, dropped afterwards; your database was only read): before, 5 `ADMIN`, 2 `ADMIN_ASSISTANT`, 13 `PRACTITIONER` users and 7 seeded groups per template; after the forward migration, 5 `OWNER`, 2 `BRANCH_MANAGER`, 13 `PRACTITIONER`, 7 groups per template named Branch Manager / Finance / Frontdesk / Owner / Practitioner, and `report_role_codes --strict` reported no legacy codes; after reversing, the 28 legacy values were back; after re-applying, clean again.
+- Frontend: `npx tsc -b --force` → clean. `npx eslint` on all 83 changed frontend files, compared file by file with `HEAD`: none worse. `normalizeUser` run directly on legacy-shaped users (esbuild + node, not a committed test): `ADMIN` / `['ADMIN','PRACTITIONER']` → `OWNER` / `['OWNER','PRACTITIONER']`, `is_manager` → `is_branch_manager`, `ADMIN_ASSISTANT` → `BRANCH_MANAGER` → pass.
+- Manual (isolated stack on the migrated scratch copy, headless Chromium): the API returns `OWNER` and `is_branch_manager` (no `is_manager`); as Owner, the top bar, the staff list badges, the New Staff Member role cards and the Permission Groups page all say Owner / Branch Manager; as Branch Manager, the top bar says Branch Manager and the Diary loads; no console errors. A screenshot review caught leftover text my text check missed ("Branch management & admin" on the role card) plus two "admin" messages in the appointment form; fixed.
+
+**Known limitations / unresolved issues:**
+- ~~**Do not run the new code against an unmigrated database.** … Owners lose their Owner access in the meantime.~~ **Superseded (2026-10-22, see "Follow-up: legacy role codes shown raw"):** the code now reads legacy rows as Owner / Branch Manager, so an unmigrated database keeps working. `python manage.py migrate` is still needed (it also applies `accounts.0024`), mainly so the stored data matches and the database-level lookups below match.
+- Four dead role checks were kept inert (see Business rules). Findings for a later decision: support feedback "see all" for Owners/Branch Managers would also need a clinic filter (`UserFeedback` is not scoped per clinic, so "all" would span clinics); permanent case deletion has never been allowed to anyone.
+- Creating a permission group from the UI ("New Group") likely fails: the API requires `clinic` and the UI payload does not send it. Pre-existing at `HEAD`; not changed and not checked in a browser.
+- Two model `help_text` strings still say "admin" (`clinics.Clinic`, `accounts.User`); changing them would add migrations for no visible effect.
+- User manual screenshots still show the old labels. Older entries in this file keep the old names.
+- Legacy aliases (backend and frontend) must be removed in a later release, after every client has been updated.
+
+**Production runbook (migrations run automatically on deploy):**
+1. Back up the production database and note the time.
+2. On production (current code), run `python manage.py report_role_codes` and keep the output.
+3. Deploy the **frontend first** (it understands both old and new codes), then the backend; migrations run on deploy (accounts, then support and appointments).
+4. Run `python manage.py report_role_codes --strict`: expect no legacy codes and the same number of users per role as in step 2 under the new names.
+5. Smoke test: Owner login → Setup → Staff and Permissions; Branch Manager login → Diary of their branch.
+6. Rollback: redeploy the previous backend and run `python manage.py migrate support 0003`, `migrate appointments 0022`, `migrate accounts 0024` (data is mapped back); if anything is wrong, restore the backup.
+
+**Regression risks:** anything that still sends or reads `ADMIN` / `ADMIN_ASSISTANT` / `is_manager` (outside clients, scripts, saved reports); permission-group seeding for new clinics (now "Branch Manager"); cached practitioner lists (new key prefix); role badges and labels in screens not opened during the manual check.
+
+---
+
+## 2026-10-22 — RBAC: "Other Branches' Diary" for Managers, and permission-group escalation fix
+
+**Status:** Implemented and tested. **Not applied to the development database:** migration `accounts.0024_user_extra_diary_branches`. Nothing committed.
+**Module / feature:** Roles & permissions (Owner / Manager); Diary and Calendar; Permission Groups; Staff form. See FEATURES "Roles & permissions (Owner / Manager)" and ADR-003.
+
+**Original behavior:** A Manager (`ADMIN_ASSISTANT`, shown as Admin Assistant / Branch Manager) could only open the branches in their `UserBranchAccess` rows; `?clinic_branch=<other>` returned 403 and the Diary tabs of other branches were disabled. There was **no** setting on the Permission Groups page to change this (the owner expected one; none existed in code or git history). Separately, permission-group create/update/duplicate/delete was open to Managers **and Staff** (`IsAdminOrStaffOnly`), and only Owner-template groups were protected, so any such user could edit their own group and grant themselves any access.
+**Problem / requirement:** Owner decisions (2026-10-22): add a permission-group setting that lets Managers open other branches' Diary; the Owner picks which branches per Manager; scope is the Diary plus a patient lookup for booking (patient records, invoices, reports stay hidden); fix the permission-group escalation; leave other findings for later.
+**Reason for the change:** Give the Owner the control they believed existed, without touching how seats, schedules and the one-Manager-per-branch rule use `UserBranchAccess`, and close the hole that made any group setting meaningless.
+
+**Files modified (backend):**
+- `apps/accounts/models.py` — feature key `diary_other_branches` (default `none` for every non-Owner template); `User.extra_diary_branches` (M2M to `Clinic`).
+- `apps/accounts/migrations/0024_user_extra_diary_branches.py` — additive.
+- `apps/accounts/utils/rbac.py` — `get_extra_diary_branch_ids`, `get_diary_branch_ids`, `validate_diary_branch` (read vs write branch lists).
+- `apps/accounts/serializers.py` — read: `extra_diary_branches`, `diary_branches`, `diary_other_branches_level`; write: `extra_diary_branch_ids` (Owner only, same clinic group, own branches dropped, only Managers keep any, cleared when the Manager role is removed).
+- `apps/accounts/views.py` — `PermissionGroupViewSet`: `_assert_can_manage`; permission checked before payload validation in `create`.
+- `apps/appointments/views.py` — `DiaryBranchScopeMixin` on `AppointmentViewSet`, `BlockAppointmentViewSet`, `CalendarNoteViewSet`: reads use the read list, unsafe methods the write list; creates and updates into a granted branch at View level are refused.
+- `apps/patients/views.py`, `urls.py` — `BookingPatientLookupView`.
+- Tests (new): `apps/accounts/test_diary_branch_access.py` (24), `apps/accounts/test_permission_group_rbac.py` (10).
+
+**Files modified (frontend):** `types/auth.ts`, `hooks/usePermissions.ts`, `features/setup/pages/users/Permissions.tsx` (new row with hint; template defaults; `canManage` follows the backend rule), `features/setup/components/modals/CreateStaffAccountModal.tsx` + `types/staff.types.ts` (Owner-only picker), `features/appointments/Diary.tsx` (tabs, "View only" badge, `readOnly`), `Calendar.tsx` (`readOnly`: no slot create, drag, resize, hover "+"), `components/AppointmentView.tsx` (wrapper; read-only shows the new `AppointmentReadOnlySummary.tsx`; profile link hidden for granted branches), `components/SelectOptionModal.tsx` and `AppointmentModal.tsx` (booking lookup), `features/patients/patient.api.ts` (`searchBookingPatients`).
+
+**Database / migrations:** `accounts.0024` adds the many-to-many table `users_extra_diary_branches`. No data migration: groups without the new row already read as `none`.
+**API / data contract:** User payloads gain `extra_diary_branches`, `diary_branches`, `diary_other_branches_level` (read) and `extra_diary_branch_ids` (write, Owner only; 400 otherwise). New `GET /api/patients/booking-lookup/?branch=<id>[&search=<text>][&patient=<id>]`: requires the Diary write level for that branch (Owner: any); returns only `id`, names, patient number, date of birth and open cases; at most 50. Permission-group write endpoints now return 403 where they used to succeed.
+
+**Business rules & decisions:**
+- Level comes from the permission group row "Other Branches' Diary": None (default) = own branches only; View = open the picked branches' Diary read-only; Edit = also book, move, cancel and add blocks/notes there. The Owner always has full access.
+- Which branches: chosen per Manager by the Owner in Staff Management. A granted branch is not a managed branch (no seats, schedules or manager-per-branch effects).
+- Patient records, invoices and reports of a granted branch stay hidden; only the booking lookup reaches its patients. In a granted branch at View level, appointment details show a summary only, block details do not open, and the backend refuses writes.
+- Permission groups: only the Owner, or a Manager whose group grants Permissions: Edit, may create, change, duplicate or delete; nobody except the Owner may change or delete the group they belong to; Managers never touch Owner groups.
+
+**Tests executed** (from `backend/`, `virt` environment, throwaway test databases):
+- `manage.py test apps.accounts` → 39 tests, OK (5 existing + 24 + 10 new). `apps.patients` → 141 OK. `apps.subscriptions` → 49 OK. `apps.common` → 16 OK. `apps.billing` → 6 OK. `apps.appointments` and `apps.clinics` have no tests (0 run).
+- `apps.clinical_templates` → 7 tests, **1 error** (`test_print_note_displays_creator`). **Pre-existing** (see earlier entries).
+- `manage.py check` → no issues. `makemigrations --check --dry-run` → No changes detected.
+- Mutation checks (each reverted): editing the own group allowed again → 4 failures; read and write branch lists merged → 4 failures; view-only create guard removed → 1 failure.
+- Frontend: `npx tsc -b --force` → clean. `npx eslint` on every changed existing file: same finding count as at `HEAD` (two files were +1/+2 at first and were fixed); new file `AppointmentReadOnlySummary.tsx` → clean.
+- Manual (isolated scratch DB with `REDIS_URL=` empty, headless Chromium; scratch stack and DB removed afterwards): as a Manager at level None the granted branch's tab stays disabled; at View it is enabled with a "View only" badge, shows the appointment, opens the read-only summary, and a double-click on an empty slot opens nothing; at Edit the full appointment view and the create menu open, the booking lookup finds the Branch B patient, the open case is offered, and the booking was saved in Branch B (checked in the database). As Owner: the Permission Groups page shows the new row with its hint; the Manager's staff form shows the picker with the saved branch ticked, and a save from the UI stored Branch B and Branch C while leaving the Manager's own branch unchanged. This pass caught two bugs, both fixed: the page crashed when lookup results were shown (missing `full_name`), and the case list stayed empty when the patient was pre-selected (cases are now held in state).
+
+**Known limitations / unresolved issues:**
+- **Until `manage.py migrate` is run, the user endpoints on the development database error** (the running server already loads the new field). This affects login and `/auth/me`.
+- Not fixed (recorded; owner chose to limit scope): F5 creating an appointment into a branch the user cannot view works by calling the API directly (the new guard only covers granted branches); F6 `PractitionerScheduleViewSet` and `AppointmentReminderViewSet` return every clinic's rows to any Owner; F7 Diary/Calendar/Appointments "View" is not read-only for users in their own branch, and no backend view enforces those feature levels; F8 a Manager's branch assignment is not checked against the actor's clinic group; F9 a Manager with no `UserBranchAccess` but a `clinic_branch` sees no patients while the Diary falls back to the branch.
+- A user can still be assigned a different permission group by anyone who can edit users; that path was not reviewed.
+- At View level the Calendar's resize handles still show but do nothing.
+- Real-time calendar events (WebSocket) were not reviewed for branch scoping.
+- Not tested in a browser: the Manager at View/Edit on the Calendar page (only the Diary).
+
+**Regression risks:** Diary and Calendar branch scoping for Managers; permission-group management by Managers (anyone who edited groups without Permissions: Edit now gets 403); `AppointmentView` is now a thin wrapper around `AppointmentViewFull`; staff form payloads gain `extra_diary_branch_ids` for the Owner only.
+
+---
+
+## 2026-10-22 — Live demo and staff training offer (item 7 revised)
+
+**Status:** Implemented and tested. Nothing deployed or committed; no migrations.
+**Module / feature:** Landing site (FAQ, Contact); AI chat assistant. See FEATURES "Subscriptions & pricing".
+
+**Original behavior:** The 2026-10-21 pricing revision removed every training claim and the FAQ, Contact page and AI assistant said "We do not offer live or on-site training".
+**Problem / requirement:** Owner confirmed training is available: free live demo, staff training on request, on-site only within the Negros Island Region, scheduled in advance. Entry points: FAQ and Contact page only (hero stays at three buttons).
+**Reason for the change:** The earlier text understated what the business offers. The old over-promises ("one-on-one training for Enterprise", "comprehensive training for all staff") are deliberately not restored.
+
+**Files modified:**
+- `frontend/src/features/landing/data/support.ts` — `ONSITE_TRAINING_AREA`, `TRAINING_SUMMARY`, `DEMO_REQUEST_MAILTO` (to `SUPPORT_EMAIL`, subject "Live Demo / Staff Training Request", body asks for clinic, location, request type, online/on-site, staff count and two preferred times).
+- `frontend/src/features/landing/data/faqs.ts` — training FAQ rewritten; `FAQ` gets an optional `link`.
+- `frontend/src/features/landing/components/FAQ.tsx` — renders the optional link; the "Contact our support team" link used the stale address `support@mespms.com` and now uses `SUPPORT_EMAIL`.
+- `frontend/src/features/landing/components/footer-pages/Company/Contact.tsx` — training FAQ answer replaced; new "Live Demo & Training" card with a "Schedule a Live Demo" link.
+- `backend/apps/common/services/gemini_service.py` — section 9: training removed from the "does NOT offer" line; the offer and its limits added (never promise on-site outside the region, a date, a price, or one-on-one training as a plan feature).
+- `backend/apps/common/test_assistant_prompt.py` — support test updated; new `test_training_offer_is_stated_with_its_limits`.
+
+**Database / migrations:** None. **API / data contract:** None.
+
+**Business rules & decisions:**
+- Free live demo (online or on-site). Staff training on request for every plan; the site quotes no price and says fees are confirmed when scheduling.
+- On-site visits only within the Negros Island Region (Negros Occidental, Negros Oriental, Siquijor). Online sessions are not area-limited. The online option was an assumption in the approved plan; remove the word "online" from `support.ts` if sessions are in person only.
+- Scheduling is by email request only; there is no booking system.
+- Superseded (2026-10-22): the 2026-10-21 rule "No live or on-site training" (see CHANGELOG 2026-10-21 and FEATURES).
+
+**Tests executed:**
+- `manage.py test apps.common` (from `backend/`) → 16 tests, OK. Mutation check: the old "does NOT offer … live training or on-site training" line put back → 2 failures (`test_support_promises_are_limited_to_what_exists`, `test_training_offer_is_stated_with_its_limits`); restored → 16 OK.
+- `manage.py check` → no issues. `npx tsc -b --force` → exit 0. `npx eslint` on the 4 changed frontend files → exit 0.
+- Sweep for "do not offer live", "one-on-one", "live training" in `frontend/src` and `backend/apps` → only the prompt's own prohibition line and the test.
+- Manual (headless Chromium against the running dev frontend, no API calls, desktop 1440 px and mobile 390 px): FAQ training answer shows the Negros limit and the schedule link; the decoded `mailto:` has the correct address, subject and seven body lines; the Contact card and FAQ match; no horizontal overflow; no console errors, exceptions or failed requests. A first pass showed the card link looking like plain text; restyled and re-checked.
+
+**Known limitations / unresolved issues:**
+- The Contact page form does not send anything (`handleSubmit` only logs to the console), so it cannot be used for scheduling. Pre-existing; not changed here.
+- The Contact page still shows `info@malasakit.com`; everything else uses `support@malasakitpms.ph`. Another stale address, `support@mespms.com`, remains on `auth/RegisterSuccess.tsx` (outside this change).
+- The Pricing page and the "Guided Onboarding & Support" feature card are not changed and do not mention the demo.
+
+**Regression risks:** the AI assistant now answers training questions from the new prompt text; re-read a few answers after the next deploy.
+
+---
+
+## 2026-10-21 — Pricing, 12-month term and cancellation, compliance and support wording, hero CTAs
+
+**Status:** Implemented and tested. **Not deployed:** migrations `subscriptions.0004` and `0005` are not applied to the development database (`showmigrations` at the end of this work), and `backfill_subscription_terms` has not been run on real data. No PayMongo checkout was run in test mode.
+**Module / feature:** Subscriptions; landing and legal pages; in-app Subscription page; AI chat assistant. See FEATURES "Subscriptions & pricing" and ADR-002.
+
+**Original behavior:** Prices and rules were copied into four places that disagreed (backend `plans.py`, landing `Plans.tsx`, footer `Pricing.tsx`, in-app text, plus the user manual). Branch add-on was 2,000/2,500/3,000 per month by tier. Annual price was not exactly 10% off. A clinician at 2 branches used 2 seats. Plans were shown with a monthly/annual toggle. The 12-month commitment was stored but not tracked (each payment reset `start_date`) and there was no cancellation feature. Public pages and the AI assistant claimed HIPAA compliance, SOC 2 / ISO 27001 / GDPR certification, free data migration, 24/7 and phone support, account managers, live/on-site training and "cancel anytime". The hero had two buttons and a small text link.
+**Problem / requirement:** Owner brief of 2026-10-21, eight items: (1) flat ₱2,000 additional branch with a clinician limit shared across branches, (2) "HIPAA-aligned" and a Data Privacy Act security FAQ, (3) Starter / Growth / Enterprise with monthly and annual side by side at 10% off, (4) no data-migration claim unless real, (5) advertise only support that exists, (6) 12-month minimum with cancellation effective at term end, (7) no live or one-on-one training claims, (8) three consistent hero CTAs.
+**Reason for the change:** Make the product, the price list, the Terms and the assistant say the same true thing, with the backend as the single source of truth for prices.
+
+**Files modified (backend):**
+- `apps/subscriptions/plans.py` — prices, shared branch constants, `ANNUAL_DISCOUNT_PERCENT`, display names (codes unchanged), summary exposes `annual_discount_percent`.
+- `apps/subscriptions/models.py` — term and cancellation fields, `SubscriptionEvent`, `request_cancellation` / `withdraw_cancellation` / `apply_scheduled_cancellation`, `activate_plan` starts a term only when none is running.
+- `apps/subscriptions/services.py` — one seat per clinician; usage summary adds term and cancellation fields.
+- `apps/subscriptions/views.py`, `urls.py` — `SubscriptionCancelView`, `SubscriptionCancelWithdrawView`.
+- `apps/subscriptions/management/commands/backfill_subscription_terms.py` (new) — dry run by default, `--apply` to write.
+- `apps/common/services/gemini_service.py` — assistant prompt rebuilt; plan lines are generated from `PLAN_CATALOG` so they cannot drift.
+- `apps/clinical_templates/models.py` — docstring wording only.
+- Tests: `apps/subscriptions/tests.py` (updated), `test_term_cancellation.py` (new), `apps/common/test_assistant_prompt.py` (new, 5 tests).
+
+**Files modified (frontend):**
+- In-app: `Subscription.tsx`, `UpgradeSubscriptionModal.tsx`, `SubscriptionTermCard.tsx` (new), `subscription.utils.ts`, `subscription.api.ts`, `useSubscription.ts`.
+- Public: `data/pricing.ts` and `data/support.ts` (new shared data), `Plans.tsx`, `footer-pages/Product/Pricing.tsx`, `public/pricing/PlanCard.tsx`, `public/pricing/PricingExplainer.tsx` (new), `Hero.tsx`, `data/faqs.ts`, `data/features.ts`, `Security.tsx`, `Legal/OWASPCompliance.tsx`, `Legal/PrivacyPolicy.tsx`, `Legal/TermsOfServices.tsx`, `Legal/CookiePolicy.tsx`, `Company/Contact.tsx`, `Company/Blog.tsx`, `Footer.tsx`, `auth/AdminRegister.tsx`, `user-manual/chapters/Chapter25.tsx`. **Deleted:** `public/pricing/BillingToggle.tsx`, `data/plans.ts` (legacy ₱199 plan; nothing imported either).
+
+**Database / migrations:** `0004_plan_display_labels` (choices labels only, no schema change); `0005_subscription_term_and_cancellation` (six nullable columns on `Subscription`, new table `SubscriptionEvent`). Additive.
+**API / data contract:** New `POST /api/subscription/cancel/` `{reason}` (ADMIN only, 403 otherwise; 400 for blank reason, trial, inactive, already pending) and `POST /api/subscription/cancel/withdraw/`; both return the usage summary. `GET /api/subscription/status/` adds `term_start`, `term_end`, `cancellation_pending`, `cancellation_requested_at`, `cancellation_effective_at`, `cancellation_reason`, `can_request_cancellation`. `GET /api/subscription/plans/` adds `annual_discount_percent`; plan `name` for code `PROFESSIONAL` is now "Enterprise" and for `ENTERPRISE` is "Custom".
+
+**Business rules & decisions:**
+- Prices: Starter ₱3,999/mo or ₱43,189.20/yr; Growth ₱6,999 or ₱75,589.20; Enterprise ₱9,999 or ₱107,989.20. Annual is monthly × 12 × 0.90 exactly. Additional branch ₱2,000/mo or ₱21,600/yr on every tier (Growth + 1 branch = ₱8,999/mo). Owner decisions of 2026-10-21.
+- Clinician limit is shared across branches; a clinician counts once. Archived and inactive practitioners still count until permanently deleted (unchanged).
+- 12-month minimum term, paid monthly or annually. A cancellation request always takes effect at `term_end`, never earlier; no refund for the remaining term. Owner only; reason required; can be withdrawn before the effective date. Every action is written to `SubscriptionEvent`.
+- Enforcement is lazy (when the subscription is read), like the existing expiry. There is no scheduler.
+- Support promised on public pages: email and in-app ticket, Monday to Friday 9:00 AM to 6:00 PM Philippine Time, reply within one business day. No phone, 24/7 or account managers. ~~Live or on-site training~~ — **Superseded (2026-10-22, see the CHANGELOG entry "Live demo and staff training offer")**: free live demos and staff training are offered, on-site within the Negros Island Region. Only self-service patient import (CSV/XLSX) is advertised as data migration.
+- Customer-facing security wording: "HIPAA-aligned" practices and the Data Privacy Act; no certification claims; the "AES-256" claim removed (the code uses Fernet).
+- Superseded (2026-10-21): "1 allocation per assigned branch" seat rule; the 2,000/2,500/3,000 branch add-on; the old annual prices; "cancel anytime".
+
+**Tests executed** (from `backend/`, `virt` environment, throwaway test databases):
+- `manage.py test apps.subscriptions` → 49 tests, OK. `apps.common` → 15 OK. `apps.patients` → 141 OK. `apps.billing` → 6 OK. `apps.accounts` → 5 OK.
+- `apps.clinical_templates` → 7 tests, **1 error** (`test_print_note_displays_creator`). **Pre-existing**, reproduced on a clean `HEAD` earlier in this project.
+- `manage.py check` → no issues. `makemigrations --check --dry-run` → No changes detected.
+- Mutation checks (each reverted): seat rule changed back (2 failures); cancellation made immediate (4 failures); term reset on renewal (3 failures).
+- Frontend: `npx tsc -b --force` → exit 0. `npx eslint` on the 25 changed files → 3 errors, all in `UpgradeSubscriptionModal.tsx` and identical at `HEAD` (two `any`, one unused `err`); no other findings.
+- Claims sweep: `grep` for "HIPAA compliant", "24/7", "cancel anytime", "Professional Plan", "₱2,500", "₱3,000", "Watch Demo", "SOC 2", "ISO 27001", "free migration", "on-site training", "dedicated account manager" and the old phone number in `frontend/src` and `backend/apps` → the only hits are explicit "we do not offer" statements and code comments.
+- Manual (isolated scratch DB, `REDIS_URL=` empty, headless Chromium, owner account): in-app Subscription page showed the term card with dates, the end-of-term wording, the new seat and branch notes, Starter / Growth / Enterprise / Custom names; the cancel dialog required a reason and stated the term end and no refund; the pending banner, persistence across reload and withdraw all worked; the checkout dialog opened on Enterprise Annual with ₱107,989.20 and a ₱21,600 branch added, total ₱129,589.20; no console errors or failed requests. Landing, `/pricing`, Contact, Security, Terms and the three hero buttons were checked the same way. The scratch stack and database were removed afterwards.
+
+**Known limitations / unresolved issues:**
+- The dev server loads the new model fields, so **until `manage.py migrate` is run, subscription endpoints on the dev database will error**.
+- The backfill command is untested on real data; run it as a dry run first.
+- PayMongo was not exercised (a test-mode Growth annual + 1 branch checkout should be ₱97,189.20). The webhook path through `activate_plan` is covered by unit tests only.
+- A monthly payer who stops paying is still handled by the existing lapse rules; term-based cancellation does not change that.
+- Not decided by the owner (built as recommended, please confirm): renewal after the first term (current build: no auto-renewal, each payment is a checkout); owner-only cancel; the 30-day post-cancellation data-access promise was dropped because the code has no such feature; existing annual customers pay the new annual price at renewal (Starter +₱189.20, Growth +₱589.20); support hours and the public address `support@malasakitpms.ph` (Contact previously used `info@malasakit.com`).
+- User-manual screenshots in Chapter 25 still show the old subscription UI; the text was updated.
+- The seat-count change attributed to a Gemini session was not in this repository, so it was implemented here.
+
+**Regression risks:** anything reading `Subscription.start_date` as the term start (it still moves with each payment; use `term_start`); callers that compared plan display names (`PROFESSIONAL` now reads "Enterprise"); clinician-limit checks for users with several branch accesses (now counted once).
+
+---
+
 ## 2026-10-20 — Chunk 6 + 6b + hardening: Case session limits retired, conversion command, branch scoping, browser verification
 
 **Status:** Implemented and tested. **Not deployed:** migrations `patients.0042` and `0043` are not applied to the development database (confirmed with `showmigrations` at the end of this work), and the conversion command has not been run on real data.

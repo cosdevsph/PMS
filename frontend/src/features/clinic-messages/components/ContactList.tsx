@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { roleLabel } from '@/lib/roles';
 import { ArrowLeft, Search } from 'lucide-react';
 import type { Participant } from '../types/messages.types';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -96,7 +97,7 @@ export const ContactList = ({ contacts, isLoading, onSelect, onBack }: Props) =>
                   <div className="text-left min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-800 truncate">{contact.full_name}</p>
                     <p className="text-xs text-gray-400 truncate">
-                      {contact.role.charAt(0) + contact.role.slice(1).toLowerCase()}
+                      {roleLabel(contact.role)}
                     </p>
                   </div>
                 </button>

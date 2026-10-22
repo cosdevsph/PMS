@@ -1,156 +1,114 @@
-import React, { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import React from 'react';
+import { Building2, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { PublicPageLayout } from '../../public/PublicPageLayout';
 import { PageHeader } from '../../public/PageHeader';
-import { BillingToggle } from '../../public/pricing/BillingToggle';
 import { PlanCard } from '../../public/pricing/PlanCard';
+import { PricingExplainer } from '../../public/pricing/PricingExplainer';
+import {
+  ANNUAL_DISCOUNT_PERCENT,
+  BRANCH_ADDON_ANNUAL,
+  BRANCH_LINE,
+  COMMITMENT_MONTHS,
+  PRICING_TIERS,
+  SHARED_FEATURES,
+  annualSavings,
+  formatPeso,
+} from '../../../data/pricing';
+
+const FAQS = [
+  {
+    question: 'How do clinician limits work?',
+    answer:
+      'Your plan includes a number of clinicians, shared across all your branches. Split them between branches however you like. A clinician who works at more than one branch counts once. You only move up to the next plan when your total number of clinicians goes above your plan limit.',
+  },
+  {
+    question: 'How much does an additional branch cost?',
+    answer: `Every plan includes 1 branch. Each additional branch is ₱2,000/month on any plan, or ${formatPeso(BRANCH_ADDON_ANNUAL)}/year with annual billing (${ANNUAL_DISCOUNT_PERCENT}% off). For example, Growth (₱6,999) + 1 additional branch (₱2,000) = ₱8,999/month.`,
+  },
+  {
+    question: 'Do Owner, Branch Manager or Receptionist accounts count?',
+    answer:
+      'No. All plans include unlimited Owner, Branch Manager and Staff accounts at no additional cost. Only accounts with the Practitioner clinical role count toward your clinician limit.',
+  },
+  {
+    question: 'Are features locked behind higher tiers?',
+    answer:
+      'No. Every plan includes 100% of the features. Plans differ only in the number of clinicians included.',
+  },
+  {
+    question: 'What is the contract commitment?',
+    answer: `All plans have a ${COMMITMENT_MONTHS}-month minimum term. You can pay monthly, or pay annually and save ${ANNUAL_DISCOUNT_PERCENT}%. Paying monthly does not allow month-to-month cancellation: if you request a cancellation during the term, it takes effect at the end of your current ${COMMITMENT_MONTHS}-month term and you keep full access until then.`,
+  },
+];
 
 export const Pricing: React.FC = () => {
-  const [isAnnual, setIsAnnual] = useState(false);
-
-  const plans = [
-    {
-      name: 'Starter',
-      monthlyPrice: '₱3,999',
-      annualPrice: '₱43,000',
-      annualSavings: 'Save ₱4,988/yr',
-      clinicians: 'Up to 4 clinicians',
-      branches: '1 branch included',
-      branchAddon: '+₱2,000/mo per extra branch',
-      description: 'Ideal for solo practitioners and boutique clinics.',
-      features: [
-        'Up to 4 clinicians included',
-        '1 clinic branch included',
-        '100% full feature parity',
-        'Unlimited Admin accounts',
-        'Appointments & Visual Diary',
-        'Complete EMR & Patient Charting',
-        'PhilHealth & HMO Claims Workflow',
-        'Invoicing, Billing & Receipts',
-        'SMS & Email Notifications',
-      ],
-    },
-    {
-      name: 'Growth',
-      monthlyPrice: '₱6,999',
-      annualPrice: '₱75,000',
-      annualSavings: 'Save ₱8,988/yr',
-      clinicians: 'Up to 8 clinicians',
-      branches: '1 branch included',
-      branchAddon: '+₱2,500/mo per extra branch',
-      description: 'Designed for expanding practices and multidisciplinary centers.',
-      popular: true,
-      features: [
-        'Up to 8 clinicians included',
-        '1 clinic branch included',
-        '100% full feature parity',
-        'Unlimited Admin accounts',
-        'Multi-branch calendar scheduling',
-        'Unified patient medical records',
-        'PhilHealth & HMO billing',
-        'Inventory & dispensary tracking',
-        'Priority email & chat support',
-      ],
-    },
-    {
-      name: 'Professional',
-      monthlyPrice: '₱9,999',
-      annualPrice: '₱108,000',
-      annualSavings: 'Save ₱11,988/yr',
-      clinicians: 'Up to 12 clinicians',
-      branches: '1 branch included',
-      branchAddon: '+₱3,000/mo per extra branch',
-      description: 'Built for high-volume polyclinics and diagnostic clinics.',
-      features: [
-        'Up to 12 clinicians included',
-        '1 clinic branch included',
-        '100% full feature parity',
-        'Unlimited Admin accounts',
-        'Multi-site practice coordination',
-        'Advanced clinical notes & audits',
-        'PhilHealth automated claims',
-        'High-capacity patient management',
-        'Dedicated account manager',
-      ],
-    },
-  ];
-
-  const faqs = [
-    {
-      question: 'How do clinician allocations work?',
-      answer: 'A clinician allocation is consumed whenever a practitioner is active or assigned to a branch. If a practitioner works across 2 branches, they consume 2 clinician allocations. Permanently purging a staff member releases their allocation while preserving all their clinical history.',
-    },
-    {
-      question: 'Do Admin or Receptionist accounts count?',
-      answer: 'No! All plans include unlimited Administrator and Staff accounts at no additional cost. Only accounts with the Practitioner clinical role consume allocations.',
-    },
-    {
-      question: 'Are features locked behind higher tiers?',
-      answer: 'Never. Every plan from Starter to Enterprise includes 100% full feature parity—EMR, Diary, PhilHealth claims, billing, inventory, SMS notifications, and multi-branch features are included in all tiers.',
-    },
-    {
-      question: 'What is the contract commitment?',
-      answer: 'All plans carry a standard 12-month commitment. You have the flexibility to pay either monthly or annually (which saves you approximately 10% each year).',
-    },
-  ];
-
   return (
     <PublicPageLayout title="Pricing">
       <PageHeader
         category="Product"
         title="Simple, Predictable Clinic Pricing"
         breadcrumbLabel="Pricing"
-        description="Every plan includes 100% full feature access and unlimited Admin accounts. 12-month commitment with flexible monthly or annual billing."
-      >
-        <BillingToggle isAnnual={isAnnual} onChange={setIsAnnual} />
-      </PageHeader>
+        description={`Every plan includes 100% full feature access and unlimited Owner, Branch Manager and staff accounts. ${COMMITMENT_MONTHS}-month minimum term, paid monthly or annually (annual saves ${ANNUAL_DISCOUNT_PERCENT}%).`}
+      />
 
       <div className="bg-clinical-cloud">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
           {/* Pricing Cards */}
           <ul className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-md md:max-w-none mx-auto">
-            {plans.map((plan, index) => (
-              <li key={index} className="h-full">
+            {PRICING_TIERS.map((tier) => (
+              <li key={tier.id} className="h-full">
                 <PlanCard
                   tone="light"
                   headingLevel="h2"
-                  name={plan.name}
-                  badge={plan.popular ? 'Most Popular' : undefined}
-                  highlight={plan.popular}
-                  description={plan.description}
-                  priceLabel={isAnnual ? plan.annualPrice : plan.monthlyPrice}
-                  periodLabel={isAnnual ? '/ year' : '/ month'}
-                  savingsLabel={isAnnual ? plan.annualSavings : undefined}
-                  priceNote={plan.branchAddon}
-                  features={plan.features}
+                  name={tier.name}
+                  badge={tier.badge}
+                  highlight={tier.highlight}
+                  description={tier.description}
+                  priceOptions={[
+                    { label: 'Monthly', price: formatPeso(tier.monthly), period: '/ month' },
+                    {
+                      label: 'Annual',
+                      tag: `${ANNUAL_DISCOUNT_PERCENT}% off`,
+                      price: formatPeso(tier.annual),
+                      period: '/ year',
+                      note: `Save ${formatPeso(annualSavings(tier))} a year`,
+                    },
+                  ]}
+                  highlights={[
+                    { icon: Users, label: `Up to ${tier.clinicianLimit} clinicians`, emphasis: true },
+                    { icon: Building2, label: BRANCH_LINE },
+                    { icon: ShieldCheck, label: '100% Full Feature Parity', emphasis: true },
+                  ]}
+                  features={SHARED_FEATURES.slice(1)}
                   ctaLabel="Start 14-Day Free Trial"
                   ctaTo="/register"
+                  ctaNote="No credit card required for trial"
                 />
               </li>
             ))}
           </ul>
 
-          {/* Enterprise Callout */}
+          <PricingExplainer tone="light" />
+
+          {/* Custom plan callout */}
           <div className="mt-12 rounded-3xl bg-trust-harbor p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-lg shadow-trust-harbor/10">
             <div className="flex items-start sm:items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-white/10 text-healing-mint flex items-center justify-center shrink-0" aria-hidden="true">
                 <Sparkles className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl text-white font-display">
-                  Enterprise & Large Healthcare Systems
-                </h2>
+                <h2 className="text-xl text-white font-display">Custom Plan & Healthcare Networks</h2>
                 <p className="mt-1 text-sm text-white/80 max-w-2xl leading-relaxed font-body">
-                  For clinics requiring more than 12 clinicians, custom branch networks, bespoke integrations, and dedicated enterprise SLA.
+                  Need more than 12 clinicians or a larger multi-branch network? Contact us and we will quote a plan that fits.
                 </p>
               </div>
             </div>
 
             <a
-              href="mailto:support@malasakitpms.ph?subject=Enterprise%20Inquiry"
+              href="mailto:support@malasakitpms.ph?subject=Custom%20Plan%20Inquiry"
               className="w-full md:w-auto text-center px-6 py-3 rounded-xl bg-white text-trust-harbor hover:bg-clinical-cloud font-bold text-sm whitespace-nowrap transition-colors shadow-md font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-trust-harbor"
             >
-              Contact Sales
+              Contact Us
             </a>
           </div>
 
@@ -160,7 +118,7 @@ export const Pricing: React.FC = () => {
               Frequently Asked Questions
             </h2>
             <dl className="grid md:grid-cols-2 gap-x-10 gap-y-8 max-w-5xl mx-auto">
-              {faqs.map((faq) => (
+              {FAQS.map((faq) => (
                 <div key={faq.question}>
                   <dt className="font-bold text-trust-harbor mb-2 font-heading">{faq.question}</dt>
                   <dd className="text-steady-slate leading-relaxed font-body">{faq.answer}</dd>

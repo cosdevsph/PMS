@@ -24,7 +24,7 @@ class PrivatePackageApiTestBase(TestCase):
         self.clinic = Clinic.objects.create(name="Malasakit Health")
         self.other_clinic = Clinic.objects.create(name="Other Clinic")
 
-        self.admin = self._user("admin@x.com", "ADMIN")
+        self.admin = self._user("admin@x.com", "OWNER")
         self.practitioner_user = self._user("prac@x.com", "PRACTITIONER")
         self.practitioner = Practitioner.objects.create(
             user=self.practitioner_user, clinic=self.clinic, consultation_fee=Decimal('500'),
@@ -43,8 +43,8 @@ class PrivatePackageApiTestBase(TestCase):
             email=email, password="testpassword123", first_name="Test", last_name=role.title(),
             clinic=clinic, clinic_branch=clinic, role=role,
         )
-        if role == 'ADMIN_ASSISTANT':   # managers see the branches they are assigned to manage
-            UserBranchAccess.objects.create(user=user, branch=clinic)
+        if role == 'BRANCH_MANAGER':   # managers see the branches they are assigned to manage
+            UserBranchAccess.objects.create(user=user, branch=clinic, is_managed=True)
         return user
 
     def _service(self, name, price, clinic=None, **kw):
@@ -242,9 +242,9 @@ class BranchScopeTests(PrivatePackageApiTestBase):
         self.assertEqual(response.status_code, 404)
 
     def test_a_manager_sees_the_branches_they_manage(self):
-        manager = self._user("mgr@x.com", "ADMIN_ASSISTANT", clinic=self.branch)   # access: branch only
+        manager = self._user("mgr@x.com", "BRANCH_MANAGER", clinic=self.branch)   # access: branch only
         self.assertEqual(self._ids(manager), {self.branch_pkg.id})
-        UserBranchAccess.objects.create(user=manager, branch=self.clinic)           # now manages both
+        UserBranchAccess.objects.create(user=manager, branch=self.clinic, is_managed=True)           # now manages both
         self.assertEqual(self._ids(manager), {self.main_pkg.id, self.branch_pkg.id})
 
     def test_explicit_branch_accesses_define_a_staff_users_view(self):
@@ -257,13 +257,15 @@ class BranchScopeTests(PrivatePackageApiTestBase):
 
     def test_package_visibility_matches_the_patient_list_for_every_kind_of_user(self):
         """Packages are visible exactly when their patient is, per the real /api/patients/ list."""
-        manager_both = self._user("mgr2@x.com", "ADMIN_ASSISTANT", clinic=self.branch)
-        UserBranchAccess.objects.create(user=manager_both, branch=self.clinic)
+        # One Branch Manager per clinic: mgr-b manages the branch; manager_both manages the main clinic
+        # and only has a plain (unmanaged) assignment at the branch.
+        manager_both = self._user("mgr2@x.com", "BRANCH_MANAGER", clinic=self.clinic)
+        UserBranchAccess.objects.create(user=manager_both, branch=self.branch)
         users = [
             self.admin,
             self._user("staff-b@x.com", "STAFF", clinic=self.branch),
             self._user("prac-b@x.com", "PRACTITIONER", clinic=self.branch),
-            self._user("mgr-b@x.com", "ADMIN_ASSISTANT", clinic=self.branch),
+            self._user("mgr-b@x.com", "BRANCH_MANAGER", clinic=self.branch),
             manager_both,
             self._user("staff-main@x.com", "STAFF"),
         ]
@@ -288,7 +290,7 @@ class BranchScopeTests(PrivatePackageApiTestBase):
 
 class PermissionTests(PrivatePackageApiTestBase):
     def test_owner_manager_staff_and_practitioner_can_create_and_edit(self):
-        for role in ('ADMIN', 'ADMIN_ASSISTANT', 'STAFF', 'PRACTITIONER'):
+        for role in ('OWNER', 'BRANCH_MANAGER', 'STAFF', 'PRACTITIONER'):
             with self.subTest(role):
                 self.client.force_authenticate(self._user(f"writer-{role.lower()}@x.com", role))
                 created = self.client.post(URL, self._payload(title=f'{role} package'), format='json')
@@ -323,7 +325,7 @@ class PermissionTests(PrivatePackageApiTestBase):
 
     def test_other_clinic_cannot_see_or_edit_a_package(self):
         package = self._create()
-        outsider = self._user("outsider@x.com", "ADMIN", clinic=self.other_clinic)
+        outsider = self._user("outsider@x.com", "OWNER", clinic=self.other_clinic)
         self.client.force_authenticate(outsider)
         self.assertEqual(self.client.get(f"{URL}{package.id}/").status_code, 404)
         self.assertEqual(self.client.get(f"{URL}{package.id}/history/").status_code, 404)

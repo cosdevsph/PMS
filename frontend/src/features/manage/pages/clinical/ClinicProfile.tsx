@@ -131,7 +131,7 @@ const MapRecenter: React.FC<{ lat: number; lng: number }> = ({ lat, lng }) => {
 export const ClinicProfile: React.FC = () => {
   const { user, setAuth, tokens } = useAuthStore();
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'ADMIN';
+  const isOwner = user?.role === 'OWNER';
 
   const [clinic,      setClinic]      = useState<ClinicProfileType | null>(null);
   const [isLoading,   setIsLoading]   = useState(true);
@@ -407,7 +407,7 @@ export const ClinicProfile: React.FC = () => {
         </div>
 
         {!isEditing ? (
-          isAdmin && (
+          isOwner && (
             <button
               onClick={() => setIsEditing(true)}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-care-blue
@@ -833,7 +833,7 @@ export const ClinicProfile: React.FC = () => {
           <Building2 className="w-4 h-4 text-care-blue" />
           Clinic Branches
         </h3>
-        {isAdmin && (
+        {isOwner && (
           <button
             onClick={() => navigate('/setup?card=practice&option=option1')}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-care-blue bg-care-blue/10 border border-care-blue/20 rounded-lg hover:bg-care-blue/20 transition-colors"

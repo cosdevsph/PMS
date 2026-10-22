@@ -22,7 +22,7 @@ export interface StaffMember {
   nickname?: string;
   title?: TitleType;
   /** Primary role — backward compat; use `roles` for multi-role checks. */
-  role: 'STAFF' | 'PRACTITIONER' | 'ADMIN' | 'ADMIN_ASSISTANT' | 'FINANCE' | 'READ_ONLY';
+  role: 'STAFF' | 'PRACTITIONER' | 'OWNER' | 'BRANCH_MANAGER' | 'FINANCE' | 'READ_ONLY';
   /** All assigned roles (multi-role). */
   roles: UserRole[];
   phone: string;
@@ -36,6 +36,8 @@ export interface StaffMember {
   permission_group?: number | null;
   permission_group_name?: string | null;
   manager_branches?: any[];
+  /** Owner's view of a Branch Manager: branches picked for Diary access outside their own. */
+  extra_diary_branches?: Array<{ id: number; name: string }>;
   manager_branches_ids?: any[];
 
   // Additional staff fields
@@ -109,7 +111,7 @@ export interface CreateStaffData {
   nickname?: string;
   title?: TitleType;
   /** All assigned clinical roles (multi-select). */
-  roles: ('ADMIN_ASSISTANT' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'ADMIN' | 'READ_ONLY')[];
+  roles: ('BRANCH_MANAGER' | 'PRACTITIONER' | 'STAFF' | 'FINANCE' | 'OWNER' | 'READ_ONLY')[];
   phone: string;
   position?: string;
   discipline?: string;
@@ -117,8 +119,10 @@ export interface CreateStaffData {
   gender?: GenderType;
   address?: string;
   clinic_branch?: number | null;
-  /** List of branch IDs to assign (used for Manager multi-branch scope). */
+  /** List of branch IDs to assign (used for Branch Manager multi-branch scope). */
   branch_ids?: number[];
+  /** Owner only: other branches whose Diary this Branch Manager may open (level set by the permission group). */
+  extra_diary_branch_ids?: number[];
 
   // Legacy single-block availability (PRACTITIONER only, kept for compat)
   duty_start_time?: string;

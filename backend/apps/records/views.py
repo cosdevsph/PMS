@@ -27,7 +27,7 @@ class ClinicalNoteViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(clinic=user.clinic)
     
@@ -35,7 +35,7 @@ class ClinicalNoteViewSet(viewsets.ModelViewSet):
     def sign(self, request, pk=None):
         """Sign a clinical note"""
         note = self.get_object()
-        if note.practitioner.user != request.user and not request.user.is_admin:
+        if note.practitioner.user != request.user and not request.user.is_owner:
             return Response(
                 {'error': 'Only the practitioner can sign this note'},
                 status=status.HTTP_403_FORBIDDEN
@@ -59,7 +59,7 @@ class NoteTemplateViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(clinic=user.clinic)
 
@@ -76,7 +76,7 @@ class OutcomeMeasureViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(patient__clinic=user.clinic)
     
@@ -114,7 +114,7 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(patient__clinic=user.clinic)
     

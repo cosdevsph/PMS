@@ -47,9 +47,9 @@ def visible_branch_ids(user):
     (branch accesses, else their own branch). A package is visible exactly when its
     patient is.
     """
-    if user.is_admin:
+    if user.is_owner:
         return None
-    if user.is_manager:
+    if user.is_branch_manager:
         return list(user.get_managed_branches().values_list('id', flat=True))
     ids = list(user.branch_accesses.values_list('branch_id', flat=True))
     if not ids and user.clinic_branch_id:

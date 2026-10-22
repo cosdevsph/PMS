@@ -9,7 +9,7 @@ import os
 from apps.common.permissions import HasFeaturePermission
 from .models import UserFeedback, UserFeedbackAttachment
 from .serializers import UserFeedbackSerializer, UserFeedbackAttachmentSerializer
-from .permissions import IsOwnerOrAdmin
+from .permissions import IsOwnerOrAdmin, has_feedback_admin_access
 
 # Maximum 5MB per file
 MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024
@@ -28,10 +28,9 @@ class UserFeedbackViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        effective = user.get_effective_roles()
-        
-        # Admins and Managers see everything
-        if 'OWNER' in effective or 'MANAGER' in effective:
+
+        # Roles in FEEDBACK_ADMIN_ROLES (currently none) see everything
+        if has_feedback_admin_access(user):
             return UserFeedback.objects.all().prefetch_related('attachments', 'comments', 'status_history')
             
         # Normal users only see their own

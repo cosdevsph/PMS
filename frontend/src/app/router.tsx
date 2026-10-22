@@ -36,9 +36,9 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 
 
 
-  // Admin must complete clinic setup before accessing any protected page
+  // Owner must complete clinic setup before accessing any protected page
   if (
-    user?.role === 'ADMIN' &&
+    user?.role === 'OWNER' &&
     user.clinic_setup_complete === false &&
     location.pathname !== '/clinic-setup'
   ) {
@@ -58,7 +58,7 @@ export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children 
       return <Navigate to="/change-password" replace />;
     }
     // Redirect admin to setup if not complete
-    if (user?.role === 'ADMIN' && user.clinic_setup_complete === false) {
+    if (user?.role === 'OWNER' && user.clinic_setup_complete === false) {
       return <Navigate to="/clinic-setup" replace />;
     }
     return <Navigate to="/dashboard" replace />;
@@ -113,7 +113,7 @@ export const ClinicMemberRoute: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Same setup guard
   if (
-    (user.roles ?? [user.role]).includes('ADMIN') &&
+    (user.roles ?? [user.role]).includes('OWNER') &&
     user.clinic_setup_complete === false &&
     location.pathname !== '/clinic-setup'
   ) {
@@ -139,7 +139,7 @@ export const ClinicSetupRoute: React.FC<{ children: React.ReactNode }> = ({ chil
   }
 
   // Non-admins or already-setup admins → go to dashboard
-  if (user?.role !== 'ADMIN' || user.clinic_setup_complete === true) {
+  if (user?.role !== 'OWNER' || user.clinic_setup_complete === true) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -159,7 +159,7 @@ export const ChangePasswordRoute: React.FC<{ children: React.ReactNode }> = ({ c
 
   if (!user?.must_change_password) {
     // Already done — redirect to the appropriate next step
-    if (user?.role === 'ADMIN' && user.clinic_setup_complete === false) {
+    if (user?.role === 'OWNER' && user.clinic_setup_complete === false) {
       return <Navigate to="/clinic-setup" replace />;
     }
     return <Navigate to="/dashboard" replace />;

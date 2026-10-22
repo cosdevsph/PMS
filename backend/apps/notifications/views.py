@@ -59,12 +59,12 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         )
         
         # 1. RBAC Filtering
-        if not user.is_admin:
+        if not user.is_owner:
             from django.db.models import Q
             # Direct notifications should bypass RBAC filtering for branch/practitioner
             rbac_q = Q(recipient=user)
             
-            if user.is_manager:
+            if user.is_branch_manager:
                 managed_branches = user.get_managed_branches()
                 rbac_q |= Q(recipient__isnull=True, clinic_branch__in=managed_branches)
             else:
@@ -176,7 +176,7 @@ class EmailLogViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields    = ['created_at', 'sent_at']
 
     def get_queryset(self):
-        if self.request.user.role == 'ADMIN':
+        if self.request.user.role == 'OWNER':
             return EmailLog.objects.all()
         return EmailLog.objects.none()
 
@@ -189,7 +189,7 @@ class SMSLogViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields    = ['created_at', 'sent_at']
 
     def get_queryset(self):
-        if self.request.user.role == 'ADMIN':
+        if self.request.user.role == 'OWNER':
             return SMSLog.objects.all()
         return SMSLog.objects.none()
 
@@ -227,9 +227,9 @@ class ClinicCommunicationSettingsViewSet(viewsets.ModelViewSet):
         settings_obj = ClinicCommunicationSettings.get_for_clinic(main_clinic)
 
         if request.method == 'PATCH':
-            if user.role not in ('ADMIN', 'STAFF'):
+            if user.role not in ('OWNER', 'STAFF'):
                 return Response(
-                    {'detail': 'Only admins and staff can update communication settings.'},
+                    {'detail': 'Only the Owner, Branch Managers and staff can update communication settings.'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
             serializer = ClinicCommunicationSettingsSerializer(settings_obj, data=request.data, partial=True)

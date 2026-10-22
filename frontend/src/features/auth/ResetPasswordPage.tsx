@@ -88,7 +88,7 @@ export const ResetPasswordPage: React.FC = () => {
         if (result.user.must_change_password) {
           navigate('/change-password', { replace: true });
         } else if (
-          (result.user.roles ?? [result.user.role]).includes('ADMIN') &&
+          (result.user.roles ?? [result.user.role]).includes('OWNER') &&
           !result.user.clinic_setup_complete
         ) {
           navigate('/clinic-setup', { replace: true });

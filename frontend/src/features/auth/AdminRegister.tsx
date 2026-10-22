@@ -301,7 +301,7 @@ export const AdminRegister: React.FC = () => {
             {[
               { title: '14-day free trial', desc: 'No credit card required' },
               { title: 'Full access', desc: 'All features included' },
-              { title: 'Cancel anytime', desc: 'No long-term contracts' }
+              { title: 'Flexible billing', desc: 'Pay monthly or annually (12-month term)' }
             ].map((item, index) => (
               <div key={index} className="flex items-center space-x-3">
                 <div className="w-6 h-6 rounded-full bg-healing-mint flex items-center justify-center">

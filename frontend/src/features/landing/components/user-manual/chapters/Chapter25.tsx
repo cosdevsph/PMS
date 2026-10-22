@@ -60,8 +60,8 @@ const Chapter25: React.FC = () => {
             </li>
           </ol>
 
-          <DocCallout type="info" title="Administrator & Owner Access">
-            Subscription controls and billing settings contain confidential financial information and are accessible to Clinic Owners and authorized Administrators.
+          <DocCallout type="info" title="Owner Access">
+            Subscription controls and billing settings contain confidential financial information and are accessible to Clinic Owners and authorized Owner.
           </DocCallout>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
@@ -96,7 +96,7 @@ const Chapter25: React.FC = () => {
             <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/50">
               <h5 className="font-bold text-sky-950 text-sm mb-2">Active Plan Overview</h5>
               <ul className="text-xs space-y-1.5 text-gray-700 font-body">
-                <li>• <strong>Plan Tier:</strong> Displays your plan (e.g., <em>Professional Plan</em>) and billing cadence (<em>Monthly / Annual</em>).</li>
+                <li>• <strong>Plan Tier:</strong> Displays your plan (e.g., <em>Enterprise Plan</em>) and billing cadence (<em>Monthly / Annual</em>).</li>
                 <li>• <strong>Validity & Expiry:</strong> Highlights remaining days, start date, renewal/expiry date, and contract commitment.</li>
                 <li>• <strong>Quick Controls:</strong> Click <em>Refresh Status</em> or <em>Change Tier / Add Branches</em> anytime.</li>
               </ul>
@@ -115,8 +115,8 @@ const Chapter25: React.FC = () => {
           <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 mb-6">
             <h5 className="font-bold text-gray-900 text-sm mb-2">Entitlement Usage & Capacity</h5>
             <ul className="text-xs space-y-1 text-gray-600 font-body">
-              <li>• <strong>Clinician Allocations:</strong> Tracks assigned doctor/practitioner accounts against your licensed seat capacity (e.g., <em>0 of 4 seats used</em>).</li>
-              <li>• <strong>Branch Locations:</strong> Tracks active clinic locations (e.g., <em>1 of 3 branches configured</em>). Additional branches can be added as needed.</li>
+              <li>• <strong>Clinician Allocations:</strong> Tracks assigned doctor/practitioner accounts against your plan's clinician limit (e.g., <em>0 of 4 used</em>). The limit is shared across all your branches, and a clinician who works at several branches counts once.</li>
+              <li>• <strong>Branch Locations:</strong> Tracks active clinic locations (e.g., <em>1 of 3 branches configured</em>). Each additional branch is ₱2,000/month (₱21,600/year with annual billing) on every plan.</li>
             </ul>
           </div>
 
@@ -157,12 +157,13 @@ const Chapter25: React.FC = () => {
                 </span>
                 <h5 className="font-bold text-gray-900 text-base mt-2">Starter</h5>
                 <p className="text-xl font-bold text-gray-900 font-mono mt-1">₱3,999 <span className="text-xs text-gray-500 font-normal">/ mo</span></p>
+                <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">or ₱43,189.20 / yr (10% off)</p>
                 <p className="text-xs text-gray-500 mt-2">Ideal for emerging private practices and boutique healthcare clinics.</p>
                 <ul className="text-xs space-y-1.5 text-gray-700 font-body mt-3 pt-3 border-t border-gray-100">
                   <li>• Up to 4 clinicians</li>
-                  <li>• 1 branch included (+₱2,000/mo extra)</li>
+                  <li>• 1 branch included (+₱2,000/mo per additional branch)</li>
                   <li>• 100% full feature access</li>
-                  <li>• Unlimited Admin accounts</li>
+                  <li>• Unlimited Owner, Branch Manager and staff accounts</li>
                 </ul>
               </div>
             </div>
@@ -174,12 +175,13 @@ const Chapter25: React.FC = () => {
                 </span>
                 <h5 className="font-bold text-gray-900 text-base mt-2">Growth</h5>
                 <p className="text-xl font-bold text-gray-900 font-mono mt-1">₱6,999 <span className="text-xs text-gray-500 font-normal">/ mo</span></p>
+                <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">or ₱75,589.20 / yr (10% off)</p>
                 <p className="text-xs text-gray-500 mt-2">Designed for growing multi-disciplinary teams expanding clinical services.</p>
                 <ul className="text-xs space-y-1.5 text-gray-700 font-body mt-3 pt-3 border-t border-gray-200">
                   <li>• Up to 8 clinicians</li>
-                  <li>• 1 branch included (+₱2,500/mo extra)</li>
+                  <li>• 1 branch included (+₱2,000/mo per additional branch)</li>
                   <li>• 100% full feature access</li>
-                  <li>• Unlimited Admin accounts</li>
+                  <li>• Unlimited Owner, Branch Manager and staff accounts</li>
                 </ul>
               </div>
             </div>
@@ -194,14 +196,15 @@ const Chapter25: React.FC = () => {
                     Active
                   </span>
                 </div>
-                <h5 className="font-bold text-gray-900 text-base mt-2">Professional</h5>
+                <h5 className="font-bold text-gray-900 text-base mt-2">Enterprise</h5>
                 <p className="text-xl font-bold text-gray-900 font-mono mt-1">₱9,999 <span className="text-xs text-gray-500 font-normal">/ mo</span></p>
+                <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">or ₱107,989.20 / yr (10% off)</p>
                 <p className="text-xs text-gray-500 mt-2">Complete clinical infrastructure for high-volume practices and medical centers.</p>
                 <ul className="text-xs space-y-1.5 text-gray-700 font-body mt-3 pt-3 border-t border-gray-100">
                   <li>• Up to 12 clinicians</li>
-                  <li>• 1 branch included (+₱3,000/mo extra)</li>
+                  <li>• 1 branch included (+₱2,000/mo per additional branch)</li>
                   <li>• 100% full feature access</li>
-                  <li>• Unlimited Admin accounts</li>
+                  <li>• Unlimited Owner, Branch Manager and staff accounts</li>
                 </ul>
               </div>
             </div>
@@ -211,21 +214,21 @@ const Chapter25: React.FC = () => {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
                   Custom Scale
                 </span>
-                <h5 className="font-bold text-gray-900 text-base mt-2">Enterprise</h5>
+                <h5 className="font-bold text-gray-900 text-base mt-2">Custom</h5>
                 <p className="text-xl font-bold text-gray-900 font-mono mt-1">Custom <span className="text-xs text-gray-500 font-normal">pricing</span></p>
-                <p className="text-xs text-gray-500 mt-2">Tailored capacity, custom branch networks, and dedicated support.</p>
+                <p className="text-xs text-gray-500 mt-2">For more than 12 clinicians or larger branch networks. Contact us for a quote.</p>
                 <ul className="text-xs space-y-1.5 text-gray-700 font-body mt-3 pt-3 border-t border-gray-100">
                   <li>• Custom clinician capacity</li>
                   <li>• Multi-branch included</li>
                   <li>• 100% full feature access</li>
-                  <li>• Dedicated support</li>
+                  <li>• Tailored pricing</li>
                 </ul>
               </div>
             </div>
           </div>
 
           <DocCallout type="tip" title="Flexible Annual Savings & Branch Add-Ons">
-            You can toggle between <strong>Monthly</strong> and <strong>Annual</strong> billing at the top of the comparison matrix to save approximately <strong>10%</strong>. Additional physical branch locations can be added flexibly to any tier.
+            Each plan card shows its <strong>Monthly</strong> and <strong>Annual</strong> price side by side; annual billing is <strong>10% off</strong>. Every plan has a 12-month minimum term, whether paid monthly or annually. Additional branches cost ₱2,000/month (₱21,600/year) on every tier, and your clinician limit is shared across all branches.
           </DocCallout>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
@@ -253,7 +256,8 @@ const Chapter25: React.FC = () => {
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
         <li><strong>25.1 Navigation:</strong> Head to <strong>Setup</strong> and select <strong>Subscription</strong> under the Account card.</li>
         <li><strong>25.2 Current Plan Display:</strong> Monitor your active subscription tier, renewal/expiry date, contract term, and real-time clinician/branch allocations.</li>
-        <li><strong>25.2.1 Plan Upgrades:</strong> Compare Starter, Growth, Professional, and Enterprise plans right on the same page whenever your clinic needs to expand seats or add branches.</li>
+        <li><strong>25.2.1 Plan Upgrades:</strong> Compare Starter, Growth, Enterprise, and Custom plans right on the same page whenever your clinic needs to expand seats or add branches.</li>
+        <li><strong>25.2.2 12-Month Term & Cancellation:</strong> The clinic owner can see the current term dates on the Subscription page and request a cancellation there. A cancellation always takes effect at the end of the current 12-month term (never immediately, even if you pay monthly), you keep full access until then, and the request can be withdrawn before that date.</li>
         <li><strong>14-Day Free Trial:</strong> Malasakit gives you 14 days of unrestricted access with no credit card required at sign up. Subscription plan charges only start after the 14-day trial ends.</li>
       </ul>
     </>

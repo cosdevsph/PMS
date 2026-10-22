@@ -9,7 +9,7 @@
  * Critically:
  *   • The sidebar is NEVER blocked — restriction is on the page content div only.
  *   • Access notifications appear as small top-right floating toasts (not banners).
- *   • ADMIN bypasses all checks.
+ *   • OWNER bypasses all checks.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -163,7 +163,7 @@ export const FeatureAccessGuard: React.FC<FeatureAccessGuardProps> = ({
     // Re-fire only when the restriction state changes (e.g. after admin updates perms)
   }, [feature, hasNone, hasViewOnly, label]);
 
-  // ADMIN — pass through with no overhead
+  // OWNER — pass through with no overhead
   if (isOwner) return <>{children}</>;
 
   // ── No access: visible but blurred + fully disabled ──

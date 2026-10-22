@@ -3,6 +3,7 @@ import type { SubscriptionState, SubscriptionStatusResponse } from '../../servic
 export const TRIAL_DURATION_DAYS = 14;
 export const MONTHLY_PLAN_PRICE = 3999;
 
+/** Customer-facing plan names. Internal codes never change: PROFESSIONAL is shown as "Enterprise", ENTERPRISE as "Custom". */
 export const formatPlanLabel = (plan?: string): string => {
   if (!plan) return 'Free Trial';
   switch (plan.toUpperCase()) {
@@ -11,9 +12,9 @@ export const formatPlanLabel = (plan?: string): string => {
     case 'GROWTH':
       return 'Growth Plan';
     case 'PROFESSIONAL':
-      return 'Professional Plan';
-    case 'ENTERPRISE':
       return 'Enterprise Plan';
+    case 'ENTERPRISE':
+      return 'Custom Plan';
     case 'MONTHLY':
       return 'Monthly Plan';
     case 'TRIAL':
@@ -33,11 +34,13 @@ export const formatStatusLabel = (status: SubscriptionState): string => {
   return 'Cancelled';
 };
 
+/** Whole pesos show without decimals; amounts with centavos (e.g. ₱43,189.20) show two decimals. */
 export const formatCurrency = (amount?: number | string | null): string => {
   if (amount === undefined || amount === null) return '₱0';
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
   if (Number.isNaN(num)) return '₱0';
-  return `₱${num.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const decimals = Number.isInteger(num) ? 0 : 2;
+  return `₱${num.toLocaleString('en-PH', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 };
 
 export const formatDateTime = (value?: string): string => {

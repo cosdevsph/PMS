@@ -38,10 +38,34 @@ from rest_framework.exceptions import PermissionDenied
 import logging
 logger = logging.getLogger(__name__)
 
-from apps.accounts.utils.rbac import validate_branch_access
+from apps.accounts.utils.rbac import validate_diary_branch, get_extra_diary_branch_ids
 
 
-class AppointmentViewSet(viewsets.ModelViewSet):
+class DiaryBranchScopeMixin:
+    """
+    Reads and writes in the Diary use different branch lists for a Branch Manager: the extra branches
+    the Owner granted are readable at 'view' and changeable only at 'edit'
+    (permission group row 'Other Branches' Diary').
+    """
+
+    def _diary_write(self):
+        return self.request.method not in ('GET', 'HEAD', 'OPTIONS')
+
+    def _check_diary_write_branch(self, clinic):
+        """
+        Raise PermissionDenied when `clinic` is one of the user's extra (granted) Diary branches
+        and the permission level there is only 'view'. Branches the user already works at, and
+        every other role, are not affected.
+        """
+        from rest_framework.exceptions import PermissionDenied
+        if clinic is None:
+            return
+        user = self.request.user
+        if clinic.id in get_extra_diary_branch_ids(user) and clinic.id not in get_extra_diary_branch_ids(user, write=True):
+            raise PermissionDenied("You have view-only access to this branch's Diary.")
+
+
+class AppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
     """CRUD operations for appointments"""
 
     queryset = Appointment.objects.filter(is_deleted=False).select_related(
@@ -104,7 +128,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             try:
                 branch_id = int(clinic_branch_param)
                 if branch_id in all_branch_ids:
-                    validate_branch_access(user, branch_id)
+                    validate_diary_branch(user, branch_id, write=self._diary_write())
                     queryset = queryset.filter(clinic_id=branch_id)
                 else:
                     return queryset.none()
@@ -112,7 +136,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 pass
         else:
             # If no branch specified, enforce practitioner scope across all returned data
-            practitioner_branches, is_restricted = validate_branch_access(user)
+            practitioner_branches, is_restricted = validate_diary_branch(user, write=self._diary_write())
             if is_restricted:
                 if practitioner_branches:
                     queryset = queryset.filter(clinic_id__in=practitioner_branches)
@@ -172,6 +196,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     # ── Audit hooks ───────────────────────────────────────────────────────────
     def perform_create(self, serializer):
+        self._check_diary_write_branch(serializer.validated_data.get('clinic'))
         appointment = serializer.save(created_by=self.request.user, updated_by=self.request.user)
 
         # ── Set patient's home_branch if not already set ──────────────────
@@ -196,6 +221,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             logger.warning('Calendar WS emit failed for appt #%s: %s', appointment.id, exc)
 
     def perform_update(self, serializer):
+        self._check_diary_write_branch(serializer.validated_data.get('clinic'))
         old_status = serializer.instance.status
         old_date = serializer.instance.date
         old_time = serializer.instance.start_time
@@ -1072,7 +1098,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         main_clinic    = user.clinic.main_clinic
         clinic_branch_param = request.query_params.get('clinic_branch', '')
 
-        cache_key = f'practitioners_{main_clinic.id}_{clinic_branch_param}'
+        # 'v2': bumped when the roles were renamed (OWNER / BRANCH_MANAGER) so cached lists with old codes are never served.
+        cache_key = f'practitioners_v2_{main_clinic.id}_{clinic_branch_param}'
         cached    = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
@@ -1087,7 +1114,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             user__is_active=True,
             user__is_deleted=False,
             # Exclude soft-deleted Practitioner profiles — this covers the case
-            # where an Admin+Practitioner user has their PRACTITIONER role removed
+            # where an Owner+Practitioner user has their PRACTITIONER role removed
             # (the profile is soft-deleted in UserViewSet.update) but the User row
             # still exists.  Without this filter those stale profiles would be
             # returned and the user would keep appearing in the Diary filter.
@@ -1113,10 +1140,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 Q(user__branch_accesses__branch_id=branch_id, user__branch_accesses__is_active=True) |
                 (Q(user__clinic_branch_id=branch_id) & ~Q(user__branch_accesses__branch_id=branch_id, user__branch_accesses__is_active=False)) |
                 Q(clinic_id=branch_id, user__clinic_branch__isnull=True) |
-                # Admin+Practitioner users have no branch restriction — they should
+                # Owner+Practitioner users have no branch restriction — they should
                 # appear in every branch view so they can be selected as a practitioner
                 # regardless of which branch tab the admin is viewing.
-                Q(user__clinic_branch__isnull=True, user__roles__contains=['ADMIN'])
+                Q(user__clinic_branch__isnull=True, user__roles__contains=['OWNER'])
             ).distinct()
 
         branch_id_num = None
@@ -1149,7 +1176,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                                       if p.user.clinic_branch else None,
                 'availability':       avail,
                 'role':               'PRACTITIONER',
-                'roles':              list(p.user.roles) if p.user.roles else ['PRACTITIONER'],
+                'roles':              p.user.get_effective_roles() if p.user.roles else ['PRACTITIONER'],
                 # ── Discipline is stored on the Practitioner profile, not the User. ──
                 # Without this field the frontend AppointmentView receives undefined
                 # for practitioner.discipline and incorrectly shows the
@@ -1214,7 +1241,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     'duty_schedule':    staff_user.duty_schedule,
                 },
                 'role':  'STAFF',
-                'roles': list(staff_user.roles) if staff_user.roles else ['STAFF'],
+                'roles': staff_user.get_effective_roles() if staff_user.roles else ['STAFF'],
             })
 
         result = {'practitioners': practitioners_data}
@@ -1263,7 +1290,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='send_bulk_reminders')
     def send_bulk_reminders_action(self, request):
-        if not request.user.is_admin:
+        if not request.user.is_owner:
             return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         date_str = request.data.get('date')
@@ -1396,7 +1423,7 @@ class PractitionerScheduleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(practitioner__clinic=user.clinic)
 
@@ -1410,7 +1437,7 @@ class AppointmentReminderViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin:
+        if user.is_owner:
             return self.queryset
         return self.queryset.filter(appointment__clinic=user.clinic)
 
@@ -1464,7 +1491,7 @@ class AppointmentPrintViewSet(viewsets.ReadOnlyModelViewSet):
 
 # ── Block Appointment ViewSet ────────────────────────────────────────────────────
 
-class BlockAppointmentViewSet(viewsets.ModelViewSet):
+class BlockAppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
     """
     CRUD operations for Block Appointments (events that block time slots).
     
@@ -1522,7 +1549,7 @@ class BlockAppointmentViewSet(viewsets.ModelViewSet):
             try:
                 branch_id = int(clinic_branch_param)
                 if branch_id in all_branch_ids:
-                    validate_branch_access(user, branch_id)
+                    validate_diary_branch(user, branch_id, write=self._diary_write())
                     queryset = queryset.filter(clinic_id=branch_id)
                 else:
                     return self.queryset.none()
@@ -1530,7 +1557,7 @@ class BlockAppointmentViewSet(viewsets.ModelViewSet):
                 pass
         else:
             # If no branch specified, enforce practitioner scope across all returned data
-            practitioner_branches, is_restricted = validate_branch_access(user)
+            practitioner_branches, is_restricted = validate_diary_branch(user, write=self._diary_write())
             if is_restricted:
                 if practitioner_branches:
                     queryset = queryset.filter(clinic_id__in=practitioner_branches)
@@ -1558,6 +1585,7 @@ class BlockAppointmentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Set created_by and broadcast BLOCK_CREATED event."""
+        self._check_diary_write_branch(serializer.validated_data.get('clinic'))
         block = serializer.save(created_by=self.request.user)
         try:
             main_clinic_id = get_main_clinic_id(self.request.user)
@@ -1569,6 +1597,7 @@ class BlockAppointmentViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         """Set modified_by and broadcast BLOCK_UPDATED event."""
+        self._check_diary_write_branch(serializer.validated_data.get('clinic'))
         block = serializer.save(modified_by=self.request.user)
         try:
             main_clinic_id = get_main_clinic_id(self.request.user)
@@ -1606,7 +1635,7 @@ class BlockAppointmentViewSet(viewsets.ModelViewSet):
 
 # ── Calendar Note ViewSet ─────────────────────────────────────────────────────
 
-class CalendarNoteViewSet(viewsets.ModelViewSet):
+class CalendarNoteViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
     """CRUD for lightweight calendar sticky notes."""
 
     serializer_class   = CalendarNoteSerializer
@@ -1641,7 +1670,7 @@ class CalendarNoteViewSet(viewsets.ModelViewSet):
             try:
                 branch_id = int(clinic_branch_param)
                 if branch_id in all_branch_ids:
-                    validate_branch_access(user, branch_id)
+                    validate_diary_branch(user, branch_id, write=self._diary_write())
                     qs = qs.filter(clinic_id=branch_id)
                 else:
                     return CalendarNote.objects.none()
@@ -1649,7 +1678,7 @@ class CalendarNoteViewSet(viewsets.ModelViewSet):
                 pass
         else:
             # If no branch specified, enforce practitioner scope across all returned data
-            practitioner_branches, is_restricted = validate_branch_access(user)
+            practitioner_branches, is_restricted = validate_diary_branch(user, write=self._diary_write())
             if is_restricted:
                 if practitioner_branches:
                     qs = qs.filter(clinic_id__in=practitioner_branches)
@@ -1669,6 +1698,7 @@ class CalendarNoteViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
+        self._check_diary_write_branch(serializer.validated_data.get('clinic'))
         note = serializer.save(created_by=self.request.user, modified_by=self.request.user)
         try:
             main_clinic_id = get_main_clinic_id(self.request.user)
@@ -1679,6 +1709,7 @@ class CalendarNoteViewSet(viewsets.ModelViewSet):
             logger.warning('Calendar WS emit failed for note #%s: %s', note.id, exc)
 
     def perform_update(self, serializer):
+        self._check_diary_write_branch(serializer.validated_data.get('clinic'))
         note = serializer.save(modified_by=self.request.user)
         try:
             main_clinic_id = get_main_clinic_id(self.request.user)

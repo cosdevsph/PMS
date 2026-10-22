@@ -587,7 +587,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                         {/* Role badge */}
                         <span className={`
                           text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0
-                          ${user.role === 'ADMIN'
+                          ${user.role === 'OWNER'
                             ? 'bg-rose-100 text-rose-700'
                             : user.role === 'PRACTITIONER'
                             ? 'bg-purple-100 text-purple-700'

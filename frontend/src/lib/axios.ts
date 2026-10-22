@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
+import { normalizeRolesDeep } from '@/lib/roles';
 
 const getApiBaseUrl = (): string => {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
@@ -59,7 +60,11 @@ axiosInstance.interceptors.request.use(
 
 // ─── Response interceptor — token refresh + 401 handling ─────────────────────
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Legacy role codes (ADMIN, ADMIN_ASSISTANT) are shown as Owner / Branch Manager everywhere.
+    response.data = normalizeRolesDeep(response.data);
+    return response;
+  },
   async (error: AxiosError) => {
     const responseData = error.response?.data as { error?: string; message?: string; detail?: string } | undefined;
 

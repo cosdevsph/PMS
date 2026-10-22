@@ -2,7 +2,7 @@
 Signals for the accounts app.
 
 Auto-creates default PermissionGroups when a new main-branch Clinic is created,
-so every clinic always has Owner / Manager / Frontdesk / Practitioner groups ready.
+so every clinic always has Owner / Branch Manager / Frontdesk / Practitioner groups ready.
 """
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -21,7 +21,7 @@ def create_default_permission_groups(sender, instance, created, **kwargs):
 
     TEMPLATE_NAMES = {
         'OWNER':           'Owner',
-        'ADMIN_ASSISTANT': 'Admin Assistant',
+        'BRANCH_MANAGER': 'Branch Manager',
         'FRONTDESK':       'Frontdesk',
         'PRACTITIONER':    'Practitioner',
         'FINANCE':         'Finance',

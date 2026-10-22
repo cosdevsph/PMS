@@ -13,9 +13,9 @@ class CaseDocumentUploadTest(APITestCase):
         self.clinic2 = Clinic.objects.create(name="Clinic 2")
         self.branch1 = Clinic.objects.create(name="Branch 1", parent_clinic=self.clinic1)
         
-        self.owner = User.objects.create_user(email="owner@example.com", password="password", first_name="Owner", last_name="User", clinic=self.clinic1, role="ADMIN")
-        self.admin = User.objects.create_user(email="admin@example.com", password="password", first_name="Admin", last_name="User", clinic=self.clinic1, role="ADMIN")
-        self.manager = User.objects.create_user(email="manager@example.com", password="password", first_name="Manager", last_name="User", clinic=self.clinic1, role="MANAGER")
+        self.owner = User.objects.create_user(email="owner@example.com", password="password", first_name="Owner", last_name="User", clinic=self.clinic1, role="OWNER")
+        self.admin = User.objects.create_user(email="admin@example.com", password="password", first_name="Admin", last_name="User", clinic=self.clinic1, role="OWNER")
+        self.manager = User.objects.create_user(email="manager@example.com", password="password", first_name="Manager", last_name="User", clinic=self.clinic1, role="BRANCH_MANAGER")
         self.staff = User.objects.create_user(email="staff@example.com", password="password", first_name="Staff", last_name="User", clinic=self.clinic1, role="STAFF")
         
         # Practitioner assigned to branch1, but main clinic is clinic1

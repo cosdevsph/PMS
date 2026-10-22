@@ -24,7 +24,7 @@ const Chapter1: React.FC = () => {
         </p>
         <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
           <li><strong>Owner:</strong> Full administrative access, including billing and system settings.</li>
-          <li><strong>Manager:</strong> Operational oversight, managing staff and daily schedules.</li>
+          <li><strong>Branch Manager:</strong> Operational oversight, managing staff and daily schedules.</li>
           <li><strong>Practitioner:</strong> Access to patient clinical records and personal appointment calendar.</li>
           <li><strong>Front Desk:</strong> Manages patient registration and daily bookings.</li>
         </ul>

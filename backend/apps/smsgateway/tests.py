@@ -45,7 +45,7 @@ class AuthenticationTests(APITestCase):
 
 class SendSMSTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(email='testuser@example.com', password='password123', role='ADMIN', roles=['ADMIN'])
+        self.user = User.objects.create_user(email='testuser@example.com', password='password123', role='OWNER', roles=['OWNER'])
         self.url = reverse('messaging:send-sms')
         self.valid_phone = '+639085608811'
         self.client.force_authenticate(user=self.user)
@@ -114,7 +114,7 @@ class SendSMSTests(APITestCase):
 
 class SMSStatusLifecycleTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(email='lifecycle_user@example.com', password='pass123', role='ADMIN', roles=['ADMIN'])
+        self.user = User.objects.create_user(email='lifecycle_user@example.com', password='pass123', role='OWNER', roles=['OWNER'])
         self.url = reverse('messaging:send-sms')
         self.client.force_authenticate(user=self.user)
 
@@ -222,7 +222,7 @@ class SMSStatusLifecycleTests(APITestCase):
 
 class MessageDetailTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(email='testuser2@example.com', password='password123', role='ADMIN', roles=['ADMIN'])
+        self.user = User.objects.create_user(email='testuser2@example.com', password='password123', role='OWNER', roles=['OWNER'])
         self.client.force_authenticate(user=self.user)
         self.message = SMSMessage.objects.create(
             recipient_number='+639085608811',
@@ -252,7 +252,7 @@ class MessageDetailTests(APITestCase):
 
 class SMSTemplateTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(email='testuser3@example.com', password='password123', role='ADMIN', roles=['ADMIN'])
+        self.user = User.objects.create_user(email='testuser3@example.com', password='password123', role='OWNER', roles=['OWNER'])
         self.client.force_authenticate(user=self.user)
         self.template = SMSTemplate.objects.create(
             name="Appointment Reminder",
@@ -301,7 +301,7 @@ class RateLimitingTests(APITestCase):
     def setUp(self):
         from django.core.cache import cache
         cache.clear()
-        self.user = User.objects.create_user(email='testuser4@example.com', password='password123', role='ADMIN', roles=['ADMIN'])
+        self.user = User.objects.create_user(email='testuser4@example.com', password='password123', role='OWNER', roles=['OWNER'])
         self.send_url = reverse('messaging:send-sms')
         self.valid_phone = '+639085608811'
         self.client.force_authenticate(user=self.user)

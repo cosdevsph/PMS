@@ -36,6 +36,7 @@ import type { Practitioner } from '@/features/clinics/clinic.api';
 import { AppointmentEditForm } from './AppointmentEditForm';
 import { AppointmentPrivatePackageCard } from './AppointmentPrivatePackageCard';
 import { CancelAppointmentModal } from './CancelAppointmentModal';
+import { AppointmentReadOnlySummary } from './AppointmentReadOnlySummary';
 import { AddRecurringAppointments } from './AddRecurringAppointments';
 import { SendInvoiceEmailModal } from '@/features/patients/components/SendInvoiceEmailModal';
 import { PrintInvoiceModal } from '@/features/billing/components/PrintInvoiceModal';
@@ -100,6 +101,10 @@ interface AppointmentViewProps {
   onRecurringCreated?: () => void;
   /** Called when the user initiates rebook mode from this appointment's dropdown */
   onRebook?: (appointment: Appointment) => void;
+  /** View-only access to this appointment's branch: show a details-only summary, nothing editable. */
+  readOnly?: boolean;
+  /** The appointment belongs to another branch the user has been granted: hide links into patient records. */
+  hideProfileLinks?: boolean;
 }
 
 interface EditableItem {
@@ -1322,13 +1327,21 @@ const InvoiceTab: React.FC<{ appointment: Appointment, invoiceIdToFetch?: number
 };
 
 // ── Main AppointmentView Component ────────────────────────────────────────────
-export const AppointmentView: React.FC<AppointmentViewProps> = ({
+export const AppointmentView: React.FC<AppointmentViewProps> = ({ readOnly, ...props }) => {
+  if (readOnly) {
+    return <AppointmentReadOnlySummary isOpen={props.isOpen} appointment={props.appointment} onClose={props.onClose} />;
+  }
+  return <AppointmentViewFull {...props} />;
+};
+
+const AppointmentViewFull: React.FC<Omit<AppointmentViewProps, 'readOnly'>> = ({
   isOpen,
   onClose,
   appointment: initialAppointment,
   onUpdated,
   onRecurringCreated,
   onRebook,
+  hideProfileLinks = false,
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('client');
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -1817,7 +1830,7 @@ export const AppointmentView: React.FC<AppointmentViewProps> = ({
                       </div>
                     )}
 
-                    {patient && (
+                    {patient && !hideProfileLinks && (
                       <div className="pt-4 mt-4 border-t border-gray-100">
                         <button
                           onClick={handleViewFullProfile}

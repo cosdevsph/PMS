@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
+import { roleLabel } from '@/lib/roles';
 import { ChatMessage }     from './ChatMessage';
 import { ChatInput }       from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
@@ -73,9 +74,7 @@ export const ChatWindow = ({
             {other?.full_name ?? 'Unknown'}
           </p>
           <p className="text-xs text-gray-400 truncate">
-            {other?.role
-              ? other.role.charAt(0) + other.role.slice(1).toLowerCase()
-              : ''}
+            {roleLabel(other?.role)}
             {(other as any)?.clinic_branch_name
               ? ` · ${(other as any).clinic_branch_name}`
               : ''}

@@ -10,12 +10,26 @@ export interface PlanHighlight {
   emphasis?: boolean;
 }
 
+/** One billing option shown side by side with the others (e.g. monthly and annual). */
+export interface PriceOption {
+  label: string;
+  price: string;
+  period: string;
+  /** Small highlighted tag, e.g. "10% off". */
+  tag?: string;
+  /** Small print under the price, e.g. "Save ₱8,398.80 a year". */
+  note?: string;
+}
+
 export interface PlanCardProps {
   name: string;
   description: string;
-  priceLabel: string;
-  periodLabel: string;
+  /** Single price. Ignored when `priceOptions` is given. */
+  priceLabel?: string;
+  periodLabel?: string;
   savingsLabel?: string;
+  /** Two or more billing options rendered side by side. */
+  priceOptions?: PriceOption[];
   /** Small print under the price (e.g. branch add-on pricing). */
   priceNote?: string;
   badge?: string;
@@ -50,6 +64,9 @@ const TONES = {
       'bg-primary-gradient text-white hover:opacity-95 shadow-lg focus-visible:ring-white focus-visible:ring-offset-trust-harbor',
     ctaNote: 'text-white/60',
     badge: 'bg-healing-mint text-trust-harbor',
+    optionBase: 'bg-white/[0.04] ring-white/10',
+    optionAccent: 'bg-healing-mint/10 ring-healing-mint/40',
+    optionTag: 'bg-healing-mint text-trust-harbor font-bold',
   },
   light: {
     card: 'bg-white ring-1 ring-gray-200 hover:ring-gray-300 shadow-sm',
@@ -70,6 +87,9 @@ const TONES = {
     ctaHighlight: 'bg-primary-gradient text-white hover:opacity-95 shadow-md focus-visible:ring-care-blue',
     ctaNote: 'text-steady-slate',
     badge: 'bg-care-blue text-white',
+    optionBase: 'bg-clinical-cloud ring-gray-200',
+    optionAccent: 'bg-emerald-50 ring-emerald-300',
+    optionTag: 'bg-emerald-600 text-white font-bold',
   },
 } as const;
 
@@ -80,6 +100,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
   priceLabel,
   periodLabel,
   savingsLabel,
+  priceOptions,
   priceNote,
   badge,
   highlight = false,
@@ -112,10 +133,33 @@ export const PlanCard: React.FC<PlanCardProps> = ({
       <p className={`mt-2 text-sm leading-relaxed font-body lg:min-h-[2.75rem] ${t.description}`}>{description}</p>
 
       <div className={`mt-6 pt-6 border-t ${t.divider}`}>
-        <p className="flex items-baseline gap-1.5 flex-wrap">
-          <span className={`text-4xl tracking-tight font-heading font-extrabold tabular-nums ${t.price}`}>{priceLabel}</span>
-          <span className={`text-sm font-body ${t.period}`}>{periodLabel}</span>
-        </p>
+        {priceOptions && priceOptions.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3">
+            {priceOptions.map((option) => (
+              <div
+                key={option.label}
+                className={`rounded-2xl p-3.5 ring-1 ${option.tag ? t.optionAccent : t.optionBase}`}
+              >
+                <p className={`text-[11px] font-bold uppercase tracking-wider font-body flex items-center gap-1.5 flex-wrap min-h-[1.25rem] ${t.period}`}>
+                  {option.label}
+                  {option.tag && (
+                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] normal-case tracking-normal ${t.optionTag}`}>{option.tag}</span>
+                  )}
+                </p>
+                <p className={`mt-1.5 text-2xl tracking-tight font-heading font-extrabold tabular-nums leading-tight ${t.price}`}>
+                  {option.price}
+                </p>
+                <p className={`text-xs font-body ${t.period}`}>{option.period}</p>
+                {option.note && <p className={`mt-1 text-[11px] font-semibold font-body ${t.savings}`}>{option.note}</p>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="flex items-baseline gap-1.5 flex-wrap">
+            <span className={`text-4xl tracking-tight font-heading font-extrabold tabular-nums ${t.price}`}>{priceLabel}</span>
+            <span className={`text-sm font-body ${t.period}`}>{periodLabel}</span>
+          </p>
+        )}
         {savingsLabel && <p className={`mt-1.5 text-xs font-semibold font-body ${t.savings}`}>{savingsLabel}</p>}
         {priceNote && <p className={`mt-1.5 text-xs font-body ${t.note}`}>{priceNote}</p>}
       </div>

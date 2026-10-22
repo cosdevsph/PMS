@@ -43,7 +43,7 @@ export const useAuth = () => {
       
       // Redirect based on highest-priority role
       const userRoles = response.user.roles ?? [response.user.role];
-      if (userRoles.includes('ADMIN')) {
+      if (userRoles.includes('OWNER')) {
         navigate('/dashboard');
       } else if (userRoles.includes('PRACTITIONER')) {
         navigate('/appointments');

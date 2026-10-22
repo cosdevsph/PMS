@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -62,6 +63,51 @@ class SubscriptionPlansView(APIView):
         return Response(get_all_plans_summary())
 
 
+class SubscriptionCancelView(SubscriptionBaseView):
+    """
+    POST /api/subscription/cancel/   {reason}
+    Schedule cancellation for the END of the current 12-month term (never immediately).
+    Only the clinic Owner (OWNER role) may do this.
+    """
+
+    def post(self, request):
+        if not request.user.is_owner:
+            return Response(
+                {'detail': 'Only the clinic owner can request a cancellation.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        sub = self.ensure_subscription(request.user)
+        try:
+            sub.request_cancellation(request.user, request.data.get('reason', ''))
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        logger.info('Subscription %s: cancellation scheduled for %s by %s', sub.pk, sub.cancellation_effective_at, request.user.email)
+        return Response(self._summary(request, sub))
+
+    @staticmethod
+    def _summary(request, sub):
+        from .services import get_subscription_usage_summary
+        clinic = request.user.clinic.main_clinic if request.user.clinic_id else sub.clinic
+        return get_subscription_usage_summary(clinic)
+
+
+class SubscriptionCancelWithdrawView(SubscriptionBaseView):
+    """POST /api/subscription/cancel/withdraw/  Withdraw a scheduled cancellation before it takes effect."""
+
+    def post(self, request):
+        if not request.user.is_owner:
+            return Response(
+                {'detail': 'Only the clinic owner can withdraw a cancellation request.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        sub = self.ensure_subscription(request.user)
+        try:
+            sub.withdraw_cancellation(request.user)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(SubscriptionCancelView._summary(request, sub))
+
+
 class SubscriptionStatusView(SubscriptionBaseView):
     def get(self, request):
         sub = self.ensure_subscription(request.user)
@@ -108,9 +154,9 @@ class CreateCheckoutView(SubscriptionBaseView):
     """
 
     def post(self, request):
-        if not request.user.is_admin:
+        if not request.user.is_owner:
             return Response(
-                {'detail': 'Only clinic administrators can manage subscriptions and billing.'},
+                {'detail': 'Only the clinic Owner can manage subscriptions and billing.'},
                 status=403,
             )
 

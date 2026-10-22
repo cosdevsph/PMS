@@ -10,6 +10,7 @@ import type {
   User,
   AuthTokens,
 } from '@/types/auth';
+import { normalizeUser } from '@/lib/roles';
 
 const getApiBaseUrl = (): string => {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
@@ -34,7 +35,7 @@ const authApi = axios.create({
 
 export const authService = {
   /**
-   * Admin Registration
+   * Owner Registration
    */
   async registerAdmin(data: AdminRegisterData): Promise<AdminRegisterResponse> {
     try {
@@ -129,7 +130,7 @@ export const authService = {
    */
   getCurrentUser() {
     const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    return userStr ? normalizeUser(JSON.parse(userStr)) : null;
   },
 
   /**
@@ -179,7 +180,7 @@ export const authService = {
   },
 
   /**
-   * Admin Registration — Step 1
+   * Owner Registration — Step 1
    * Validates reCAPTCHA and sends a 6-digit OTP to the given email.
    */
   async sendAdminOtp(
@@ -202,7 +203,7 @@ export const authService = {
   },
 
   /**
-   * Admin Registration — Step 2
+   * Owner Registration — Step 2
    * Verifies the 6-digit OTP; returns a short-lived verification token on success.
    */
   async verifyAdminOtp(
@@ -352,7 +353,7 @@ export const authService = {
   },
 
   /**
-   * Admin Onboarding — Step 4
+   * Owner Onboarding — Step 4
    * Exchanges the onboarding_token (issued by register-admin) for a JWT
    * by setting the admin's chosen password.  No prior auth required.
    */

@@ -121,7 +121,7 @@ const Chapter8: React.FC = () => {
             <div className="p-5 rounded-xl border border-sky-200 bg-sky-50/50">
               <h5 className="font-bold text-sky-900 mb-2 border-b border-sky-200 pb-2">2. Professional & Roles</h5>
               <ul className="text-sm space-y-2 text-gray-700 font-body">
-                <li><strong>Clinical Role:</strong> Select one or more roles (Administrator, Manager, Practitioner, Staff / Front Desk, Finance, Read-Only).</li>
+                <li><strong>Clinical Role:</strong> Select one or more roles (Owner, Branch Manager, Practitioner, Staff / Front Desk, Finance, Read-Only).</li>
                 <li><strong>Discipline:</strong> Clinical discipline (e.g., Occupational Therapy, Physical Therapy, Psychology) for practitioners.</li>
                 <li><strong>Practitioner Schedule:</strong> Configure duty days, working shift hours, and lunch breaks per branch.</li>
                 <li><strong>Branch Assignment:</strong> Assign the user to their authorized clinic branch or branches.</li>

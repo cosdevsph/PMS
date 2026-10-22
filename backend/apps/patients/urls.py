@@ -12,6 +12,7 @@ from .views import (
     PublicClientFormView, PublicClientFormVerifyView, PublicClientFormSubmitView,
     PatientCaseViewSet,
     PatientMergePreviewView, PatientMergeExecuteView,
+    BookingPatientLookupView,
 )
 
 router = DefaultRouter()
@@ -25,6 +26,8 @@ router.register(r'patient-cases',      PatientCaseViewSet,       basename='patie
 router.register(r'private-packages',   PrivatePackageSessionViewSet, basename='private-package')
 
 urlpatterns = [
+    # Must come before the router: 'patients/<pk>/' would otherwise swallow it.
+    path('patients/booking-lookup/', BookingPatientLookupView.as_view(), name='patient-booking-lookup'),
     path('', include(router.urls)),
     
     # Patient Merge APIs

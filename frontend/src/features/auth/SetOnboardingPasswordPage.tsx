@@ -1,5 +1,5 @@
 /**
- * SetOnboardingPasswordPage — Admin registration Step 4.
+ * SetOnboardingPasswordPage — Owner registration Step 4.
  *
  * The admin arrives here after their clinic account has been created by
  * register-admin.  They set their own password (no temporary password is
@@ -95,7 +95,7 @@ export const SetOnboardingPasswordPage: React.FC = () => {
 
         toast.success('Password set! Welcome to Malasakit!', { duration: 4000 });
 
-        // Admins always go to clinic setup after onboarding
+        // Owners always go to clinic setup after onboarding
         navigate('/clinic-setup', { replace: true });
       } catch (err: unknown) {
         const detail =

@@ -19,7 +19,7 @@ export interface SidebarItem {
   adminOnly?: boolean;
   /**
    * RBAC feature key — if set, this item is hidden when the user has
-   * 'none' access to the feature.  ADMIN users always see everything.
+   * 'none' access to the feature.  OWNER users always see everything.
    */
   featureKey?: FeatureKey;
 }

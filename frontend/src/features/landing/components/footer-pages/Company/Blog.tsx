@@ -18,7 +18,7 @@ export const Blog: React.FC = () => {
     {
       id: 2,
       title: 'Patient Data Security: What You Need to Know',
-      excerpt: 'A comprehensive guide to HIPAA compliance and protecting sensitive patient information.',
+      excerpt: 'A practical guide to protecting sensitive patient information, from the Philippine Data Privacy Act to HIPAA-aligned practices.',
       author: 'Dr. Michael Chen',
       date: 'April 10, 2026',
       category: 'Security'

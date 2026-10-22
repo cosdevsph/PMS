@@ -36,13 +36,13 @@ export const features: Feature[] = [
   {
     id: 'security',
     icon: Shield,
-    title: 'OWASP Compliant',
-    description: 'Bank-level encryption and compliance with healthcare data protection standards.'
+    title: 'Data Privacy & Security',
+    description: 'Built to support Philippine Data Privacy Act compliance with consent records, role-based access and encrypted clinical notes.'
   },
   {
     id: 'support',
     icon: Clock,
-    title: '24/7 Support',
-    description: 'Round-the-clock technical support and onboarding assistance for your team.'
+    title: 'Guided Onboarding & Support',
+    description: 'A guided setup, video guides and a written manual, plus email and in-app support during business hours.'
   }
 ];

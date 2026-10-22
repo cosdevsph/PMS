@@ -7,7 +7,7 @@
  *
  * Access hierarchy:  edit > view > none
  *
- * ADMIN users implicitly have 'edit' on every feature regardless of their
+ * OWNER users implicitly have 'edit' on every feature regardless of their
  * permission group, matching the backend's `has_feature_permission` logic.
  *
  * Usage:
@@ -24,10 +24,10 @@ import type { FeatureKey, AccessLevel, PermissionsMap, ManagerBranch } from '@/t
 
 const LEVELS: Record<AccessLevel, number> = { none: 0, view: 1, edit: 2 };
 
-// Full 'edit' map for ADMIN users
+// Full 'edit' map for OWNER users
 const ADMIN_MAP: PermissionsMap = {} as PermissionsMap;
 const FEATURE_KEYS: FeatureKey[] = [
-  'dashboard', 'appointments', 'calendar', 'diary', 'clinical_notes',
+  'dashboard', 'appointments', 'calendar', 'diary', 'diary_other_branches', 'clinical_notes',
   'client_cases', 'patients', 'reports', 'inventory', 'invoices', 'billing',
   'subscriptions', 'setup', 'staff_management', 'permissions', 'settings',
   'documents', 'outcome_measures', 'contacts', 'communication',
@@ -40,6 +40,9 @@ const FEATURE_KEYS: FeatureKey[] = [
 ];
 FEATURE_KEYS.forEach((k) => { ADMIN_MAP[k] = 'edit'; });
 
+/** Features a Branch Manager always has Edit on (staff of their own clinics). */
+const BRANCH_MANAGER_ALWAYS_EDIT: FeatureKey[] = ['staff_management', 'setup_users'];
+
 export interface UsePermissionsReturn {
   /** True if the user has at least 'view' access to the feature. */
   canView:    (feature: FeatureKey) => boolean;
@@ -51,13 +54,13 @@ export interface UsePermissionsReturn {
   accessLevel: (feature: FeatureKey) => AccessLevel;
   /** The full permissions map for the current user. */
   permissionsMap: PermissionsMap;
-  /** Whether the user is an Owner (ADMIN role). */
+  /** Whether the user is an Owner (OWNER role). */
   isOwner: boolean;
-  /** Whether the user is a Manager (ADMIN_ASSISTANT role). */
-  isManager: boolean;
+  /** Whether the user is a Branch Manager (BRANCH_MANAGER role). */
+  isBranchManager: boolean;
   /**
    * Branches this user is allowed to assign when creating staff.
-   * Owner: all clinic branches. Manager: only their assigned branches.
+   * Owner: all clinic branches. Branch Manager: only their assigned branches.
    * All other roles: empty array.
    */
   managerBranches: ManagerBranch[];
@@ -68,20 +71,27 @@ export function usePermissions(): UsePermissionsReturn {
 
   const permissionsMap = useMemo<PermissionsMap>(() => {
     if (!user) return {} as PermissionsMap;
-    // Multi-role: check if ADMIN is in the roles array (or fall back to single role field)
+    // Multi-role: check if OWNER is in the roles array (or fall back to single role field)
     const userRoles = (user.roles && user.roles.length > 0) ? user.roles : [user.role];
-    if (userRoles.includes('ADMIN')) return ADMIN_MAP;
-    if (user.permissions_map) return user.permissions_map;
-    // Fallback: empty map (no access)
-    return FEATURE_KEYS.reduce((acc, k) => { acc[k] = 'none'; return acc; }, {} as PermissionsMap);
+    if (userRoles.includes('OWNER')) return ADMIN_MAP;
+    const base: PermissionsMap = user.permissions_map
+      ? { ...user.permissions_map }
+      // Fallback: empty map (no access)
+      : FEATURE_KEYS.reduce((acc, k) => { acc[k] = 'none'; return acc; }, {} as PermissionsMap);
+    // A Branch Manager always manages the staff of their own clinics, whatever their group says
+    // (the backend applies the same rule).
+    if (userRoles.includes('BRANCH_MANAGER')) {
+      for (const key of BRANCH_MANAGER_ALWAYS_EDIT) base[key] = 'edit';
+    }
+    return base;
   }, [user]);
 
   const userRoles = user
     ? ((user.roles && user.roles.length > 0) ? user.roles : [user.role])
     : [];
 
-  const isOwner   = userRoles.includes('ADMIN');
-  const isManager = userRoles.includes('ADMIN_ASSISTANT');
+  const isOwner   = userRoles.includes('OWNER');
+  const isBranchManager = userRoles.includes('BRANCH_MANAGER');
 
   /** Branches this actor may assign.  Derived from `user.manager_branches` populated by the server. */
   const rawBranches = user?.manager_branches ?? [];
@@ -103,5 +113,5 @@ export function usePermissions(): UsePermissionsReturn {
   const canView = (feature: FeatureKey): boolean => hasAccess(feature, 'view');
   const canEdit = (feature: FeatureKey): boolean => hasAccess(feature, 'edit');
 
-  return { canView, canEdit, hasAccess, accessLevel, permissionsMap, isOwner, isManager, managerBranches };
+  return { canView, canEdit, hasAccess, accessLevel, permissionsMap, isOwner, isBranchManager, managerBranches };
 }

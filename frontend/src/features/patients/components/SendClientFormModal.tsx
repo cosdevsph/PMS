@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { roleLabel } from '@/lib/roles';
 import { X, Send, Loader2, CheckCircle, Mail } from 'lucide-react';
 import { sendClientForm } from '../patient.api';
 import { getContacts } from '@/features/contacts/contact.api';
@@ -233,7 +234,7 @@ export const SendClientFormModal: React.FC<SendClientFormModalProps> = ({
                         className="w-full text-left px-3 py-2 hover:bg-indigo-50 transition-colors"
                       >
                         <div className="text-sm font-medium text-gray-800">{s.name}</div>
-                        <div className="text-xs text-gray-500">{s.email} · {s.role}</div>
+                        <div className="text-xs text-gray-500">{s.email} · {roleLabel(s.role)}</div>
                       </button>
                     ))}
                   </div>

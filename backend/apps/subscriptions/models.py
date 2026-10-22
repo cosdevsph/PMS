@@ -1,5 +1,7 @@
 import os
 from datetime import timedelta
+
+from dateutil.relativedelta import relativedelta
 from typing import Any, Dict, Optional
 
 from django.conf import settings
@@ -111,6 +113,26 @@ class Subscription(models.Model):
     current_period_end = models.DateTimeField(default=default_trial_end_date)
     is_trial = models.BooleanField(default=True)
 
+    # ── 12-month minimum term & cancellation ─────────────────────────────────
+    # The term starts at the first paid activation (or at the first payment after the previous
+    # term ended) and lasts `commitment_months`. Paying monthly does not make the subscription
+    # cancellable month to month: a cancellation request always takes effect at `term_end`.
+    term_start = models.DateTimeField(null=True, blank=True, help_text='Start of the current minimum-commitment term.')
+    term_end = models.DateTimeField(null=True, blank=True, help_text='End of the current minimum-commitment term.')
+    cancellation_requested_at = models.DateTimeField(null=True, blank=True)
+    cancellation_requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='requested_subscription_cancellations',
+    )
+    cancellation_reason = models.TextField(blank=True, default='')
+    cancellation_effective_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='When the requested cancellation takes effect (always the end of the current term).',
+    )
+
     # PayMongo checkout session ID — tracks in-flight or completed checkout
     paymongo_checkout_id = models.CharField(max_length=100, blank=True, default='')
 
@@ -160,7 +182,98 @@ class Subscription(models.Model):
         return base + (self.additional_branches or 0)
 
     def is_active(self):
+        self.apply_scheduled_cancellation()
         return self.status == self.STATUS_ACTIVE and self.end_date >= timezone.now()
+
+    # ── Term & cancellation ──────────────────────────────────────────────────
+    @property
+    def cancellation_pending(self) -> bool:
+        return bool(self.cancellation_effective_at) and self.status == self.STATUS_ACTIVE
+
+    def _start_new_term(self, now):
+        self.term_start = now
+        self.term_end = now + relativedelta(months=self.commitment_months or MINIMUM_COMMITMENT_MONTHS)
+        # A new term means any earlier cancellation request no longer applies.
+        self.cancellation_requested_at = None
+        self.cancellation_requested_by = None
+        self.cancellation_reason = ''
+        self.cancellation_effective_at = None
+
+    def can_request_cancellation(self) -> bool:
+        return (
+            self.status == self.STATUS_ACTIVE
+            and not self.is_trial
+            and self.term_end is not None
+            and self.term_end > timezone.now()
+            and not self.cancellation_effective_at
+        )
+
+    def request_cancellation(self, user, reason: str):
+        """
+        Schedule cancellation for the END of the current minimum term (never immediately).
+        Raises ValueError when a request is not possible.
+        """
+        reason = (reason or '').strip()
+        if not reason:
+            raise ValueError('Please tell us why you are cancelling.')
+        if self.is_trial:
+            raise ValueError('A free trial does not need to be cancelled; it simply ends.')
+        if self.status != self.STATUS_ACTIVE:
+            raise ValueError('This subscription is not active.')
+        if self.cancellation_effective_at:
+            raise ValueError('A cancellation is already scheduled.')
+        if not self.term_end or self.term_end <= timezone.now():
+            raise ValueError('There is no running subscription term to cancel.')
+
+        now = timezone.now()
+        self.cancellation_requested_at = now
+        self.cancellation_requested_by = user
+        self.cancellation_reason = reason
+        self.cancellation_effective_at = self.term_end
+        self.save(update_fields=[
+            'cancellation_requested_at', 'cancellation_requested_by', 'cancellation_reason',
+            'cancellation_effective_at', 'updated_at',
+        ])
+        SubscriptionEvent.objects.create(
+            subscription=self, event_type=SubscriptionEvent.CANCELLATION_REQUESTED,
+            user=user, reason=reason, effective_at=self.cancellation_effective_at,
+        )
+        self._invalidate_cache()
+
+    def withdraw_cancellation(self, user):
+        if not self.cancellation_effective_at or self.status != self.STATUS_ACTIVE:
+            raise ValueError('There is no scheduled cancellation to withdraw.')
+        effective = self.cancellation_effective_at
+        self.cancellation_requested_at = None
+        self.cancellation_requested_by = None
+        self.cancellation_reason = ''
+        self.cancellation_effective_at = None
+        self.save(update_fields=[
+            'cancellation_requested_at', 'cancellation_requested_by', 'cancellation_reason',
+            'cancellation_effective_at', 'updated_at',
+        ])
+        SubscriptionEvent.objects.create(
+            subscription=self, event_type=SubscriptionEvent.CANCELLATION_WITHDRAWN,
+            user=user, effective_at=effective,
+        )
+        self._invalidate_cache()
+
+    def apply_scheduled_cancellation(self) -> bool:
+        """Move to CANCELLED once the scheduled effective date has passed. Idempotent."""
+        if (
+            self.cancellation_effective_at
+            and self.status == self.STATUS_ACTIVE
+            and self.cancellation_effective_at <= timezone.now()
+        ):
+            self.status = self.STATUS_CANCELLED
+            self.save(update_fields=['status', 'updated_at'])
+            SubscriptionEvent.objects.create(
+                subscription=self, event_type=SubscriptionEvent.CANCELLATION_EFFECTIVE,
+                reason=self.cancellation_reason, effective_at=self.cancellation_effective_at,
+            )
+            self._invalidate_cache()
+            return True
+        return False
 
     def start_trial(self):
         now = timezone.now()
@@ -171,6 +284,12 @@ class Subscription(models.Model):
         self.clinician_limit = 4
         self.branch_limit = 1
         self.additional_branches = 0
+        self.term_start = None
+        self.term_end = None
+        self.cancellation_requested_at = None
+        self.cancellation_requested_by = None
+        self.cancellation_reason = ''
+        self.cancellation_effective_at = None
         self.start_date = now
         self.end_date = now + timedelta(days=_trial_days())
         self.current_period_start = now
@@ -218,6 +337,11 @@ class Subscription(models.Model):
 
         # Determine duration: 365 days for annual, 30 days for monthly
         duration_days = 365 if self.billing_cycle == CYCLE_ANNUAL else _subscription_days()
+        # Minimum term: starts at the first paid activation, or at the first payment after the
+        # previous term ended. Paying within a running term (monthly renewals, plan changes)
+        # never moves it.
+        if not self.term_end or self.term_end <= now:
+            self._start_new_term(now)
         self.start_date = now
         self.current_period_start = now
         # Honour partial remaining time on renewal
@@ -297,3 +421,32 @@ class PayMongoPaymentLog(models.Model):
 
     def __str__(self):
         return f"{self.event_type} — {self.checkout_id} ({self.processed_at:%Y-%m-%d %H:%M})"
+
+
+class SubscriptionEvent(models.Model):
+    """Audit trail for subscription cancellation requests (who asked, when, why, effective when)."""
+
+    CANCELLATION_REQUESTED = 'CANCELLATION_REQUESTED'
+    CANCELLATION_WITHDRAWN = 'CANCELLATION_WITHDRAWN'
+    CANCELLATION_EFFECTIVE = 'CANCELLATION_EFFECTIVE'
+    EVENT_CHOICES = (
+        (CANCELLATION_REQUESTED, 'Cancellation requested'),
+        (CANCELLATION_WITHDRAWN, 'Cancellation withdrawn'),
+        (CANCELLATION_EFFECTIVE, 'Cancellation took effect'),
+    )
+
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='events')
+    event_type = models.CharField(max_length=30, choices=EVENT_CHOICES)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='subscription_events',
+    )
+    reason = models.TextField(blank=True, default='')
+    effective_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.event_type} — subscription {self.subscription_id} ({self.created_at:%Y-%m-%d %H:%M})"

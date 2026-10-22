@@ -20,7 +20,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
             return True
         
         # Only admins can delete
-        return request.user.is_admin
+        return request.user.is_owner
 
 
 class IsSameClinic(permissions.BasePermission):
@@ -42,7 +42,7 @@ class IsPractitionerOrAdmin(permissions.BasePermission):
     
     def has_permission(self, request, view):
         return (request.user and 
-                (request.user.is_practitioner or request.user.is_admin or request.user.role == 'STAFF'))
+                (request.user.is_practitioner or request.user.is_owner or request.user.role == 'STAFF'))
 
 
 class CanEditClinicalNote(permissions.BasePermission):
@@ -69,7 +69,7 @@ class CanEditClinicalNote(permissions.BasePermission):
             return False
             
         # Admin can edit any note
-        if user.is_admin:
+        if user.is_owner:
             return True
             
         # Staff can edit any note

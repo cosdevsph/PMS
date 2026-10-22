@@ -1,4 +1,5 @@
 import React from 'react';
+import { roleLabel } from '@/lib/roles';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,15 +22,7 @@ export const TopNavigation: React.FC = () => {
     return true;
   });
 
-  const ROLE_LABELS: Record<string, string> = {
-    ADMIN: 'Administrator',
-    ADMIN_ASSISTANT: 'Admin Assistant',
-    PRACTITIONER: 'Practitioner',
-    STAFF: 'Staff',
-    FINANCE: 'Finance',
-    READ_ONLY: 'Read-Only',
-  };
-  const roleLabel = user?.role ? ROLE_LABELS[user.role] ?? user.role : '';
+  const roleText = roleLabel(user?.role);
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -100,7 +93,7 @@ export const TopNavigation: React.FC = () => {
                 <p className="text-sm font-medium text-white truncate max-w-[120px]">
                   {user?.first_name} {user?.last_name}
                 </p>
-                <p className="text-xs text-white/80">{roleLabel}</p>
+                <p className="text-xs text-white/80">{roleText}</p>
               </div>
               <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center overflow-hidden flex-shrink-0">
                 <UserAvatar

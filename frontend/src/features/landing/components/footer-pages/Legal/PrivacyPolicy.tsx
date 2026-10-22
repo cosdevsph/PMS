@@ -71,11 +71,10 @@ export const PrivacyPolicy: React.FC = () => {
             We implement comprehensive security measures to protect your information, including:
           </p>
           <ul>
-            <li>End-to-end encryption for data in transit and at rest</li>
-            <li>Regular security audits and penetration testing</li>
-            <li>Secure access controls and authentication</li>
-            <li>Automatic daily backups and disaster recovery</li>
-            <li>Compliance with HIPAA, GDPR, and industry standards</li>
+            <li>Encryption of clinical note content before it is stored</li>
+            <li>Role-based access controls and authentication</li>
+            <li>Audit and version history on key records</li>
+            <li>Practices aligned with the Philippine Data Privacy Act and HIPAA-aligned security practices</li>
           </ul>
         </>
       ),
@@ -139,7 +138,6 @@ export const PrivacyPolicy: React.FC = () => {
           <LegalContactCard>
             <p className="font-semibold text-gray-900">{SystemBranding.companyName}</p>
             <p>Email: privacy@malasakit.com</p>
-            <p>Phone: +63 9457 123 456</p>
             <p>Address: Bacolod City, Negros Occidental, Philippines</p>
           </LegalContactCard>
         </>

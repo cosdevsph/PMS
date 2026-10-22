@@ -297,8 +297,8 @@ class DevicePairingTests(APITestCase):
             first_name="Admin",
             last_name="Alpha",
             clinic=self.clinic1,
-            role="ADMIN",
-            roles=["ADMIN"]
+            role="OWNER",
+            roles=["OWNER"]
         )
         self.user2 = User.objects.create_user(
             email="admin@beta.com",
@@ -306,8 +306,8 @@ class DevicePairingTests(APITestCase):
             first_name="Admin",
             last_name="Beta",
             clinic=self.clinic2,
-            role="ADMIN",
-            roles=["ADMIN"]
+            role="OWNER",
+            roles=["OWNER"]
         )
 
         self.session_create_url = reverse('gateway:pairing-session-create')
@@ -1192,8 +1192,8 @@ class EndToEndGatewaySystemTests(APITestCase):
             first_name='Admin',
             last_name='San Pedro',
             clinic=self.clinic,
-            role='ADMIN',
-            roles=['ADMIN']
+            role='OWNER',
+            roles=['OWNER']
         )
         self.practitioner_user = User.objects.create_user(
             email='dr.reyes@sanpedro.com',

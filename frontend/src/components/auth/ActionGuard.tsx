@@ -13,7 +13,7 @@
  *   • none           → children rendered with opacity-40 + blur + pointer-events-none
  *
  * Notes:
- *   • ADMIN (isOwner) bypasses all checks — always full access.
+ *   • OWNER (isOwner) bypasses all checks — always full access.
  *   • READ_ONLY role is always blocked for mutations.
  *   • A floating toast notification appears on interaction explaining the restriction.
  */
@@ -94,7 +94,7 @@ export const ActionGuard: React.FC<ActionGuardProps> = ({
 }) => {
   const { accessLevel, isOwner } = usePermissions();
 
-  // ADMIN — fully transparent passthrough
+  // OWNER — fully transparent passthrough
   if (isOwner) return <>{children}</>;
 
   const level    = accessLevel(feature);

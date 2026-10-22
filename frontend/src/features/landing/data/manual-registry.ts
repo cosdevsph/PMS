@@ -64,7 +64,7 @@ export const manualRegistry: ManualChapterConfig[] = [
     chapterNumber: 7,
     title: "User Roles",
     component: lazy(() => import('../components/user-manual/chapters/Chapter7')),
-    searchIndex: "User Roles Owner Manager Practitioner Front Desk Finance Branch Scope",
+    searchIndex: "User Roles Owner Branch Manager Practitioner Front Desk Finance Branch Scope",
   },
   {
     id: "chapter-8",
@@ -72,7 +72,7 @@ export const manualRegistry: ManualChapterConfig[] = [
     chapterNumber: 8,
     title: "Creating Staff Accounts",
     component: lazy(() => import('../components/user-manual/chapters/Chapter8')),
-    searchIndex: "Creating Staff Accounts Managers Practitioners Front Desk Finance Branch Assignment",
+    searchIndex: "Creating Staff Accounts Branch Managers Practitioners Front Desk Finance Branch Assignment",
   },
   {
     id: "chapter-9",

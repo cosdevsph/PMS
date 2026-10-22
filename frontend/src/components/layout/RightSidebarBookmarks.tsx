@@ -9,7 +9,7 @@ import { pushToast } from '@/features/notifications/store/toastStore';
 import { getCategory } from '@/features/notifications/types/notifications.types';
 import type { Notification } from '@/features/notifications/types/notifications.types';
 
-const ALLOWED_ROLES = ['ADMIN', 'STAFF', 'PRACTITIONER', 'ADMIN_ASSISTANT'] as const;
+const ALLOWED_ROLES = ['OWNER', 'STAFF', 'PRACTITIONER', 'BRANCH_MANAGER'] as const;
 
 export const RightSidebarBookmarks: React.FC = () => {
   const [activePanel, setActivePanel] = useState<'NONE' | 'MESSAGES' | 'NOTIFICATIONS'>('NONE');

@@ -4,7 +4,7 @@ import { MessagePanel }  from './components/MessagePanel';
 import { useUnreadCount } from './hooks/useUnreadCount';
 import { useAuthStore }  from '@/store/auth.store';
 
-const ALLOWED_ROLES = ['ADMIN', 'STAFF', 'PRACTITIONER', 'ADMIN_ASSISTANT'] as const;
+const ALLOWED_ROLES = ['OWNER', 'STAFF', 'PRACTITIONER', 'BRANCH_MANAGER'] as const;
 
 export const ClinicMessages = () => {
   const [isOpen,        setIsOpen]        = useState(false);

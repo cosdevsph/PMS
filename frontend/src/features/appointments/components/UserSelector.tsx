@@ -142,7 +142,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                   </div>
                   <p className="text-sm font-medium text-gray-700">No users found</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Try searching by name or role (Admin, Practitioner, Staff)
+                    Try searching by name or role (Owner, Branch Manager, Practitioner, Staff)
                   </p>
                 </div>
               ) : (
@@ -175,7 +175,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                           <span className="text-xs text-gray-500 truncate">{user.email}</span>
                           <span className={`
                             text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0
-                            ${user.role === 'ADMIN'
+                            ${user.role === 'OWNER'
                               ? 'bg-rose-100 text-rose-700'
                               : user.role === 'PRACTITIONER'
                               ? 'bg-purple-100 text-purple-700'

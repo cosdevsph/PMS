@@ -43,11 +43,11 @@ const STATUS_CFG: Record<CommStatus, { label: string; className: string }> = {
 
 export const Records: React.FC = () => {
   const { branches, loading: branchesLoading, error: branchesError, refetch: refetchBranches } = useClinicBranches();
-  const { isOwner, isManager, canEdit } = usePermissions();
+  const { isOwner, isBranchManager, canEdit } = usePermissions();
 
   const hasEditPermission =
     isOwner ||
-    isManager ||
+    isBranchManager ||
     canEdit('manage_communications') ||
     canEdit('setup_communication') ||
     canEdit('communication');

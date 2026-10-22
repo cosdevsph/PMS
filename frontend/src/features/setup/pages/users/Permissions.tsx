@@ -1,7 +1,7 @@
 /**
  * Permissions.tsx — Enterprise RBAC Permission Group Builder
  *
- * Allows Owners (ADMIN) to:
+ * Allows Owners (OWNER) to:
  *   - View all permission groups for the clinic
  *   - Create / edit / duplicate / delete groups
  *   - Set feature-level access (none / view / edit) per group
@@ -32,7 +32,7 @@ import {
 
 // ─── Feature key metadata ─────────────────────────────────────────────────────
 
-const FEATURE_GROUPS: { label: string; keys: { key: string; label: string }[] }[] = [
+const FEATURE_GROUPS: { label: string; keys: { key: string; label: string; hint?: string }[] }[] = [
   {
     label: 'Dashboard',
     keys: [{ key: 'dashboard', label: 'Dashboard' }],
@@ -41,6 +41,10 @@ const FEATURE_GROUPS: { label: string; keys: { key: string; label: string }[] }[
     label: 'Diary & Calendar',
     keys: [
       { key: 'diary',         label: 'Diary' },
+      {
+        key: 'diary_other_branches', label: "Other Branches' Diary",
+        hint: 'View: can open the Diary of the extra branches you pick for a Branch Manager in Staff Management (read only). Edit: can also book, move and cancel there. No Access: own branches only.',
+      },
       { key: 'calendar',      label: 'Calendar' },
       { key: 'appointments',  label: 'Appointments' },
     ],
@@ -81,7 +85,7 @@ const FEATURE_GROUPS: { label: string; keys: { key: string; label: string }[] }[
     keys: [
       // 'setup' key intentionally excluded here — it controls the sidebar lock
       // icon only.  Card-level access is configured via Setup Sections below.
-      { key: 'staff_management', label: 'Staff Management' },
+      { key: 'staff_management', label: 'Staff Management', hint: 'Branch Managers always have Edit here (they manage the staff of their own clinics).' },
       { key: 'permissions',      label: 'Permissions' },
       { key: 'settings',         label: 'Settings' },
       { key: 'subscriptions',    label: 'Subscriptions' },
@@ -92,7 +96,7 @@ const FEATURE_GROUPS: { label: string; keys: { key: string; label: string }[] }[
     keys: [
       { key: 'setup_practice',      label: 'Setup – Practice' },
       { key: 'setup_items',         label: 'Setup – Items' },
-      { key: 'setup_users',         label: 'Setup – Users' },
+      { key: 'setup_users',         label: 'Setup – Users', hint: 'Branch Managers always have Edit here.' },
       { key: 'setup_account',       label: 'Setup – Account' },
       { key: 'setup_communication', label: 'Setup – Communication' },
     ],
@@ -119,18 +123,17 @@ const FEATURE_GROUPS: { label: string; keys: { key: string; label: string }[] }[
 const ALL_FEATURE_KEYS = FEATURE_GROUPS.flatMap((g) => g.keys.map((k) => k.key));
 
 // ─── Role display order ──────────────────────────────────────────────────────
-// Controls the fixed visual hierarchy: Owner → Manager → Front Desk → Practitioner → Custom
+// Controls the fixed visual hierarchy: Owner → Branch Manager → Front Desk → Practitioner → Custom
 // DISPLAY ONLY — does not affect RBAC logic or database records.
 
 const ROLE_ORDER: Record<string, number> = {
   OWNER:           1,
-  MANAGER:         2,
-  ADMIN_ASSISTANT: 3,
-  FRONTDESK:       4,
-  PRACTITIONER:    5,
-  FINANCE:         6,
-  READ_ONLY:       7,
-  CUSTOM:          8,
+  BRANCH_MANAGER:  2,
+  FRONTDESK:       3,
+  PRACTITIONER:    4,
+  FINANCE:         5,
+  READ_ONLY:       6,
+  CUSTOM:          7,
 };
 
 // ─── Role template styles ─────────────────────────────────────────────────────
@@ -140,8 +143,7 @@ const TEMPLATE_STYLES: Record<
   { iconBg: string; icon: React.ElementType; iconColor: string; badge: string }
 > = {
   OWNER:           { iconBg: 'bg-amber-100',   icon: Crown,       iconColor: 'text-amber-600',   badge: 'bg-amber-100  text-amber-800  border-amber-200'  },
-  MANAGER:         { iconBg: 'bg-sky-100',     icon: UserCog,     iconColor: 'text-sky-600',     badge: 'bg-sky-100    text-sky-800    border-sky-200'    },
-  ADMIN_ASSISTANT: { iconBg: 'bg-violet-100',  icon: UserCog,     iconColor: 'text-violet-600',  badge: 'bg-violet-100 text-violet-800 border-violet-200' },
+  BRANCH_MANAGER: { iconBg: 'bg-violet-100',  icon: UserCog,     iconColor: 'text-violet-600',  badge: 'bg-violet-100 text-violet-800 border-violet-200' },
   FRONTDESK:       { iconBg: 'bg-teal-100',    icon: Users,       iconColor: 'text-teal-600',    badge: 'bg-teal-100   text-teal-800   border-teal-200'   },
   PRACTITIONER:    { iconBg: 'bg-purple-100',  icon: Stethoscope, iconColor: 'text-purple-600',  badge: 'bg-purple-100 text-purple-800 border-purple-200' },
   FINANCE:         { iconBg: 'bg-green-100',   icon: Users,       iconColor: 'text-green-600',   badge: 'bg-green-100  text-green-800  border-green-200'  },
@@ -289,9 +291,12 @@ const GroupCard: React.FC<GroupCardProps> = ({
           <div key={fg.label} className="px-5 py-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">{fg.label}</p>
             <div className="space-y-2">
-              {fg.keys.map(({ key, label }) => (
+              {fg.keys.map(({ key, label, hint }) => (
                 <div key={key} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-gray-700 truncate">{label}</span>
+                  <span className="min-w-0">
+                    <span className="block text-sm text-gray-700 truncate">{label}</span>
+                    {hint && <span className="block text-[11px] text-gray-400 leading-snug">{hint}</span>}
+                  </span>
                   <AccessSelector
                     value={((activeMap[key] as AccessLevel) ?? 'none')}
                     onChange={(v) => onPermChange(key, v)}
@@ -311,20 +316,8 @@ const GroupCard: React.FC<GroupCardProps> = ({
 
 const TEMPLATE_DEFAULT_PERMS: Record<RoleTemplate, Record<string, AccessLevel>> = {
   OWNER:    Object.fromEntries(ALL_FEATURE_KEYS.map((k) => [k, 'edit'])) as Record<string, AccessLevel>,
-  MANAGER: {
-    dashboard: 'edit', appointments: 'edit', calendar: 'edit', diary: 'edit',
-    clinical_notes: 'edit', client_cases: 'edit', patients: 'edit', reports: 'edit',
-    inventory: 'edit', invoices: 'edit', billing: 'edit', subscriptions: 'view',
-    setup: 'view', staff_management: 'edit', permissions: 'view', settings: 'view',
-    documents: 'edit', outcome_measures: 'edit', contacts: 'edit', communication: 'edit',
-    setup_practice: 'edit', setup_items: 'edit', setup_users: 'edit',
-    setup_account: 'view', setup_communication: 'edit',
-    manage_administration: 'edit', manage_clinical: 'edit', manage_communications: 'edit',
-    reports_administration: 'edit', reports_clinic: 'edit',
-    reports_financial: 'edit', reports_performance: 'edit',
-  },
-  ADMIN_ASSISTANT: {
-    dashboard: 'edit', appointments: 'edit', calendar: 'edit', diary: 'edit',
+  BRANCH_MANAGER: {
+    dashboard: 'edit', appointments: 'edit', calendar: 'edit', diary: 'edit', diary_other_branches: 'none',
     clinical_notes: 'edit', client_cases: 'edit', patients: 'edit', reports: 'edit',
     inventory: 'edit', invoices: 'edit', billing: 'edit', subscriptions: 'view',
     setup: 'view', staff_management: 'edit', permissions: 'view', settings: 'view',
@@ -336,7 +329,7 @@ const TEMPLATE_DEFAULT_PERMS: Record<RoleTemplate, Record<string, AccessLevel>> 
     reports_financial: 'edit', reports_performance: 'edit',
   },
   FRONTDESK: {
-    dashboard: 'view', appointments: 'edit', calendar: 'edit', diary: 'edit',
+    dashboard: 'view', appointments: 'edit', calendar: 'edit', diary: 'edit', diary_other_branches: 'none',
     clinical_notes: 'view', client_cases: 'view', patients: 'edit', reports: 'view',
     inventory: 'view', invoices: 'edit', billing: 'view', subscriptions: 'none',
     setup: 'none', staff_management: 'none', permissions: 'none', settings: 'none',
@@ -348,7 +341,7 @@ const TEMPLATE_DEFAULT_PERMS: Record<RoleTemplate, Record<string, AccessLevel>> 
     reports_financial: 'edit', reports_performance: 'view',
   },
   PRACTITIONER: {
-    dashboard: 'view', appointments: 'edit', calendar: 'edit', diary: 'edit',
+    dashboard: 'view', appointments: 'edit', calendar: 'edit', diary: 'edit', diary_other_branches: 'none',
     clinical_notes: 'edit', client_cases: 'edit', patients: 'edit', reports: 'view',
     inventory: 'view', invoices: 'view', billing: 'none', subscriptions: 'none',
     setup: 'none', staff_management: 'none', permissions: 'none', settings: 'none',
@@ -360,7 +353,7 @@ const TEMPLATE_DEFAULT_PERMS: Record<RoleTemplate, Record<string, AccessLevel>> 
     reports_financial: 'none', reports_performance: 'view',
   },
   FINANCE: {
-    dashboard: 'view', appointments: 'view', calendar: 'view', diary: 'none',
+    dashboard: 'view', appointments: 'view', calendar: 'view', diary: 'none', diary_other_branches: 'none',
     clinical_notes: 'none', client_cases: 'none', patients: 'view', reports: 'view',
     inventory: 'view', invoices: 'edit', billing: 'edit', subscriptions: 'none',
     setup: 'none', staff_management: 'none', permissions: 'none', settings: 'none',
@@ -373,7 +366,7 @@ const TEMPLATE_DEFAULT_PERMS: Record<RoleTemplate, Record<string, AccessLevel>> 
   },
   READ_ONLY: {
     // View access to all non-admin features; admin-only sections set to 'none'.
-    dashboard: 'view', appointments: 'view', calendar: 'view', diary: 'view',
+    dashboard: 'view', appointments: 'view', calendar: 'view', diary: 'view', diary_other_branches: 'none',
     clinical_notes: 'view', client_cases: 'view', patients: 'view', reports: 'view',
     inventory: 'view', invoices: 'view', billing: 'view', subscriptions: 'none',
     setup: 'none', staff_management: 'none', permissions: 'none', settings: 'none',
@@ -388,9 +381,7 @@ const TEMPLATE_DEFAULT_PERMS: Record<RoleTemplate, Record<string, AccessLevel>> 
 };
 
 const TEMPLATE_OPTIONS: { value: RoleTemplate; label: string }[] = [
-  { value: 'OWNER',           label: 'Owner (Full Access)' },
-  { value: 'MANAGER',         label: 'Manager' },
-  { value: 'ADMIN_ASSISTANT', label: 'Admin Assistant' },
+  { value: 'BRANCH_MANAGER', label: 'Branch Manager' },
   { value: 'FRONTDESK',       label: 'Frontdesk' },
   { value: 'PRACTITIONER',    label: 'Practitioner' },
   { value: 'FINANCE',         label: 'Finance' },
@@ -512,11 +503,12 @@ const DeleteConfirmModal: React.FC<{
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export const Permissions: React.FC = () => {
-  const { isOwner, isManager, canEdit } = usePermissions();
+  const { isOwner, isBranchManager, canEdit } = usePermissions();
   // Subscribe to external permission refreshes (e.g. WS-driven updates from
   // another browser session).  permissionsVersion increments each time the
   // auth store's refreshPermissions() completes successfully.
   const permissionsVersion = useAuthStore((s) => s.permissionsVersion);
+  const ownGroupId = useAuthStore((s) => s.user?.permission_group ?? null);
 
   const [groups,       setGroups]       = useState<PermissionGroup[]>([]);
   const [loading,      setLoading]      = useState(true);
@@ -527,14 +519,16 @@ export const Permissions: React.FC = () => {
   const [editMap,      setEditMap]      = useState<Record<string, AccessLevel>>({});
   const [isSaving,     setIsSaving]     = useState(false);
 
-  const canManage = isOwner || isManager || canEdit('permissions');
+  // Same rule as the backend: the Owner, or a Branch Manager whose group grants Permissions: Edit.
+  const canManage = isOwner || (isBranchManager && canEdit('permissions'));
 
   // Sort groups by fixed role hierarchy for consistent display order.
-  // OWNER → MANAGER → FRONTDESK → PRACTITIONER → CUSTOM
+  // BRANCH_MANAGER → FRONTDESK → PRACTITIONER → CUSTOM
   // Groups with the same template are sub-sorted by name for determinism.
+  // The Owner group is never shown: the Owner always has full access and has no permission settings.
   const sortedGroups = useMemo(
     () =>
-      [...groups].sort((a, b) => {
+      groups.filter((g) => g.role_template !== 'OWNER').sort((a, b) => {
         const orderA = ROLE_ORDER[a.role_template] ?? 99;
         const orderB = ROLE_ORDER[b.role_template] ?? 99;
         if (orderA !== orderB) return orderA - orderB;
@@ -642,7 +636,7 @@ export const Permissions: React.FC = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Permission Groups</h1>
-            <p className="text-xs text-gray-400">Configure feature-level access. Assign staff via Staff Management.</p>
+            <p className="text-xs text-gray-400">Configure feature-level access. Assign staff via Staff Management. The Owner always has full access and is not configured here.</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -707,7 +701,8 @@ export const Permissions: React.FC = () => {
               group={g}
               isEditing={editingId === g.id}
               editMap={editMap}
-              canManage={canManage}
+              // Branch Managers cannot change their own group or an Owner group (backend enforces the same).
+              canManage={canManage && (isOwner || (g.role_template !== 'OWNER' && g.id !== ownGroupId))}
               onEdit={() => startEdit(g)}
               onSave={() => saveEdit(g)}
               onCancel={cancelEdit}

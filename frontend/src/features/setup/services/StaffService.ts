@@ -88,8 +88,8 @@ export const getPractitionerRoleImpact = async (
 };
 
 /**
- * Get the list of branches the currently authenticated Manager is allowed to assign.
- * Owners (ADMIN) receive the full branch list; Managers receive only their branches.
+ * Get the list of branches the currently authenticated Branch Manager is allowed to assign.
+ * Owners (OWNER) receive the full branch list; Branch Managers receive only their branches.
  * Phase 9: This is the authoritative source — do NOT rely solely on client-side filtering.
  */
 export const getManagerBranches = async (): Promise<{
