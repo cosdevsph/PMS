@@ -45,6 +45,140 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-10-23 — Follow-up: a Branch Manager no longer sees the Branch Manager (or other Owner-only) permission groups
+
+**Status:** Implemented and tested. No migration. Nothing committed.
+**Module / feature:** Setup → Users → Permissions; `PermissionGroupViewSet` list/retrieve.
+
+**Original behavior:** After "Branch Managers can manage only the Frontdesk, Practitioner and Finance groups", a Branch Manager could still see the Branch Manager group (read-only, with a lock) and the other Owner-only groups.
+**Problem / requirement:** Owner report with screenshot (2026-10-23): a Branch Manager should only have the Frontdesk, Practitioner and Finance groups, and should not have the Branch Manager permission group at all.
+**Reason for the change:** Hiding is cleaner than showing a locked card, and keeps Branch Manager permissions out of a Branch Manager's view.
+
+**Files modified:** `accounts/views.py` (`get_queryset`: for list and retrieve, a Branch Manager gets only the Frontdesk, Practitioner and Finance groups; the Owner group stays hidden from everyone), `accounts/test_permission_group_rbac.py` (2 new tests), `frontend/.../users/Permissions.tsx` (list filter mirrors the backend; the Owner-only lock note and the Owner-only lock icons were removed since those groups no longer appear; the lock on a Branch Manager's own group remains when it is one of the three).
+**Database / migrations:** None. **API / data contract:** `GET /api/permission-groups/` for a Branch Manager returns only those three templates; `GET /api/permission-groups/{id}/` for any other group returns 404. Writes to those groups still return 403 with the "Only the Owner…" message (unchanged).
+
+**Business rules & decisions:** Supersedes the limitation noted in "Branch Managers can manage only the Frontdesk, Practitioner and Finance permission groups" ("A Branch Manager can still see (read-only) the Owner-only groups' levels"). Read-Only and Custom groups are also hidden from a Branch Manager.
+
+**Tests executed:** `manage.py test apps.accounts` → 95 OK (93 + 2 new); `npx tsc -b --force` → clean; `npx eslint` on the screen and folder → 0 findings. Manual (isolated stack on a copy of the dev database): the API returns Finance, Frontdesk, Practitioner to both a Branch Manager with Permissions: Edit and one in the default Branch Manager group, and the Owner still gets the Branch Manager, Custom and the three other groups; the screen lists exactly Frontdesk, Practitioner and Finance ("GROUPS (3)") for both Branch Managers; no console errors. The scratch stack and database were removed.
+
+**Known limitations / unresolved issues:** None known. A Branch Manager whose own group is not one of the three (the usual case) cannot see their own group's levels on this screen.
+**Regression risks:** none outside this screen.
+
+---
+
+## 2026-10-23 — Branch Managers can manage only the Frontdesk, Practitioner and Finance permission groups
+
+**Status:** Implemented and tested. No migration. Nothing committed.
+**Module / feature:** Roles and permissions; Setup → Users → Permissions. See FEATURES "Roles & permissions".
+
+**Original behavior:** A Branch Manager whose group granted Permissions: Edit could change, create, duplicate, delete and assign any group except the Owner's and their own, including the Branch Manager group, so they could widen the permissions of Branch Managers (including other managers).
+**Problem / requirement:** Owner decision (2026-10-23, marked important): Branch Managers must not edit Branch Manager permissions; they should manage only the Frontdesk, Practitioner and Finance groups; the Owner and Branch Manager groups can be managed only by the Owner.
+**Reason for the change:** Closes the way a Branch Manager could raise their own or another manager's access, and matches the chain of authority (the Owner decides what Branch Managers can do).
+
+**Files modified (backend):** `accounts/models.py` (`BRANCH_MANAGER_MANAGEABLE_TEMPLATES`), `accounts/views.py` (`_assert_can_manage` refuses any other template for a non-Owner; create accepts only the three templates for a Branch Manager; duplicate checks the source and a Branch Manager's copy keeps its template, the Owner's copy stays Custom; `assign_user` hands out only the three groups), `accounts/serializers.py` (`validate_permission_group`: a non-Owner can give staff only those three groups; re-sending the current group is fine), `accounts/test_permission_group_rbac.py` (10 new tests).
+**Files modified (frontend):** `permissions/meta.ts` (same list), `Permissions.tsx` (Owner-only groups open read-only for a Branch Manager with a note "Only the Owner can change this group. Branch Managers can manage the Frontdesk, Practitioner and Finance groups."; no Duplicate / Delete there), `GroupSidebar.tsx` (lock icon on those groups), `GroupModals.tsx` (a Branch Manager's New group offers only Frontdesk, Practitioner, Finance).
+
+**Database / migrations:** None. **API / data contract:** Branch Manager requests that touch other groups now return 403 (create: 403 with a `role_template` message; user API: 400 on `permission_group`).
+
+**Business rules & decisions:** Read-Only and Custom groups are also Owner-only (the rule names only the three, so everything else is the Owner's). The Owner is unchanged and can manage all groups, including handing any group to staff.
+
+**Tests executed:** `manage.py test apps.accounts` → 93 OK (83 + 10 new); `check` clean. Mutation checks (each reverted): scope check removed → 2 failures; assign-user rule removed → 1; user-API group check removed → 1. `npx tsc -b --force` → clean; `npx eslint` on the screen and folder → 0 findings. Manual (isolated stack on a copy of the dev database, as a Branch Manager whose group grants Permissions: Edit): API: PATCH on the Branch Manager group → 403 "Only the Owner can change this group…", PATCH on Frontdesk / Practitioner / Finance → 200, creating a Branch Manager group → 403, creating a Frontdesk group → 201 with the Frontdesk template. Screen: the Branch Manager and the Locked Branch Manager (custom) groups show a lock in the list, no editable dropdowns (0), the note, and no Duplicate button; Frontdesk, Practitioner, Finance and the new Night Frontdesk show 32 dropdowns each and Duplicate; the New group modal offers only Frontdesk, Practitioner and Finance; no console errors. The scratch stack and database were removed.
+
+**Known limitations / unresolved issues:** A Branch Manager can still see (read-only) the Owner-only groups' levels. Groups already assigned to staff before this change keep working (the rule limits what a Branch Manager can change or hand out, not existing assignments).
+**Regression risks:** a Branch Manager who relied on editing Custom or Read-Only groups now needs the Owner to do it.
+
+---
+
+## 2026-10-23 — Follow-up: duplicate explanation removed from the "Other Branches' Diary" row
+
+**Status:** Implemented and checked (type-check, lint, served module). Frontend only; nothing committed.
+**Module / feature:** Setup → Users → Permissions (`permissions/meta.ts`).
+
+**Original behavior:** The "Other Branches' Diary" row carried a long hint (View / Edit / No Access and patient lookup), and the "Branch access for Branch Managers" panel under the Diary card repeated the same information in its own banner.
+**Problem / requirement:** Owner request (2026-10-23): the row hint is redundant; keep the panel's explanation because it is more precise and tied to the specific Branch Managers.
+**Files modified:** `frontend/src/features/setup/pages/users/permissions/meta.ts` (hint removed; a comment points to the panel). The row, its dropdown and the panel are unchanged. The hints on Staff Management and Setup – Users (Branch Managers always have Edit) were not part of this request and stay.
+**Database / migrations:** None. **API / data contract:** None.
+**Tests executed:** `npx tsc -b --force` → clean; `npx eslint` on `meta.ts` → 0 findings; the running dev server serves `meta.ts` without the hint and `BranchAccessPanel.tsx` with its banner text. No browser run for this one-line removal.
+**Known limitations / unresolved issues:** Someone who has not scrolled to the panel gets no explanation next to the row itself; the row is labelled "Other Branches' Diary" only.
+**Regression risks:** none.
+
+---
+
+## 2026-10-23 — Follow-up: plain-language labels on the Permission Groups screen
+
+**Status:** Implemented and tested. Frontend only; no API, database or migration change. Nothing committed.
+**Module / feature:** Setup → Users → Permissions (`permissions/meta.ts`, `AccessControl.tsx`, `FeatureSections.tsx`, `Permissions.tsx`).
+
+**Original behavior:** A row showed the feature name on the left and a bare level pill ("Edit") on the right, with nothing saying who the level applies to.
+**Problem / requirement:** Owner request (2026-10-23): add good labelling, for example "Your branch manager can: | Edit |".
+**Reason for the change:** The level only makes sense together with whose access it is; reading "Edit" alone is ambiguous when several groups exist.
+
+**Files modified (frontend):**
+- `permissions/meta.ts`: `AUDIENCE_LABELS` by template (Your branch managers / frontdesk staff / practitioners / finance staff / read-only users; "Members of this group" for custom groups).
+- `permissions/FeatureSections.tsx`: every row shows "<audience> can:" in front of its level (dropdown, or the read-only badge for viewers who cannot change the group); the row wraps cleanly on narrow screens; the card counts now read "N can edit · N view only · N no access".
+- `permissions/AccessControl.tsx`: the dropdown's accessible name now reads "<feature>. <audience> can: <level>. Change access level".
+- `Permissions.tsx`: passes the audience of the selected group.
+
+**Database / migrations:** None. **API / data contract:** None. **Business rules & decisions:** none changed; wording only.
+
+**Tests executed:** `npx tsc -b --force` → clean; `npx eslint` on the screen and its folder → 0 findings. Manual (isolated stack on a copy of the dev database, headless Chromium, as Owner): the Branch Manager group shows "Your branch managers can:" before each level, Frontdesk "Your frontdesk staff can:", Practitioner "Your practitioners can:", Finance "Your finance staff can:", the custom group "Members of this group can:"; the dropdown's accessible name includes the same sentence; the card counts show the new wording; no horizontal overflow at 390 px; no console errors. The scratch stack and database were removed.
+
+**Known limitations / unresolved issues:** "Your branch managers can: No Access" reads a little stiffly; the level names themselves were not reworded.
+**Regression risks:** none outside this screen.
+
+---
+
+## 2026-10-23 — Follow-up: per-row level dropdown and per-card Save on the Permission Groups screen
+
+**Status:** Implemented and tested. Frontend only; no API, database or migration change. Nothing committed.
+**Module / feature:** Setup → Users → Permissions (`Permissions.tsx`, `permissions/AccessControl.tsx`, `permissions/FeatureSections.tsx`). Refines "Permission Groups screen redesign".
+
+**Original behavior:** A header button "Edit permissions" switched the whole group into edit mode (a sticky Save / Discard bar). The level pill on each row ("Edit", "View", …) was a read-only badge, so clicking it did nothing.
+**Problem / requirement:** Owner request (2026-10-23): remove the redundant "Edit permissions" button; make the level pill on each row work, opening a dropdown with No access / View / Edit; show Save changes only on the card that has changes.
+**Reason for the change:** Editing is faster when the control is the value itself, and saving per card keeps one area's change from being tied to another's.
+
+**Files modified (frontend):**
+- `Permissions.tsx`: global edit mode removed (no header button, no sticky bar). Unsaved choices are held as `pending` (only features whose level differs from the saved one; choosing the saved level again clears it). `saveSection` saves one card: it sends the saved map with that card's changes applied (the API replaces the whole map), updates optimistically and rolls back on failure; other cards keep their pending changes. Switching group, duplicating or refreshing asks before discarding unsaved changes. Duplicate now has a text label.
+- `permissions/AccessControl.tsx`: `LevelDropdown` replaces the three-way selector: a pill with a chevron that opens No Access / View / Edit with a one-line explanation each and a check on the current one; opens upward when there is little room below; closes on outside click or Escape; Arrow keys and Enter work. `AccessBadge` remains for viewers who cannot change the group.
+- `permissions/FeatureSections.tsx`: each row uses the dropdown and shows a "Changed" marker; a card with changes gets an amber border and a footer strip "N unsaved changes in <card>" with Discard and Save changes (nothing is shown on cards without changes). ~~"Set all" per card~~ **Removed the same day** (owner: redundant next to the per-row dropdown); `setMany` and the `onSetMany` prop went with it.
+
+**Database / migrations:** None. **API / data contract:** None.
+
+**Business rules & decisions:** unchanged. Per-card save is a UI grouping only; the stored value is still one permission map per group.
+
+**Tests executed:** `npx tsc -b --force` → clean; `npx eslint` on `Permissions.tsx` and `permissions/` → 0 findings. Manual (isolated stack on a copy of the dev database, headless Chromium, as Owner): no "Edit permissions" button and no Save button on load; the Dashboard pill opened a dropdown with the three options and "Edit" marked current; choosing View showed "1 unsaved change in Dashboard" and a Changed marker on that row only; changing Invoices added a second strip on Billing & Finance only; saving the Dashboard card stored Dashboard = view while Billing & Finance stayed pending; discarding that card restored Invoices to Edit (database: dashboard view, invoices edit); Enter opened a menu, ArrowUp moved focus, Enter selected and closed it, and Escape closed it; the bottom-most menu opened fully inside the viewport; no console errors. The scratch stack and database were removed.
+
+**Known limitations / unresolved issues:** The pending changes are lost on a page reload (the browser is not warned, only in-app navigation between groups and refresh asks). The Branch access panel still shows the live (unsaved) "Other Branches' Diary" level, while the clinics it lists take effect only once that level is saved.
+**Regression risks:** none outside this screen.
+
+---
+
+## 2026-10-23 — Permission Groups screen redesign, branch access panel, and a fix for creating groups
+
+**Status:** Implemented and tested. No database or migration change. Nothing committed.
+**Module / feature:** Setup → Users → Permissions (`frontend/src/features/setup/pages/users/Permissions.tsx` and the new `permissions/` folder); `accounts` permission-group API.
+
+**Original behavior:** A stack of collapsed cards, each with a row of small No Access / View / Edit buttons that were only clickable after an edit icon. Choosing which clinics a Branch Manager manages or can open in the Diary was possible only in the Staff form. Creating a group from this page failed: the API required `clinic`, which the screen never sent, and its reply lacked the `id` and `permissions_map` the screen needed.
+**Problem / requirement:** Owner request (2026-10-23): a professional, modern Permission Group screen with the same function (No Access / View / Edit); when the Owner sets the Diary for a Branch Manager, show a selection of which clinics get Diary and patient access, with "Add more branch" for the clinics the Branch Manager manages. Decisions: the selection is per Branch Manager inside the group; "Add more branch" exists for both lists (clinics they manage, and Diary & patient access to other clinics); patient access stays booking lookup only.
+**Reason for the change:** Make the permission matrix quick to read and edit, and put the clinic choice where the Owner decides the Diary level.
+
+**Files modified (frontend):**
+- `Permissions.tsx` (rewritten): two-pane layout (group list left, selected group right), group summary with Full edit / View only / No access counts, feature search, unsaved-change tracking (a "Changed" marker per row and a Save / Discard bar), a confirm before discarding changes when switching group or refreshing, optimistic save with rollback (unchanged), live refresh on permission events (unchanged), own-group and Owner-group protection (unchanged).
+- New in `pages/users/permissions/`: `meta.ts` (feature catalogue, template defaults and styles, moved unchanged from the old file), `AccessControl.tsx` (read-only badge and the three-way selector), `FeatureSections.tsx` (one card per area, per-area "Set all"), `GroupSidebar.tsx`, `GroupModals.tsx`, `BranchAccessPanel.tsx`.
+- **Branch access panel** (Owner only; shown inside the Diary & Calendar card for Branch Manager groups): one card per Branch Manager in the group with two lists, each with "+ Add more branch": **Clinics they manage** (a clinic that already has another Branch Manager is disabled and shows "Managed by <name>"; the last clinic cannot be removed) and **Diary & patient access to other clinics** (follows the group's "Other Branches' Diary" level; disabled while it is No Access, and explains that patient access is booking lookup only). Changes save at once through the existing user update (`branch_ids`, `extra_diary_branch_ids`), keeping the manager's primary clinic first, and errors from the one-manager-per-clinic rule are shown.
+**Files modified (backend):** `accounts/views.py` (`PermissionGroupViewSet.create`: the group's clinic is set server-side from the requester, a `clinic` in the payload is ignored, and the reply is the full group), `accounts/test_permission_group_rbac.py` (3 new tests).
+
+**Database / migrations:** None. **API / data contract:** `POST /api/permission-groups/` no longer needs `clinic` and returns the full group (`id`, `member_count`, `permissions_map`, …); a `clinic` sent by a client is ignored.
+
+**Business rules & decisions:** unchanged (see FEATURES): the Owner group stays hidden; clinic changes are Owner-only; a clinic can have one Branch Manager. The screen adds no new permission.
+
+**Tests executed:** `manage.py test apps.accounts` → 83 OK (80 + 3 new); `apps.patients` → 141 OK; `check` and `makemigrations --check` clean. `npx tsc -b --force` → clean; `npx eslint` on the new screen and folder → 0 findings (the old file also had 0). Manual (isolated stack on a copy of the dev database, headless Chromium, as Owner): the page lists the five non-Owner groups with no Owner group; the Branch Manager group shows the branch panel with Branch Manager 2; the "clinics they manage" menu shows Clinics 1 and 2 disabled "Managed by Flow BM1 Flow"; adding Clinic 1 to Diary & patient access saved (database: Branch Manager 2's extra Diary clinic = Clinic 1, managed clinic still Clinic 3); in edit mode changing Dashboard to View and Other Branches' Diary to No Access showed "2 unsaved changes", turned the panel amber and disabled its Add button; searching "invoice" kept only Billing & Finance; Save stored the values (database: dashboard = view, diary_other_branches = none); at 390 px wide there is no horizontal page overflow; no console errors. A first screenshot showed the clinic menu clipped by its card and clinic names truncated; fixed and re-checked. The scratch stack and database were removed.
+
+**Known limitations / unresolved issues:** The branch panel loads the staff list, so it appears for the Owner only. The screen was not checked with a Branch Manager who has Permissions: Edit, nor with keyboard-only navigation (the controls are buttons with roles and labels). On a phone the app's right-hand rail overlaps about 30 px of the page (existing layout).
+**Regression risks:** anything importing from the old `Permissions.tsx` constants (none found; they moved to `permissions/meta.ts`).
+
+---
+
 ## 2026-10-22 — Branch Manager clinics: one manager per clinic, staff management, Owner has no permission settings
 
 **Status:** Implemented and tested. **Not applied to the development database or production:** migrations `accounts.0026_user_branch_access_is_managed` and `0027_one_branch_manager_per_clinic` (after `0024` and `0025`, which are also still unapplied on dev). Nothing committed.

@@ -175,6 +175,10 @@ DEFAULT_PERMISSIONS = {
 # their own clinics (Rule 2, 2026-10-22). The Owner configures everything else.
 BRANCH_MANAGER_ALWAYS_EDIT = ('staff_management', 'setup_users')
 
+# Permission groups a Branch Manager may manage (and hand to staff). Every other group (the Owner's, the
+# Branch Manager's own, Read-Only, Custom) can be managed only by the Owner (rule of 2026-10-23).
+BRANCH_MANAGER_MANAGEABLE_TEMPLATES = ('FRONTDESK', 'PRACTITIONER', 'FINANCE')
+
 # Role precedence (ROLE_PRIORITY, from accounts.roles) derives the "primary" role field when a
 # user has multiple roles: the highest priority wins.
 

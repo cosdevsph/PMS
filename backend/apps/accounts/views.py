@@ -12,7 +12,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.core.cache import cache
 from .roles import normalize_roles, normalize_role_payload
-from .models import User, Role, Permission, PermissionGroup, FeaturePermission, DEFAULT_PERMISSIONS, FEATURE_KEYS, ROLE_PRIORITY, UserRoleChangeLog
+from .models import User, Role, Permission, PermissionGroup, FeaturePermission, DEFAULT_PERMISSIONS, FEATURE_KEYS, ROLE_PRIORITY, UserRoleChangeLog, BRANCH_MANAGER_MANAGEABLE_TEMPLATES
 from .serializers import (
     UserSerializer, AdminRegistrationSerializer, UserRegistrationSerializer,
     RoleSerializer, PermissionSerializer, PasswordChangeSerializer,
@@ -2526,6 +2526,11 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
         # listed or opened for anyone (it stays in the database; changing it is refused).
         if self.action in ('list', 'retrieve'):
             qs = qs.exclude(role_template='OWNER')
+            # A Branch Manager is shown only the groups they manage (Frontdesk, Practitioner, Finance):
+            # the Branch Manager group and the other Owner-only groups are not listed or opened for them.
+            user = self.request.user
+            if user.is_authenticated and user.is_branch_manager and not user.is_owner:
+                qs = qs.filter(role_template__in=BRANCH_MANAGER_MANAGEABLE_TEMPLATES)
         return qs
 
     def _base_queryset(self):
@@ -2580,20 +2585,36 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
         if not (user.is_branch_manager and user.can_edit('permissions')):
             raise PermissionDenied('You do not have permission to manage permission groups.')
         if group is not None:
-            if group.role_template == 'OWNER':
-                raise PermissionDenied('Branch Managers cannot change Owner permission groups.')
+            if group.role_template not in BRANCH_MANAGER_MANAGEABLE_TEMPLATES:
+                raise PermissionDenied(
+                    'Only the Owner can change this group. Branch Managers can manage the '
+                    'Frontdesk, Practitioner and Finance groups.'
+                )
             if user.permission_group_id and user.permission_group_id == group.pk:
                 raise PermissionDenied('You cannot change the permission group you belong to.')
 
     def create(self, request, *args, **kwargs):
         # Check the right to manage groups before validating the payload.
         self._assert_can_manage(request.user)
-        if normalize_role_payload(request.data).get('role_template') == 'OWNER':
+        data = normalize_role_payload(request.data)
+        if data.get('role_template') == 'OWNER':
             return Response(
                 {'role_template': 'The Owner always has full access and has no permission settings.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        return super().create(request, *args, **kwargs)
+        # The group always belongs to the requester's clinic; the client does not (and need not) send it.
+        if not request.user.is_owner and data.get('role_template') not in BRANCH_MANAGER_MANAGEABLE_TEMPLATES:
+            return Response(
+                {'role_template': 'Branch Managers can create only Frontdesk, Practitioner or Finance groups.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        data['clinic'] = request.user.clinic.main_clinic.id
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        # Reply with the full group (id, member count, permissions map) so the screen can show it at once.
+        full = PermissionGroupSerializer(serializer.instance, context=self.get_serializer_context())
+        return Response(full.data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -2662,6 +2683,11 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
             if source.role_template == 'OWNER':
                 raise PermissionDenied('The Owner always has full access and has no permission settings.')
             self._assert_can_manage(request.user)
+            if not request.user.is_owner and source.role_template not in BRANCH_MANAGER_MANAGEABLE_TEMPLATES:
+                raise PermissionDenied(
+                    'Only the Owner can use this group. Branch Managers can manage the '
+                    'Frontdesk, Practitioner and Finance groups.'
+                )
         except PermissionDenied as exc:
             return Response({'detail': str(exc.detail)}, status=403)
 
@@ -2674,7 +2700,9 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
                 clinic=main_clinic,
                 name=new_name,
                 description=request.data.get('description', source.description),
-                role_template='CUSTOM',
+                # The Owner's copies are Custom groups; a Branch Manager's copy keeps the Frontdesk /
+                # Practitioner / Finance template so they can keep managing it.
+                role_template='CUSTOM' if request.user.is_owner else source.role_template,
                 is_protected=False,
                 is_system_template=False,
             )
@@ -2696,6 +2724,12 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
         # Nobody is put in the Owner group: the Owner has full access and no permission settings.
         if group.role_template == 'OWNER':
             return Response({'detail': 'The Owner group cannot be assigned: the Owner always has full access.'}, status=400)
+        # A Branch Manager hands out only the Frontdesk, Practitioner and Finance groups.
+        if not request.user.is_owner and group.role_template not in BRANCH_MANAGER_MANAGEABLE_TEMPLATES:
+            return Response(
+                {'detail': 'Only the Owner can assign this group. Branch Managers can assign the Frontdesk, Practitioner and Finance groups.'},
+                status=403,
+            )
 
         user_id = request.data.get('user_id')
         if not user_id:

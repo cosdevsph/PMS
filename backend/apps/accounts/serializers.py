@@ -7,7 +7,7 @@ from .utils.rbac import validate_branches_free_for_manager
 from .models import (
     User, Role, Permission, PermissionGroup, FeaturePermission,
     UserBranchAccess,
-    FEATURE_KEYS, ROLE_PRIORITY, _union_permissions, BRANCH_MANAGER_ALWAYS_EDIT,
+    FEATURE_KEYS, ROLE_PRIORITY, _union_permissions, BRANCH_MANAGER_ALWAYS_EDIT, BRANCH_MANAGER_MANAGEABLE_TEMPLATES,
     derive_permission_group_for_roles,
 )
 from apps.clinics.models import Practitioner
@@ -477,8 +477,12 @@ class UserSerializer(serializers.ModelSerializer):
         actor = getattr(request, 'user', None)
         if value is None or not (actor and actor.is_authenticated) or actor.is_owner:
             return value
-        if value.role_template == 'OWNER':
-            raise serializers.ValidationError("Only the Owner can use the Owner permission group.")
+        if self.instance is not None and value.pk == self.instance.permission_group_id:
+            return value   # unchanged: re-sending the current group is always fine
+        if value.role_template not in BRANCH_MANAGER_MANAGEABLE_TEMPLATES:
+            raise serializers.ValidationError(
+                "Only the Owner can use this permission group. Branch Managers can use the Frontdesk, Practitioner and Finance groups."
+            )
         if actor.clinic and value.clinic_id != actor.clinic.main_clinic.id:
             raise serializers.ValidationError("That permission group does not belong to your clinic.")
         if self.instance is not None and self.instance.pk == actor.pk and value.pk != actor.permission_group_id:

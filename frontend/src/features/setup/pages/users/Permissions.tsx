@@ -1,619 +1,199 @@
 /**
- * Permissions.tsx — Enterprise RBAC Permission Group Builder
+ * Permissions.tsx — Permission Group builder.
  *
- * Allows Owners (OWNER) to:
- *   - View all permission groups for the clinic
- *   - Create / edit / duplicate / delete groups
- *   - Set feature-level access (none / view / edit) per group
- *   - Assign users to groups
- *   - See member counts per group
- *   - Never delete a protected group (Owner)
+ * Lets the Owner (and a Branch Manager whose group grants Permissions: Edit):
+ *   - browse the clinic's permission groups
+ *   - set each feature to No Access / View / Edit from the dropdown on its row; every card keeps
+ *     its own unsaved changes and shows its own Save changes / Discard only when it has some
+ *   - create, duplicate and delete groups
+ *   - (Owner) choose, per Branch Manager in a group, which clinics they manage and which other
+ *     clinics they can open in the Diary
+ *
+ * The Owner is never listed: the Owner always has full access and has no permission settings.
  */
 
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Shield, Plus, Edit2, Copy, Trash2, Users, ChevronDown,
-  ChevronUp, Crown, UserCog, Stethoscope, RefreshCw, X,
-  AlertTriangle, Save, Info, Eye,
+  AlertTriangle, Copy, Crown, Info, Lock, Plus, RefreshCw, Search, Shield, Trash2, Users,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuthStore } from '@/store/auth.store';
+import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';
 import {
-  listPermissionGroups,
   createPermissionGroup,
-  updatePermissionGroup,
   deletePermissionGroup,
   duplicatePermissionGroup,
-  type PermissionGroup,
+  listPermissionGroups,
+  updatePermissionGroup,
   type AccessLevel,
+  type PermissionGroup,
   type RoleTemplate,
 } from '../../services/PermissionGroupService';
+import { getStaff, updateStaff } from '../../services/StaffService';
+import type { CreateStaffData, StaffMember } from '../../types/staff.types';
+import { BranchAccessPanel, type BranchPatch } from './permissions/BranchAccessPanel';
+import { FeatureSections } from './permissions/FeatureSections';
+import { CreateGroupModal, DeleteConfirmModal } from './permissions/GroupModals';
+import { GroupSidebar } from './permissions/GroupSidebar';
+import {
+  AUDIENCE_LABELS, BRANCH_MANAGER_MANAGEABLE_TEMPLATES, ROLE_ORDER, TEMPLATE_DEFAULT_PERMS, TEMPLATE_LABELS, TEMPLATE_STYLES, summarize,
+} from './permissions/meta';
 
-// ─── Feature key metadata ─────────────────────────────────────────────────────
-
-const FEATURE_GROUPS: { label: string; keys: { key: string; label: string; hint?: string }[] }[] = [
-  {
-    label: 'Dashboard',
-    keys: [{ key: 'dashboard', label: 'Dashboard' }],
-  },
-  {
-    label: 'Diary & Calendar',
-    keys: [
-      { key: 'diary',         label: 'Diary' },
-      {
-        key: 'diary_other_branches', label: "Other Branches' Diary",
-        hint: 'View: can open the Diary of the extra branches you pick for a Branch Manager in Staff Management (read only). Edit: can also book, move and cancel there. No Access: own branches only.',
-      },
-      { key: 'calendar',      label: 'Calendar' },
-      { key: 'appointments',  label: 'Appointments' },
-    ],
-  },
-  {
-    label: 'Patients & Cases',
-    keys: [
-      { key: 'patients',     label: 'Patients' },
-      { key: 'client_cases', label: 'Client Cases' },
-    ],
-  },
-  {
-    label: 'Clinical',
-    keys: [
-      { key: 'clinical_notes',   label: 'Clinical Notes' },
-      { key: 'outcome_measures', label: 'Outcome Measures' },
-      { key: 'documents',        label: 'Documents' },
-    ],
-  },
-  {
-    label: 'Billing & Finance',
-    keys: [
-      { key: 'invoices', label: 'Invoices' },
-      { key: 'billing',  label: 'Billing' },
-    ],
-  },
-  {
-    label: 'Operations',
-    keys: [
-      { key: 'contacts',      label: 'Contacts' },
-      { key: 'inventory',     label: 'Inventory' },
-      { key: 'communication', label: 'Communication' },
-      { key: 'reports',       label: 'Reports' },
-    ],
-  },
-  {
-    label: 'Administration',
-    keys: [
-      // 'setup' key intentionally excluded here — it controls the sidebar lock
-      // icon only.  Card-level access is configured via Setup Sections below.
-      { key: 'staff_management', label: 'Staff Management', hint: 'Branch Managers always have Edit here (they manage the staff of their own clinics).' },
-      { key: 'permissions',      label: 'Permissions' },
-      { key: 'settings',         label: 'Settings' },
-      { key: 'subscriptions',    label: 'Subscriptions' },
-    ],
-  },
-  {
-    label: 'Setup Sections',
-    keys: [
-      { key: 'setup_practice',      label: 'Setup – Practice' },
-      { key: 'setup_items',         label: 'Setup – Items' },
-      { key: 'setup_users',         label: 'Setup – Users', hint: 'Branch Managers always have Edit here.' },
-      { key: 'setup_account',       label: 'Setup – Account' },
-      { key: 'setup_communication', label: 'Setup – Communication' },
-    ],
-  },
-  {
-    label: 'Manage Sections',
-    keys: [
-      { key: 'manage_administration', label: 'Manage – Administration' },
-      { key: 'manage_clinical',       label: 'Manage – Clinical' },
-      { key: 'manage_communications', label: 'Manage – Communications' },
-    ],
-  },
-  {
-    label: 'Report Sections',
-    keys: [
-      { key: 'reports_administration', label: 'Reports – Administration' },
-      { key: 'reports_clinic',         label: 'Reports – Clinic' },
-      { key: 'reports_financial',      label: 'Reports – Financial' },
-      { key: 'reports_performance',    label: 'Reports – Performance' },
-    ],
-  },
-];
-
-const ALL_FEATURE_KEYS = FEATURE_GROUPS.flatMap((g) => g.keys.map((k) => k.key));
-
-// ─── Role display order ──────────────────────────────────────────────────────
-// Controls the fixed visual hierarchy: Owner → Branch Manager → Front Desk → Practitioner → Custom
-// DISPLAY ONLY — does not affect RBAC logic or database records.
-
-const ROLE_ORDER: Record<string, number> = {
-  OWNER:           1,
-  BRANCH_MANAGER:  2,
-  FRONTDESK:       3,
-  PRACTITIONER:    4,
-  FINANCE:         5,
-  READ_ONLY:       6,
-  CUSTOM:          7,
+const errorText = (err: unknown, fallback: string): string => {
+  const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
+  if (!data) return fallback;
+  const pick = (value: unknown): string | null =>
+    typeof value === 'string' ? value : Array.isArray(value) && typeof value[0] === 'string' ? value[0] : null;
+  return pick(data.detail) ?? pick(data.branch_ids) ?? pick(data.extra_diary_branch_ids) ?? pick(data.clinic_branch) ?? fallback;
 };
 
-// ─── Role template styles ─────────────────────────────────────────────────────
-
-const TEMPLATE_STYLES: Record<
-  RoleTemplate,
-  { iconBg: string; icon: React.ElementType; iconColor: string; badge: string }
-> = {
-  OWNER:           { iconBg: 'bg-amber-100',   icon: Crown,       iconColor: 'text-amber-600',   badge: 'bg-amber-100  text-amber-800  border-amber-200'  },
-  BRANCH_MANAGER: { iconBg: 'bg-violet-100',  icon: UserCog,     iconColor: 'text-violet-600',  badge: 'bg-violet-100 text-violet-800 border-violet-200' },
-  FRONTDESK:       { iconBg: 'bg-teal-100',    icon: Users,       iconColor: 'text-teal-600',    badge: 'bg-teal-100   text-teal-800   border-teal-200'   },
-  PRACTITIONER:    { iconBg: 'bg-purple-100',  icon: Stethoscope, iconColor: 'text-purple-600',  badge: 'bg-purple-100 text-purple-800 border-purple-200' },
-  FINANCE:         { iconBg: 'bg-green-100',   icon: Users,       iconColor: 'text-green-600',   badge: 'bg-green-100  text-green-800  border-green-200'  },
-  READ_ONLY:       { iconBg: 'bg-gray-100',    icon: Eye,         iconColor: 'text-gray-500',    badge: 'bg-gray-100   text-gray-600   border-gray-300'   },
-  CUSTOM:          { iconBg: 'bg-gray-100',    icon: Shield,      iconColor: 'text-gray-500',    badge: 'bg-gray-100   text-gray-700   border-gray-200'   },
-};
-
-// ─── Access level selector ────────────────────────────────────────────────────
-
-const ACCESS_OPTIONS: { value: AccessLevel; label: string; activeCls: string }[] = [
-  { value: 'none', label: 'No Access', activeCls: 'bg-gray-100 text-gray-600 border-gray-300' },
-  { value: 'view', label: 'View',      activeCls: 'bg-sky-50   text-sky-700  border-sky-300'  },
-  { value: 'edit', label: 'Edit',      activeCls: 'bg-green-50 text-green-700 border-green-300' },
-];
-
-interface AccessSelectorProps {
-  value:    AccessLevel;
-  onChange: (v: AccessLevel) => void;
-  disabled?: boolean;
-}
-
-const AccessSelector: React.FC<AccessSelectorProps> = ({ value, onChange, disabled }) => (
-  <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs font-semibold shrink-0">
-    {ACCESS_OPTIONS.map((opt) => (
-      <button
-        key={opt.value}
-        disabled={disabled}
-        onClick={() => !disabled && onChange(opt.value)}
-        className={`px-2.5 py-1 transition-colors border-r last:border-r-0 border-gray-200 ${
-          value === opt.value ? opt.activeCls : 'bg-white text-gray-400 hover:bg-gray-50'
-        } ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-      >
-        {opt.label}
-      </button>
-    ))}
-  </div>
-);
-
-// ─── Permission Group Card ────────────────────────────────────────────────────
-
-interface GroupCardProps {
-  group:        PermissionGroup;
-  isEditing:    boolean;
-  editMap:      Record<string, AccessLevel>;
-  canManage:    boolean;
-  onEdit:       () => void;
-  onSave:       () => void;
-  onCancel:     () => void;
-  onDuplicate:  () => void;
-  onDelete:     () => void;
-  onPermChange: (key: string, level: AccessLevel) => void;
-  isSaving:     boolean;
-}
-
-const GroupCard: React.FC<GroupCardProps> = ({
-  group, isEditing, editMap, canManage,
-  onEdit, onSave, onCancel, onDuplicate, onDelete,
-  onPermChange, isSaving,
-}) => {
-  // Collapsed by default — user opens the card they want to inspect
-  const [expanded, setExpanded] = useState(false);
-  const style  = TEMPLATE_STYLES[group.role_template] ?? TEMPLATE_STYLES.CUSTOM;
-  const Icon   = style.icon;
-  const activeMap = isEditing ? editMap : (group.permissions_map ?? {});
-
-  const editCount = Object.values(activeMap).filter((v) => v === 'edit').length;
-  const viewCount = Object.values(activeMap).filter((v) => v === 'view').length;
-  const noneCount = Object.values(activeMap).filter((v) => v === 'none').length;
-
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-4 flex items-center justify-between gap-3 border-b border-gray-100">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${style.iconBg}`}>
-            <Icon className={`w-4 h-4 ${style.iconColor}`} />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-bold text-gray-900 truncate">{group.name}</h3>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${style.badge}`}>
-                {group.role_template}
-              </span>
-              {group.is_protected && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 flex items-center gap-1">
-                  <Shield className="w-3 h-3" /> Protected
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-              <span>{group.member_count} member{group.member_count !== 1 ? 's' : ''}</span>
-              <span className="text-green-600 font-medium">{editCount} edit</span>
-              <span className="text-sky-600 font-medium">{viewCount} view</span>
-              <span className="text-gray-400">{noneCount} none</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {isEditing ? (
-            <>
-              <button
-                onClick={onSave}
-                disabled={isSaving}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 text-white text-xs font-semibold rounded-lg hover:bg-sky-700 transition-colors disabled:opacity-60"
-              >
-                <Save className="w-3.5 h-3.5" />
-                {isSaving ? 'Saving…' : 'Save'}
-              </button>
-              <button
-                onClick={onCancel}
-                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-                title="Cancel"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <>
-              {canManage && (
-                <>
-                  <button onClick={onEdit}      title="Edit permissions"  className="p-1.5 text-gray-400 hover:text-sky-600  rounded-lg hover:bg-sky-50  transition-colors"><Edit2  className="w-4 h-4" /></button>
-                  <button onClick={onDuplicate} title="Duplicate group"   className="p-1.5 text-gray-400 hover:text-teal-600 rounded-lg hover:bg-teal-50 transition-colors"><Copy   className="w-4 h-4" /></button>
-                  {!group.is_protected && (
-                    <button onClick={onDelete} title="Delete group" className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                  )}
-                </>
-              )}
-              <button onClick={() => setExpanded((e) => !e)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
-                {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Permissions grid — CSS max-height transition for smooth expand/collapse */}
-      <div
-        className={`divide-y divide-gray-50 overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${
-          expanded ? 'max-h-750 opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
-        {FEATURE_GROUPS.map((fg) => (
-          <div key={fg.label} className="px-5 py-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">{fg.label}</p>
-            <div className="space-y-2">
-              {fg.keys.map(({ key, label, hint }) => (
-                <div key={key} className="flex items-center justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="block text-sm text-gray-700 truncate">{label}</span>
-                    {hint && <span className="block text-[11px] text-gray-400 leading-snug">{hint}</span>}
-                  </span>
-                  <AccessSelector
-                    value={((activeMap[key] as AccessLevel) ?? 'none')}
-                    onChange={(v) => onPermChange(key, v)}
-                    disabled={!isEditing}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ─── Default permissions per template ────────────────────────────────────────
-
-const TEMPLATE_DEFAULT_PERMS: Record<RoleTemplate, Record<string, AccessLevel>> = {
-  OWNER:    Object.fromEntries(ALL_FEATURE_KEYS.map((k) => [k, 'edit'])) as Record<string, AccessLevel>,
-  BRANCH_MANAGER: {
-    dashboard: 'edit', appointments: 'edit', calendar: 'edit', diary: 'edit', diary_other_branches: 'none',
-    clinical_notes: 'edit', client_cases: 'edit', patients: 'edit', reports: 'edit',
-    inventory: 'edit', invoices: 'edit', billing: 'edit', subscriptions: 'view',
-    setup: 'view', staff_management: 'edit', permissions: 'view', settings: 'view',
-    documents: 'edit', outcome_measures: 'edit', contacts: 'edit', communication: 'edit',
-    setup_practice: 'edit', setup_items: 'edit', setup_users: 'edit',
-    setup_account: 'view', setup_communication: 'edit',
-    manage_administration: 'edit', manage_clinical: 'edit', manage_communications: 'edit',
-    reports_administration: 'edit', reports_clinic: 'edit',
-    reports_financial: 'edit', reports_performance: 'edit',
-  },
-  FRONTDESK: {
-    dashboard: 'view', appointments: 'edit', calendar: 'edit', diary: 'edit', diary_other_branches: 'none',
-    clinical_notes: 'view', client_cases: 'view', patients: 'edit', reports: 'view',
-    inventory: 'view', invoices: 'edit', billing: 'view', subscriptions: 'none',
-    setup: 'none', staff_management: 'none', permissions: 'none', settings: 'none',
-    documents: 'view', outcome_measures: 'view', contacts: 'edit', communication: 'edit',
-    setup_practice: 'view', setup_items: 'view', setup_users: 'none',
-    setup_account: 'none', setup_communication: 'view',
-    manage_administration: 'view', manage_clinical: 'view', manage_communications: 'edit',
-    reports_administration: 'edit', reports_clinic: 'view',
-    reports_financial: 'edit', reports_performance: 'view',
-  },
-  PRACTITIONER: {
-    dashboard: 'view', appointments: 'edit', calendar: 'edit', diary: 'edit', diary_other_branches: 'none',
-    clinical_notes: 'edit', client_cases: 'edit', patients: 'edit', reports: 'view',
-    inventory: 'view', invoices: 'view', billing: 'none', subscriptions: 'none',
-    setup: 'none', staff_management: 'none', permissions: 'none', settings: 'none',
-    documents: 'edit', outcome_measures: 'edit', contacts: 'edit', communication: 'view',
-    setup_practice: 'view', setup_items: 'none', setup_users: 'none',
-    setup_account: 'none', setup_communication: 'view',
-    manage_administration: 'none', manage_clinical: 'edit', manage_communications: 'view',
-    reports_administration: 'none', reports_clinic: 'edit',
-    reports_financial: 'none', reports_performance: 'view',
-  },
-  FINANCE: {
-    dashboard: 'view', appointments: 'view', calendar: 'view', diary: 'none', diary_other_branches: 'none',
-    clinical_notes: 'none', client_cases: 'none', patients: 'view', reports: 'view',
-    inventory: 'view', invoices: 'edit', billing: 'edit', subscriptions: 'none',
-    setup: 'none', staff_management: 'none', permissions: 'none', settings: 'none',
-    documents: 'none', outcome_measures: 'none', contacts: 'view', communication: 'view',
-    setup_practice: 'none', setup_items: 'none', setup_users: 'none',
-    setup_account: 'none', setup_communication: 'none',
-    manage_administration: 'edit', manage_clinical: 'none', manage_communications: 'none',
-    reports_administration: 'view', reports_clinic: 'none',
-    reports_financial: 'edit', reports_performance: 'view',
-  },
-  READ_ONLY: {
-    // View access to all non-admin features; admin-only sections set to 'none'.
-    dashboard: 'view', appointments: 'view', calendar: 'view', diary: 'view', diary_other_branches: 'none',
-    clinical_notes: 'view', client_cases: 'view', patients: 'view', reports: 'view',
-    inventory: 'view', invoices: 'view', billing: 'view', subscriptions: 'none',
-    setup: 'none', staff_management: 'none', permissions: 'none', settings: 'none',
-    documents: 'view', outcome_measures: 'view', contacts: 'view', communication: 'view',
-    setup_practice: 'none', setup_items: 'none', setup_users: 'none',
-    setup_account: 'none', setup_communication: 'none',
-    manage_administration: 'none', manage_clinical: 'view', manage_communications: 'view',
-    reports_administration: 'none', reports_clinic: 'view',
-    reports_financial: 'none', reports_performance: 'view',
-  },
-  CUSTOM: Object.fromEntries(ALL_FEATURE_KEYS.map((k) => [k, 'none'])) as Record<string, AccessLevel>,
-};
-
-const TEMPLATE_OPTIONS: { value: RoleTemplate; label: string }[] = [
-  { value: 'BRANCH_MANAGER', label: 'Branch Manager' },
-  { value: 'FRONTDESK',       label: 'Frontdesk' },
-  { value: 'PRACTITIONER',    label: 'Practitioner' },
-  { value: 'FINANCE',         label: 'Finance' },
-  { value: 'READ_ONLY',       label: 'Read-Only (View Only)' },
-  { value: 'CUSTOM',          label: 'Custom (No Access)' },
-];
-
-// ─── Create Group Modal ───────────────────────────────────────────────────────
-
-const CreateGroupModal: React.FC<{
-  isOpen:   boolean;
-  onClose:  () => void;
-  onCreate: (name: string, template: RoleTemplate, description: string) => Promise<void>;
-}> = ({ isOpen, onClose, onCreate }) => {
-  const [name, setName]         = useState('');
-  const [template, setTemplate] = useState<RoleTemplate>('CUSTOM');
-  const [description, setDesc]  = useState('');
-  const [saving, setSaving]     = useState(false);
-  const [error, setError]       = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) { setError('Name is required.'); return; }
-    setSaving(true); setError('');
-    try {
-      await onCreate(name.trim(), template, description.trim());
-      setName(''); setTemplate('CUSTOM'); setDesc('');
-      onClose();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string; name?: string[] } } };
-      setError(e?.response?.data?.detail || e?.response?.data?.name?.[0] || 'Failed to create group.');
-    } finally { setSaving(false); }
-  };
-
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-base font-bold text-gray-900">New Permission Group</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 transition-colors"><X className="w-4 h-4 text-gray-500" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Group Name <span className="text-rose-500">*</span></label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Senior Receptionist"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Starting Template</label>
-            <select value={template} onChange={(e) => setTemplate(e.target.value as RoleTemplate)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400">
-              {TEMPLATE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-            <p className="mt-1 text-xs text-gray-400">Sets initial permissions. Customise after creating.</p>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Description</label>
-            <textarea value={description} onChange={(e) => setDesc(e.target.value)} rows={2} placeholder="Optional description…"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none" />
-          </div>
-          {error && (
-            <div className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{error}
-            </div>
-          )}
-          <div className="flex gap-2 pt-1">
-            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
-            <button type="submit" disabled={saving}
-              className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-xl hover:bg-sky-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-              {saving ? 'Creating…' : 'Create Group'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// ─── Delete Confirm Modal ─────────────────────────────────────────────────────
-
-const DeleteConfirmModal: React.FC<{
-  group:     PermissionGroup | null;
-  onClose:   () => void;
-  onConfirm: () => Promise<void>;
-}> = ({ group, onClose, onConfirm }) => {
-  const [deleting, setDeleting] = useState(false);
-  const handleConfirm = async () => { setDeleting(true); await onConfirm(); setDeleting(false); };
-
-  if (!group) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-        <div className="px-6 py-5 text-center space-y-3">
-          <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center mx-auto">
-            <AlertTriangle className="w-6 h-6 text-rose-500" />
-          </div>
-          <h3 className="text-base font-bold text-gray-900">Delete Permission Group?</h3>
-          <p className="text-sm text-gray-500">
-            <strong className="text-gray-800">{group.name}</strong> has{' '}
-            <strong>{group.member_count}</strong> member{group.member_count !== 1 ? 's' : ''}.
-            They will be unassigned.
-          </p>
-        </div>
-        <div className="flex gap-2 px-6 pb-5">
-          <button onClick={onClose} className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
-          <button onClick={handleConfirm} disabled={deleting}
-            className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-rose-600 rounded-xl hover:bg-rose-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-            {deleting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-            {deleting ? 'Deleting…' : 'Delete'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Main page ────────────────────────────────────────────────────────────────
+const isBranchManager = (s: StaffMember) => (s.roles?.length ? s.roles : [s.role]).includes('BRANCH_MANAGER');
 
 export const Permissions: React.FC = () => {
-  const { isOwner, isBranchManager, canEdit } = usePermissions();
-  // Subscribe to external permission refreshes (e.g. WS-driven updates from
-  // another browser session).  permissionsVersion increments each time the
-  // auth store's refreshPermissions() completes successfully.
+  const { isOwner, isBranchManager: actorIsBranchManager, canEdit } = usePermissions();
+  // Subscribe to external permission refreshes (e.g. WS-driven updates from another browser session).
   const permissionsVersion = useAuthStore((s) => s.permissionsVersion);
   const ownGroupId = useAuthStore((s) => s.user?.permission_group ?? null);
+  const { branches } = useClinicBranches();
 
-  const [groups,       setGroups]       = useState<PermissionGroup[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState<string | null>(null);
-  const [showCreate,   setShowCreate]   = useState(false);
+  const [groups, setGroups] = useState<PermissionGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Unsaved choices for the selected group: only the features whose level differs from the saved one.
+  const [pending, setPending] = useState<Record<string, AccessLevel>>({});
+  const [savingSection, setSavingSection] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PermissionGroup | null>(null);
-  const [editingId,    setEditingId]    = useState<number | null>(null);
-  const [editMap,      setEditMap]      = useState<Record<string, AccessLevel>>({});
-  const [isSaving,     setIsSaving]     = useState(false);
+
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [staffLoading, setStaffLoading] = useState(false);
 
   // Same rule as the backend: the Owner, or a Branch Manager whose group grants Permissions: Edit.
-  const canManage = isOwner || (isBranchManager && canEdit('permissions'));
+  const canManage = isOwner || (actorIsBranchManager && canEdit('permissions'));
 
-  // Sort groups by fixed role hierarchy for consistent display order.
-  // BRANCH_MANAGER → FRONTDESK → PRACTITIONER → CUSTOM
-  // Groups with the same template are sub-sorted by name for determinism.
-  // The Owner group is never shown: the Owner always has full access and has no permission settings.
+  // BRANCH_MANAGER → FRONTDESK → PRACTITIONER → CUSTOM; the Owner group is never shown. A Branch Manager
+  // is shown only the groups they manage (the backend returns just those; this filter mirrors it).
   const sortedGroups = useMemo(
     () =>
-      groups.filter((g) => g.role_template !== 'OWNER').sort((a, b) => {
-        const orderA = ROLE_ORDER[a.role_template] ?? 99;
-        const orderB = ROLE_ORDER[b.role_template] ?? 99;
-        if (orderA !== orderB) return orderA - orderB;
-        return a.name.localeCompare(b.name);
-      }),
-    [groups],
+      groups
+        .filter((g) => g.role_template !== 'OWNER')
+        .filter((g) => isOwner || BRANCH_MANAGER_MANAGEABLE_TEMPLATES.includes(g.role_template))
+        .sort((a, b) => {
+          const orderA = ROLE_ORDER[a.role_template] ?? 99;
+          const orderB = ROLE_ORDER[b.role_template] ?? 99;
+          return orderA !== orderB ? orderA - orderB : a.name.localeCompare(b.name);
+        }),
+    [groups, isOwner],
   );
+
+  const selected = sortedGroups.find((g) => g.id === selectedId) ?? sortedGroups[0] ?? null;
+  const savedMap = useMemo<Record<string, AccessLevel>>(() => selected?.permissions_map ?? {}, [selected]);
+  const activeMap = useMemo(() => ({ ...savedMap, ...pending }), [savedMap, pending]);
+  const dirtyCount = Object.keys(pending).length;
+
+  // ── Loading ───────────────────────────────────────────────────────────────
 
   const fetchGroups = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       setGroups(await listPermissionGroups());
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } } };
-      const msg = e?.response?.data?.detail || 'Failed to load permission groups.';
+      const msg = errorText(err, 'Failed to load permission groups.');
       setError(msg); toast.error(msg);
     } finally { setLoading(false); }
   }, []);
 
-  // Initial load
-  useEffect(() => { fetchGroups(); }, [fetchGroups]);
+  const fetchStaff = useCallback(async () => {
+    if (!isOwner) return;
+    setStaffLoading(true);
+    try { setStaff(await getStaff()); } catch { /* the branch panel simply shows no managers */ } finally { setStaffLoading(false); }
+  }, [isOwner]);
 
-  // Re-fetch when an external session triggers a WS-driven permission refresh
-  // (permissionsVersion is 0 on first render; skip to avoid duplicate initial fetch)
+  useEffect(() => { fetchGroups(); }, [fetchGroups]);
+  useEffect(() => { fetchStaff(); }, [fetchStaff]);
+
+  // Re-fetch when an external session triggers a WS-driven permission refresh (skip the first render).
   const isFirstVersionRender = useRef(true);
   useEffect(() => {
-    if (isFirstVersionRender.current) {
-      isFirstVersionRender.current = false;
-      return;
-    }
+    if (isFirstVersionRender.current) { isFirstVersionRender.current = false; return; }
     fetchGroups();
   }, [permissionsVersion, fetchGroups]);
 
-  const startEdit   = (g: PermissionGroup) => { setEditingId(g.id); setEditMap({ ...g.permissions_map }); };
-  const cancelEdit  = () => { setEditingId(null); setEditMap({}); };
+  // ── Editing (per card) ────────────────────────────────────────────────────
 
-  const saveEdit = async (g: PermissionGroup) => {
-    // Snapshot current state for rollback on API failure
-    const snapshotGroups = groups;
-    const savedEditMap   = { ...editMap };
+  const confirmDiscard = () => dirtyCount === 0 || window.confirm('Discard your unsaved permission changes?');
 
-    // ── Optimistic update: apply the new permissions immediately ────────────
-    // This makes the AccessSelector reflect the new values before the API
-    // response arrives, giving instant visual feedback.
-    setGroups((prev) =>
-      prev.map((x) =>
-        x.id === g.id ? { ...x, permissions_map: savedEditMap } : x,
-      ),
-    );
-    setEditingId(null);
-    setEditMap({});
-    setIsSaving(true);
-
-    try {
-      await updatePermissionGroup(g.id, { permissions: savedEditMap });
-      toast.success(`"${g.name}" updated.`);
-    } catch (err: unknown) {
-      // ── Rollback: restore previous state and re-open edit mode ────────────
-      setGroups(snapshotGroups);
-      setEditingId(g.id);
-      setEditMap(savedEditMap);
-      const e = err as { response?: { data?: { detail?: string } } };
-      toast.error(e?.response?.data?.detail || 'Failed to save changes.');
-    } finally {
-      setIsSaving(false);
-    }
+  const selectGroup = (id: number) => {
+    if (id === selected?.id) return;
+    if (!confirmDiscard()) return;
+    setPending({}); setSelectedId(id); setQuery('');
   };
+
+  /** Choosing the saved level again simply removes the pending change. */
+  const setLevel = (key: string, level: AccessLevel) =>
+    setPending((prev) => {
+      const next = { ...prev };
+      if ((savedMap[key] ?? 'none') === level) delete next[key]; else next[key] = level;
+      return next;
+    });
+
+  const discardSection = (keys: string[]) =>
+    setPending((prev) => {
+      const next = { ...prev };
+      keys.forEach((key) => { delete next[key]; });
+      return next;
+    });
+
+  /** Saves only this card's unsaved choices; other cards keep theirs. */
+  const saveSection = async (sectionLabel: string, keys: string[]) => {
+    if (!selected) return;
+    const changes = Object.fromEntries(keys.filter((k) => k in pending).map((k) => [k, pending[k]]));
+    if (Object.keys(changes).length === 0) return;
+
+    // The API replaces the whole map, so send the saved map with this card's changes applied.
+    const merged = { ...savedMap, ...changes };
+    const snapshotGroups = groups;
+    const groupId = selected.id;
+    const groupName = selected.name;
+
+    // Optimistic update for instant feedback, rolled back if the save fails.
+    setGroups((prev) => prev.map((x) => (x.id === groupId ? { ...x, permissions_map: merged } : x)));
+    setPending((prev) => { const next = { ...prev }; Object.keys(changes).forEach((k) => { delete next[k]; }); return next; });
+    setSavingSection(sectionLabel);
+    try {
+      await updatePermissionGroup(groupId, { permissions: merged });
+      toast.success(`${sectionLabel} saved for "${groupName}".`);
+    } catch (err: unknown) {
+      setGroups(snapshotGroups);
+      setPending((prev) => ({ ...prev, ...changes }));
+      toast.error(errorText(err, 'Failed to save changes.'));
+    } finally { setSavingSection(null); }
+  };
+
+  // ── Group actions ─────────────────────────────────────────────────────────
 
   const handleCreate = async (name: string, template: RoleTemplate, description: string) => {
     const permissions = { ...TEMPLATE_DEFAULT_PERMS[template] };
-    const newGroup = await createPermissionGroup({ name, role_template: template, description, permissions });
-    setGroups((prev) => [...prev, newGroup]);
+    const created = await createPermissionGroup({ name, role_template: template, description, permissions });
+    setGroups((prev) => [...prev, created]);
+    setPending({}); setSelectedId(created.id);
     toast.success(`"${name}" permission group created.`);
   };
 
   const handleDuplicate = async (g: PermissionGroup) => {
-    let name = `${g.name} (Copy)`, idx = 2;
+    if (!confirmDiscard()) return;
+    let name = `${g.name} (Copy)`; let idx = 2;
     while (groups.some((x) => x.name === name)) name = `${g.name} (Copy ${idx++})`;
     try {
-      const duped = await duplicatePermissionGroup(g.id, name);
-      setGroups((prev) => [...prev, duped]);
+      const copy = await duplicatePermissionGroup(g.id, name);
+      setGroups((prev) => [...prev, copy]);
+      setPending({}); setSelectedId(copy.id);
       toast.success(`Duplicated as "${name}".`);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } } };
-      toast.error(e?.response?.data?.detail || 'Failed to duplicate group.');
+      toast.error(errorText(err, 'Failed to duplicate group.'));
     }
   };
 
@@ -622,100 +202,225 @@ export const Permissions: React.FC = () => {
     try {
       await deletePermissionGroup(deleteTarget.id);
       setGroups((prev) => prev.filter((g) => g.id !== deleteTarget.id));
+      if (selectedId === deleteTarget.id) { setSelectedId(null); setPending({}); }
       toast.success(`"${deleteTarget.name}" deleted.`);
+    } catch (err: unknown) {
+      toast.error(errorText(err, 'Failed to delete group.'));
     } finally { setDeleteTarget(null); }
   };
 
+  // ── Branch access (Owner only) ────────────────────────────────────────────
+
+  const handleBranchSave = async (member: StaffMember, patch: BranchPatch) => {
+    try {
+      const updated = await updateStaff(member.id, patch as Partial<CreateStaffData>);
+      setStaff((prev) => prev.map((s) => (s.id === member.id ? { ...s, ...updated } : s)));
+      toast.success(`${member.first_name}'s branch access updated.`);
+    } catch (err: unknown) {
+      toast.error(errorText(err, 'Could not update branch access.'));
+      throw err;
+    }
+  };
+
+  const branchManagers = useMemo(() => staff.filter(isBranchManager), [staff]);
+  const members = useMemo(
+    () => (selected ? branchManagers.filter((s) => s.permission_group === selected.id) : []),
+    [branchManagers, selected],
+  );
+  const showBranchPanel = isOwner && !!selected && (selected.role_template === 'BRANCH_MANAGER' || members.length > 0);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  // The Owner manages every group. A Branch Manager (with Permissions: Edit) manages the groups they are
+  // shown (Frontdesk, Practitioner, Finance), never the one they belong to (the backend enforces both).
+  const canManageSelected = !!selected && canManage && (isOwner || selected.id !== ownGroupId);
+  const style = selected ? (TEMPLATE_STYLES[selected.role_template] ?? TEMPLATE_STYLES.CUSTOM) : TEMPLATE_STYLES.CUSTOM;
+  const StyleIcon = style.icon;
+  const counts = summarize(activeMap);
+
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <header className="flex items-start justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-center">
-            <Shield className="w-5 h-5 text-rose-600" />
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-500 to-violet-500 text-white flex items-center justify-center shadow-sm">
+            <Shield className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Permission Groups</h1>
-            <p className="text-xs text-gray-400">Configure feature-level access. Assign staff via Staff Management. The Owner always has full access and is not configured here.</p>
+            <p className="text-xs text-gray-500">Decide what each group of staff can see and do. Assign people to a group in Setup → Staff.</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={fetchGroups} disabled={loading} className="p-2 border border-gray-200 rounded-lg text-gray-400 hover:text-sky-600 hover:bg-sky-50 transition-colors disabled:opacity-50" title="Refresh">
+          <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-3 py-1.5">
+            <Crown className="w-3.5 h-3.5" aria-hidden="true" /> The Owner always has full access
+          </span>
+          <button
+            type="button"
+            onClick={() => { if (confirmDiscard()) { setPending({}); fetchGroups(); fetchStaff(); } }}
+            disabled={loading}
+            title="Refresh"
+            aria-label="Refresh"
+            className="p-2.5 border border-gray-200 rounded-xl text-gray-400 hover:text-sky-600 hover:bg-sky-50 transition-colors disabled:opacity-50"
+          >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           {canManage && (
-            <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-colors text-sm font-semibold shadow-sm">
-              <Plus className="w-4 h-4" /> New Group
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-colors text-sm font-semibold shadow-sm"
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" /> New group
             </button>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Info banner for read-only users */}
       {!canManage && (
         <div className="flex items-center gap-2 text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded-xl px-4 py-3">
-          <Info className="w-4 h-4 shrink-0" />
-          View-only. Contact an Owner to make changes.
+          <Info className="w-4 h-4 shrink-0" aria-hidden="true" />
+          View-only. Contact the Owner to make changes.
         </div>
       )}
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 flex-wrap px-1">
-        {[
-          { cls: 'bg-gray-100 text-gray-500 border-gray-200',   label: 'No Access' },
-          { cls: 'bg-sky-50   text-sky-700  border-sky-200',    label: 'View Only' },
-          { cls: 'bg-green-50 text-green-700 border-green-200', label: 'Full Edit' },
-        ].map(({ cls, label }) => (
-          <span key={label} className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${cls}`}>{label}</span>
-        ))}
-      </div>
-
-      {/* Error */}
       {error && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
-          <AlertTriangle className="w-4 h-4 shrink-0" />{error}
+        <div role="alert" className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+          <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />{error}
         </div>
       )}
 
-      {/* Loading skeleton */}
-      {loading && (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => <div key={i} className="bg-white rounded-2xl border border-gray-200 h-24 animate-pulse" />)}
+      {loading ? (
+        <div className="grid lg:grid-cols-[300px_minmax(0,1fr)] gap-6">
+          <div className="space-y-2">{[1, 2, 3, 4].map((i) => <div key={i} className="h-[74px] rounded-2xl bg-gray-100 animate-pulse" />)}</div>
+          <div className="space-y-4">
+            <div className="h-40 rounded-2xl bg-gray-100 animate-pulse" />
+            <div className="h-64 rounded-2xl bg-gray-100 animate-pulse" />
+          </div>
         </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && !error && groups.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
+      ) : !error && sortedGroups.length === 0 ? (
+        <div className="text-center py-20 text-gray-400">
+          <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
           <p className="text-sm">No permission groups yet. Create one to get started.</p>
         </div>
-      )}
+      ) : selected && (
+        <div className="grid lg:grid-cols-[300px_minmax(0,1fr)] gap-6 items-start">
+          <GroupSidebar groups={sortedGroups} selectedId={selected.id} onSelect={selectGroup} canCreate={false} onCreate={() => setShowCreate(true)} isLocked={canManage && !isOwner ? (g) => g.id === ownGroupId : undefined} />
 
-      {/* Group cards — rendered in fixed role hierarchy order */}
-      {!loading && sortedGroups.length > 0 && (
-        <div className="space-y-4">
-          {sortedGroups.map((g) => (
-            <GroupCard
-              key={g.id}
-              group={g}
-              isEditing={editingId === g.id}
-              editMap={editMap}
-              // Branch Managers cannot change their own group or an Owner group (backend enforces the same).
-              canManage={canManage && (isOwner || (g.role_template !== 'OWNER' && g.id !== ownGroupId))}
-              onEdit={() => startEdit(g)}
-              onSave={() => saveEdit(g)}
-              onCancel={cancelEdit}
-              onDuplicate={() => handleDuplicate(g)}
-              onDelete={() => setDeleteTarget(g)}
-              onPermChange={(key, level) => setEditMap((prev) => ({ ...prev, [key]: level }))}
-              isSaving={isSaving}
+          <div className="space-y-4 min-w-0">
+            {/* Group summary */}
+            <section className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+              <div className="p-5 flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex items-start gap-4 min-w-0">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${style.iconBg}`}>
+                    <StyleIcon className={`w-6 h-6 ${style.iconColor}`} aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-lg font-bold text-gray-900 truncate">{selected.name}</h2>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${style.badge}`}>
+                        {TEMPLATE_LABELS[selected.role_template] ?? selected.role_template}
+                      </span>
+                      {selected.is_protected && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 inline-flex items-center gap-1">
+                          <Lock className="w-3 h-3" aria-hidden="true" /> Protected
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-0.5 max-w-2xl">
+                      {selected.description || 'No description.'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1.5 inline-flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                      {selected.member_count} member{selected.member_count !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+
+                {canManageSelected && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button type="button" onClick={() => handleDuplicate(selected)} title="Duplicate group" aria-label="Duplicate group"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-gray-200 rounded-xl text-gray-600 hover:text-teal-700 hover:bg-teal-50 transition-colors">
+                      <Copy className="w-4 h-4" aria-hidden="true" /> Duplicate
+                    </button>
+                    {!selected.is_protected && (
+                      <button type="button" onClick={() => setDeleteTarget(selected)} title="Delete group" aria-label="Delete group"
+                        className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <dl className="grid grid-cols-3 divide-x divide-gray-100 border-t border-gray-100 bg-gray-50/60">
+                {[
+                  { label: 'Full edit', value: counts.edit, cls: 'text-emerald-600' },
+                  { label: 'View only', value: counts.view, cls: 'text-sky-600' },
+                  { label: 'No access', value: counts.none, cls: 'text-gray-500' },
+                ].map((stat) => (
+                  <div key={stat.label} className="px-5 py-3">
+                    <dd className={`text-xl font-bold ${stat.cls}`}>{stat.value}</dd>
+                    <dt className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">{stat.label}</dt>
+                  </div>
+                ))}
+              </dl>
+
+              {!canManageSelected && canManage && selected.id === ownGroupId && (
+                <p className="px-5 py-3 text-xs text-amber-700 bg-amber-50 border-t border-amber-100 flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  This is your own group. Only the Owner can change it.
+                </p>
+              )}
+            </section>
+
+            {/* Feature search */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search features, e.g. diary, invoices, staff…"
+                aria-label="Search features"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition"
+              />
+            </div>
+
+            <FeatureSections
+              activeMap={activeMap}
+              savedMap={savedMap}
+              canEdit={canManageSelected}
+              audience={selected ? (AUDIENCE_LABELS[selected.role_template] ?? 'Members of this group') : 'Members of this group'}
+              query={query}
+              onChange={setLevel}
+              onSaveSection={saveSection}
+              onDiscardSection={discardSection}
+              savingSection={savingSection}
+              extras={showBranchPanel ? {
+                'Diary & Calendar': (
+                  <BranchAccessPanel
+                    level={(activeMap.diary_other_branches ?? 'none') as AccessLevel}
+                    members={members}
+                    allManagers={branchManagers}
+                    branches={branches}
+                    loading={staffLoading}
+                    canEdit={isOwner}
+                    onSave={handleBranchSave}
+                  />
+                ),
+              } : undefined}
             />
-          ))}
+          </div>
         </div>
       )}
 
-      <CreateGroupModal isOpen={showCreate} onClose={() => setShowCreate(false)} onCreate={handleCreate} />
+      <CreateGroupModal
+        isOpen={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreate={handleCreate}
+        allowedTemplates={isOwner ? undefined : BRANCH_MANAGER_MANAGEABLE_TEMPLATES}
+      />
       <DeleteConfirmModal group={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} />
     </div>
   );
