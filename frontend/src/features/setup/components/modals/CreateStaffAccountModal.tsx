@@ -365,6 +365,15 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     return branches;
   }, [isOwner, isBranchManager, branches, managerBranches, currentUser?.clinic_branch]);
 
+  // A Branch Manager may change hours only at the clinics they manage. Hours at another manager's clinic
+  // are shown but locked, and are sent back unchanged so saving never drops them.
+  const isLockedBranch = (branchId: number | null | undefined) =>
+    !isOwner && isBranchManager && !!branchId && !availableBranches.some(b => b.id === branchId);
+  const branchLabel = (branchId: number | null | undefined) =>
+    branches.find(b => b.id === branchId)?.name
+      ?? Object.values(editingStaff?.branch_assignments ?? []).find(a => a.branch_id === branchId)?.branch_name
+      ?? `Clinic #${branchId}`;
+
   const defaultBranchId = useMemo(() => {
     if (formData.clinic_branch) return Number(formData.clinic_branch);
     if (isBranchManager && !isOwner) {
@@ -877,6 +886,10 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     const currentDays = formData.duty_days ?? [];
     const isActive = currentDays.includes(day);
     if (isActive) {
+      if ((formData.duty_schedule?.[day] ?? []).some(b => isLockedBranch(b.branch_id))) {
+        toast.error('This day includes hours at a clinic managed by another Branch Manager. Those hours cannot be removed here.');
+        return;
+      }
       const newDays = currentDays.filter(d => d !== day);
       const newSchedule = { ...(formData.duty_schedule ?? {}) } as DutySchedule;
       delete newSchedule[day];
@@ -907,7 +920,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     const newBlock: ShiftBlock = {
       start: `${String(newH).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
       end:   `${String(Math.min(newH + 1, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
-      branch_id: lastBlock?.branch_id ?? fallbackBid,
+      branch_id: isLockedBranch(lastBlock?.branch_id) ? fallbackBid : (lastBlock?.branch_id ?? fallbackBid),
     };
     setFormData(prev => ({
       ...prev,
@@ -917,6 +930,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
 
   const removeBlock = (day: DutyDay, idx: number) => {
     const existing = formData.duty_schedule ?? {};
+    if (isLockedBranch(existing[day]?.[idx]?.branch_id)) return;
     const blocks = (existing[day] ?? []).filter((_: ShiftBlock, i: number) => i !== idx);
     const newSchedule = { ...existing, [day]: blocks } as DutySchedule;
     setFormData(prev => ({ ...prev, duty_schedule: newSchedule }));
@@ -924,6 +938,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
 
   const updateBlock = (day: DutyDay, idx: number, field: 'start' | 'end' | 'branch_id', value: any) => {
     const existing = formData.duty_schedule ?? {};
+    if (isLockedBranch(existing[day]?.[idx]?.branch_id)) return;
     const blocks = [...(existing[day] ?? [])];
     const val = field === 'branch_id' ? (value ? Number(value) : null) : value;
     blocks[idx] = { ...blocks[idx], [field]: val };
@@ -1301,6 +1316,19 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                               <div className="space-y-2">
                                 {blocks.map((block: ShiftBlock, idx: number) => {
                                   const blockBranchId = block.branch_id ?? defaultBranchId;
+                                  if (isLockedBranch(blockBranchId)) {
+                                    return (
+                                      <div key={idx} className="flex flex-wrap items-center gap-2 p-2 bg-gray-100/80 rounded-lg border border-gray-200 text-xs sm:text-sm text-gray-600">
+                                        <Lock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                        <span className="font-medium">{formatTime12h(block.start)} – {formatTime12h(block.end)}</span>
+                                        <span className="text-gray-400">at</span>
+                                        <span className="font-medium">{branchLabel(blockBranchId)}</span>
+                                        <span className="ml-auto text-[10px] font-semibold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-full">
+                                          Managed by another Branch Manager
+                                        </span>
+                                      </div>
+                                    );
+                                  }
                                   return (
                                     <div key={idx} className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-2 bg-white rounded-lg border border-gray-200 shadow-2xs">
                                       <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
@@ -1371,11 +1399,12 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                               </span>
                             </div>
                             <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
-                              {uniqueAssignedBranchIds.length} Clinician {uniqueAssignedBranchIds.length === 1 ? 'Seat' : 'Seats'}
+                              1 Clinician Seat
                             </span>
                           </div>
                           <p className="text-[11px] text-emerald-800/80 mb-2.5">
                             The practitioner will have working hours at each configured branch. Multiple periods at the same branch reuse the single assignment.
+                            A practitioner working at several branches counts as 1 clinician on your plan.
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {uniqueAssignedBranchIds.map(bId => {

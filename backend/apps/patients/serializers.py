@@ -372,7 +372,8 @@ class PortalLinkPublicSerializer(serializers.ModelSerializer):
             is_deleted=False,
             is_accepting_patients=True,
         ).filter(
-            Q(user__clinic_branch=obj.clinic) | Q(user__branch_accesses__branch=obj.clinic)
+            Q(user__branch_accesses__branch=obj.clinic, user__branch_accesses__is_active=True) |
+            (Q(user__clinic_branch=obj.clinic) & ~Q(user__branch_accesses__branch=obj.clinic, user__branch_accesses__is_active=False))
         ).distinct().select_related(
             'user',
             'user__clinic_branch',

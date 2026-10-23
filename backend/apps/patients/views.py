@@ -38,6 +38,7 @@ import traceback
 from django.db import models, transaction
 from django.db.models import Q
 from apps.common.validators import normalize_international_phone
+from apps.accounts.utils.rbac import get_assigned_branch_ids
 from apps.appointments.calendar_events import emit_calendar_event
 
 logger = logging.getLogger(__name__)
@@ -283,7 +284,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             if user.is_branch_manager:
                 assigned_branches = list(user.get_managed_branches().values_list('id', flat=True))
             else:
-                assigned_branches = list(user.branch_accesses.values_list('branch_id', flat=True))
+                assigned_branches = get_assigned_branch_ids(user)
                 if not assigned_branches and user.clinic_branch_id:
                     assigned_branches = [user.clinic_branch_id]
             
@@ -1314,7 +1315,7 @@ class PortalLinkViewSet(viewsets.ModelViewSet):
             if user.is_branch_manager:
                 assigned_branches = list(user.get_managed_branches().values_list('id', flat=True))
             else:
-                assigned_branches = list(user.branch_accesses.values_list('branch_id', flat=True))
+                assigned_branches = get_assigned_branch_ids(user)
                 if not assigned_branches and user.clinic_branch_id:
                     assigned_branches = [user.clinic_branch_id]
             base_qs = base_qs.filter(clinic_id__in=assigned_branches)
@@ -1335,7 +1336,7 @@ class PortalLinkViewSet(viewsets.ModelViewSet):
             if user.is_branch_manager:
                 assigned_branches = list(user.get_managed_branches().values_list('id', flat=True))
             else:
-                assigned_branches = list(user.branch_accesses.values_list('branch_id', flat=True))
+                assigned_branches = get_assigned_branch_ids(user)
                 if not assigned_branches and user.clinic_branch_id:
                     assigned_branches = [user.clinic_branch_id]
             branches_qs = branches_qs.filter(id__in=assigned_branches)

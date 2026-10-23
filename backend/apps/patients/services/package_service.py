@@ -13,6 +13,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
+from apps.accounts.utils.rbac import get_assigned_branch_ids
 from apps.appointments.models import Appointment
 from apps.billing.models import Invoice, InvoiceItem, Payment
 from apps.clinics.models import Clinic
@@ -51,7 +52,7 @@ def visible_branch_ids(user):
         return None
     if user.is_branch_manager:
         return list(user.get_managed_branches().values_list('id', flat=True))
-    ids = list(user.branch_accesses.values_list('branch_id', flat=True))
+    ids = get_assigned_branch_ids(user)
     if not ids and user.clinic_branch_id:
         ids = [user.clinic_branch_id]
     return ids

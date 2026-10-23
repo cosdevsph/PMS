@@ -51,6 +51,21 @@ When something changes, update this file in place and add a CHANGELOG entry. Rec
 
 Architecture Decision Records, newest first. Each one: date, decision, context, alternatives considered, consequences, status (`Accepted` / `Superseded (YYYY-MM-DD)`).
 
+### ADR-006: A Practitioner's clinics are changed through one schedule write, and access follows active rows
+
+**Date:** 2026-10-23 · **Status:** Accepted and implemented. No migration.
+
+**Context.** A Practitioner works at several clinics through one `UserBranchAccess` row per clinic (the clinic's slice of the combined `duty_schedule`). Three separate write paths existed (user update, `assign_branch`, `update_branch_assignment`), the seat pre-checks counted per clinic while the seat counter counted people, and access helpers ignored `is_active`, so removing a clinic did not remove access.
+
+**Decision.** The user update with the combined `duty_schedule` is the one path for changing a Practitioner's clinics (the Permissions panel and the Staff form both use it); the single-clinic endpoints stay but share the overlap check and re-sync the combined schedule. Seats are charged only when someone newly becomes a clinician. Access helpers use `get_assigned_branch_ids` (active rows plus managed clinics). A Branch Manager's write scope on a schedule is enforced by comparing the blocks outside their clinics with what is stored.
+
+**Alternatives considered.**
+- *A new endpoint for adding a clinic:* rejected; it would be a fourth path to keep consistent with validation and seat rules.
+- *Count a seat per clinic:* rejected by the owner (one person in different places is one clinician).
+- *Let a Branch Manager also move hours at other managers' clinics:* rejected; each manager controls only their clinics.
+
+**Consequences.** Anything that asks "which clinics does this person work at" must use active rows (`get_assigned_branch_ids`), not all rows. The seat counter still reads all rows (an archived or inactive Practitioner still counts).
+
 ### ADR-005: A Branch Manager's clinics are flagged rows, and the database enforces one manager per clinic
 
 **Date:** 2026-10-22 · **Status:** Accepted and implemented. **Not yet deployed:** `accounts.0026` and `0027` are unapplied on the development database.

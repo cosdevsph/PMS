@@ -156,3 +156,15 @@ export const deactivateBranchAssignment = async (
   emitPractitionerUpdated(userId, response.data.practitioner_id ?? null);
   return response.data;
 };
+/**
+ * Save a practitioner's working hours at all their clinics in one go (`duty_schedule` blocks carry
+ * the clinic). Clinics missing from the schedule are removed. One clinician seat however many clinics.
+ */
+export const saveStaffSchedule = async (
+  userId: number,
+  duty_schedule: NonNullable<StaffMember['duty_schedule']>
+): Promise<StaffMember> => {
+  const response = await axiosInstance.patch<StaffMember>(`/users/${userId}/`, { duty_schedule });
+  emitPractitionerUpdated(userId, response.data.practitioner_id ?? null);
+  return response.data;
+};

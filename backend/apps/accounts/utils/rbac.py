@@ -1,5 +1,16 @@
 from rest_framework.exceptions import PermissionDenied
 
+def get_assigned_branch_ids(user):
+    """
+    Clinics the user is assigned to: their ACTIVE assignment rows plus the clinics they manage.
+    A deactivated assignment (the user no longer works at that clinic) grants nothing.
+    """
+    from django.db.models import Q
+    return list(
+        user.branch_accesses.filter(Q(is_active=True) | Q(is_managed=True)).values_list('branch_id', flat=True)
+    )
+
+
 def get_allowed_branches(user):
     """
     Returns a list of branch IDs the user is allowed to access.
@@ -11,7 +22,7 @@ def get_allowed_branches(user):
     if 'OWNER' in effective_roles:
         return None
         
-    branches = list(user.branch_accesses.values_list('branch_id', flat=True))
+    branches = get_assigned_branch_ids(user)
     if not branches and user.clinic_branch_id:
         branches = [user.clinic_branch_id]
         

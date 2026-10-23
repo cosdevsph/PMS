@@ -45,6 +45,72 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-10-23 — Follow-up: why a Branch Manager's level dropdowns on the Permissions page are not clickable
+
+**Status:** Implemented (message only; no behavior change). Nothing committed.
+**Module / feature:** Setup → Users → Permissions.
+
+**Original behavior:** A Branch Manager sees the Frontdesk, Practitioner and Finance groups with the level shown as a plain pill (no dropdown) unless their own group has **Permissions: Edit**; the default Branch Manager group has Permissions set to No Access, so the page is view-only. The only hint was "View-only. Contact the Owner to make changes."
+**Problem / requirement:** Owner report: the "Edit / View / No Access" dropdown is not clickable for a Branch Manager.
+**Finding:** Not a click or layout bug. Isolated check on a copy of the dev database: with the default Branch Manager group (Permissions: No Access) the page shows 0 dropdowns and the view-only notice; after the Owner sets Permissions: Edit on the Branch Manager group and the Branch Manager opens the page again, 32 dropdowns appear, the menu opens with a real mouse click, a level can be changed and the card's Save changes works (hit-tests showed nothing covering the control). The change reaches an already open session only after the page is opened again (the session re-reads permissions then).
+**Reason for the change:** The notice did not say what to ask the Owner for.
+
+**Files modified:** `frontend/.../users/Permissions.tsx` — for a Branch Manager the notice now says to ask the Owner to set Permissions (Administration) to Edit for their Branch Manager group.
+**Database / migrations:** None. **API / data contract:** None.
+
+**Tests executed:** `npx tsc -b` → clean; `npx eslint` on the file → clean. Manual (scratch database copy, `REDIS_URL=` empty, removed afterwards): the new notice shows for a Branch Manager whose group has Permissions: No Access; dropdown open / change / save checked as described above.
+
+**Known limitations / unresolved issues:** Open decision for the Owner: whether Branch Managers should always be able to manage the Frontdesk, Practitioner and Finance groups (like the staff rule), instead of depending on the Permissions row of their group. Not changed.
+**Regression risks:** None beyond this screen's notice text.
+
+---
+
+## 2026-10-23 — Practitioners working at several clinics: set by the Branch Manager, counted as one clinician
+
+**Status:** Implemented and tested. No migration. Nothing committed.
+**Module / feature:** Roles and permissions, staff, subscriptions. Setup → Users → Permissions and Staff form. See FEATURES "Roles & permissions" and "Subscriptions & pricing".
+
+**Original behavior:** A Practitioner could already work at several clinics (each clinic is a `UserBranchAccess` row built from the `branch_id` on each block of the combined `duty_schedule`), but: (1) the clinician-limit **pre-checks** on staff create, staff update and `assign_branch` counted one seat **per clinic**, so at the plan limit adding a clinic, or creating a Practitioner for two clinics, was refused with CLINICIAN_LIMIT_REACHED although the seat counter itself counts a clinician once; (2) the access helpers (Diary clinics, patients, packages) read **all** assignment rows including deactivated ones, so a Practitioner removed from a clinic kept that clinic's Diary and patients; (3) `assign_branch` and `update_branch_assignment` did not check overlapping hours with the Practitioner's other clinics; (4) a Branch Manager saving a Practitioner who also works at another manager's clinic was refused (the other clinic is outside their scope) or would have dropped it; (5) the Permissions page had no Practitioner clinic controls.
+**Problem / requirement:** Owner, 2026-10-23: the Owner creates Branch Managers; a Branch Manager creates Practitioner, Frontdesk and Finance and should also set a Practitioner's Diary, Calendar and patient access with other branches by giving the Practitioner more clinics. A Practitioner in several clinics counts as **1 clinician** (one person in different places). Decisions: an added clinic means "works there" (assigned, bookable on its hours, sees that clinic's patients and notes); a Branch Manager may add only clinics they manage, the Owner any; set from both the Permissions page and the Staff form; Practitioners only for now.
+**Reason for the change:** One write path (the user update with a combined `duty_schedule`) so validation, overlap checks and `_sync_practitioner_branch_schedules` apply everywhere; seat checks aligned with the counter that already existed; access that follows the clinics the person actually works at.
+
+**Files modified:**
+- `backend/apps/accounts/views.py` — create: 1 seat for a new Practitioner; update: 1 seat only when the Practitioner role is newly added, 0 for any clinic change; `assign_branch`: no capacity check (the user already holds a seat), overlap check, combined schedule re-synced; `update_branch_assignment`: overlap check (when the clinic stays active), re-sync; `deactivate_branch_assignment`: re-sync.
+- `backend/apps/accounts/utils/schedule.py` — new: overlap finder and message, the combined schedule built from active clinic rows, `branch_overlap_error`, `sync_combined_schedule`, `blocks_outside`.
+- `backend/apps/accounts/serializers.py` — `_validate_duty_schedule`: overlap now uses the shared helper (same message); a Branch Manager may resend unchanged blocks of clinics they do not manage but may not add, change or remove them (`_stored_schedule`, `_block_is_stored`).
+- `backend/apps/accounts/utils/rbac.py` — new `get_assigned_branch_ids` (active rows plus managed clinics); `get_allowed_branches` uses it.
+- `backend/apps/patients/views.py`, `patients/services/package_service.py` — patient / branch / package scoping uses `get_assigned_branch_ids`; `patients/serializers.py` — the public portal's practitioner list ignores deactivated clinics (same rule the Diary list already used).
+- `backend/apps/accounts/test_practitioner_clinics.py` — new, 23 tests.
+- `frontend/.../users/permissions/PractitionerBranchPanel.tsx`, `practitionerSchedule.ts` — new panel and schedule helpers; `Permissions.tsx` — shows the panel in Diary & Calendar for Practitioner groups, fetches staff for a Branch Manager who can manage groups; `services/StaffService.ts` — `saveStaffSchedule`; `components/modals/CreateStaffAccountModal.tsx` — hours at a clinic the Branch Manager does not manage are shown locked and sent back unchanged; the "N Clinician Seats" label now reads "1 Clinician Seat" with a note.
+
+**Frontend changes:** New "Clinics for Practitioners" panel inside the Diary & Calendar card of a group whose members are Practitioners (the Owner, or a Branch Manager who may manage that group): per Practitioner, the clinics they work at with days and hours, "Add more branch" (clinic, days, from/to), edit hours, remove (never the last clinic; clinics outside the viewer's scope are locked). Backend refusals (overlap, scope) appear inline. Staff form: locked rows for other managers' clinics; locked days cannot be switched off; new blocks never default to a locked clinic.
+**Backend changes:** see Files modified.
+**Database / migrations:** None (`makemigrations --check` → no changes).
+**API / data contract:** No new endpoints. `PATCH /api/users/{id}/` with `duty_schedule` (blocks carry `branch_id`) is the path for changing a Practitioner's clinics. `assign_branch` and `update_branch_assignment` return 400 with the overlap message. A Branch Manager changing hours at a clinic they do not manage gets 400 ("You can only change working hours at the clinics you manage." / "Branch #N is not one of the clinics you manage.").
+
+**Business rules & decisions:**
+- One person, one seat: a Practitioner costs one clinician seat when they become a clinician, and none for adding, changing or removing clinics. Supersedes the per-clinic pre-check behavior; the counter (`get_clinician_allocations_for_clinic`) is unchanged.
+- A Branch Manager adds/changes/removes hours only at clinics they manage; other clinics' hours must be resent unchanged. The Owner can use any clinic of the group.
+- A clinic the person no longer works at (deactivated row) grants no Diary, patient or package access. A Branch Manager's managed clinics do not depend on `is_active`.
+- Hours at two clinics may not overlap on the same day (back-to-back is allowed).
+- Assumption (not explicitly chosen): when adding a clinic the panel asks for days and hours (default Mon–Fri 8:00 AM–5:00 PM) rather than guessing them.
+
+**Tests executed:**
+- `manage.py test apps.accounts.test_practitioner_clinics` → 23 OK. Mutation checks (each change reverted afterwards): per-clinic seat math on update → 8 tests fail; ignoring `is_active` in access → 1 fails; removing the unchanged-foreign-blocks rule → 1 fails; restored → 23 OK.
+- `manage.py test apps.accounts` → 118 OK; `apps.patients` → 141 OK; `apps.subscriptions` → 49 OK (one app per command). `apps.appointments` and `apps.clinics` have no tests (0 ran). `apps.clinical_templates` was not re-run (known pre-existing failure unrelated).
+- `manage.py check` → no issues; `makemigrations --check --dry-run` → no changes.
+- `npx tsc -b` → clean; `npx eslint` on the changed and new files → 0 findings except `CreateStaffAccountModal.tsx`, which has the same 18 findings (17 errors, 1 warning) at `HEAD`; none added.
+- Manual (isolated stack: scratch copy of the dev database, `REDIS_URL=` empty, plan limit 2 with 2 clinicians in use): as a Branch Manager with Permissions: Edit, the Practitioner group shows the panel; a Practitioner shared with another manager's clinic shows that clinic locked; the clinic list offers only the Branch Manager's own clinics; adding a clinic with overlapping hours shows the overlap message and changes nothing; adding with valid hours succeeds at the limit and the seat count stays 2 of 2; the Practitioner then sees that clinic's patient; removing the clinic removes the patient from their view; the last clinic's remove button is disabled; in the Staff form the other manager's clinic hours are locked and saving untouched keeps them. No console errors. The scratch stack and database were removed.
+
+**Known limitations / unresolved issues:**
+- Only Practitioners (Frontdesk / Finance later). A Practitioner without a permission group is not listed in the panel (use the Staff form). A clinic whose hours are not the same single block on each day is shown but can be edited only in the Staff form.
+- A Practitioner who is also a Branch Manager would also show their managed clinics in the panel list (the assignment list does not flag managed rows).
+- A Branch Manager sees the clinics they do not manage only as "Managed by another Branch Manager" (the other manager's name is not visible to them).
+- The stored combined schedule is compared with the incoming one to decide what is "unchanged"; legacy rows whose stored times were formatted differently could be refused with the clear message and need saving once by the Owner.
+**Regression risks:** Staff create/update clinician-limit behavior (now lenient for clinic changes; a new clinician is still refused at the limit); Diary, patient list and package visibility for Practitioners and Staff (active rows only); the public portal practitioner list; the Staff form schedule editor for Branch Managers.
+
+---
+
 ## 2026-10-23 — Follow-up: a Branch Manager no longer sees the Branch Manager (or other Owner-only) permission groups
 
 **Status:** Implemented and tested. No migration. Nothing committed.

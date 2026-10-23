@@ -4,6 +4,7 @@ from django.db import transaction
 import logging
 from .roles import normalize_role, normalize_roles, normalize_role_payload
 from .utils.rbac import validate_branches_free_for_manager
+from .utils.schedule import blocks_outside, find_overlap, overlap_message
 from .models import (
     User, Role, Permission, PermissionGroup, FeaturePermission,
     UserBranchAccess,
@@ -535,23 +536,6 @@ class UserSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {'duty_schedule': f'{day}: block start ({s_12}) must be before end ({e_12}).'}
                     )
-                if i > 0:
-                    prev = sorted_blocks[i - 1]
-                    if block['start'] < prev['end']:
-                        p_s = self._format_time_12h(prev['start'])
-                        p_e = self._format_time_12h(prev['end'])
-                        b_s = self._format_time_12h(block['start'])
-                        b_e = self._format_time_12h(block['end'])
-                        prev_bid = prev.get('branch_id')
-                        curr_bid = block.get('branch_id')
-                        prev_branch_name = Clinic.objects.filter(pk=prev_bid).values_list('name', flat=True).first() if prev_bid else None
-                        curr_branch_name = Clinic.objects.filter(pk=curr_bid).values_list('name', flat=True).first() if curr_bid else None
-                        p_str = f" ({prev_branch_name})" if prev_branch_name else ""
-                        c_str = f" ({curr_branch_name})" if curr_branch_name else ""
-                        raise serializers.ValidationError(
-                            {'duty_schedule': f'{day}: Working periods overlap: {p_s}–{p_e}{p_str} and {b_s}–{b_e}{c_str}. A practitioner cannot work in two places simultaneously.'}
-                        )
-
                 # Validate branch_id if provided
                 bid = block.get('branch_id')
                 if bid and main_clinic:
@@ -562,7 +546,7 @@ class UserSerializer(serializers.ModelSerializer):
                                 {'duty_schedule': f'Branch #{bid} does not belong to your clinic.'}
                             )
                         scope = self._manager_scope()
-                        if scope is not None and branch_obj.id not in scope:
+                        if scope is not None and branch_obj.id not in scope and not self._block_is_stored(day, block):
                             raise serializers.ValidationError(
                                 {'duty_schedule': f'Branch #{bid} is not one of the clinics you manage.'}
                             )
@@ -570,6 +554,45 @@ class UserSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError(
                             {'duty_schedule': f'Branch #{bid} does not exist.'}
                         )
+
+        overlap = find_overlap(schedule)
+        if overlap:
+            names = dict(Clinic.objects.filter(
+                pk__in={b.get('branch_id') for blocks in schedule.values() for b in blocks if b.get('branch_id')}
+            ).values_list('id', 'name'))
+            raise serializers.ValidationError(
+                {'duty_schedule': overlap_message(overlap, lambda branch_id: names.get(int(branch_id)))}
+            )
+
+        # A Branch Manager may only change hours at the clinics they manage. Hours at any other clinic
+        # (managed by someone else) must come back exactly as stored: added, changed or removed -> refused.
+        scope = self._manager_scope()
+        if scope is not None and self.instance is not None:
+            default_bid = self.instance.clinic_branch_id
+            if blocks_outside(schedule, scope, default_bid) != blocks_outside(self._stored_schedule(), scope, default_bid):
+                raise serializers.ValidationError(
+                    {'duty_schedule': 'You can only change working hours at the clinics you manage.'}
+                )
+
+    def _stored_schedule(self):
+        """The combined working hours currently saved for the user being edited."""
+        user = self.instance
+        if user is None:
+            return {}
+        if 'PRACTITIONER' in user.get_effective_roles():
+            profile = getattr(user, 'practitioner_profile', None)
+            if profile is not None and not profile.is_deleted and isinstance(profile.duty_schedule, dict):
+                return profile.duty_schedule
+        return user.duty_schedule if isinstance(user.duty_schedule, dict) else {}
+
+    def _block_is_stored(self, day, block):
+        """True when this exact block (day, hours, clinic) is already saved for the user being edited."""
+        try:
+            bid = int(block.get('branch_id'))
+        except (TypeError, ValueError):
+            return False
+        key = (day, str(block.get('start')), str(block.get('end')), bid)
+        return key in set(blocks_outside(self._stored_schedule(), set(), None))
 
     def validate(self, attrs):
         duty_schedule = attrs.get('duty_schedule')

@@ -8,6 +8,8 @@
  *   - create, duplicate and delete groups
  *   - (Owner) choose, per Branch Manager in a group, which clinics they manage and which other
  *     clinics they can open in the Diary
+ *   - choose, per Practitioner in a group, the clinics they work at and their hours there (the
+ *     Owner: any clinic; a Branch Manager: the clinics they manage). One clinician on the plan.
  *
  * The Owner is never listed: the Owner always has full access and has no permission settings.
  */
@@ -30,12 +32,14 @@ import {
   type PermissionGroup,
   type RoleTemplate,
 } from '../../services/PermissionGroupService';
-import { getStaff, updateStaff } from '../../services/StaffService';
+import { getStaff, saveStaffSchedule, updateStaff } from '../../services/StaffService';
 import type { CreateStaffData, StaffMember } from '../../types/staff.types';
+import type { DutySchedule } from '@/features/clinics/clinic.api';
 import { BranchAccessPanel, type BranchPatch } from './permissions/BranchAccessPanel';
 import { FeatureSections } from './permissions/FeatureSections';
 import { CreateGroupModal, DeleteConfirmModal } from './permissions/GroupModals';
 import { GroupSidebar } from './permissions/GroupSidebar';
+import { PractitionerBranchPanel } from './permissions/PractitionerBranchPanel';
 import {
   AUDIENCE_LABELS, BRANCH_MANAGER_MANAGEABLE_TEMPLATES, ROLE_ORDER, TEMPLATE_DEFAULT_PERMS, TEMPLATE_LABELS, TEMPLATE_STYLES, summarize,
 } from './permissions/meta';
@@ -49,9 +53,10 @@ const errorText = (err: unknown, fallback: string): string => {
 };
 
 const isBranchManager = (s: StaffMember) => (s.roles?.length ? s.roles : [s.role]).includes('BRANCH_MANAGER');
+const isPractitioner = (s: StaffMember) => (s.roles?.length ? s.roles : [s.role]).includes('PRACTITIONER');
 
 export const Permissions: React.FC = () => {
-  const { isOwner, isBranchManager: actorIsBranchManager, canEdit } = usePermissions();
+  const { isOwner, isBranchManager: actorIsBranchManager, canEdit, managerBranches } = usePermissions();
   // Subscribe to external permission refreshes (e.g. WS-driven updates from another browser session).
   const permissionsVersion = useAuthStore((s) => s.permissionsVersion);
   const ownGroupId = useAuthStore((s) => s.user?.permission_group ?? null);
@@ -106,11 +111,13 @@ export const Permissions: React.FC = () => {
     } finally { setLoading(false); }
   }, []);
 
+  // The Owner needs the staff for both panels; a Branch Manager who manages groups, for the Practitioner panel.
+  const needsStaff = canManage;
   const fetchStaff = useCallback(async () => {
-    if (!isOwner) return;
+    if (!needsStaff) return;
     setStaffLoading(true);
     try { setStaff(await getStaff()); } catch { /* the branch panel simply shows no managers */ } finally { setStaffLoading(false); }
-  }, [isOwner]);
+  }, [needsStaff]);
 
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
   useEffect(() => { fetchStaff(); }, [fetchStaff]);
@@ -222,12 +229,27 @@ export const Permissions: React.FC = () => {
     }
   };
 
+  // Practitioner clinics: saved through the user update, so the same overlap and scope rules apply.
+  const handlePractitionerSave = async (member: StaffMember, schedule: DutySchedule) => {
+    const updated = await saveStaffSchedule(member.id, schedule);   // a refusal is shown inline by the panel
+    setStaff((prev) => prev.map((s) => (s.id === member.id ? { ...s, ...updated } : s)));
+    toast.success(`${member.first_name}'s clinics updated.`);
+  };
+
   const branchManagers = useMemo(() => staff.filter(isBranchManager), [staff]);
   const members = useMemo(
     () => (selected ? branchManagers.filter((s) => s.permission_group === selected.id) : []),
     [branchManagers, selected],
   );
   const showBranchPanel = isOwner && !!selected && (selected.role_template === 'BRANCH_MANAGER' || members.length > 0);
+  const practitioners = useMemo(
+    () => (selected ? staff.filter((s) => isPractitioner(s) && s.permission_group === selected.id) : []),
+    [staff, selected],
+  );
+  // Clinics the viewer may change: everything for the Owner, the managed clinics for a Branch Manager.
+  const practitionerScope = isOwner ? null : managerBranches.map((b) => b.id);
+  const showPractitionerPanel = !!selected && canManage && (isOwner || selected.id !== ownGroupId)
+    && (selected.role_template === 'PRACTITIONER' || practitioners.length > 0);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -280,7 +302,12 @@ export const Permissions: React.FC = () => {
       {!canManage && (
         <div className="flex items-center gap-2 text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded-xl px-4 py-3">
           <Info className="w-4 h-4 shrink-0" aria-hidden="true" />
-          View-only. Contact the Owner to make changes.
+          {actorIsBranchManager
+            ? <span>
+                You can view these groups but not change them. To change the Frontdesk, Practitioner and Finance groups, ask the Owner to set
+                {' '}<strong>Permissions</strong> (Administration) to <strong>Edit</strong> for your Branch Manager group. It applies the next time you open the page.
+              </span>
+            : 'View-only. Contact the Owner to make changes.'}
         </div>
       )}
 
@@ -397,17 +424,30 @@ export const Permissions: React.FC = () => {
               onSaveSection={saveSection}
               onDiscardSection={discardSection}
               savingSection={savingSection}
-              extras={showBranchPanel ? {
+              extras={showBranchPanel || showPractitionerPanel ? {
                 'Diary & Calendar': (
-                  <BranchAccessPanel
-                    level={(activeMap.diary_other_branches ?? 'none') as AccessLevel}
-                    members={members}
-                    allManagers={branchManagers}
-                    branches={branches}
-                    loading={staffLoading}
-                    canEdit={isOwner}
-                    onSave={handleBranchSave}
-                  />
+                  <>
+                    {showBranchPanel && (
+                      <BranchAccessPanel
+                        level={(activeMap.diary_other_branches ?? 'none') as AccessLevel}
+                        members={members}
+                        allManagers={branchManagers}
+                        branches={branches}
+                        loading={staffLoading}
+                        canEdit={isOwner}
+                        onSave={handleBranchSave}
+                      />
+                    )}
+                    {showPractitionerPanel && (
+                      <PractitionerBranchPanel
+                        members={practitioners}
+                        branches={branches}
+                        scopeIds={practitionerScope}
+                        loading={staffLoading}
+                        onSave={handlePractitionerSave}
+                      />
+                    )}
+                  </>
                 ),
               } : undefined}
             />

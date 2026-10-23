@@ -23,6 +23,7 @@ from .services.email_service import EmailService
 from .services import otp_service
 from .services import login_throttle_service
 from .utils.generators import generate_verification_code
+from .utils.schedule import branch_overlap_error, sync_combined_schedule
 from apps.clinics.models import Clinic, Practitioner
 from apps.common.permissions import IsOwnerBranchManagerOrStaff, HasFeaturePermission
 from apps.common.recaptcha import verify_recaptcha
@@ -1300,22 +1301,8 @@ class UserViewSet(viewsets.ModelViewSet):
                     from apps.subscriptions.services import check_clinician_capacity, ClinicianLimitReachedException
                     target_clinic = request.user.clinic
                     if target_clinic:
-                        incoming_schedule = serializer.validated_data.get('duty_schedule') or request.data.get('duty_schedule')
-                        unique_bids = set()
-                        if incoming_schedule and isinstance(incoming_schedule, dict):
-                            for blocks in incoming_schedule.values():
-                                if isinstance(blocks, list):
-                                    for b in blocks:
-                                        bid = b.get('branch_id')
-                                        if bid:
-                                            unique_bids.add(int(bid))
-                        requested_branch_ids = serializer.validated_data.get('branch_ids') or request.data.get('branch_ids', [])
-                        if requested_branch_ids:
-                            unique_bids.update([int(b) for b in requested_branch_ids])
-                        if not unique_bids and branch:
-                            unique_bids.add(branch.id)
-
-                        allocations_needed = max(1, len(unique_bids))
+                        # A practitioner is ONE clinician however many clinics they work at.
+                        allocations_needed = 1
                         try:
                             check_clinician_capacity(target_clinic, additional_allocations=allocations_needed)
                         except ClinicianLimitReachedException as exc:
@@ -1586,31 +1573,9 @@ class UserViewSet(viewsets.ModelViewSet):
         was_practitioner = 'PRACTITIONER' in old_effective_roles or instance.role == 'PRACTITIONER'
         will_be_practitioner = 'PRACTITIONER' in new_roles_requested or new_role_requested == 'PRACTITIONER'
 
-        active_uba_count = instance.branch_accesses.filter(is_active=True).count()
-        old_branch_count = max(1, active_uba_count) if (was_practitioner and active_uba_count > 0) else (1 if was_practitioner else 0)
-
-        if will_be_practitioner:
-            incoming_schedule = serializer.validated_data.get('duty_schedule') or request.data.get('duty_schedule')
-            unique_bids = set()
-            if incoming_schedule and isinstance(incoming_schedule, dict):
-                for blocks in incoming_schedule.values():
-                    if isinstance(blocks, list):
-                        for b in blocks:
-                            bid = b.get('branch_id')
-                            if bid:
-                                unique_bids.add(int(bid))
-            incoming_branch_ids = serializer.validated_data.get('branch_ids')
-            if incoming_branch_ids:
-                unique_bids.update([int(b) for b in incoming_branch_ids])
-
-            if unique_bids:
-                new_branch_count = len(unique_bids)
-            else:
-                new_branch_count = old_branch_count if was_practitioner else 1
-        else:
-            new_branch_count = 0
-
-        net_new_allocations = new_branch_count - old_branch_count
+        # One seat per clinician: it is needed only when this user newly becomes a practitioner.
+        # Adding, changing or removing clinics never costs a seat.
+        net_new_allocations = 1 if (will_be_practitioner and not was_practitioner) else 0
         if net_new_allocations > 0:
             target_clinic = instance.clinic or actor.clinic
             if target_clinic:
@@ -2082,26 +2047,8 @@ class UserViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Check subscription clinician limit capacity
-            from apps.subscriptions.services import check_clinician_capacity, ClinicianLimitReachedException
-            target_clinic = actor.clinic
-            if target_clinic:
-                try:
-                    check_clinician_capacity(target_clinic, additional_allocations=1)
-                except ClinicianLimitReachedException as exc:
-                    return Response(
-                        {
-                            'error': 'CLINICIAN_LIMIT_REACHED',
-                            'detail': str(exc),
-                            'current_allocations': exc.current_allocations,
-                            'allowed_allocations': exc.allowed_allocations,
-                            'archived_allocations': exc.archived_allocations,
-                            'archived_practitioners': exc.archived_practitioners,
-                            'plan_code': exc.plan_code,
-                            'upgrade_required': True,
-                        },
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
+            # No clinician-limit check: the user already has the Practitioner role, so they already hold
+            # their one seat. Working at one more clinic never costs another.
 
             # Extract duty schedule for this branch
             duty_days = request.data.get('duty_days', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'])
@@ -2110,6 +2057,13 @@ class UserViewSet(viewsets.ModelViewSet):
             lunch_start_time = request.data.get('lunch_start_time', '12:00')
             lunch_end_time = request.data.get('lunch_end_time', '13:00')
             duty_schedule = request.data.get('duty_schedule', None)
+
+            clash = branch_overlap_error(
+                user, branch.id, duty_schedule=duty_schedule,
+                duty_days=duty_days, start=duty_start_time, end=duty_end_time,
+            )
+            if clash:
+                return Response({'detail': clash}, status=status.HTTP_400_BAD_REQUEST)
 
             if not uba:
                 uba = UserBranchAccess.objects.create(
@@ -2133,6 +2087,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 uba.is_active = True
                 uba.save()
 
+            sync_combined_schedule(user)
             _invalidate_practitioners_cache(user)
 
         serializer = UserSerializer(user, context={'request': request})
@@ -2165,6 +2120,18 @@ class UserViewSet(viewsets.ModelViewSet):
         if not uba:
             return Response({'detail': 'Branch assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        will_be_active = bool(request.data['is_active']) if 'is_active' in request.data else uba.is_active
+        if will_be_active:
+            clash = branch_overlap_error(
+                user, uba.branch_id,
+                duty_schedule=request.data.get('duty_schedule', uba.duty_schedule),
+                duty_days=request.data.get('duty_days', uba.duty_days),
+                start=request.data.get('duty_start_time', uba.duty_start_time),
+                end=request.data.get('duty_end_time', uba.duty_end_time),
+            )
+            if clash:
+                return Response({'detail': clash}, status=status.HTTP_400_BAD_REQUEST)
+
         if 'duty_days' in request.data:
             uba.duty_days = request.data['duty_days']
         if 'duty_start_time' in request.data:
@@ -2181,6 +2148,7 @@ class UserViewSet(viewsets.ModelViewSet):
             uba.is_active = bool(request.data['is_active'])
 
         uba.save()
+        sync_combined_schedule(user)
         _invalidate_practitioners_cache(user)
 
         serializer = UserSerializer(user, context={'request': request})
@@ -2215,6 +2183,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         uba.is_active = False
         uba.save(update_fields=['is_active'])
+        sync_combined_schedule(user)
         _invalidate_practitioners_cache(user)
 
         serializer = UserSerializer(user, context={'request': request})
