@@ -45,9 +45,54 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-10-23 — Client feedback on access and branch assignment: delegation limits, Branch Manager group management, Frontdesk/Finance at several clinics
+
+**Status:** Implemented and tested. No migration. Nothing committed.
+**Module / feature:** Roles and permissions, staff, Setup → Users → Permissions and Staff form. See FEATURES "Roles & permissions".
+
+**Client expectations and verdicts (analysis, checked against the code before changing anything):**
+1. *Only Owner and Branch Manager grant access* — aligned (staff create/update, branch endpoints and group assignment are Owner/Branch Manager only; role changes are Owner only; clinicians and staff cannot).
+2. *Owner gives another branch; the user keeps their role permissions there* — Practitioners already worked at several clinics (previous entry); Frontdesk and Finance belonged to one clinic only. Not aligned for them; fixed below.
+3. *A Branch Manager delegates only within their branches and their own limits* — not aligned: (a) levels of a group could be set above the Branch Manager's own; (b) permission groups are shared by the whole clinic group, so one Branch Manager's edit changed another manager's staff; (c) `assign_user` reached users at any clinic.
+4. *A clinician sets availability per branch and per day* — already supported (the Staff form has a clinic per working period per day, plus the Permissions panel from the previous entry). The "cannot add the other branch" symptom came from the seat pre-check counting one seat per branch at the plan limit and from a Branch Manager being unable to save a Practitioner shared with another manager's clinic; both were fixed in the previous entry (needs deploying; production runs an earlier build). Availability stays Owner / Branch Manager managed (decision: no self-service).
+
+**Owner decisions (2026-10-23):** a Branch Manager changes a group only if all its members fit their clinics (else Duplicate); Frontdesk and Finance multi-clinic now; a Branch Manager always manages the Frontdesk / Practitioner / Finance groups, capped at their own levels; no clinician self-service.
+
+**Original behavior:** A Branch Manager needed "Permissions: Edit" on their own group (default: No Access, so the page was view-only) and could then set any level on any of the three groups, for the whole clinic group; `assign_user` accepted users of any clinic; Frontdesk / Finance had one clinic.
+**Reason for the change:** Make the code match the client's rule: widen where, never what; Branch Managers delegate only inside their clinics and their own level.
+
+**Files modified:**
+- `backend/apps/accounts/utils/rbac.py` — new `own_levels`, `ceiling_violations`, `cap_levels`, `manager_scope_ids`, `clinics_of`, `users_managed_by`, `is_within_manager_scope`, `group_lock_reason`.
+- `backend/apps/accounts/views.py` — `PermissionGroupViewSet`: a Branch Manager always may manage the three groups (no `permissions` switch); `_assert_can_manage` also refuses a group shared with other managers' clinics; ceiling on create/update; duplicate caps the copy and returns `lowered_features`; `assign_user` limited to the manager's own staff; `UserViewSet.get_queryset` uses `users_managed_by` (active assignments only); staff create calls `_sync_work_branches`; module constant `FEATURE_LABELS`.
+- `backend/apps/accounts/serializers.py` — group serializer adds read-only `locked_reason`; `UserSerializer` adds write-only `work_branch_ids` (Frontdesk / Finance clinics) with `_validate_work_branches` and `_sync_work_branches`; `validate_clinic_branch` accepts an unchanged home clinic.
+- `backend/apps/accounts/test_delegation_rules.py` — new, 21 tests. `test_permission_group_rbac.py` — three tests rewritten for the new rule (see Superseded).
+- `frontend/.../users/Permissions.tsx` — `canManage = Owner or Branch Manager`; locked groups show the reason and keep Duplicate; level ceiling passed down; "Clinics for staff" panel; duplicate toast lists lowered features. `permissions/AccessControl.tsx`, `FeatureSections.tsx` — levels above the viewer's own are disabled ("Above your own access"). `permissions/StaffBranchPanel.tsx`, `staffClinics.ts` — new. `permissions/BranchAccessPanel.tsx` — exports the add-menu and chip. `services/StaffService.ts`, `PermissionGroupService.ts`, `types/staff.types.ts` — new calls and fields. `components/modals/CreateStaffAccountModal.tsx` — "Also works at" checklist for Frontdesk / Finance (locked rows for other managers' clinics).
+
+**Database / migrations:** None. **API / data contract:** `PATCH/POST /api/users/` accepts `work_branch_ids` (STAFF / FINANCE only; the first id is the home clinic; at least one; Owner: any clinic of the group; Branch Manager: may add or remove only the clinics they manage and must leave others as they are, else 400). Permission-group responses add `locked_reason`; duplicate adds `lowered_features`. Group update/create by a Branch Manager returns 400 "You cannot give more access than you have yourself: <features>" and update/delete of a shared group returns 403 "…Duplicate it and give the copy to your staff."; `assign-user` returns 403 for users at other managers' clinics.
+
+**Business rules & decisions:**
+- A clinic added to Frontdesk / Finance widens where they work, never what they may do: their permission group is unchanged and there is no clinician seat (only Practitioners are clinicians).
+- Ceiling: a Branch Manager cannot raise a row above their own effective level (staff always-edit included); rows already above it may stay or be lowered; the Owner has no ceiling. Duplicating lowers the copy to the copier's level.
+- A group is changeable by a Branch Manager only if every member's clinics (active assignments plus home clinic) are inside the clinics they manage; the Owner can always change it.
+- Superseded (2026-10-23): "a Branch Manager needs Permissions: Edit on their group to manage Frontdesk / Practitioner / Finance" (they always may, within the limits above), and "Branch Managers' view-only notice asks the Owner for Permissions: Edit" (removed). Rows rewritten in tests: manager without Permissions: Edit "cannot edit any group / cannot create or delete" now means "cannot go above their own level" and "cannot touch Custom groups".
+
+**Tests executed:**
+- `manage.py test apps.accounts` → 139 OK (118 + 21 new); `apps.patients` → 141 OK; `apps.subscriptions` → 49 OK (one app per command). `check` → no issues; `makemigrations --check --dry-run` → no changes.
+- Mutation checks (each reverted): no ceiling → 2 fail; no members-fit lock → 2 fail; no `assign_user` scope → 1 fails; Branch Manager may change foreign staff clinics → 3 fail; staff list ignores `is_active` → 1 fails; restored → 21 OK.
+- `npx tsc -b` → clean; `npx eslint` on the changed and new files → clean except `CreateStaffAccountModal.tsx` (same 18 findings as at `HEAD`) and two existing `any` types in `staff.types.ts`.
+- Manual (scratch copy of the dev database, `REDIS_URL=` empty, removed afterwards): a Branch Manager in the default group (Permissions: No Access) sees editable dropdowns on the Finance group and no view-only notice; the Permissions row offers only "No Access" (View and Edit disabled, "Above your own access"); the Frontdesk group shared with another manager's clinic is read-only with the reason and Duplicate (no Delete), and the copy is editable; the "Clinics for staff" panel offers only the Branch Manager's own unassigned clinic and adding it works while the permission group is unchanged; in the Staff form the "Also works at" list shows the home clinic fixed, the other manager's clinic is not offered, and saving added the clinic. No console errors.
+
+**Known limitations / unresolved issues:**
+- A Branch Manager sees other managers' clinics only as "Managed by another Branch Manager" (no name). A locked group cannot be unlocked by the Branch Manager; they duplicate it and move their staff to the copy.
+- Frontdesk / Finance clinics have no per-clinic days or hours (only Practitioners do). A staff user who is also a Practitioner or Branch Manager is excluded from this field.
+- Saving any Frontdesk / Finance user from the Staff form now writes an active assignment row for their home clinic.
+**Regression risks:** Permission-group editing and assignment by Branch Managers; the staff list a Branch Manager sees (active assignments only); Diary / patient scope for Frontdesk and Finance with several clinics; the Staff form payload for STAFF / FINANCE users.
+
+---
+
 ## 2026-10-23 — Follow-up: why a Branch Manager's level dropdowns on the Permissions page are not clickable
 
-**Status:** Implemented (message only; no behavior change). Nothing committed.
+**Status:** Superseded (2026-10-23, see "Client feedback on access and branch assignment"): a Branch Manager no longer needs Permissions: Edit, and the notice was removed.
 **Module / feature:** Setup → Users → Permissions.
 
 **Original behavior:** A Branch Manager sees the Frontdesk, Practitioner and Finance groups with the level shown as a plain pill (no dropdown) unless their own group has **Permissions: Edit**; the default Branch Manager group has Permissions set to No Access, so the page is view-only. The only hint was "View-only. Contact the Owner to make changes."

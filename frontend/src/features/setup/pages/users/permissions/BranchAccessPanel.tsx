@@ -21,7 +21,7 @@ interface Props {
   onSave: (member: StaffMember, patch: BranchPatch) => Promise<void>;
 }
 
-interface Option { branch: ClinicBranch; disabledReason?: string }
+export interface Option { branch: ClinicBranch; disabledReason?: string }
 
 const initials = (m: StaffMember) => `${m.first_name?.[0] ?? ''}${m.last_name?.[0] ?? ''}`.toUpperCase() || '?';
 const fullName = (m: StaffMember) => `${m.first_name} ${m.last_name}`.trim() || m.email;
@@ -34,7 +34,7 @@ const LEVEL_COPY: Record<AccessLevel, string> = {
 
 // ─── "+ Add more branch" menu ─────────────────────────────────────────────────
 
-const AddBranchMenu: React.FC<{
+export const AddBranchMenu: React.FC<{
   options: Option[];
   onPick: (id: number) => void;
   disabled?: boolean;
@@ -105,7 +105,7 @@ const AddBranchMenu: React.FC<{
 
 // ─── A clinic shown as a chip ─────────────────────────────────────────────────
 
-const ClinicChip: React.FC<{
+export const ClinicChip: React.FC<{
   branch?: { id: number; name: string; city?: string | null; is_main_branch?: boolean };
   onRemove?: () => void;
   removeDisabledReason?: string;

@@ -20,6 +20,10 @@ export interface PermissionGroup {
   feature_permissions: FeaturePermissionRecord[];
   permissions_map:    Record<string, AccessLevel>;
   member_count:       number;
+  /** Why the viewing Branch Manager may not change this group (it is also used at clinics they do not manage). */
+  locked_reason?:     string | null;
+  /** Set on a duplicate: features lowered to the copier's own level. */
+  lowered_features?:  string[];
   created_at:         string;
   updated_at:         string;
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2, Check, CheckCircle2, ShieldCheck, Stethoscope, Users, DollarSign, Crown, Eye, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { clinicIdsOf } from '../../pages/users/permissions/staffClinics';
 import type { CreateStaffData, StaffFormErrors, StaffMember, PractitionerRoleImpact, UserLookupResult } from '../../types/staff.types';
 import type { DutySchedule, DutyDay, ShiftBlock } from '@/features/clinics/clinic.api';
 import { TITLE_OPTIONS, GENDER_OPTIONS } from '../../types/staff.types';
@@ -369,6 +370,22 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   // are shown but locked, and are sent back unchanged so saving never drops them.
   const isLockedBranch = (branchId: number | null | undefined) =>
     !isOwner && isBranchManager && !!branchId && !availableBranches.some(b => b.id === branchId);
+  // Frontdesk / Finance can work at several clinics (same permissions at each); not Practitioners or managers.
+  const worksAtSeveral = (() => {
+    const r = formData.roles ?? [];
+    return r.some(x => x === 'STAFF' || x === 'FINANCE') && !r.some(x => x === 'PRACTITIONER' || x === 'BRANCH_MANAGER' || x === 'OWNER');
+  })();
+  const workIds = (): number[] => {
+    const primary = formData.clinic_branch ?? defaultBranchId;
+    const rest = (formData.work_branch_ids ?? []).filter(id => id !== primary);
+    return primary ? [Number(primary), ...rest] : rest;
+  };
+  const toggleWorkBranch = (id: number) => {
+    const rest = workIds().slice(1);
+    const next = rest.includes(id) ? rest.filter(i => i !== id) : [...rest, id];
+    const primary = formData.clinic_branch ?? defaultBranchId;
+    set('work_branch_ids', primary ? [Number(primary), ...next] : next);
+  };
   const branchLabel = (branchId: number | null | undefined) =>
     branches.find(b => b.id === branchId)?.name
       ?? Object.values(editingStaff?.branch_assignments ?? []).find(a => a.branch_id === branchId)?.branch_name
@@ -525,6 +542,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
         roles:         displayRoles,
         clinic_branch: editingStaff.clinic_branch  ?? null,
         branch_ids:    editingStaff.manager_branches ? editingStaff.manager_branches.map((b: any) => b.id) : [],
+        work_branch_ids: clinicIdsOf(editingStaff),
         // Only the Owner may send this field (the backend rejects it from anyone else).
         ...(isOwner ? { extra_diary_branch_ids: (editingStaff.extra_diary_branches ?? []).map((b) => b.id) } : {}),
         // Availability
@@ -798,7 +816,10 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       duty_schedule: isPractitionerRole ? sanitizedSchedule : formData.duty_schedule,
       phone: formData.phone,
       roles: finalRoles as CreateStaffData['roles'],
+      // Frontdesk / Finance: every clinic they work at (the home clinic first).
+      ...(worksAtSeveral ? { work_branch_ids: workIds() } : {}),
     };
+    if (!worksAtSeveral) delete payload.work_branch_ids;
 
     // ── Detect PRACTITIONER role removal ─────────────────────────────────────
     // If we are in edit mode and PRACTITIONER was in the original roles but
@@ -1676,6 +1697,39 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                         {isBranchManager && !isOwner && managerBranches.length === 0 && (
                           <div className={`${selectCls} text-amber-600 bg-amber-50 border-amber-200`}>
                             You have no branches assigned. Contact the Owner.
+                          </div>
+                        )}
+
+                        {/* ── Frontdesk / Finance: also works at other clinics ── */}
+                        {worksAtSeveral && (
+                          <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
+                            <p className="text-xs font-semibold text-gray-700 mb-1">Also works at</p>
+                            <p className="text-[11px] text-gray-400 mb-2">
+                              Same permissions at every clinic; they see the Diary and patients of each. Does not use a clinician seat.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              {Array.from(new Map([...branches, ...availableBranches].map(b => [b.id, b])).values())
+                                .filter(b => workIds().includes(b.id) || availableBranches.some(a => a.id === b.id))
+                                .map(b => {
+                                  const primary = Number(formData.clinic_branch ?? defaultBranchId);
+                                  const checked = workIds().includes(b.id);
+                                  const locked = isLockedBranch(b.id);
+                                  return (
+                                    <label key={b.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-sm ${checked ? 'bg-white border-sky-200' : 'bg-white border-gray-200'} ${b.id === primary || locked ? 'opacity-70' : 'cursor-pointer'}`}>
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        disabled={b.id === primary || locked}
+                                        onChange={() => toggleWorkBranch(b.id)}
+                                        className="rounded border-gray-300 text-sky-600 focus:ring-sky-400"
+                                      />
+                                      <span className="truncate">{b.name}{b.is_main_branch ? ' (Main)' : ''}</span>
+                                      {b.id === primary && <span className="ml-auto text-[10px] font-semibold text-sky-700">Home</span>}
+                                      {locked && <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500"><Lock className="w-3 h-3" />Other manager</span>}
+                                    </label>
+                                  );
+                                })}
+                            </div>
                           </div>
                         )}
                       </>

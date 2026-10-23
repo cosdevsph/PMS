@@ -32,7 +32,7 @@ import {
   type PermissionGroup,
   type RoleTemplate,
 } from '../../services/PermissionGroupService';
-import { getStaff, saveStaffSchedule, updateStaff } from '../../services/StaffService';
+import { getStaff, saveStaffClinics, saveStaffSchedule, updateStaff } from '../../services/StaffService';
 import type { CreateStaffData, StaffMember } from '../../types/staff.types';
 import type { DutySchedule } from '@/features/clinics/clinic.api';
 import { BranchAccessPanel, type BranchPatch } from './permissions/BranchAccessPanel';
@@ -40,6 +40,7 @@ import { FeatureSections } from './permissions/FeatureSections';
 import { CreateGroupModal, DeleteConfirmModal } from './permissions/GroupModals';
 import { GroupSidebar } from './permissions/GroupSidebar';
 import { PractitionerBranchPanel } from './permissions/PractitionerBranchPanel';
+import { StaffBranchPanel } from './permissions/StaffBranchPanel';
 import {
   AUDIENCE_LABELS, BRANCH_MANAGER_MANAGEABLE_TEMPLATES, ROLE_ORDER, TEMPLATE_DEFAULT_PERMS, TEMPLATE_LABELS, TEMPLATE_STYLES, summarize,
 } from './permissions/meta';
@@ -54,9 +55,14 @@ const errorText = (err: unknown, fallback: string): string => {
 
 const isBranchManager = (s: StaffMember) => (s.roles?.length ? s.roles : [s.role]).includes('BRANCH_MANAGER');
 const isPractitioner = (s: StaffMember) => (s.roles?.length ? s.roles : [s.role]).includes('PRACTITIONER');
+// Frontdesk / Finance: works at several clinics through `work_branch_ids` (not a Practitioner or Branch Manager).
+const isFrontdeskOrFinance = (s: StaffMember) => {
+  const roles = s.roles?.length ? s.roles : [s.role];
+  return roles.some((r) => r === 'STAFF' || r === 'FINANCE') && !roles.some((r) => r === 'PRACTITIONER' || r === 'BRANCH_MANAGER' || r === 'OWNER');
+};
 
 export const Permissions: React.FC = () => {
-  const { isOwner, isBranchManager: actorIsBranchManager, canEdit, managerBranches } = usePermissions();
+  const { isOwner, isBranchManager: actorIsBranchManager, permissionsMap, managerBranches } = usePermissions();
   // Subscribe to external permission refreshes (e.g. WS-driven updates from another browser session).
   const permissionsVersion = useAuthStore((s) => s.permissionsVersion);
   const ownGroupId = useAuthStore((s) => s.user?.permission_group ?? null);
@@ -76,8 +82,10 @@ export const Permissions: React.FC = () => {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);
 
-  // Same rule as the backend: the Owner, or a Branch Manager whose group grants Permissions: Edit.
-  const canManage = isOwner || (actorIsBranchManager && canEdit('permissions'));
+  // Same rule as the backend: the Owner and every Branch Manager (no Owner switch since 2026-10-23).
+  // A Branch Manager is limited to the Frontdesk / Practitioner / Finance groups, never above their own
+  // level of a feature, and only for groups whose members all work at clinics they manage.
+  const canManage = isOwner || actorIsBranchManager;
 
   // BRANCH_MANAGER → FRONTDESK → PRACTITIONER → CUSTOM; the Owner group is never shown. A Branch Manager
   // is shown only the groups they manage (the backend returns just those; this filter mirrors it).
@@ -199,6 +207,9 @@ export const Permissions: React.FC = () => {
       setGroups((prev) => [...prev, copy]);
       setPending({}); setSelectedId(copy.id);
       toast.success(`Duplicated as "${name}".`);
+      if (copy.lowered_features?.length) {
+        toast(`Lowered to your own access: ${copy.lowered_features.join(', ').replace(/_/g, ' ')}.`, { icon: 'ℹ️' });
+      }
     } catch (err: unknown) {
       toast.error(errorText(err, 'Failed to duplicate group.'));
     }
@@ -236,26 +247,41 @@ export const Permissions: React.FC = () => {
     toast.success(`${member.first_name}'s clinics updated.`);
   };
 
+  // Frontdesk / Finance clinics: same save path (user update), same scope rules as the schedule.
+  const handleStaffClinicsSave = async (member: StaffMember, clinicIds: number[]) => {
+    const updated = await saveStaffClinics(member.id, clinicIds);   // a refusal is shown inline by the panel
+    setStaff((prev) => prev.map((s) => (s.id === member.id ? { ...s, ...updated } : s)));
+    toast.success(`${member.first_name}'s clinics updated.`);
+  };
+
   const branchManagers = useMemo(() => staff.filter(isBranchManager), [staff]);
   const members = useMemo(
     () => (selected ? branchManagers.filter((s) => s.permission_group === selected.id) : []),
     [branchManagers, selected],
   );
   const showBranchPanel = isOwner && !!selected && (selected.role_template === 'BRANCH_MANAGER' || members.length > 0);
+  const lockedReason = selected && !isOwner ? (selected.locked_reason ?? null) : null;
+  const canManageSelected = !!selected && canManage && (isOwner || (selected.id !== ownGroupId && !lockedReason));
   const practitioners = useMemo(
     () => (selected ? staff.filter((s) => isPractitioner(s) && s.permission_group === selected.id) : []),
     [staff, selected],
   );
+  const staffMembers = useMemo(
+    () => (selected ? staff.filter((s) => isFrontdeskOrFinance(s) && s.permission_group === selected.id) : []),
+    [staff, selected],
+  );
+  const showStaffPanel = !!selected && canManageSelected
+    && (selected.role_template === 'FRONTDESK' || selected.role_template === 'FINANCE' || staffMembers.length > 0)
+    && selected.role_template !== 'PRACTITIONER';
   // Clinics the viewer may change: everything for the Owner, the managed clinics for a Branch Manager.
   const practitionerScope = isOwner ? null : managerBranches.map((b) => b.id);
-  const showPractitionerPanel = !!selected && canManage && (isOwner || selected.id !== ownGroupId)
+  const showPractitionerPanel = !!selected && canManageSelected
     && (selected.role_template === 'PRACTITIONER' || practitioners.length > 0);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   // The Owner manages every group. A Branch Manager (with Permissions: Edit) manages the groups they are
   // shown (Frontdesk, Practitioner, Finance), never the one they belong to (the backend enforces both).
-  const canManageSelected = !!selected && canManage && (isOwner || selected.id !== ownGroupId);
   const style = selected ? (TEMPLATE_STYLES[selected.role_template] ?? TEMPLATE_STYLES.CUSTOM) : TEMPLATE_STYLES.CUSTOM;
   const StyleIcon = style.icon;
   const counts = summarize(activeMap);
@@ -302,12 +328,7 @@ export const Permissions: React.FC = () => {
       {!canManage && (
         <div className="flex items-center gap-2 text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded-xl px-4 py-3">
           <Info className="w-4 h-4 shrink-0" aria-hidden="true" />
-          {actorIsBranchManager
-            ? <span>
-                You can view these groups but not change them. To change the Frontdesk, Practitioner and Finance groups, ask the Owner to set
-                {' '}<strong>Permissions</strong> (Administration) to <strong>Edit</strong> for your Branch Manager group. It applies the next time you open the page.
-              </span>
-            : 'View-only. Contact the Owner to make changes.'}
+          View-only. Contact the Owner to make changes.
         </div>
       )}
 
@@ -364,13 +385,13 @@ export const Permissions: React.FC = () => {
                   </div>
                 </div>
 
-                {canManageSelected && (
+                {canManage && (isOwner || selected.id !== ownGroupId) && (
                   <div className="flex items-center gap-2 shrink-0">
                     <button type="button" onClick={() => handleDuplicate(selected)} title="Duplicate group" aria-label="Duplicate group"
                       className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-gray-200 rounded-xl text-gray-600 hover:text-teal-700 hover:bg-teal-50 transition-colors">
                       <Copy className="w-4 h-4" aria-hidden="true" /> Duplicate
                     </button>
-                    {!selected.is_protected && (
+                    {canManageSelected && !selected.is_protected && (
                       <button type="button" onClick={() => setDeleteTarget(selected)} title="Delete group" aria-label="Delete group"
                         className="p-2.5 border border-gray-200 rounded-xl text-gray-500 hover:text-rose-600 hover:bg-rose-50 transition-colors">
                         <Trash2 className="w-4 h-4" />
@@ -393,6 +414,12 @@ export const Permissions: React.FC = () => {
                 ))}
               </dl>
 
+              {lockedReason && (
+                <p className="px-5 py-3 text-xs text-amber-700 bg-amber-50 border-t border-amber-100 flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  {lockedReason}
+                </p>
+              )}
               {!canManageSelected && canManage && selected.id === ownGroupId && (
                 <p className="px-5 py-3 text-xs text-amber-700 bg-amber-50 border-t border-amber-100 flex items-center gap-2">
                   <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -418,13 +445,14 @@ export const Permissions: React.FC = () => {
               activeMap={activeMap}
               savedMap={savedMap}
               canEdit={canManageSelected}
+              ceiling={isOwner ? undefined : (permissionsMap as Record<string, AccessLevel>)}
               audience={selected ? (AUDIENCE_LABELS[selected.role_template] ?? 'Members of this group') : 'Members of this group'}
               query={query}
               onChange={setLevel}
               onSaveSection={saveSection}
               onDiscardSection={discardSection}
               savingSection={savingSection}
-              extras={showBranchPanel || showPractitionerPanel ? {
+              extras={showBranchPanel || showPractitionerPanel || showStaffPanel ? {
                 'Diary & Calendar': (
                   <>
                     {showBranchPanel && (
@@ -436,6 +464,15 @@ export const Permissions: React.FC = () => {
                         loading={staffLoading}
                         canEdit={isOwner}
                         onSave={handleBranchSave}
+                      />
+                    )}
+                    {showStaffPanel && (
+                      <StaffBranchPanel
+                        members={staffMembers}
+                        branches={branches}
+                        scopeIds={practitionerScope}
+                        loading={staffLoading}
+                        onSave={handleStaffClinicsSave}
                       />
                     )}
                     {showPractitionerPanel && (

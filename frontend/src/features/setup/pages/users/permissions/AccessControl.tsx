@@ -3,6 +3,8 @@ import { Check, ChevronDown } from 'lucide-react';
 import type { AccessLevel } from '../../../services/PermissionGroupService';
 import { ACCESS_OPTIONS } from './meta';
 
+const RANK: Record<AccessLevel, number> = { none: 0, view: 1, edit: 2 };
+
 const DESCRIPTIONS: Record<AccessLevel, string> = {
   none: 'Cannot see or use this',
   view: 'Can see it, cannot change anything',
@@ -32,7 +34,9 @@ export const LevelDropdown: React.FC<{
   /** Who the level is about, e.g. "Your branch managers". Used for the screen-reader name. */
   audience: string;
   changed?: boolean;
-}> = ({ value, onChange, label, audience, changed }) => {
+  /** Highest level the viewer may give (a Branch Manager cannot give more than they have). */
+  maxLevel?: AccessLevel;
+}> = ({ value, onChange, label, audience, changed, maxLevel }) => {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -96,6 +100,8 @@ export const LevelDropdown: React.FC<{
           {ACCESS_OPTIONS.map((opt, index) => {
             const Icon = opt.icon;
             const selected = opt.value === value;
+            // Above the viewer's own level: shown but not selectable (the current value stays visible).
+            const tooHigh = !!maxLevel && !selected && RANK[opt.value] > RANK[maxLevel];
             return (
               <li key={opt.value} role="presentation">
                 <button
@@ -103,16 +109,17 @@ export const LevelDropdown: React.FC<{
                   type="button"
                   role="option"
                   aria-selected={selected}
+                  disabled={tooHigh}
                   onKeyDown={(e) => onMenuKey(e, index)}
                   onClick={() => { setOpen(false); triggerRef.current?.focus(); if (!selected) onChange(opt.value); }}
-                  className={`w-full text-left flex items-start gap-2.5 px-3 py-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:bg-sky-50 hover:bg-sky-50 ${selected ? 'bg-gray-50' : ''}`}
+                  className={`w-full text-left flex items-start gap-2.5 px-3 py-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:bg-sky-50 hover:bg-sky-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent ${selected ? 'bg-gray-50' : ''}`}
                 >
                   <span className={`mt-0.5 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 ${opt.badge}`}>
                     <Icon className="w-3.5 h-3.5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-gray-800">{opt.label}</span>
-                    <span className="block text-[11px] text-gray-400 leading-snug">{DESCRIPTIONS[opt.value]}</span>
+                    <span className="block text-[11px] text-gray-400 leading-snug">{tooHigh ? 'Above your own access' : DESCRIPTIONS[opt.value]}</span>
                   </span>
                   {selected && <Check className="w-4 h-4 text-sky-600 mt-1 shrink-0" aria-hidden="true" />}
                 </button>

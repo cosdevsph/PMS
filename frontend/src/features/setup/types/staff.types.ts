@@ -123,6 +123,8 @@ export interface CreateStaffData {
   branch_ids?: number[];
   /** Owner only: other branches whose Diary this Branch Manager may open (level set by the permission group). */
   extra_diary_branch_ids?: number[];
+  /** Frontdesk / Finance only: every clinic the user works at (the first is the home clinic). */
+  work_branch_ids?: number[];
 
   // Legacy single-block availability (PRACTITIONER only, kept for compat)
   duty_start_time?: string;

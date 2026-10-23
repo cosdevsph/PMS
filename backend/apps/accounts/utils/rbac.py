@@ -123,3 +123,121 @@ def validate_branches_free_for_manager(branch_ids, exclude_user=None):
             'branch_ids': f'Clinic "{first.branch.name}" already has a Branch Manager ({name}). '
                           f'A clinic can have only one Branch Manager.'
         })
+
+
+# ── Delegation limits (2026-10-23) ────────────────────────────────────────────
+# A Branch Manager grants access only (1) to the people of the clinics they manage and (2) never
+# above their own level. Permission groups are shared by the whole clinic group, so a Branch Manager
+# may change a group only when every member works at clinics they manage.
+
+LEVEL_RANK = {'none': 0, 'view': 1, 'edit': 2}
+
+
+def own_levels(user):
+    """{feature_key: level} the user actually has (Owner: edit everywhere; Branch Manager staff rule included)."""
+    from apps.accounts.models import FEATURE_KEYS, BRANCH_MANAGER_ALWAYS_EDIT, _union_permissions
+    if user.is_owner:
+        return {key: 'edit' for key in FEATURE_KEYS}
+    if user.permission_group_id:
+        levels = user.permission_group.get_permissions_dict()
+    else:
+        levels = _union_permissions(user.get_effective_roles())
+    if user.is_branch_manager:
+        for key in BRANCH_MANAGER_ALWAYS_EDIT:
+            levels[key] = 'edit'
+    return levels
+
+
+def ceiling_violations(actor, new_levels, old_levels=None):
+    """
+    Features that `new_levels` RAISES above the actor's own level. A row that is not raised (kept or
+    lowered) is fine even if it is above the actor's level already. Empty for the Owner.
+    """
+    if actor.is_owner:
+        return []
+    own = own_levels(actor)
+    old_levels = old_levels or {}
+    bad = []
+    for key, level in new_levels.items():
+        rank = LEVEL_RANK.get(level, 0)
+        if rank > LEVEL_RANK.get(own.get(key, 'none'), 0) and rank > LEVEL_RANK.get(old_levels.get(key, 'none'), 0):
+            bad.append(key)
+    return sorted(bad)
+
+
+def cap_levels(actor, levels):
+    """`levels` lowered to the actor's own levels, and the features that were lowered."""
+    if actor.is_owner:
+        return dict(levels), []
+    own = own_levels(actor)
+    capped, lowered = {}, []
+    for key, level in levels.items():
+        limit = own.get(key, 'none')
+        if LEVEL_RANK.get(level, 0) > LEVEL_RANK.get(limit, 0):
+            capped[key] = limit
+            lowered.append(key)
+        else:
+            capped[key] = level
+    return capped, sorted(lowered)
+
+
+def manager_scope_ids(actor):
+    """Clinics a Branch Manager manages (legacy: their own clinic when they have no managed rows)."""
+    scope = set(actor.get_managed_branch_ids())
+    if not scope and actor.clinic_branch_id:
+        scope.add(actor.clinic_branch_id)
+    return scope
+
+
+def clinics_of(user):
+    """Every clinic a user works at: active / managed assignment rows plus their home clinic."""
+    ids = set(get_assigned_branch_ids(user))
+    if user.clinic_branch_id:
+        ids.add(user.clinic_branch_id)
+    return ids
+
+
+def users_managed_by(actor, queryset=None):
+    """
+    The users a Branch Manager manages: those with their home clinic or an ACTIVE assignment at one of
+    the clinics the Branch Manager manages. The Owner manages every user of the clinic group.
+    """
+    from django.db.models import Q
+    from apps.accounts.models import User
+    qs = queryset if queryset is not None else User.objects.all()
+    if not actor.clinic:
+        return qs.none()
+    qs = qs.filter(clinic=actor.clinic)
+    if actor.is_owner:
+        return qs
+    scope = list(manager_scope_ids(actor)) if actor.is_branch_manager else []
+    if not scope:
+        return qs.none()
+    return qs.filter(
+        Q(clinic_branch_id__in=scope)
+        | Q(branch_accesses__branch_id__in=scope, branch_accesses__is_active=True)
+        | Q(branch_accesses__branch_id__in=scope, branch_accesses__is_managed=True)
+    ).distinct()
+
+
+def is_within_manager_scope(actor, user):
+    """True when every clinic `user` works at is one the actor manages (always True for the Owner)."""
+    if actor.is_owner:
+        return True
+    return clinics_of(user) <= manager_scope_ids(actor)
+
+
+def group_lock_reason(actor, group):
+    """
+    Why `actor` may not change `group` (None when they may). Only Branch Managers are limited here:
+    a group used by anyone outside their clinics is shared with another Branch Manager.
+    """
+    if actor is None or not getattr(actor, 'is_authenticated', False) or actor.is_owner or not actor.is_branch_manager:
+        return None
+    outside = [m for m in group.users.filter(is_deleted=False) if not is_within_manager_scope(actor, m)]
+    if outside:
+        return (
+            f'This group is also used by {len(outside)} staff member{"s" if len(outside) != 1 else ""} at clinics '
+            "you don't manage. Duplicate it and give the copy to your staff."
+        )
+    return None

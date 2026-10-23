@@ -168,3 +168,12 @@ export const saveStaffSchedule = async (
   emitPractitionerUpdated(userId, response.data.practitioner_id ?? null);
   return response.data;
 };
+
+/**
+ * Set the clinics a Frontdesk or Finance user works at (the first is their home clinic).
+ * Role permissions are unchanged: a clinic widens where they work, not what they may do.
+ */
+export const saveStaffClinics = async (userId: number, work_branch_ids: number[]): Promise<StaffMember> => {
+  const response = await axiosInstance.patch<StaffMember>(`/users/${userId}/`, { work_branch_ids });
+  return response.data;
+};

@@ -21,13 +21,15 @@ interface Props {
   savingSection: string | null;
   /** Extra content rendered at the bottom of a card, keyed by the section label. */
   extras?: Record<string, React.ReactNode>;
+  /** The viewer's own level per feature; a level above it cannot be chosen. Omit for the Owner. */
+  ceiling?: Record<string, AccessLevel>;
 }
 
 const levelOf = (map: Record<string, AccessLevel>, key: string): AccessLevel => map[key] ?? 'none';
 
 /** The feature matrix: one card per area, one row per feature. */
 export const FeatureSections: React.FC<Props> = ({
-  activeMap, savedMap, canEdit, audience, query, onChange, onSaveSection, onDiscardSection, savingSection, extras,
+  activeMap, savedMap, canEdit, audience, query, onChange, onSaveSection, onDiscardSection, savingSection, extras, ceiling,
 }) => {
   const q = query.trim().toLowerCase();
 
@@ -110,7 +112,7 @@ export const FeatureSections: React.FC<Props> = ({
                     <div className="flex items-center gap-2.5 ml-auto">
                       <span className="text-xs text-gray-500 whitespace-nowrap">{audience} can:</span>
                       {canEdit
-                        ? <LevelDropdown value={level} onChange={(v) => onChange(row.key, v)} label={row.label} audience={audience} changed={changed} />
+                        ? <LevelDropdown value={level} onChange={(v) => onChange(row.key, v)} label={row.label} audience={audience} changed={changed} maxLevel={ceiling ? (ceiling[row.key] ?? 'none') : undefined} />
                         : <AccessBadge value={level} />}
                     </div>
                   </li>

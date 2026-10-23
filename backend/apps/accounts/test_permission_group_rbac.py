@@ -16,7 +16,7 @@ class PermissionGroupRbacTests(TestCase):
         self.owner_group = self._group("T Owner", 'OWNER', {'permissions': 'edit'})
         self.manager_group = self._group("T Manager", 'BRANCH_MANAGER', {'permissions': 'none', 'diary': 'edit'})
         self.staff_group = self._group("T Frontdesk", 'FRONTDESK', {'permissions': 'none'})
-        self.admin_manager_group = self._group("T Manager+", 'CUSTOM', {'permissions': 'edit'})
+        self.admin_manager_group = self._group("T Manager+", 'CUSTOM', {'permissions': 'edit', 'diary': 'edit'})
         self.manager = self._user("manager@x.com", "BRANCH_MANAGER", self.manager_group)
         self.staff = self._user("staff@x.com", "STAFF", self.staff_group)
         self.trusted = self._user("trusted@x.com", "BRANCH_MANAGER", self.admin_manager_group)
@@ -55,9 +55,15 @@ class PermissionGroupRbacTests(TestCase):
         self.assertEqual(r.status_code, 403)
         self.assertEqual(self.level(self.staff_group, 'permissions'), 'none')
 
-    def test_manager_without_permissions_edit_cannot_edit_any_group(self):
+    def test_manager_cannot_give_a_group_more_than_they_have(self):
+        # Since 2026-10-23 a Branch Manager always manages the Frontdesk group (no "Permissions: Edit"
+        # switch; superseded), but never above their own level: this manager has no Permissions or
+        # Subscriptions access, so they cannot hand it out.
         r = self._grant_self(self.manager, self.staff_group)
-        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.status_code, 400, getattr(r, 'data', None))
+        self.assertIn('more access than you have yourself', str(r.data))
+        self.assertEqual(self.level(self.staff_group, 'permissions'), 'none')
+        self.assertEqual(self.level(self.staff_group, 'subscriptions'), 'none')
 
     def test_staff_cannot_create_duplicate_or_delete_groups(self):
         c = self.as_(self.staff)
@@ -66,10 +72,12 @@ class PermissionGroupRbacTests(TestCase):
         self.assertEqual(c.delete(f'{URL}{self.staff_group.id}/').status_code, 403)
         self.assertTrue(PermissionGroup.objects.filter(pk=self.staff_group.pk).exists())
 
-    def test_manager_without_permissions_edit_cannot_create_or_delete(self):
+    def test_manager_in_the_default_group_manages_frontdesk_but_not_custom_groups(self):
+        # Superseded (2026-10-23): "without Permissions: Edit a Branch Manager cannot create or delete".
         c = self.as_(self.manager)
         self.assertEqual(c.post(URL, {'name': 'X', 'role_template': 'CUSTOM', 'permissions': {}}, format='json').status_code, 403)
-        self.assertEqual(c.delete(f'{URL}{self.staff_group.id}/').status_code, 403)
+        self.assertEqual(c.post(URL, {'name': 'Desk 2', 'role_template': 'FRONTDESK', 'permissions': {'diary': 'edit'}}, format='json').status_code, 201)
+        self.assertEqual(c.delete(f'{URL}{self.staff_group.id}/').status_code, 204)
 
     # ── what stays allowed ────────────────────────────────────────────────────
     def test_owner_can_edit_any_group_including_a_managers(self):
@@ -145,6 +153,7 @@ class BranchManagerGroupScopeTests(TestCase):
         # A Branch Manager whose own group lets them edit permissions
         own = PermissionGroup.objects.create(clinic=self.clinic, name="BM own", role_template='CUSTOM')
         FeaturePermission.objects.create(group=own, feature_key='permissions', access_level='edit')
+        FeaturePermission.objects.create(group=own, feature_key='diary', access_level='edit')
         self.bm = User.objects.create_user(
             email="bm@x.com", password="x", first_name="B", last_name="M", clinic=self.clinic, clinic_branch=self.clinic,
             role="BRANCH_MANAGER", permission_group=own)

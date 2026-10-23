@@ -24,12 +24,43 @@ from .services import otp_service
 from .services import login_throttle_service
 from .utils.generators import generate_verification_code
 from .utils.schedule import branch_overlap_error, sync_combined_schedule
+from .utils.rbac import cap_levels, ceiling_violations, group_lock_reason, is_within_manager_scope, users_managed_by
 from apps.clinics.models import Clinic, Practitioner
 from apps.common.permissions import IsOwnerBranchManagerOrStaff, HasFeaturePermission
 from apps.common.recaptcha import verify_recaptcha
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+# Human labels for feature keys (feature-keys endpoint and error messages).
+FEATURE_LABELS = {
+    'dashboard':        'Dashboard',
+    'appointments':     'Appointments',
+    'calendar':         'Calendar',
+    'diary':            'Diary',
+    'clinical_notes':   'Clinical Notes',
+    'client_cases':     'Client Cases',
+    'patients':         'Patients',
+    'reports':          'Reports',
+    'inventory':        'Inventory',
+    'invoices':         'Invoices',
+    'billing':          'Billing',
+    'subscriptions':    'Subscriptions',
+    'setup':            'Setup',
+    'staff_management': 'Staff Management',
+    'permissions':      'Permissions',
+    'settings':         'Settings',
+    'documents':        'Documents',
+    'outcome_measures': 'Outcome Measures',
+    'contacts':         'Contacts',
+    'communication':    'Communication',
+    'diary_other_branches': "Other Branches' Diary",
+}
+
+
+def feature_label(key):
+    return FEATURE_LABELS.get(key, key.replace('_', ' ').title())
 
 
 class AuthViewSet(viewsets.GenericViewSet):
@@ -1141,17 +1172,9 @@ class UserViewSet(viewsets.ModelViewSet):
             # Admin sees all users in their clinic family
             base_qs = qs.filter(clinic=user.clinic)
         elif user.is_branch_manager:
-            # Branch Manager sees users whose assigned branches intersect with their managed branches.
-            # Covers both the legacy single-branch (clinic_branch) and new multi-branch (branch_accesses).
-            manager_branch_ids = list(user.get_managed_branch_ids())
-            if user.clinic and manager_branch_ids:
-                from django.db.models import Q
-                base_qs = qs.filter(clinic=user.clinic).filter(
-                    Q(clinic_branch_id__in=manager_branch_ids) |
-                    Q(branch_accesses__branch_id__in=manager_branch_ids)
-                ).distinct()
-            else:
-                base_qs = qs.none()
+            # Branch Manager sees the users of the clinics they manage: home clinic there, or an ACTIVE
+            # assignment there (someone removed from their clinic drops out).
+            base_qs = users_managed_by(user, qs)
         else:
             base_qs = qs.filter(clinic=user.clinic) if user.clinic else qs.none()
 
@@ -1356,6 +1379,11 @@ class UserViewSet(viewsets.ModelViewSet):
                             user.save(update_fields=['clinic_branch'])
                         except Clinic.DoesNotExist:
                             pass
+
+                # ── Frontdesk / Finance working at several clinics (also bypasses serializer.save) ──
+                work_branch_ids = serializer.validated_data.get('work_branch_ids')
+                if work_branch_ids:
+                    UserSerializer._sync_work_branches(user, work_branch_ids)
 
                 # ── Create Practitioner profile if PRACTITIONER is in roles ──
                 practitioner_created = False
@@ -2477,8 +2505,10 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
     CRUD for clinic-scoped Permission Groups.
 
     Rules:
-    * Only the Owner, or a Branch Manager whose group grants Permissions: Edit, may
-      create, change, duplicate or delete permission groups. Nobody else can, Staff included.
+    * Only the Owner and Branch Managers may create, change, duplicate or delete permission groups.
+      Nobody else can, Staff included. A Branch Manager always may (2026-10-23), but only for the
+      Frontdesk, Practitioner and Finance groups, never above their own level of any feature, and
+      only for groups whose members all work at clinics they manage.
     * Nobody except the Owner may change or delete the group they belong to
       (otherwise a user could grant themselves any access).
     * Branch Managers can never touch Owner-template groups.
@@ -2551,7 +2581,8 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('The Owner always has full access and has no permission settings.')
         if user.is_owner:
             return
-        if not (user.is_branch_manager and user.can_edit('permissions')):
+        # A Branch Manager always manages the Frontdesk / Practitioner / Finance groups (no Owner switch).
+        if not user.is_branch_manager:
             raise PermissionDenied('You do not have permission to manage permission groups.')
         if group is not None:
             if group.role_template not in BRANCH_MANAGER_MANAGEABLE_TEMPLATES:
@@ -2561,6 +2592,19 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
                 )
             if user.permission_group_id and user.permission_group_id == group.pk:
                 raise PermissionDenied('You cannot change the permission group you belong to.')
+            # Groups are shared by the whole clinic group: change one only if all its members are yours.
+            reason = group_lock_reason(user, group)
+            if reason:
+                raise PermissionDenied(reason)
+
+    @staticmethod
+    def _assert_within_ceiling(user, new_levels, old_levels=None):
+        """A Branch Manager never gives a group more than they have themselves (400 naming the features)."""
+        from rest_framework.exceptions import ValidationError
+        bad = ceiling_violations(user, new_levels or {}, old_levels)
+        if bad:
+            labels = ', '.join(feature_label(k) for k in bad)
+            raise ValidationError({'permissions': f'You cannot give more access than you have yourself: {labels}.'})
 
     def create(self, request, *args, **kwargs):
         # Check the right to manage groups before validating the payload.
@@ -2593,6 +2637,7 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             if serializer.validated_data.get('role_template') == 'OWNER':
                 raise PermissionDenied('Branch Managers cannot create Owner permission groups.')
+        self._assert_within_ceiling(user, serializer.validated_data.get('permissions'))
         main_clinic = user.clinic.main_clinic
         serializer.save(clinic=main_clinic)
 
@@ -2600,6 +2645,9 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
         """Save then notify every active member of the updated group."""
         user = self.request.user
         self._assert_can_manage(user, serializer.instance)
+        if 'permissions' in serializer.validated_data:
+            self._assert_within_ceiling(
+                user, serializer.validated_data['permissions'], serializer.instance.get_permissions_dict())
         instance = serializer.save()
         self._emit_permission_updates(instance)
 
@@ -2675,14 +2723,15 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
                 is_protected=False,
                 is_system_template=False,
             )
-            for fp in source.feature_permissions.all():
-                FeaturePermission.objects.create(
-                    group=new_group,
-                    feature_key=fp.feature_key,
-                    access_level=fp.access_level,
-                )
+            # A Branch Manager's copy never has more than they have themselves.
+            levels, lowered = cap_levels(
+                request.user, {fp.feature_key: fp.access_level for fp in source.feature_permissions.all()})
+            for feature_key, access_level in levels.items():
+                FeaturePermission.objects.create(group=new_group, feature_key=feature_key, access_level=access_level)
 
-        return Response(PermissionGroupSerializer(new_group).data, status=status.HTTP_201_CREATED)
+        data = PermissionGroupSerializer(new_group, context=self.get_serializer_context()).data
+        data['lowered_features'] = lowered
+        return Response(data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='assign-user')
     def assign_user(self, request, pk=None):
@@ -2715,6 +2764,16 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
 
         if target.is_owner:
             return Response({'detail': 'Owners always have full access and do not use permission groups.'}, status=400)
+        # A Branch Manager sets groups only for their own staff: everyone at the clinics they manage,
+        # and nobody who also works at a clinic another Branch Manager manages.
+        if (not request.user.is_owner and target.pk != request.user.pk
+                and not (users_managed_by(request.user).filter(pk=target.pk).exists()
+                         and is_within_manager_scope(request.user, target))):
+            return Response(
+                {'detail': "You can set the group only for staff of the clinics you manage. "
+                           "This person also works at a clinic you don't manage; ask the Owner."},
+                status=403,
+            )
         # A Branch Manager may set the group of the staff in their clinics, not of another Branch Manager
         # and not their own (the Owner decides those).
         if request.user.is_branch_manager and not request.user.is_owner and target.is_branch_manager:
@@ -2750,30 +2809,8 @@ class PermissionGroupViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='feature-keys')
     def feature_keys(self, request):
         """Return all valid feature keys and their labels."""
-        KEY_LABELS = {
-            'dashboard':        'Dashboard',
-            'appointments':     'Appointments',
-            'calendar':         'Calendar',
-            'diary':            'Diary',
-            'clinical_notes':   'Clinical Notes',
-            'client_cases':     'Client Cases',
-            'patients':         'Patients',
-            'reports':          'Reports',
-            'inventory':        'Inventory',
-            'invoices':         'Invoices',
-            'billing':          'Billing',
-            'subscriptions':    'Subscriptions',
-            'setup':            'Setup',
-            'staff_management': 'Staff Management',
-            'permissions':      'Permissions',
-            'settings':         'Settings',
-            'documents':        'Documents',
-            'outcome_measures': 'Outcome Measures',
-            'contacts':         'Contacts',
-            'communication':    'Communication',
-        }
         return Response([
-            {'key': k, 'label': KEY_LABELS.get(k, k.replace('_', ' ').title())}
+            {'key': k, 'label': feature_label(k)}
             for k in FEATURE_KEYS
         ])
     permission_classes = [IsAuthenticated, IsOwnerBranchManagerOrStaff] 

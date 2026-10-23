@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 import logging
 from .roles import normalize_role, normalize_roles, normalize_role_payload
-from .utils.rbac import validate_branches_free_for_manager
+from .utils.rbac import clinics_of, group_lock_reason, validate_branches_free_for_manager
 from .utils.schedule import blocks_outside, find_overlap, overlap_message
 from .models import (
     User, Role, Permission, PermissionGroup, FeaturePermission,
@@ -30,6 +30,9 @@ class PermissionGroupSerializer(serializers.ModelSerializer):
     feature_permissions = FeaturePermissionSerializer(many=True, read_only=True)
     member_count        = serializers.SerializerMethodField()
     permissions_map     = serializers.SerializerMethodField()
+    # Why the requesting Branch Manager may not change this group (shared with another manager's
+    # clinics), or null when they may.
+    locked_reason       = serializers.SerializerMethodField()
 
     class Meta:
         model  = PermissionGroup
@@ -37,7 +40,7 @@ class PermissionGroupSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'role_template',
             'is_protected', 'is_system_template',
             'clinic', 'feature_permissions', 'permissions_map',
-            'member_count', 'created_at', 'updated_at',
+            'member_count', 'locked_reason', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'is_system_template']
 
@@ -47,6 +50,10 @@ class PermissionGroupSerializer(serializers.ModelSerializer):
     def get_permissions_map(self, obj) -> dict:
         """Return a flat {feature_key: access_level} dict for UI consumption."""
         return obj.get_permissions_dict()
+
+    def get_locked_reason(self, obj):
+        request = self.context.get('request')
+        return group_lock_reason(getattr(request, 'user', None), obj)
 
 
 class PermissionGroupWriteSerializer(serializers.ModelSerializer):
@@ -189,6 +196,15 @@ class UserSerializer(serializers.ModelSerializer):
     # ── Multi-branch assignments for practitioners & staff ───────────────────
     branch_assignments  = serializers.SerializerMethodField()
     assigned_branch_ids = serializers.SerializerMethodField()
+    # Write: the clinics a Frontdesk (STAFF) or Finance user works at; the first is their home clinic.
+    # Practitioners get their clinics from their working hours, Branch Managers from `branch_ids`.
+    work_branch_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        allow_empty=True,
+        write_only=True,
+        help_text="Frontdesk / Finance only. Clinic IDs the user works at; the first is the home clinic.",
+    )
 
     class Meta:
         model  = User
@@ -206,7 +222,7 @@ class UserSerializer(serializers.ModelSerializer):
             # Diary access to other branches
             'extra_diary_branch_ids', 'extra_diary_branches', 'diary_branches', 'diary_other_branches_level',
             # Multi-branch assignments
-            'branch_assignments', 'assigned_branch_ids',
+            'branch_assignments', 'assigned_branch_ids', 'work_branch_ids',
             # Position (for all staff)
             'position',
             # Availability fields (legacy single block)
@@ -465,7 +481,8 @@ class UserSerializer(serializers.ModelSerializer):
                     "The selected branch does not belong to your clinic."
                 )
         scope = self._manager_scope()
-        if scope is not None and value.id not in scope:
+        unchanged = self.instance is not None and value.id == self.instance.clinic_branch_id
+        if scope is not None and value.id not in scope and not unchanged:
             raise serializers.ValidationError("You can only use the clinics you manage.")
         return value
 
@@ -647,7 +664,72 @@ class UserSerializer(serializers.ModelSerializer):
 
 
         attrs = self._validate_extra_diary_branches(attrs)
+        attrs = self._validate_work_branches(attrs)
         return attrs
+
+    WORK_BRANCH_ROLES = {'STAFF', 'FINANCE'}
+
+    def _validate_work_branches(self, attrs):
+        """
+        Frontdesk / Finance clinics. The Owner may use any clinic of the group. A Branch Manager may add
+        or remove only the clinics they manage; any other clinic must stay as it is.
+        """
+        if 'work_branch_ids' not in attrs:
+            return attrs
+        roles = attrs.get('roles') or ([attrs['role']] if attrs.get('role') else None)
+        if not roles:
+            roles = self.instance.get_effective_roles() if self.instance else ['STAFF']
+        roles = set(normalize_roles(list(roles)))
+        if roles & {'OWNER', 'BRANCH_MANAGER', 'PRACTITIONER'} or not roles & self.WORK_BRANCH_ROLES:
+            raise serializers.ValidationError({'work_branch_ids': (
+                'Clinics are set this way only for Frontdesk and Finance staff. Practitioners get their clinics '
+                'from their working hours, and the Owner sets the clinics a Branch Manager manages.')})
+
+        ids = list(dict.fromkeys(attrs['work_branch_ids']))
+        if not ids:
+            raise serializers.ValidationError({'work_branch_ids': 'Choose at least one clinic.'})
+
+        request = self.context.get('request')
+        actor = getattr(request, 'user', None)
+        if actor and actor.is_authenticated and actor.clinic:
+            group_ids = set(actor.clinic.main_clinic.get_all_branches().values_list('id', flat=True))
+            bad = [i for i in ids if i not in group_ids]
+            if bad:
+                raise serializers.ValidationError({'work_branch_ids': f'Clinic ID(s) {bad} do not belong to your clinic.'})
+
+        scope = self._manager_scope()
+        if scope is not None:
+            stored = clinics_of(self.instance) if self.instance is not None else set()
+            changed = set(ids) ^ stored
+            home_unchanged = self.instance is not None and ids[0] == self.instance.clinic_branch_id
+            if not changed <= scope or (ids[0] not in scope and not home_unchanged):
+                raise serializers.ValidationError({'work_branch_ids': 'You can only add or remove the clinics you manage.'})
+
+        attrs['work_branch_ids'] = ids
+        return attrs
+
+    @staticmethod
+    def _sync_work_branches(user, branch_ids):
+        """
+        Make `branch_ids` the clinics a Frontdesk / Finance user works at: active assignment rows for each,
+        other assignment rows deactivated (kept for history), home clinic = the first one.
+        """
+        from apps.clinics.models import Clinic
+        with transaction.atomic():
+            for branch_id in branch_ids:
+                access, _ = UserBranchAccess.objects.select_for_update().get_or_create(
+                    user=user, branch_id=branch_id, defaults={'is_active': True})
+                if not access.is_active:
+                    access.is_active = True
+                    access.save(update_fields=['is_active'])
+            (UserBranchAccess.objects
+                .filter(user=user, is_active=True, is_managed=False)
+                .exclude(branch_id__in=branch_ids)
+                .update(is_active=False))
+            home = Clinic.objects.filter(pk=branch_ids[0], is_deleted=False).first()
+            if home and user.clinic_branch_id != home.id:
+                user.clinic_branch = home
+                user.save(update_fields=['clinic_branch'])
 
     def _validate_extra_diary_branches(self, attrs):
         """Only the Owner may grant extra Diary branches; they must be in the same clinic group."""
@@ -710,6 +792,7 @@ class UserSerializer(serializers.ModelSerializer):
         # Pop fields that do not exist on the User model (Practitioner handles them)
         for field in ['duty_start_time', 'duty_end_time']:
             validated_data.pop(field, None)
+        work_branch_ids = validated_data.pop('work_branch_ids', None)
 
         # duty_days, lunch_start_time, lunch_end_time, duty_schedule are columns on User
         # so they stay in validated_data and are set directly.
@@ -734,6 +817,8 @@ class UserSerializer(serializers.ModelSerializer):
 
         if extra_diary_ids is not None:
             self._apply_extra_diary_branches(user, extra_diary_ids)
+        if work_branch_ids:
+            self._sync_work_branches(user, work_branch_ids)
 
         return user
 
@@ -883,6 +968,7 @@ class UserSerializer(serializers.ModelSerializer):
         password   = validated_data.pop('password', None)
         branch_ids = validated_data.pop('branch_ids', None)  # None = not in payload (no change)
         extra_diary_ids = validated_data.pop('extra_diary_branch_ids', None)
+        work_branch_ids = validated_data.pop('work_branch_ids', None)
 
         # Fields that live on the Practitioner model (not User) — pull them out
         practitioner_only_fields = ['duty_start_time', 'duty_end_time', 'discipline']
@@ -1022,6 +1108,10 @@ class UserSerializer(serializers.ModelSerializer):
                     lunch_start_time=shared_availability.get('lunch_start_time', '12:00'),
                     lunch_end_time=shared_availability.get('lunch_end_time', '13:00'),
                 )
+
+        # ── Frontdesk / Finance clinics ──────────────────────────────────────────
+        if work_branch_ids:
+            self._sync_work_branches(instance, work_branch_ids)
 
         # ── Diary access to other branches (re-applied after role/branch changes) ──
         if extra_diary_ids is not None:

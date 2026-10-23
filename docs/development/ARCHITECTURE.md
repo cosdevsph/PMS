@@ -51,6 +51,20 @@ When something changes, update this file in place and add a CHANGELOG entry. Rec
 
 Architecture Decision Records, newest first. Each one: date, decision, context, alternatives considered, consequences, status (`Accepted` / `Superseded (YYYY-MM-DD)`).
 
+### ADR-007: A Branch Manager delegates only inside their clinics and their own level
+
+**Date:** 2026-10-23 · **Status:** Accepted and implemented. No migration.
+
+**Context.** Client feedback: only Owners and Branch Managers grant access; a clinic added to a user widens where they work, not what they may do; a Branch Manager delegates only within their clinics and their own role. Permission groups are one set per clinic group, not per clinic, and a Branch Manager could set any level and reach any user.
+
+**Decision.** Keep the shared groups and enforce the limits where they are written: a ceiling (`ceiling_violations`) on every Branch Manager create / update, a copy lowered to the copier's level, and a "members fit" lock (`group_lock_reason`) that makes a group read-only for a Branch Manager when any member also works outside their clinics. `assign_user` and the staff list use one helper (`users_managed_by`) based on active assignments. Frontdesk and Finance get several clinics through the existing assignment rows (`work_branch_ids`), with the same scope rule as Practitioner schedules. A Branch Manager always manages the three groups; the Owner switch ("Permissions: Edit") is dropped.
+
+**Alternatives considered.**
+- *Groups owned per clinic or per Branch Manager:* rejected for now; it needs a data model change and a migration, and the lock plus Duplicate gives the same safety.
+- *Keep the Owner switch and add only the ceiling:* rejected by the owner; the ceiling already prevents escalation.
+
+**Consequences.** Every new place that lets a Branch Manager change access must apply `ceiling_violations` and the clinic scope helpers. A shared group can be changed only by the Owner or by copying it.
+
 ### ADR-006: A Practitioner's clinics are changed through one schedule write, and access follows active rows
 
 **Date:** 2026-10-23 · **Status:** Accepted and implemented. No migration.
