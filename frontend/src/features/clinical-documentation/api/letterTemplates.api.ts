@@ -1,4 +1,5 @@
 import api from '@/lib/axios';
+import type { ClinicProfile } from './letters.api';
 
 export interface LetterTemplate {
   id: number;
@@ -42,4 +43,23 @@ export const updateLetterTemplate = async (id: number, data: Partial<LetterTempl
 
 export const archiveLetterTemplate = async (id: number): Promise<void> => {
   await api.patch(`/letters/templates/${id}/`, { is_active: false });
+};
+
+/**
+ * The clinic letterhead (logo, name, address, phone, email). `patientId` gives the patient's own branch
+ * (what their letters carry), or that of `appointmentId` when the letter is for an appointment; `branchId` a branch of the group; neither = the user's own clinic.
+ */
+export const getLetterhead = async (
+  branchId?: number | null,
+  patientId?: number | string | null,
+  appointmentId?: number | null,
+): Promise<ClinicProfile> => {
+  const params: Record<string, number | string> = {};
+  if (patientId) {
+    params.patient = patientId;
+    if (appointmentId) params.appointment = appointmentId;   // the appointment's branch wins over the patient's
+  }
+  else if (branchId) params.branch = branchId;
+  const response = await api.get('/letters/templates/letterhead/', { params });
+  return response.data;
 };

@@ -25,7 +25,8 @@ import { CustomBulletList } from '@/features/manage/pages/clinical/components/ed
 import { Indent } from '@/features/manage/pages/clinical/components/editor/Indent';
 import { FontSize } from '@/features/manage/pages/clinical/components/editor/FontSize';
 import { MergeField } from '@/features/manage/pages/clinical/components/editor/MergeField';
-import { ClinicLetterhead } from './ClinicLetterhead';
+import { LetterLayoutBlocks, LetterTopSpace } from './letter/LetterLayoutBlocks';
+import { buildLetterPrintHtml } from './letter/buildLetterPrintHtml';
 
 interface ViewClinicalLetterModalProps {
   letterId: number;
@@ -123,55 +124,17 @@ export const ViewClinicalLetterModal: React.FC<ViewClinicalLetterModalProps> = (
     // Generate a temporary printable window with the document contents
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-      const htmlContent = `
-        <html>
-          <head>
-            <title>Print Letter</title>
-            <style>
-              body { font-family: sans-serif; padding: 20px; }
-              .letter-head { margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
-              .letter-head h2 { margin: 0; color: #333; }
-              .letter-head p { color: #666; font-size: 12px; margin: 5px 0 0 0; }
-              .date-block { margin-bottom: 20px; }
-              .addressee-block { margin-bottom: 30px; }
-              .addressee-block p { margin: 2px 0 0 0; }
-              .addressee-block p.name { font-weight: bold; margin: 0; }
-            </style>
-          </head>
-          <body>
-            ${letter?.layout_letter_head && letter.clinic_profile ? `
-              <div class="letter-head" style="margin-bottom: 40px; border-bottom: 1px solid #1e293b; padding-bottom: 24px; font-family: sans-serif; display: flex; align-items: center;">
-                  ${letter.clinic_profile.logo ? `<img src="${letter.clinic_profile.logo}" style="max-height: 96px; max-width: 200px; margin-right: 24px; object-fit: contain; border-radius: 4px;" />` : ''}
-                  <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px;">
-                      <h2 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: bold; text-transform: uppercase;">${letter.clinic_profile.name}</h2>
-                      <p style="color: #334155; font-size: 12px; margin: 0;">${letter.clinic_profile.address}</p>
-                      <p style="color: #334155; font-size: 12px; margin: 0;">${letter.clinic_profile.phone} | ${letter.clinic_profile.email}</p>
-                  </div>
-              </div>
-            ` : ''}
-            
-            ${letter?.layout_date ? `
-              <div class="date-block">
-                <p>${new Date(letter.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-              </div>
-            ` : ''}
-
-            ${letter?.layout_addressee && patient ? `
-              <div class="addressee-block">
-                <p class="name">${patient.full_name || `${patient.first_name} ${patient.last_name}`}</p>
-                ${patient.address ? `<p>${patient.address}</p>` : ''}
-                ${(patient.city || patient.province || patient.postal_code) ? `
-                  <p>${[patient.city, patient.province, patient.postal_code].filter(Boolean).join(' ')}</p>
-                ` : ''}
-              </div>
-            ` : ''}
-
-            <div>
-              ${letter?.content_html || ''}
-            </div>
-          </body>
-        </html>
-      `;
+      const htmlContent = buildLetterPrintHtml({
+        title: letter?.subject || 'Letter',
+        profile: letter?.clinic_profile,
+        patient,
+        date: letter?.created_at,
+        letterHead: !!letter?.layout_letter_head,
+        showDate: !!letter?.layout_date,
+        addressee: !!letter?.layout_addressee,
+        removeTopSpace: !!letter?.layout_remove_top_space,
+        bodyHtml: letter?.content_html || '',
+      });
       printWindow.document.write(htmlContent);
       printWindow.document.close();
       printWindow.focus();
@@ -239,35 +202,18 @@ export const ViewClinicalLetterModal: React.FC<ViewClinicalLetterModalProps> = (
               backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 1099px, #f3f4f6 1099px, #f3f4f6 1123px)'
             }}
           >
-            {/* Visual representation of Letterhead */}
-            {letter.layout_letter_head && (
-              <ClinicLetterhead profile={letter.clinic_profile} />
-            )}
-
-            {/* Visual representation of Date */}
-            {letter.layout_date && (
-              <div className="mb-5 font-sans">
-                <p className="m-0 text-slate-800">
-                  {createdDate}
-                </p>
-              </div>
-            )}
-
-            {/* Visual representation of Addressee */}
-            {letter.layout_addressee && patient && (
-              <div className="mb-8 font-sans">
-                <p className="font-bold m-0 text-slate-800">{patient.full_name || `${patient.first_name} ${patient.last_name}`}</p>
-                {patient.address && <p className="m-0 mt-0.5 text-slate-800">{patient.address}</p>}
-                {(patient.city || patient.province || patient.postal_code) && (
-                  <p className="m-0 mt-0.5 text-slate-800">
-                    {[patient.city, patient.province, patient.postal_code].filter(Boolean).join(' ')}
-                  </p>
-                )}
-              </div>
-            )}
+            <LetterTopSpace removed={!!letter.layout_remove_top_space} />
+            <LetterLayoutBlocks
+              profile={letter.clinic_profile}
+              patient={patient}
+              date={letter.created_at}
+              letterHead={!!letter.layout_letter_head}
+              showDate={!!letter.layout_date}
+              addressee={!!letter.layout_addressee}
+            />
 
             {/* Read-Only TipTap Editor */}
-            <div className={`flex-1 clinical-letter-document ${letter.layout_remove_top_space ? 'mt-0' : 'mt-8'}`}>
+            <div className="flex-1 clinical-letter-document">
               <EditorContent editor={editor} className="flex-1" />
             </div>
           </div>

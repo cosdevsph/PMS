@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { Loader2, FileText, Check, X, LayoutTemplate } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { generateLetter, previewLetter, getLetter, updateLetter } from '../api/letters.api';
-import { getActiveLetterTemplates } from '../api/letterTemplates.api';
+import { getActiveLetterTemplates, getLetterhead } from '../api/letterTemplates.api';
+import type { ClinicProfile } from '../api/letters.api';
+import { LetterLayoutBlocks, LetterTopSpace } from './letter/LetterLayoutBlocks';
 import type { LetterTemplate } from '@/features/clinical-documentation/api/letterTemplates.api';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -42,6 +44,7 @@ export const ClinicalLetterEditor = ({ initialAppointmentId }: { initialAppointm
 
   // Layout Controls State
   const [layoutLetterHead, setLayoutLetterHead] = useState(true);
+  const [clinicProfile, setClinicProfile] = useState<ClinicProfile | null>(null);
   const [layoutRemoveTopSpace, setLayoutRemoveTopSpace] = useState(false);
   const [layoutDate, setLayoutDate] = useState(true);
   const [layoutAddressee, setLayoutAddressee] = useState(true);
@@ -93,6 +96,13 @@ export const ClinicalLetterEditor = ({ initialAppointmentId }: { initialAppointm
     content: '',
   });
 
+  // The letterhead is the branch of the appointment the letter is for, else the patient's own branch;
+  // never the writer's clinic.
+  useEffect(() => {
+    if (!patient?.id) return;
+    getLetterhead(null, patient.id, initialAppointmentId).then(setClinicProfile).catch(() => { /* the page simply shows no letterhead */ });
+  }, [patient?.id, initialAppointmentId]);
+
   // Fetch preview when template is selected
   useEffect(() => {
     const fetchPreview = async () => {
@@ -131,6 +141,7 @@ export const ClinicalLetterEditor = ({ initialAppointmentId }: { initialAppointm
           layout_date: currentDate,
           layout_addressee: currentAddressee,
         });
+        if (data.clinic_profile) setClinicProfile(data.clinic_profile);
         editor?.commands.setContent(data.content_html || '');
       } catch (err) {
         console.error('Failed to preview letter', err);
@@ -161,6 +172,7 @@ export const ClinicalLetterEditor = ({ initialAppointmentId }: { initialAppointm
           setLayoutDate(letter.layout_date ?? true);
           setLayoutAddressee(letter.layout_addressee ?? true);
 
+          if (letter.clinic_profile) setClinicProfile(letter.clinic_profile);
           editor.commands.setContent(letter.content_html || '');
         } catch (err) {
           console.error('Failed to load letter for editing', err);
@@ -320,7 +332,7 @@ export const ClinicalLetterEditor = ({ initialAppointmentId }: { initialAppointm
                 </div>
                 <div className="bg-slate-100 p-8 flex justify-center overflow-y-auto">
                   <div
-                    className="w-[794px] min-h-[1123px] bg-white shadow-md rounded-sm p-12 cursor-text flex flex-col gap-6"
+                    className="w-[794px] min-h-[1123px] bg-white shadow-md rounded-sm p-12 cursor-text flex flex-col"
                     onClick={() => editor?.commands.focus()}
                     style={{
                       backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 1099px, #f3f4f6 1099px, #f3f4f6 1123px)'
@@ -354,27 +366,15 @@ export const ClinicalLetterEditor = ({ initialAppointmentId }: { initialAppointm
                         <span className="text-xs font-medium">Layout Overrides</span>
                       </div>
                     </div>
-                    {/* Visual representation of Date (Not part of EditorContent) */}
-                    {layoutDate && (
-                      <div className="mb-5 font-sans">
-                        <p className="m-0 text-slate-800">
-                          {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Visual representation of Addressee (Not part of EditorContent) */}
-                    {layoutAddressee && patient && (
-                      <div className="mb-8 font-sans">
-                        <p className="font-bold m-0 text-slate-800">{patient.full_name || `${patient.first_name} ${patient.last_name}`}</p>
-                        {patient.address && <p className="m-0 mt-0.5 text-slate-800">{patient.address}</p>}
-                        {(patient.city || patient.province || patient.postal_code) && (
-                          <p className="m-0 mt-0.5 text-slate-800">
-                            {[patient.city, patient.province, patient.postal_code].filter(Boolean).join(' ')}
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    {/* Letterhead, date and addressee (not part of the editable body) */}
+                    <LetterTopSpace removed={layoutRemoveTopSpace} />
+                    <LetterLayoutBlocks
+                      profile={clinicProfile}
+                      patient={patient}
+                      letterHead={layoutLetterHead}
+                      showDate={layoutDate}
+                      addressee={layoutAddressee}
+                    />
 
                     <EditorContent editor={editor} className="clinical-letter-document flex-1" />
                   </div>

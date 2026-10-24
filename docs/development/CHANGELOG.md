@@ -45,6 +45,138 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-10-24 — Merge-field values print bold with proper spacing
+
+**Status:** Implemented and tested. No migration. Nothing committed.
+**Module / feature:** Letters: template toolbar (Letter / Client / Case field menus), letter writer and generated letters.
+**Original behavior:** A merge field in the template (e.g. First Name) became plain text in the patient's letter ("John Doe" looked like the rest of the text). Inserting fields from the toolbar added no spaces, so two fields next to each other could join ("JohnDoe"). Values went into the HTML unescaped, and a value containing a backslash could break the replacement.
+**Problem / requirement:** Owner: the values shown in the patient letter must be bold and spaced properly.
+**Files modified:** `backend/apps/letters/services.py` (`replace_variables`, new `_render_value`, `RAW_HTML_VARIABLES`), `backend/apps/letters/tests.py` (+5 tests), `frontend/.../editor/EditorToolbar.tsx` (`insertVariable`).
+**Backend changes:** Each resolved value is HTML-escaped and wrapped in `<strong>` (the signature image is the one exception and stays raw). An empty value removes the field and one following space, so "Dear {{title}} {{first_name}}" has no double space; the replacement can no longer misread a backslash in a value.
+**Frontend changes:** Inserting a field adds a space before it unless it starts a line or follows a space, opening bracket or quote, and a space after it only when text follows that is not a space or closing punctuation. Typing a comma right after the last field gives "[Last Name],".
+**Database / migrations:** None. **API / data contract:** `preview` / `generate` content now contains `<strong>` around values.
+**Business rules & decisions:** Every merge field prints bold (also dates and clinic fields), as the owner asked for values to be bold; each field is bolded separately, the space between "John" and "Doe" is plain text. Only letters generated from now on are affected; saved letters keep their stored HTML.
+**Tests executed:** `manage.py test apps.letters` → 27 OK (bold per field, space preserved, escaping and backslash value, empty value without a double space, raw-text variable, unknown field). `npx tsc -b` → clean; eslint on `EditorToolbar.tsx` → clean. Manual (scratch database copy, removed afterwards): inserting First Name then Last Name from the Client menu gave "Dear [First Name] [Last Name]," with the comma typed directly after; a letter created from a template with those fields showed "Dear John Doe," and "Born 02/01/1990." with each value at font weight 700, in the letter writer.
+**Known limitations:** Not checked in a rendered PDF (the HTML uses plain `<strong>`, which the PDF engine supports). The viewer, print window and the saved-letter page use the same stored HTML but were not opened separately. A field typed directly before text with no space ("[Name]text") gets a space only when inserted before existing text.
+**Regression risks:** Every merge field in every new letter prints bold; templates that already put the field inside bold or headings show it bold anyway.
+
+---
+
+## 2026-10-24 — Follow-up: the appointment's branch wins for the letterhead
+
+**Status:** Implemented and tested (backend tests); not checked in a browser. No migration. Nothing committed.
+**Problem / requirement:** Owner: a patient of Branch A with an appointment at Branch B must get Branch B's letterhead (where the appointment was created). The previous change used the patient's branch only.
+**Rule now:** letterhead clinic = the appointment's clinic, else the patient's `home_branch`, else the patient's clinic (`LetterGeneratorService.letterhead_clinic(patient, fallback, appointment)`). Supersedes the "patient's branch only" rule of the entry below; the older "writer's clinic" is still not used.
+**Files modified:** `letters/services.py`, `views.py` (`generate`, `preview`, and `letterhead?patient=&appointment=`), `serializers.py` (a saved letter uses its own appointment), `tests.py` (+3 tests; 22 run, the new class also re-runs the patient-branch tests), `frontend/.../letterTemplates.api.ts` (`getLetterhead(branchId, patientId, appointmentId)`), `ClinicalLetterEditor.tsx` (passes the appointment).
+**Tests executed:** `manage.py test apps.letters` → 22 OK; `npx tsc -b` → clean. Not run: a browser check.
+**Known limitations:** The appointment only counts when the letter is created for one (from an appointment, `initialAppointmentId`). A letter written from the case's Letters tab with no appointment uses the patient's branch, so it still shows Branch A for a Branch A patient. An appointment of a different patient is ignored.
+**Regression risks:** Letterhead on letters tied to appointments; the viewer for those letters.
+
+---
+
+## 2026-10-24 — Letterhead follows the patient's branch
+
+**Status:** Implemented and tested (backend tests); not checked in a browser. No migration. Nothing committed.
+**Module / feature:** Letters: letterhead of generated letters, the letter writer (`ClinicalLetterEditor.tsx`), the viewer.
+**Original behavior:** The letterhead was the appointment's clinic, else the clinic of the person writing the letter. A practitioner who works at Clinics A and B could put Clinic B's letterhead on a Clinic A patient's letter.
+**Problem / requirement:** Owner: the letterhead (clinic name, logo, address) must be that of the clinic branch the patient belongs to. Example: patient of Clinic A, practitioner assigned to A and B → Clinic A letterhead.
+**Reason for the change:** One rule everywhere: `LetterGeneratorService.letterhead_clinic(patient)` = the patient's `home_branch`, else the patient's `clinic`.
+
+**Files modified:** `backend/apps/letters/services.py` (resolver), `views.py` (`generate`, `preview`, and `letterhead` accepts `?patient=<id>`, 404 for a patient outside the user's clinic group), `serializers.py` (the letter's `clinic_profile` uses the patient's branch, so the viewer and print also change for older letters), `tests.py` (+4 tests), `frontend/.../api/letterTemplates.api.ts` (`getLetterhead(branchId, patientId)`), `ClinicalLetterEditor.tsx` (fetches the patient's letterhead).
+**Database / migrations:** None. **API / data contract:** `GET /api/letters/templates/letterhead/?patient=<id>` added; `clinic_profile` in letter responses now reflects the patient's branch.
+**Business rules & decisions:**
+- The appointment's clinic no longer decides the letterhead (before it did). Decision taken from the example (the patient's branch rules); say if a letter for an appointment at another branch should use that branch instead.
+- Previously generated PDFs keep the letterhead they were created with; the viewer and print show the patient's branch.
+- Supersedes the earlier rule "letterhead = the appointment's clinic, else the writer's clinic".
+**Tests executed:** `manage.py test apps.letters` → 15 OK; mutation (resolver returns the writer's clinic) → tests fail, restored → 15 OK. `npx tsc -b` → clean; eslint on the API file → clean. **Not run:** a browser check of the writer.
+**Known limitations:** The template editor still previews the letterhead of the chosen Location (or your clinic) with a sample patient; real letters use the patient's branch. A patient with no `home_branch` uses the patient's clinic (the main clinic for older records).
+**Regression risks:** Letters for patients of a branch; viewer / print letterhead of old letters.
+
+---
+
+## 2026-10-24 — Follow-up: Letter template editor is full page and compact
+
+**Status:** Implemented. Presentation only; no behavior, API or data change. Nothing committed.
+**Module / feature:** Manage → Clinical → Letter Templates editor.
+**Problem / requirement:** Owner request: the New Letter Template page should be full page with the top bar hidden, and spacing, text and input sizes reduced for a compact view.
+**Files modified:** `LetterTemplateEditor.tsx` (the editor is a fixed full-screen layer, so the top navigation and the "Back to Manage" strip are covered), `LetterTemplateHeader.tsx` (smaller title bar and buttons, 32 px fields, Category / Discipline / Location / Description on one row, smaller labels), `LetterDocumentEditor.tsx` (less padding around the page), `LetterDocumentLayoutPanel.tsx` (narrower panel, tighter spacing).
+**Tests executed:** `npx tsc -b` → clean; `npx eslint` on the four files → clean. Manual (scratch database copy, removed afterwards): the editor opens full screen with no top bar, the settings fit one row, the panel and page show without scrolling the header. The Cancel / back arrow is the way out (the top bar is hidden by design).
+**Known limitations:** On narrow screens the four settings stack to one column. The 1920-wide layout was not checked beyond the 1700 px browser used.
+**Regression risks:** None beyond this screen; dropdowns (discipline list) keep their z-order inside the editor layer.
+
+---
+
+## 2026-10-24 — Letter templates: professional editor, real letterhead preview, one shared layout, fixed PDF spacing
+
+**Status:** Implemented and tested. No migration. Nothing committed. Supersedes the "Proposed" analysis entry below for findings F1–F3, F8 and F9; the rest stay Proposed.
+**Module / feature:** Manage → Clinical → Letter Templates editor; letter writer, viewer, preview and print; `backend/apps/letters/`. See FEATURES "Letters & letter templates" and [features/letter-templates.md](features/letter-templates.md).
+
+**Original behavior:** See the analysis entry below. In short: the template editor showed grey dashed placeholders; the letterhead / date / addressee layout was built four times; the letter writer never showed the letterhead; the generated PDF had large gaps between every line.
+**Problem / requirement:** Owner request (2026-10-24): make the template header and editor more professional and clinic-ready. Direction given: (1) a professional header and editor shell; (2) a real letterhead / date / addressee preview with one shared layout; addressee stays the patient; no sign-off or footer yet; toolbar and merge-field work later.
+**Reason for the change:** One layout source means the template editor, the letter writer, the viewer, the print window and the PDF show the same thing. The PDF bug was found while checking: rendering the old PDF showed a flex letterhead that xhtml2pdf ignores and, worse, a `padding-top` wrapper div that makes xhtml2pdf inflate the spacing of every paragraph inside it (affecting every generated letter, not only the letterhead).
+
+**Files modified:**
+- `backend/apps/letters/services.py` — new `build_layout_html` (table-based, every value HTML-escaped; empty address lines and a missing logo are skipped) and `top_spacer_html` (a 30 px spacer, or none with "Remove top space").
+- `backend/apps/letters/views.py` — `generate` and `preview` use the shared builder and the spacer (about 90 duplicated lines removed); new `GET /api/letters/templates/letterhead/?branch=<id>`.
+- `backend/apps/letters/tests.py` — new, 11 tests (was empty).
+- `frontend/src/features/clinical-documentation/components/letter/` — new `LetterLayoutBlocks.tsx` (letterhead, date, addressee, top space; inline styles so they also work in the print window), `letterLayout.ts`, `buildLetterPrintHtml.tsx`; `ClinicLetterhead.tsx` is now a thin wrapper.
+- `ClinicalLetterEditor.tsx` (letter writer: adds the missing letterhead, uses the shared blocks), `ViewClinicalLetterModal.tsx` (screen and print), `DocumentPreviewModal.tsx`, `api/letterTemplates.api.ts` (`getLetterhead`).
+- `frontend/src/features/manage/pages/clinical/components/editor/` — `LetterTemplateHeader.tsx` (title bar and settings), `LetterTemplateEditor.tsx` (state, dirty tracking, letterhead fetch), `LetterDocumentEditor.tsx` (real preview), `LetterDocumentLayoutPanel.tsx` ("Page layout" with a helper line per toggle).
+
+**Frontend changes:** Header: breadcrumb, large inline title, Active / Inactive switch, "Unsaved changes / All changes saved" indicator, Save disabled until there is something to save (edit mode), inline "title required" message instead of `alert()`. Settings: Category (General, Referral, Report, Medical certificate), Discipline (a saved custom discipline now shows in the list), Location, optional Description (the last two fields existed on the template but had no control). Page: the real clinic or branch letterhead (logo, name, address, phone, email), today's date and a clearly marked sample addressee, with a "hidden" note for any block switched off. Unsaved tracking covers every field, including the four toggles; leaving asks to confirm, and closing the tab warns. The letter writer now shows the letterhead.
+**Backend changes:** see Files modified.
+**Database / migrations:** None (`makemigrations --check` → no changes).
+**API / data contract:** New read-only `GET /api/letters/templates/letterhead/` (`?branch=` must belong to the user's clinic group, else 404; omitted = the user's clinic). Generated PDF HTML changed (tables, escaped values, spacer instead of a padded wrapper); request and response shapes of `generate` and `preview` are unchanged.
+
+**Business rules & decisions:**
+- "Remove top space" now means the same everywhere: no 30 px gap above the first block (before: padding, wrapper padding, or ignored in print).
+- Letter blocks are built from the clinic's invoice print settings, as before; the template's Location still does not change which letterhead a generated letter uses (the appointment's branch, else the writer's clinic). The editor previews the chosen Location and says so.
+- Out of scope, still Proposed: addressee choice, sign-off / signature / footer, toolbar and merge-field fixes, template filtering by discipline or branch, list Location name, permission check on templates.
+
+**Tests executed:**
+- `manage.py test apps.letters` → 11 OK (layout flags, escaping, no flexbox, missing logo, empty lines, spacer, PDF builds, letterhead endpoint scope and login). `manage.py check` → no issues.
+- `npx tsc -b` → clean; `npx eslint` on the changed editor and letter-layout files → no new findings (the findings left in `ClinicalLetterEditor.tsx` and `DocumentPreviewModal.tsx` are the ones that existed before).
+- PDF check (real xhtml2pdf output rendered to an image): before, one line per ~100 px with no divider and the body pushed off page 1; after, a divider, tight address lines, an escaped clinic name (`Rehab & Care <Clinic>` printed as text) and the body on page 1. A letter with "remove top space", no letterhead and no addressee was also generated.
+- Manual (scratch copy of the dev database, `REDIS_URL=` empty, removed afterwards): new template shows the real letterhead and a sample patient; saving with no title shows the inline error; changing category, description, a toggle and the body shows "Unsaved changes"; save persists category, description and flags; reopening shows "All changes saved"; a toggle-only change triggers the leave confirmation and toggling back clears it; in the patient's Letters tab a new letter shows the letterhead, date and addressee, the toggles hide and show them, saving opens the viewer with the same blocks, and the print window HTML has the letterhead, addressee and body with the clinic name escaped. No console errors.
+
+**Known limitations / unresolved issues:**
+- PDF letterhead logo rendering was not tested (the scratch clinic had no logo); the logo cell is built but unchecked in a real PDF.
+- The PDF layout is the backend twin of the React blocks, so the two can still drift in small ways (fonts, line gaps).
+- Existing letters keep their stored PDF; only letters generated from now on use the new layout.
+- The sample addressee is fixed text; it is not editable.
+- Findings F4–F7 and F10–F12 are untouched.
+**Regression risks:** Every PDF letter (spacing and layout changed); letter print window; the letter writer and viewer pages; the template editor's save payload (now sends category and description).
+
+---
+
+## 2026-10-24 — Letter templates: analysis of the editor and the letter workflow
+
+**Status:** Proposed (analysis only; no code changed). Findings F1–F3, F8 and F9 were addressed on 2026-10-24, see the entry above.
+**Module / feature:** Manage → Clinical → Letter Templates (`LetterTemplateHeader.tsx`, `LetterTemplateEditor.tsx` and neighbours) and letter generation (`backend/apps/letters/`).
+
+**Original behavior:** Recorded in [features/letter-templates.md](features/letter-templates.md) and FEATURES "Letters & letter templates": a full-screen editor with a settings bar (title, discipline, location), a toolbar, an A4 page with grey placeholders for letter head, date and addressee, and a right-hand "Document Layout" panel with four toggles (Letter Head, Remove Top Space, Date, Addressee) that only decide which blocks are added when a letter is generated.
+**Problem / requirement:** Owner request (2026-10-24): enhance the template header and editor to be more professional and suited to what clinics need. First step: understand the current code and workflow.
+**Reason for the change:** Record how things work today and what was found, so the redesign can be planned from facts.
+
+**Files modified:** Documentation only.
+- `docs/development/features/letter-templates.md` — new: screens and files, editor behavior, data model, generation steps, findings F1–F12, unverified items.
+- `docs/development/FEATURES.md` — new section "Letters & letter templates"; index row updated (was "Not yet documented").
+- `docs/development/CHANGELOG.md` — this entry.
+
+**Frontend changes:** None
+**Backend changes:** None
+**Database / migrations:** None
+**API / data contract:** None
+
+**Business rules & decisions:** None decided yet. The owner's enhancement direction (header and editor design, real letterhead preview, addressee choice, signature / footer blocks, toolbar and merge-field list, template filtering) is still to be given; each change needs an approved plan.
+
+**Tests executed:** None (documentation only). Findings come from reading the code on 2026-10-24; none were verified by running it. Unverified: the PDF letterhead layout (F2), duplicate template names, and any behavior of `xhtml2pdf`.
+
+**Known limitations / unresolved issues:** Findings F1–F12 are open (see the feature note §6). The letters app has no automated tests (`apps/letters/tests.py` is empty).
+**Regression risks:** None (no code changed).
+
+---
+
 ## 2026-10-23 — Client feedback on access and branch assignment: delegation limits, Branch Manager group management, Frontdesk/Finance at several clinics
 
 **Status:** Implemented and tested. No migration. Nothing committed.

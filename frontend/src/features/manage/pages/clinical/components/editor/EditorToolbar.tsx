@@ -677,8 +677,24 @@ const CaseDropdown = ({ insertVariable }: { insertVariable: (id: string, label: 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
   if (!editor) return null;
 
+  // Insert a merge field with proper spacing: a space before it unless it starts a line, follows a space or
+  // an opening bracket / quote; a space after it only when text follows that is not a space or closing punctuation.
   const insertVariable = (id: string, label: string) => {
-    editor.chain().focus().insertMergeField({ id, label }).run();
+    const { from, to } = editor.state.selection;
+    const doc = editor.state.doc;
+    const before = from > 0 ? doc.textBetween(from - 1, from, '', '\u0001') : '';
+    const after = to < doc.content.size ? doc.textBetween(to, to + 1, '', '\u0001') : '';
+        const needsLeading = before !== '' && !/[\s([{"'“‘]/.test(before);
+    const needsTrailing = after !== '' && !/[\s.,;:!?)\]}"'”’]/.test(after);
+    editor
+      .chain()
+      .focus()
+      .insertContent([
+        ...(needsLeading ? [{ type: 'text', text: ' ' }] : []),
+        { type: 'mergeField', attrs: { id, label } },
+        ...(needsTrailing ? [{ type: 'text', text: ' ' }] : []),
+      ])
+      .run();
   };
 
 

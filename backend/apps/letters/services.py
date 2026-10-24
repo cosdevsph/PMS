@@ -1,5 +1,6 @@
 import re
 from django.utils import timezone
+from django.utils.html import escape
 from apps.patients.models import Patient
 from apps.clinics.models import Practitioner
 from apps.records.models import ClinicalNote
@@ -99,6 +100,18 @@ class LetterGeneratorService:
         '{{sender.signature}}': lambda p, pr, n, c, a, l: f'<img src="data:image/png;base64,{l.signature_data}" style="max-height: 80px;" alt="Signature" />' if l and getattr(l, 'signature_data', None) else '',
     }
 
+    # Values that are already HTML (an image); every other value is text and is escaped.
+    RAW_HTML_VARIABLES = {'{{sender.signature}}'}
+
+    @classmethod
+    def _render_value(cls, var: str, value: str) -> str:
+        """A merge-field value as it appears in the letter: escaped, and bold so it stands out from the template text."""
+        if not value.strip():
+            return ''
+        if var in cls.RAW_HTML_VARIABLES:
+            return value
+        return f'<strong>{escape(value)}</strong>'
+
     @classmethod
     def replace_variables(
         cls, 
@@ -120,27 +133,105 @@ class LetterGeneratorService:
         
         # Replace known supported variables
         for var, func in cls.SUPPORTED_VARIABLES.items():
-            if var in result:
-                try:
-                    val = str(func(patient, practitioner, note, patient_case, appointment, letter))
-                    # 1. Replace the TipTap merge-field span completely
-                    escaped_var = re.escape(var)
-                    pattern = r'<span\b[^>]*data-id=["\']' + escaped_var + r'["\'][^>]*>.*?</span>'
-                    result = re.sub(pattern, val, result, flags=re.IGNORECASE)
-                    
-                    # 2. Fallback for raw text without spans
-                    result = result.replace(var, val)
-                except Exception as e:
-                    # If variable resolution fails, replace with empty string
-                    escaped_var = re.escape(var)
-                    pattern = r'<span\b[^>]*data-id=["\']' + escaped_var + r'["\'][^>]*>.*?</span>'
-                    result = re.sub(pattern, "", result, flags=re.IGNORECASE)
-                    result = result.replace(var, "")
+            if var not in result:
+                continue
+            try:
+                value = str(func(patient, practitioner, note, patient_case, appointment, letter) or '')
+            except Exception:
+                # If variable resolution fails, the field becomes empty
+                value = ''
+            rendered = cls._render_value(var, value)
+            span = r'<span\b[^>]*data-id=["\']' + re.escape(var) + r'["\'][^>]*>.*?</span>'
+            # An empty value also takes one following space, so "Dear {{title}} {{first_name}}" has no double space.
+            tail = '' if rendered else r'(?:&nbsp;|\u00a0| )?'
+            # 1. The TipTap merge-field span, 2. raw text without a span. A function is used as the
+            # replacement so backslashes in a value are never read as a regex template.
+            result = re.sub(span + tail, lambda _m, r=rendered: r, result, flags=re.IGNORECASE)
+            result = result.replace(var, rendered)
 
         # Remove any remaining unimplemented variables (e.g., {{unknown.field}})
         result = re.sub(r'\{\{[^}]+\}\}', '', result)
         
         return result
+
+    @classmethod
+    def build_layout_html(
+        cls,
+        clinic_profile=None,
+        patient=None,
+        *,
+        letter_head=True,
+        date=True,
+        addressee=True,
+        today=None,
+    ) -> str:
+        """
+        The letterhead, date and addressee blocks placed above the body of a letter.
+
+        One builder for the PDF (`generate`) and the preview (`preview`). It uses tables, not flexbox,
+        because xhtml2pdf ignores flexbox (the old layout came out as widely spaced single lines), and
+        every value is HTML-escaped (clinic and patient text is user input).
+        """
+        parts = []
+
+        if letter_head and clinic_profile:
+            contact = ' | '.join(filter(None, [clinic_profile.get('phone'), clinic_profile.get('email')]))
+            lines = [
+                '<p style="margin: 0 0 2px 0; font-size: 18px; font-weight: bold; color: #0f172a;">'
+                f'{escape((clinic_profile.get("name") or "").upper())}</p>'
+            ]
+            for line in (clinic_profile.get('address'), contact):
+                if line:
+                    lines.append(f'<p style="margin: 0; font-size: 11px; color: #334155;">{escape(line)}</p>')
+            logo_cell = ''
+            if clinic_profile.get('logo'):
+                logo_cell = (
+                    f'<td width="90" valign="middle" style="padding: 0 16px 14px 0;">'
+                    f'<img src="{escape(clinic_profile["logo"])}" height="64" /></td>'
+                )
+            parts.append(
+                '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 26px;"><tr>'
+                f'{logo_cell}'
+                f'<td valign="middle" style="padding: 0 0 14px 0; border-bottom: 1px solid #1e293b;">{"".join(lines)}</td>'
+                '</tr></table>'
+            )
+
+        if date:
+            when = today or timezone.now()
+            parts.append(f'<p style="margin: 0 0 20px 0;">{when.strftime("%d %B %Y")}</p>')
+
+        if addressee and patient:
+            city_line = ' '.join(filter(None, [patient.city, patient.province, patient.postal_code]))
+            lines = [(patient.get_full_name(), True)] + [(x, False) for x in (patient.address, city_line) if x]
+            for i, (text, bold) in enumerate(lines):
+                bottom = '30px' if i == len(lines) - 1 else '0'
+                weight = ' font-weight: bold;' if bold else ''
+                parts.append(f'<p style="margin: 0 0 {bottom} 0;{weight}">{escape(text)}</p>')
+
+        return ''.join(parts)
+
+    @staticmethod
+    def letterhead_clinic(patient, fallback=None, appointment=None):
+        """
+        The clinic whose letterhead a letter carries:
+          1. the branch of the appointment the letter is for (where the patient is being seen);
+          2. else the branch the patient belongs to (`home_branch`), else the patient's clinic;
+          3. else `fallback`.
+        It never depends on who writes the letter or on which branches that practitioner works at.
+        """
+        if appointment is not None and getattr(appointment, 'clinic', None):
+            return appointment.clinic
+        if patient is not None:
+            return patient.home_branch or patient.clinic or fallback
+        return fallback
+
+    @staticmethod
+    def top_spacer_html(remove_top_space=False) -> str:
+        """
+        Space above the first block. A padded wrapper div makes xhtml2pdf inflate the spacing of every
+        paragraph inside it, so the gap is a plain spacer element instead.
+        """
+        return '' if remove_top_space else '<div style="height: 30px; line-height: 30px;">&nbsp;</div>'
 
     @classmethod
     def generate_pdf(cls, html_content: str, output_path: str = None) -> bytes:

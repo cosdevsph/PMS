@@ -78,8 +78,8 @@ class LetterSerializer(serializers.ModelSerializer):
 
     def get_clinic_profile(self, obj):
         from .services import LetterGeneratorService
-        # Use appointment branch if available, fallback to letter's clinic
-        clinic = obj.appointment.clinic if obj.appointment and obj.appointment.clinic else obj.clinic
+        # The appointment's branch, else the patient's own branch (never the writer's clinic)
+        clinic = LetterGeneratorService.letterhead_clinic(obj.patient, obj.clinic, obj.appointment)
         request = self.context.get('request')
         return LetterGeneratorService.get_clinic_profile(clinic, request=request)
 

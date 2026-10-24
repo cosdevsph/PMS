@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Table } from '@tiptap/extension-table';
@@ -20,6 +20,8 @@ import { Indent } from './Indent';
 import { FontSize } from './FontSize';
 import { CustomShortcuts } from './CustomShortcuts';
 import type { LetterTemplate } from '@/features/clinical-documentation/api/letterTemplates.api';
+import { getLetterhead } from '@/features/clinical-documentation/api/letterTemplates.api';
+import type { ClinicProfile } from '@/features/clinical-documentation/api/letters.api';
 
 import { LetterTemplateHeader } from './LetterTemplateHeader';
 import { LetterDocumentEditor } from './LetterDocumentEditor';
@@ -42,6 +44,13 @@ export const LetterTemplateEditor: React.FC<LetterTemplateEditorProps> = ({
   const [discipline, setDiscipline] = useState(template?.discipline || '');
   const [clinicBranch, setClinicBranch] = useState<number | null>(template?.clinic_branch ?? null);
   const [isActive, setIsActive] = useState(template?.is_active ?? true);
+  const [category, setCategory] = useState(template?.category || 'GENERAL');
+  const [description, setDescription] = useState(template?.description || '');
+  const [showNameError, setShowNameError] = useState(false);
+  const [bodyHtml, setBodyHtml] = useState(template?.content_html || '');
+  // The body as the editor first normalised it: the baseline for "unsaved changes".
+  const [baselineBody, setBaselineBody] = useState<string | null>(null);
+  const [profile, setProfile] = useState<ClinicProfile | null>(null);
 
   // Layout Controls
   const [layoutLetterHead, setLayoutLetterHead] = useState(template?.layout_letter_head ?? true);
@@ -83,22 +92,59 @@ export const LetterTemplateEditor: React.FC<LetterTemplateEditorProps> = ({
     ...editorConfig,
     content: template?.content_html || '',
     extensions: [...editorConfig.extensions, Placeholder.configure({ placeholder: 'Write your letter body here...' })],
+    onCreate: ({ editor }) => {
+      setBaselineBody(editor.getHTML());
+      setBodyHtml(editor.getHTML());
+    },
+    onUpdate: ({ editor }) => setBodyHtml(editor.getHTML()),
   });
 
-  React.useEffect(() => {
-    // Removed PaginationPlus updatePageSize
-  }, [bodyEditor]);
+  // The page shows the real letterhead of the chosen location (or your own clinic).
+  useEffect(() => {
+    let cancelled = false;
+    getLetterhead(clinicBranch).then((p) => { if (!cancelled) setProfile(p); }).catch(() => { if (!cancelled) setProfile(null); });
+    return () => { cancelled = true; };
+  }, [clinicBranch]);
+
+  const initial = useMemo(() => ({
+    name: template?.name || '',
+    category: template?.category || 'GENERAL',
+    description: template?.description || '',
+    discipline: template?.discipline || '',
+    clinicBranch: template?.clinic_branch ?? null,
+    isActive: template?.is_active ?? true,
+    letterHead: template?.layout_letter_head ?? true,
+    removeTopSpace: template?.layout_remove_top_space ?? false,
+    date: template?.layout_date ?? true,
+    addressee: template?.layout_addressee ?? true,
+  }), [template]);
+
+  // Anything that differs from what is saved (for a new template: from an empty one).
+  const dirty =
+    name !== initial.name || category !== initial.category || description !== initial.description ||
+    discipline !== initial.discipline || clinicBranch !== initial.clinicBranch || isActive !== initial.isActive ||
+    layoutLetterHead !== initial.letterHead || layoutRemoveTopSpace !== initial.removeTopSpace ||
+    layoutDate !== initial.date || layoutAddressee !== initial.addressee ||
+    (baselineBody !== null && bodyHtml !== baselineBody);
+
+  // Closing the tab or reloading with unsaved changes asks first.
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
   const handleSave = async () => {
     if (!name.trim()) {
-      alert('Template Name is required');
+      setShowNameError(true);
       return;
     }
-    
+
     await onSave({
       name: name.trim(),
-      description: template?.description || '',
-      category: template?.category || 'GENERAL',
+      description: description.trim(),
+      category,
       discipline: discipline.trim(),
       clinic_branch: clinicBranch,
       layout_letter_head: layoutLetterHead,
@@ -113,19 +159,12 @@ export const LetterTemplateEditor: React.FC<LetterTemplateEditorProps> = ({
   };
 
   const handleCancel = () => {
-    const currentBody = bodyEditor?.getHTML() || '';
-    const originalBody = template?.content_html || '<p></p>';
-
-    if (currentBody !== originalBody || name !== (template?.name || '')) {
-      if (!window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
-        return;
-      }
-    }
+    if (dirty && !window.confirm('You have unsaved changes. Are you sure you want to leave?')) return;
     onCancel();
   };
 
   return (
-    <div className="flex-1 w-full h-full flex flex-col bg-gray-100 min-h-0 overflow-hidden">
+    <div className="fixed inset-0 z-[70] flex flex-col bg-gray-100 min-h-0 overflow-hidden">
       
       {/* STICKY HEADER & TOOLBAR TO PREVENT SCROLL OFF */}
       <div className="sticky top-0 z-30 flex flex-col shadow-sm">
@@ -140,6 +179,12 @@ export const LetterTemplateEditor: React.FC<LetterTemplateEditorProps> = ({
           setClinicBranch={setClinicBranch}
           isActive={isActive}
           setIsActive={setIsActive}
+          category={category}
+          setCategory={setCategory}
+          description={description}
+          setDescription={setDescription}
+          dirty={dirty}
+          showNameError={showNameError && !name.trim()}
           saving={saving}
           onSave={handleSave}
           onCancel={handleCancel}
@@ -157,6 +202,7 @@ export const LetterTemplateEditor: React.FC<LetterTemplateEditorProps> = ({
         {/* ONLY THIS REGION SCROLLS */}
         <LetterDocumentEditor
           bodyEditor={bodyEditor}
+          profile={profile}
           layoutLetterHead={layoutLetterHead}
           layoutRemoveTopSpace={layoutRemoveTopSpace}
           layoutDate={layoutDate}

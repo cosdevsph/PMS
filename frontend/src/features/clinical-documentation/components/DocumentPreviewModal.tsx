@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { deleteCaseDocument, type CaseDocument } from '../api/caseDocuments.api';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { getLetter, type Letter } from '../api/letters.api';
-import { ClinicLetterhead } from './ClinicLetterhead';
+import { LetterLayoutBlocks, LetterTopSpace } from './letter/LetterLayoutBlocks';
 import { usePatientProfileContext } from '@/features/patients/context/PatientProfileContext';
 
 // TipTap Imports for Read-Only rendering
@@ -201,36 +201,15 @@ export const DocumentPreviewModal = ({ document: doc, onClose, onDeleteSuccess }
                   </div>
                 ) : (
                   <>
-                    {/* Visual representation of Letterhead */}
-                    {letter.layout_letter_head && (
-                      <ClinicLetterhead profile={letter.clinic_profile} />
-                    )}
-
-                    {/* Visual representation of Date */}
-                    {letter.layout_date && (
-                      <div className="mb-5 font-sans">
-                        <p className="m-0 text-slate-800">
-                          {new Date(letter.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Visual representation of Addressee */}
-                    {letter.layout_addressee && patient && (
-                      <div className="mb-10 font-sans">
-                        <p className="m-0 font-bold text-slate-900">
-                          {patient.full_name || `${patient.first_name} ${patient.last_name}`}
-                        </p>
-                        {patient.address && (
-                          <p className="m-0 text-slate-700">{patient.address}</p>
-                        )}
-                        {(patient.city || patient.province || patient.postal_code) && (
-                          <p className="m-0 text-slate-700">
-                            {[patient.city, patient.province, patient.postal_code].filter(Boolean).join(' ')}
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    <LetterTopSpace removed={!!letter.layout_remove_top_space} />
+                    <LetterLayoutBlocks
+                      profile={letter.clinic_profile}
+                      patient={patient}
+                      date={letter.created_at}
+                      letterHead={!!letter.layout_letter_head}
+                      showDate={!!letter.layout_date}
+                      addressee={!!letter.layout_addressee}
+                    />
 
                     <EditorContent editor={editor} className="letter-preview-content" />
                   </>

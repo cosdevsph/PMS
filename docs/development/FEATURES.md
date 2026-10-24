@@ -39,7 +39,7 @@ No patient data or secrets in examples.
 | Messaging | `clinic-messages` | `messages` | Not yet documented |
 | Notifications | `notifications` | `notifications` | Not yet documented |
 | SMS | — | `smsgateway` | Not yet documented |
-| Letters | — | `letters` | Not yet documented |
+| Letters & letter templates | `manage` (Clinical → Letter Templates editor), `clinical-documentation` (write / view letters) | `letters` | Documented 2026-10-24; editor shell and shared letter layout implemented, remaining findings **Proposed** — [deep dive](features/letter-templates.md) |
 | Inventory | — | `inventory` | Not yet documented |
 | Reports & dashboard | `reports`, `dashboard` | `reports` | Not yet documented |
 | Manage (admin / clinical setup) | `manage` | — | Not yet documented |
@@ -51,6 +51,27 @@ No patient data or secrets in examples.
 | Private Package Sessions | `patients` (sidebar page), `appointments` (assignment card), `billing` (invoice screen) | `patients` (`package_*`), `billing`, `appointments` | Implemented and tested; **migrations not yet applied to the dev database**; transfers not built — [spec](features/private-package-sessions.md) |
 
 A "—" means no folder with a matching name was found. The feature may still exist under a different name; confirm when documenting it.
+
+## Letters & letter templates
+
+**Code:** `frontend/src/features/manage/pages/clinical/components/editor/` (template editor), `frontend/src/features/clinical-documentation/components/` (`ClinicalLetterEditor`, `ViewClinicalLetterModal`, `DocumentPreviewModal`, `ClinicLetterhead`), `backend/apps/letters/`
+**Last verified:** 2026-10-24 (backend tests and an isolated browser and PDF check; see CHANGELOG "Letter templates: professional editor")
+**Deep dive:** [features/letter-templates.md](features/letter-templates.md)
+
+**What it does:** A clinic builds a letter template once (a rich-text body with merge fields such as `{{patient.first_name}}`, plus a discipline, an optional branch and four layout toggles) and then writes a letter from it for a patient. Generating the letter resolves the fields, adds the letterhead, date and addressee, saves a PDF and a copy in the patient's documents.
+
+**Business rules:**
+- Templates belong to the clinic of the user who creates them; a template may be limited to one branch (none = all locations) and carries a free-text discipline. — backend (`LetterTemplate`), frontend (editor header)
+- Four layout toggles are stored on the template: **Letter Head**, **Remove Top Space**, **Date**, **Addressee**. They decide which blocks are added when a letter is generated; each letter keeps its own copy of the four flags and the writer can change them per letter. The blocks are not part of the template body. — backend (`views.generate` / `preview`), frontend (`LetterDocumentLayoutPanel`, `ClinicalLetterEditor`)
+- The letterhead is the clinic's name, address, phone, email and logo (print-settings logo first, then the clinic's, then the parent clinic's) **of the appointment's branch when the letter is for an appointment, else of the patient's own branch** (`home_branch`, else the patient's clinic), whichever branches the practitioner works at (`LetterGeneratorService.letterhead_clinic`). Superseded (2026-10-24): the writer's clinic. The date is the day of generation. The addressee is always the patient. The three blocks come from one layout: React components for screen and print (`clinical-documentation/components/letter/LetterLayoutBlocks.tsx`) and `LetterGeneratorService.build_layout_html` for the PDF (tables, escaped values; xhtml2pdf ignores flexbox and inflates spacing inside a padded div, so the top gap is a spacer element). "Remove top space" = no 30 px gap above the first block. The template editor previews the real letterhead (`GET /api/letters/templates/letterhead/`) with a sample patient. — backend, frontend
+  Superseded (2026-10-24): four separate builders and a padded wrapper div in the PDF.
+- Merge fields are resolved when a letter is generated (known field → value, a field that cannot be resolved → blank, unknown `{{x}}` → removed). Each value is escaped and printed **bold** (`<strong>`; the signature image is raw); an empty value also removes one following space. In the template toolbar a field is inserted with a space before it (unless at a line start or after a space / opening bracket) and a space after it only when text follows. Letters keep the resolved HTML. — backend (`LetterGeneratorService.replace_variables`)
+- Saving a template edits it in place; the editor does not create versions (`create_version` exists in the API). `header_html` and `footer_html` are always saved empty. A template has a title (required), category, optional description, discipline, location, an Active switch and the four layout toggles; the editor marks unsaved changes for all of them and asks before leaving. — frontend (`LetterTemplateEditor`, `LetterTemplateHeader`)
+- Any logged-in user of the clinic can create and change templates; there is no role or permission-group check. — backend (`LetterTemplateViewSet`, to be reviewed)
+- When writing a letter, every active template of the clinic is listed; discipline and branch are not used to filter. — frontend (`ClinicalLetterEditor`)
+
+**Key endpoints:** `GET/POST/PATCH /api/letters/templates/` (+ `active/`, `create_version/`, `merge_field_options/`), `POST /api/letters/generate/`, `POST /api/letters/preview/`, `sign/`, `send_email/`, `replicate/`.
+**Known issues (Proposed fixes, not built):** the addressee cannot be anyone but the patient; no signature or footer block in the editor; `{{patient.phone}}` and several other fields always print blank and the toolbar omits supported clinic / date / appointment fields; no heading, text colour, image, page break or line spacing tools; template Location shows "Branch #id" in the list; no permission check. A logo in the PDF letterhead was not tested. Full list F1–F12 (F1–F3, F8, F9 resolved 2026-10-24): [features/letter-templates.md §6](features/letter-templates.md).
 
 ## Online Booking (patient portal)
 

@@ -9,6 +9,7 @@ from .serializers import LetterTemplateSerializer, LetterSerializer
 from apps.records.models import CaseDocument
 from .services import LetterGeneratorService
 from apps.patients.models import Patient
+from apps.clinics.models import Clinic
 from django.core.files.base import ContentFile
 
 import logging
@@ -51,6 +52,38 @@ class LetterTemplateViewSet(viewsets.ModelViewSet):
         templates = self.get_queryset().filter(is_active=True)
         serializer = self.get_serializer(templates, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def letterhead(self, request):
+        """
+        The clinic letterhead (logo, name, address, phone, email) the template editor previews.
+        `?patient=<id>` (+ optional `&appointment=<id>`) gives the letterhead of that appointment's branch, else the patient's branch; `?branch=<id>` selects a branch of the user's clinic group; omitted = the user's own clinic.
+        """
+        clinic = request.user.clinic
+        if not clinic:
+            return Response({'detail': 'No clinic found for this account.'}, status=status.HTTP_404_NOT_FOUND)
+        branch_id = request.query_params.get('branch')
+        patient_id = request.query_params.get('patient')
+        if patient_id:
+            # A letter carries the letterhead of its appointment's branch, else of the patient's own branch.
+            from apps.appointments.models import Appointment
+            group_ids = list(clinic.main_clinic.get_all_branches().values_list('id', flat=True))
+            try:
+                patient = Patient.objects.get(pk=int(patient_id), clinic_id__in=group_ids)
+                appointment_id = request.query_params.get('appointment')
+                appointment = (Appointment.objects.filter(pk=int(appointment_id), patient=patient).first()
+                               if appointment_id else None)
+            except (ValueError, TypeError, Patient.DoesNotExist):
+                return Response({'detail': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(LetterGeneratorService.get_clinic_profile(
+                LetterGeneratorService.letterhead_clinic(patient, clinic, appointment), request=request))
+        if branch_id:
+            try:
+                branch = clinic.main_clinic.get_all_branches().get(pk=int(branch_id))
+            except (ValueError, TypeError, Clinic.DoesNotExist):
+                return Response({'detail': 'Branch not found.'}, status=status.HTTP_404_NOT_FOUND)
+            clinic = branch
+        return Response(LetterGeneratorService.get_clinic_profile(clinic, request=request))
 
     @action(detail=False, methods=['get'])
     def merge_field_options(self, request):
@@ -179,39 +212,11 @@ class LetterViewSet(viewsets.ModelViewSet):
             layout_date = request.data.get('layout_date', template.layout_date)
             layout_addressee = request.data.get('layout_addressee', template.layout_addressee)
             
-            layout_html = ""
-            
-            clinic_profile = LetterGeneratorService.get_clinic_profile(appointment.clinic if appointment and appointment.clinic else request.user.clinic, request=request)
-            
-            if layout_letter_head and clinic_profile:
-                logo_img = f'<img src="{clinic_profile["logo"]}" style="max-height: 96px; max-width: 200px; margin-right: 24px; vertical-align: middle; border-radius: 4px;" />' if clinic_profile.get("logo") else ""
-                layout_html += f"""
-                <div style="margin-bottom: 40px; border-bottom: 1px solid #1e293b; padding-bottom: 24px; font-family: sans-serif; display: flex; align-items: center;">
-                    {logo_img}
-                    <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px;">
-                        <h2 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: bold; text-transform: uppercase;">{clinic_profile['name']}</h2>
-                        <p style="color: #334155; font-size: 12px; margin: 0;">{clinic_profile['address']}</p>
-                        <p style="color: #334155; font-size: 12px; margin: 0;">{clinic_profile['phone']} | {clinic_profile['email']}</p>
-                    </div>
-                </div>
-                """
-
-            if layout_date:
-                from django.utils import timezone
-                layout_html += f"""
-                <div style="margin-bottom: 20px; font-family: sans-serif;">
-                    <p style="margin: 0;">{timezone.now().strftime('%d %B %Y')}</p>
-                </div>
-                """
-
-            if layout_addressee and patient:
-                layout_html += f"""
-                <div style="margin-bottom: 30px; font-family: sans-serif;">
-                    <p style="font-weight: bold; margin: 0;">{patient.get_full_name()}</p>
-                    <p style="margin: 2px 0 0 0;">{patient.address}</p>
-                    <p style="margin: 2px 0 0 0;">{patient.city} {patient.province} {patient.postal_code}</p>
-                </div>
-                """
+            clinic_profile = LetterGeneratorService.get_clinic_profile(LetterGeneratorService.letterhead_clinic(patient, request.user.clinic, appointment), request=request)
+            layout_html = LetterGeneratorService.build_layout_html(
+                clinic_profile, patient,
+                letter_head=layout_letter_head, date=layout_date, addressee=layout_addressee,
+            )
 
             # 1. Render content for Header, Body, Footer
             rendered_header = LetterGeneratorService.replace_variables(
@@ -250,9 +255,8 @@ class LetterViewSet(viewsets.ModelViewSet):
             )
             
             # Wrap content if removing top space
-            top_margin = "0px" if layout_remove_top_space else "40px"
-            wrapper_start = f"<div style='padding-top: {top_margin};'>"
-            wrapper_end = "</div>"
+            wrapper_start = LetterGeneratorService.top_spacer_html(layout_remove_top_space)
+            wrapper_end = ""
             
             # Optionally wrap in header/footer
             full_html = f"{wrapper_start}{layout_html}{rendered_header}{rendered_content}{rendered_footer}{wrapper_end}"
@@ -339,39 +343,11 @@ class LetterViewSet(viewsets.ModelViewSet):
             layout_date = request.data.get('layout_date', template.layout_date)
             layout_addressee = request.data.get('layout_addressee', template.layout_addressee)
             
-            layout_html = ""
-            
-            clinic_profile = LetterGeneratorService.get_clinic_profile(appointment.clinic if appointment and appointment.clinic else request.user.clinic, request=request)
-            
-            if layout_letter_head and clinic_profile:
-                logo_img = f'<img src="{clinic_profile["logo"]}" style="max-height: 96px; max-width: 200px; margin-right: 24px; vertical-align: middle; border-radius: 4px;" />' if clinic_profile.get("logo") else ""
-                layout_html += f"""
-                <div style="margin-bottom: 40px; border-bottom: 1px solid #1e293b; padding-bottom: 24px; font-family: sans-serif; display: flex; align-items: center;">
-                    {logo_img}
-                    <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px;">
-                        <h2 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: bold; text-transform: uppercase;">{clinic_profile['name']}</h2>
-                        <p style="color: #334155; font-size: 12px; margin: 0;">{clinic_profile['address']}</p>
-                        <p style="color: #334155; font-size: 12px; margin: 0;">{clinic_profile['phone']} | {clinic_profile['email']}</p>
-                    </div>
-                </div>
-                """
-
-            if layout_date:
-                from django.utils import timezone
-                layout_html += f"""
-                <div style="margin-bottom: 20px; font-family: sans-serif;">
-                    <p style="margin: 0;">{timezone.now().strftime('%d %B %Y')}</p>
-                </div>
-                """
-
-            if layout_addressee and patient:
-                layout_html += f"""
-                <div style="margin-bottom: 30px; font-family: sans-serif;">
-                    <p style="font-weight: bold; margin: 0;">{patient.get_full_name()}</p>
-                    <p style="margin: 2px 0 0 0;">{patient.address}</p>
-                    <p style="margin: 2px 0 0 0;">{patient.city} {patient.province} {patient.postal_code}</p>
-                </div>
-                """
+            clinic_profile = LetterGeneratorService.get_clinic_profile(LetterGeneratorService.letterhead_clinic(patient, request.user.clinic, appointment), request=request)
+            layout_html = LetterGeneratorService.build_layout_html(
+                clinic_profile, patient,
+                letter_head=layout_letter_head, date=layout_date, addressee=layout_addressee,
+            )
 
             # Render content for Header, Body, Footer
             rendered_header = LetterGeneratorService.replace_variables(
@@ -397,9 +373,8 @@ class LetterViewSet(viewsets.ModelViewSet):
             )
             
             # Wrap content if removing top space
-            top_margin = "0px" if layout_remove_top_space else "40px"
-            wrapper_start = f"<div style='padding-top: {top_margin};'>"
-            wrapper_end = "</div>"
+            wrapper_start = LetterGeneratorService.top_spacer_html(layout_remove_top_space)
+            wrapper_end = ""
             
             # Optionally wrap in header/footer for preview display
             full_html = f"{wrapper_start}{layout_html}{rendered_header}\n<br>\n{rendered_content}\n<br>\n{rendered_footer}{wrapper_end}"
