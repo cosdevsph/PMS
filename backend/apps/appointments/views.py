@@ -792,9 +792,7 @@ class AppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
             is_deleted=False,
         )
         if practitioner:
-            block_qs = block_qs.filter(
-                Q(practitioner=practitioner) | Q(practitioner__isnull=True)
-            )
+            block_qs = block_qs.filter(BlockAppointment.affecting(practitioner)).distinct()
         for b in block_qs:
             booked_ranges.append((time_to_minutes(b.start_time), time_to_minutes(b.end_time)))
 
@@ -917,9 +915,7 @@ class AppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
                     is_deleted=False,
                 )
                 if practitioner_obj:
-                    block_qs = block_qs.filter(
-                        Q(practitioner=practitioner_obj) | Q(practitioner__isnull=True)
-                    )
+                    block_qs = block_qs.filter(BlockAppointment.affecting(practitioner_obj)).distinct()
                 for blk in block_qs:
                     b_start = blk.start_time.hour * 60 + blk.start_time.minute
                     b_end = blk.end_time.hour * 60 + blk.end_time.minute
@@ -1099,7 +1095,7 @@ class AppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
         clinic_branch_param = request.query_params.get('clinic_branch', '')
 
         # 'v2': bumped when the roles were renamed (OWNER / BRANCH_MANAGER) so cached lists with old codes are never served.
-        cache_key = f'practitioners_v2_{main_clinic.id}_{clinic_branch_param}'
+        cache_key = f'practitioners_v3_{main_clinic.id}_{clinic_branch_param}'
         cached    = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
@@ -1166,6 +1162,8 @@ class AppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
 
             practitioners_data.append({
                 'id':                 p.id,
+                # The user behind the practitioner: Block Events list people by user id.
+                'user_id':            p.user_id,
                 'name':               p.user.get_full_name(),
                 'email':              p.user.email,
                 'specialization':     p.specialization or None,
@@ -1537,10 +1535,12 @@ class BlockAppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
         #   ALL      → visible to every user
         #   SELECTED → visible only to users in visible_to_users
         #   SELF     → visible only to the creator
+        #   creator  → always sees (and can edit) what they created, whether or not they are blocked by it
         queryset = queryset.filter(
             Q(visibility_type='ALL') |
             Q(visibility_type='SELECTED', visible_to_users=user) |
-            Q(visibility_type='SELF', created_by=user)
+            Q(visibility_type='SELF', created_by=user) |
+            Q(created_by=user)
         ).distinct()
 
         # Filter by specific clinic branch
@@ -1579,9 +1579,30 @@ class BlockAppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         """Use different serializers for create/update vs retrieve"""
-        if self.action in ['create', 'update']:
+        if self.action in ['create', 'update', 'partial_update']:
             return BlockAppointmentCreateSerializer
         return BlockAppointmentSerializer
+
+    # The write serializer has no id or display fields; always answer with the read serializer.
+    def _read(self, block):
+        return BlockAppointmentSerializer(block, context=self.get_serializer_context()).data
+
+    def create(self, request, *args, **kwargs):
+        # View-only access to a branch's Diary is reported as such before anything else is validated.
+        clinic_id = request.data.get('clinic')
+        if clinic_id:
+            self._check_diary_write_branch(Clinic.objects.filter(pk=clinic_id).first())
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(self._read(serializer.instance), status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(self.get_object(), data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(self._read(serializer.instance))
 
     def perform_create(self, serializer):
         """Set created_by and broadcast BLOCK_CREATED event."""

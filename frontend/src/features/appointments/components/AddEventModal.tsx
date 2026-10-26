@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Calendar, Clock, FileText, Users, Check, User as UserIcon } from 'lucide-react';
+import { X, Calendar, Clock, FileText, Users, Check, Lock, User as UserIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { createBlockAppointment } from '../appointment.api';
 import { useClinicBranches } from '@/features/clinics/hooks/useClinicBranches';
@@ -22,6 +22,11 @@ interface AddEventModalProps {
   appointments?: Appointment[];
   /** Practitioner this block is scoped to. Comes from the column the user clicked/dragged in. */
   practitionerId?: number | null;
+  /**
+   * The user whose schedule the Calendar is showing (the filtered practitioner, or the clicked column).
+   * They are ticked and cannot be unticked: you are adding the event to their calendar.
+   */
+  lockedUserId?: number | null;
 }
 
 interface FormData {
@@ -30,6 +35,7 @@ interface FormData {
   start_time: string;
   end_time: string;
   notes: string;
+  location: string;
   selected_user_ids: number[];
 }
 
@@ -43,6 +49,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   initialEndTime,
   appointments = [],
   practitionerId = null,
+  lockedUserId = null,
 }) => {
   const { user: currentUser } = useAuthStore();
   const { branches } = useClinicBranches();
@@ -54,6 +61,11 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   }, [users, currentUser?.id]);
 
   const [saving, setSaving] = useState(false);
+  // The creator is blocked only when they say so; being the creator alone blocks nobody.
+  const [includeMe, setIncludeMe] = useState(false);
+  // The person whose calendar is open is locked in: someone else shows in the list, yourself in "Include me".
+  const lockedIsMe = lockedUserId != null && lockedUserId === currentUser?.id;
+  const lockedOtherId = lockedUserId != null && !lockedIsMe ? lockedUserId : null;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [category, setCategory] = useState('');
   const [categoryOther, setCategoryOther] = useState('');
@@ -73,6 +85,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     start_time: string;
     end_time: string;
     notes: string;
+    location: string;
     selected_user_ids: number[];
   } | null>(null);
 
@@ -110,6 +123,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       start_time: startTime,
       end_time: endTime,
       notes: '',
+      location: '',
       selected_user_ids: [],
     };
   };
@@ -127,7 +141,8 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
         start_time: startTime,
         end_time: endTime,
         notes: '',
-        selected_user_ids: [],
+        location: '',
+        selected_user_ids: lockedOtherId != null ? [lockedOtherId] : [],
       });
       setErrors({});
       setShowConflictModal(false);
@@ -135,8 +150,9 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       setPendingBlockData(null);
       setCategory('');
       setCategoryOther('');
+      setIncludeMe(lockedIsMe);
     }
-  }, [isOpen, initialDate, initialTime, initialEndTime]);
+  }, [isOpen, initialDate, initialTime, initialEndTime, lockedOtherId, lockedIsMe]);
 
   // Available participants for selection
   const filteredParticipants = useMemo(() => {
@@ -151,6 +167,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   };
 
   const toggleParticipant = (userId: number) => {
+    if (userId === lockedOtherId) return;   // the calendar's practitioner stays selected
     setFormData(prev => {
       const isSelected = prev.selected_user_ids.includes(userId);
       return {
@@ -168,7 +185,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   };
 
   const clearAllParticipants = () => {
-    setFormData(prev => ({ ...prev, selected_user_ids: [] }));
+    setFormData(prev => ({ ...prev, selected_user_ids: lockedOtherId != null ? [lockedOtherId] : [] }));
   };
 
   const validate = (): boolean => {
@@ -190,6 +207,9 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       if (formData.end_time <= formData.start_time) {
         newErrors.end_time = 'End time must be after start time';
       }
+    }
+    if (formData.selected_user_ids.length === 0 && !includeMe && practitionerId == null) {
+      newErrors.people = 'Select who to block, or tick "Include me in this event".';
     }
 
     setErrors(newErrors);
@@ -216,6 +236,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
         start_time: formData.start_time,
         end_time: formData.end_time,
         notes: formData.notes,
+        location: formData.location,
         selected_user_ids: formData.selected_user_ids,
       });
       setConflictingAppointment(conflict);
@@ -246,12 +267,16 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
         start_time: formData.start_time,
         end_time: formData.end_time,
         notes: formData.notes,
+        location: formData.location,
         selected_user_ids: formData.selected_user_ids,
       };
 
-      // Determine effective visibility: no selection = SELF (practitioner-owned)
+      // Who is blocked:
+      //  - people selected (and/or "Include me")  → exactly those people; no practitioner column is added,
+      //    so the creator is never blocked just because they clicked a slot or are logged in;
+      //  - nobody selected → only the practitioner column that was clicked.
       const hasSelectedUsers = blockData.selected_user_ids.length > 0;
-      const effectiveVisibility = hasSelectedUsers ? 'SELECTED' : 'SELF';
+      const blocksPeople = hasSelectedUsers || includeMe;
 
       const payload: CreateBlockAppointmentData = {
         clinic: blockData.clinicId,
@@ -260,14 +285,14 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
         start_time: blockData.start_time,
         end_time: blockData.end_time,
         notes: blockData.notes,
-        visibility_type: effectiveVisibility,
-        // When no user selected, scope to practitioner column for practitioner-owned blocks
-        practitioner: effectiveVisibility === 'SELF' ? (practitionerId ?? null) : (practitionerId ?? null),
+        location: blockData.location.trim(),
+        visibility_type: blocksPeople ? 'SELECTED' : 'SELF',
+        practitioner: blocksPeople ? null : (practitionerId ?? null),
       };
 
-      // Only include visible_to_user_ids if there are selected users
-      if (hasSelectedUsers) {
+      if (blocksPeople) {
         payload.visible_to_user_ids = blockData.selected_user_ids;
+        payload.include_creator = includeMe;
       }
 
       const created = await createBlockAppointment(payload);
@@ -278,10 +303,10 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       setPendingBlockData(null);
     } catch (err: unknown) {
       console.error('Failed to create event:', err);
-      const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-        : 'Failed to create event';
-      toast.error(msg ?? 'Failed to create event');
+      const data = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { detail?: string; visible_to_user_ids?: string[] } } }).response?.data
+        : undefined;
+      toast.error(data?.detail ?? data?.visible_to_user_ids?.[0] ?? 'Failed to create event');
     } finally {
       setSaving(false);
     }
@@ -381,11 +406,13 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
               {/* Location - Where */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Where / Location
+                  Where / Location <span className="font-normal text-gray-400">(optional)</span>
                 </label>
                 <input
                   type="text"
-                  value=""
+                  value={formData.location}
+                  onChange={(e) => handleChange('location', e.target.value)}
+                  maxLength={200}
                   placeholder="e.g., Conference Room A"
                   className="w-full h-9 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-200 focus:ring-offset-1 focus:outline-none"
                 />
@@ -494,13 +521,31 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
             <div className="space-y-4">
               <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                Participants
+                Who is blocked
               </h3>
 
               {/* Helper text */}
               <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
-                Leaving unselected will only add to your calendar.
+                Only the people you select are blocked. The practitioner whose calendar is open is always included.
+                Your own schedule is blocked only if you tick &ldquo;Include me&rdquo;.
               </div>
+
+              <label className={`flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 ${lockedIsMe ? 'bg-sky-50/50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}>
+                <input
+                  type="checkbox"
+                  checked={includeMe}
+                  disabled={lockedIsMe}
+                  onChange={(e) => { setIncludeMe(e.target.checked); if (errors.people) setErrors(prev => ({ ...prev, people: '' })); }}
+                  className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500 disabled:opacity-70"
+                />
+                <span className="text-sm font-medium text-gray-700">Include me in this event</span>
+                {lockedIsMe && (
+                  <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-sky-700">
+                    <Lock className="w-3 h-3" aria-hidden="true" /> You are viewing your own calendar
+                  </span>
+                )}
+              </label>
+              {errors.people && <p role="alert" className="text-xs text-rose-600">{errors.people}</p>}
 
               {/* Select All / Clear All */}
               <div className="flex items-center justify-between pb-2 border-b border-gray-200">
@@ -550,13 +595,17 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                 ) : (
                   filteredParticipants.map((user) => {
                     const isSelected = formData.selected_user_ids.includes(user.id);
+                    const isLocked = user.id === lockedOtherId;
                     return (
                       <button
                         key={user.id}
                         type="button"
                         onClick={() => toggleParticipant(user.id)}
+                        aria-disabled={isLocked}
+                        title={isLocked ? 'The calendar is showing this practitioner' : undefined}
                         className={`
-                          w-full px-3 py-2.5 text-left hover:bg-gray-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0
+                          w-full px-3 py-2.5 text-left transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0
+                          ${isLocked ? 'cursor-not-allowed' : 'hover:bg-gray-50'}
                           ${isSelected ? 'bg-sky-50' : ''}
                         `}
                       >
@@ -568,6 +617,8 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                         }`}>
                           {isSelected && <Check className="w-3 h-3 text-white" />}
                         </div>
+
+                        {isLocked && <Lock className="w-3.5 h-3.5 text-sky-600 shrink-0" aria-label="Locked" />}
 
                         {/* Avatar */}
                         <UserAvatar
@@ -581,7 +632,9 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {user.name}
                           </p>
-                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {isLocked ? 'Open in the calendar' : user.email}
+                          </p>
                         </div>
 
                         {/* Role badge */}

@@ -16,6 +16,7 @@ import { useResize } from './hooks/useResize';
 import { useAppointmentDrag } from './hooks/useAppointmentDrag';
 import { useBlockAppointmentDrag } from './hooks/useBlockAppointmentDrag';
 import { useAppointmentHover } from './hooks/useAppointmentHover';
+import { blockAffects } from './utils/blockAffects';
 import { useBlockConflictDetection } from './hooks/useBlockConflictDetection';
 import { AppointmentModal } from './components/AppointmentModal';
 import { AppointmentView } from './components/AppointmentView';
@@ -2330,16 +2331,8 @@ const CalendarComponent: React.FC<CalendarProps> = ({
       // clinic-wide blocks (practitioner_id === null) appear in every column.
       // Participant blocks also appear in a practitioner's column when their
       // practitioner ID is in participant_practitioner_ids.
-      const colABlocks = dayBlocks.filter(b =>
-        b.practitioner_id === null ||
-        b.practitioner_id === comparePractitionerIdA ||
-        (comparePractitionerIdA != null && b.participant_practitioner_ids?.includes(comparePractitionerIdA))
-      );
-      const colBBlocks = dayBlocks.filter(b =>
-        b.practitioner_id === null ||
-        b.practitioner_id === comparePractitionerIdB ||
-        (comparePractitionerIdB != null && b.participant_practitioner_ids?.includes(comparePractitionerIdB))
-      );
+      const colABlocks = dayBlocks.filter(b => blockAffects(b, comparePractitionerIdA));
+      const colBBlocks = dayBlocks.filter(b => blockAffects(b, comparePractitionerIdB));
 
       return (
         <div {...calendarWrapperProps} className="h-full flex flex-col relative">{showLoadingOverlay && <CalendarLoadingOverlay />}
@@ -2594,11 +2587,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                   // Blocks scoped to a practitioner only appear in that practitioner's column;
                   // clinic-wide blocks (practitioner_id === null) appear in every column.
                   // Participant blocks also appear when the practitioner is a participant.
-                  const colBlocks = dayBlocks.filter(b =>
-                    b.practitioner_id === null ||
-                    b.practitioner_id === practId ||
-                    (practId != null && b.participant_practitioner_ids?.includes(practId))
-                  );
+                  const colBlocks = dayBlocks.filter(b => blockAffects(b, practId));
                   const { aptStyles, blockStyles, noteStyles } = computeColumnLayout(colAppts, colBlocks, colNotes);
                   return (
                     <div
@@ -2689,7 +2678,10 @@ const CalendarComponent: React.FC<CalendarProps> = ({
           <div className="flex-1 overflow-y-auto min-h-0">
             {(() => {
               const dayAppts = getAppointmentsForDate(currentDate);
-              const dayBlocks = getBlockAppointmentsForDate(currentDate);
+              // A selected practitioner sees only the blocks that affect them (and clinic-wide ones).
+              const dayBlocks = getBlockAppointmentsForDate(currentDate).filter(
+                b => numericPractitionerId === null || blockAffects(b, numericPractitionerId),
+              );
               const dayNotes = getNotesForDate(currentDate);
               const slotsToRender = isDayAvailable ? dayViewTimeSlots : timeSlots;
               const { aptStyles, blockStyles, noteStyles } = computeColumnLayout(dayAppts, dayBlocks, dayNotes);
@@ -2805,16 +2797,8 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                   // Blocks: clinic-wide (practitioner_id===null) appear in every column;
                   // practitioner-scoped blocks appear only in the matching column.
                   // Participant blocks also appear when the practitioner is a participant.
-                  const colABlocks = dayBlocks.filter(b =>
-                    b.practitioner_id === null ||
-                    b.practitioner_id === comparePractitionerIdA ||
-                    (comparePractitionerIdA != null && b.participant_practitioner_ids?.includes(comparePractitionerIdA))
-                  );
-                  const colBBlocks = dayBlocks.filter(b =>
-                    b.practitioner_id === null ||
-                    b.practitioner_id === comparePractitionerIdB ||
-                    (comparePractitionerIdB != null && b.participant_practitioner_ids?.includes(comparePractitionerIdB))
-                  );
+                  const colABlocks = dayBlocks.filter(b => blockAffects(b, comparePractitionerIdA));
+                  const colBBlocks = dayBlocks.filter(b => blockAffects(b, comparePractitionerIdB));
                   // Notes: clinic-wide (practitioner===null) appear in every column;
                   // practitioner-scoped notes appear only in the matching column.
                   const colANotes = dayNotes.filter(n =>
@@ -3042,11 +3026,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                         const colNotes = allDayNotes.filter(
                           n => n.practitioner === null || n.practitioner === undefined || n.practitioner === practId,
                         );
-                        const colBlocks = allDayBlocks.filter(b =>
-                          b.practitioner_id === null ||
-                          b.practitioner_id === practId ||
-                          (practId != null && b.participant_practitioner_ids?.includes(practId))
-                        );
+                        const colBlocks = allDayBlocks.filter(b => blockAffects(b, practId));
 
                         const { aptStyles, blockStyles, noteStyles } = computeColumnLayout(colAppts, colBlocks, colNotes);
 
@@ -3164,11 +3144,7 @@ const CalendarComponent: React.FC<CalendarProps> = ({
                 // column isolation logic (lines 2509-2516).
                 // Also include blocks where the practitioner is a participant.
                 const dayBlocks = numericPractitionerId !== null
-                  ? allDayBlocks.filter(b =>
-                    b.practitioner_id === null ||
-                    b.practitioner_id === numericPractitionerId ||
-                    b.participant_practitioner_ids?.includes(numericPractitionerId)
-                  )
+                  ? allDayBlocks.filter(b => blockAffects(b, numericPractitionerId))
                   : allDayBlocks;
                 const dayNotes = numericPractitionerId !== null
                   ? allDayNotes.filter(n =>

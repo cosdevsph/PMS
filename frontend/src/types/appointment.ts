@@ -130,6 +130,8 @@ export interface BlockAppointment {
   start_time: string;
   end_time: string;
   notes: string;
+  /** Where the event takes place; optional. */
+  location: string;
   created_by: number | null;
   created_by_name: string | null;
   modified_by: number | null;
@@ -138,6 +140,12 @@ export interface BlockAppointment {
   visible_to_user_ids: number[];
   visible_to_user_names: string[];
   participant_practitioner_ids: number[];
+  /** The practitioners this block makes unavailable (the creator only if they were included). */
+  affected_practitioner_ids: number[];
+  /** True when the block blocks every practitioner of the clinic (no practitioner, visible to all). */
+  is_clinic_wide: boolean;
+  /** The person who created the block is among those it blocks ("Include me"). */
+  creator_included: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -151,8 +159,11 @@ export interface CreateBlockAppointmentData {
   start_time: string;
   end_time: string;
   notes?: string;
+  location?: string;
   visibility_type?: 'ALL' | 'SELECTED' | 'SELF';
   visible_to_user_ids?: number[];
+  /** Include the person saving the block among those it blocks. Omitted on an update = unchanged. */
+  include_creator?: boolean;
 }
 
 // ── Calendar Note (sticky note on calendar) ────────────────────────────────────

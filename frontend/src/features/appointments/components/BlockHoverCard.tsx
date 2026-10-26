@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Users, CalendarDays, Clock, FileText, Pencil } from 'lucide-react';
+import { User, Users, CalendarDays, Clock, FileText, MapPin, Pencil } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import type { BlockAppointment } from '@/types';
 
@@ -146,12 +146,21 @@ export const BlockHoverCard: React.FC<BlockHoverCardProps> = ({
           })()}
         />
 
-        {/* People / Users Involved */}
+        {/* The people this block applies to (the creator only when they were included) */}
         {block.visible_to_user_names && block.visible_to_user_names.length > 0 && (
           <HoverRow
             icon={<Users className="w-3.5 h-3.5" />}
-            label="People Involved"
+            label="Blocked for"
             value={block.visible_to_user_names.join(', ')}
+          />
+        )}
+
+        {/* Where */}
+        {block.location && (
+          <HoverRow
+            icon={<MapPin className="w-3.5 h-3.5" />}
+            label="Where"
+            value={<span className="text-gray-700">{block.location}</span>}
           />
         )}
 

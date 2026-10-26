@@ -28,7 +28,7 @@ export interface PractitionerAvailability {
 
 export interface Practitioner {
   id:                 number | string; // Staff entries use "staff-<userId>"
-  user_id?:           number;          // set for Staff entries
+  user_id?:           number;          // the user behind the entry (practitioners and staff)
   name:               string;
   email:              string;
   specialization:     string | null;

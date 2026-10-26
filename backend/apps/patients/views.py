@@ -1926,9 +1926,7 @@ class PublicAvailableSlotsView(APIView):
             is_deleted=False,
         )
         if practitioner_obj:
-            block_qs = block_qs.filter(
-                Q(practitioner=practitioner_obj) | Q(practitioner__isnull=True)
-            )
+            block_qs = block_qs.filter(BlockAppointment.affecting(practitioner_obj)).distinct()
 
         for block in block_qs:
             booked_ranges.append((

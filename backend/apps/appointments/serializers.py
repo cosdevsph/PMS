@@ -520,6 +520,11 @@ class BlockAppointmentSerializer(serializers.ModelSerializer):
     )
     visible_to_user_names = serializers.SerializerMethodField()
     participant_practitioner_ids = serializers.SerializerMethodField()
+    # The practitioners this block makes unavailable (the one rule Calendar, Diary and booking share),
+    # and whether it blocks the whole clinic. The creator is in the first list only if they were selected.
+    affected_practitioner_ids = serializers.SerializerMethodField()
+    is_clinic_wide = serializers.SerializerMethodField()
+    creator_included = serializers.SerializerMethodField()
 
     class Meta:
         model = BlockAppointment
@@ -536,6 +541,7 @@ class BlockAppointmentSerializer(serializers.ModelSerializer):
             'start_time',
             'end_time',
             'notes',
+            'location',
             'created_by',
             'created_by_name',
             'modified_by',
@@ -544,14 +550,28 @@ class BlockAppointmentSerializer(serializers.ModelSerializer):
             'visible_to_user_ids',
             'visible_to_user_names',
             'participant_practitioner_ids',
+            'affected_practitioner_ids',
+            'is_clinic_wide',
+            'creator_included',
             'created_at',
             'updated_at',
         ]
         read_only_fields = [
             'id', 'event_type', 'created_by_name', 'modified_by_name',
             'visible_to_user_names', 'participant_practitioner_ids',
+            'affected_practitioner_ids', 'is_clinic_wide', 'creator_included',
             'created_at', 'updated_at',
         ]
+
+    def get_affected_practitioner_ids(self, obj):
+        return obj.affected_practitioner_ids()
+
+    def get_is_clinic_wide(self, obj):
+        return obj.is_clinic_wide
+
+    def get_creator_included(self, obj):
+        return bool(obj.created_by_id) and obj.visibility_type == 'SELECTED' \
+            and any(u.id == obj.created_by_id for u in obj.visible_to_users.all())
 
     def get_visible_to_user_names(self, obj):
         """Get names of users who can see this block"""
@@ -598,14 +618,25 @@ class BlockAppointmentSerializer(serializers.ModelSerializer):
 
 
 class BlockAppointmentCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating Block Appointments - used in POST/PUT requests"""
-    
+    """
+    Serializer for creating / updating Block Appointments.
+
+    The practitioners a block affects are the ones selected (plus `practitioner`, the clicked column).
+    The creator is NOT added automatically: they are affected only when `include_creator` is true.
+    A creator always sees their own blocks regardless (the viewset's queryset), so the old auto-add
+    that made creators look blocked is gone.
+    """
+
     visible_to_user_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         source='visible_to_users',
         queryset=User.objects.all(),
         required=False,
         allow_empty=True
+    )
+    include_creator = serializers.BooleanField(
+        write_only=True, required=False, default=None, allow_null=True,
+        help_text='Include the person saving this block among those it blocks. Omitted on an update = unchanged.',
     )
 
     class Meta:
@@ -618,11 +649,21 @@ class BlockAppointmentCreateSerializer(serializers.ModelSerializer):
             'start_time',
             'end_time',
             'notes',
+            'location',
             'visibility_type',
             'visible_to_user_ids',
+            'include_creator',
         ]
 
+    def _actor(self):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        return user if user is not None and user.is_authenticated else None
+
     def validate(self, data):
+        from apps.clinics.models import Practitioner
+        from .block_permissions import blockable_practitioner_ids
+
         start_time = data.get('start_time')
         end_time = data.get('end_time')
 
@@ -631,81 +672,100 @@ class BlockAppointmentCreateSerializer(serializers.ModelSerializer):
                 'end_time': 'End time must be after start time'
             })
 
-        # Validate visibility - if SELECTED, must have at least one user
-        visibility_type = data.get('visibility_type', 'ALL')
-        visible_to_users = data.get('visible_to_users', [])
-        
-        if visibility_type == 'SELECTED' and not visible_to_users:
-            raise serializers.ValidationError({
-                'visible_to_user_ids': 'Select at least one user when visibility type is "Selected Users"'
-            })
+        visibility_type = data.get('visibility_type', self.instance.visibility_type if self.instance else 'ALL')
+        visible_to_users = data.get('visible_to_users')
+        include_creator = data.get('include_creator')
 
+        # Selected Users needs somebody: a selected user, or the creator (Include me).
+        if visibility_type == 'SELECTED':
+            has_people = bool(visible_to_users) if visible_to_users is not None else (
+                bool(self.instance) and self.instance.visible_to_users.exists())
+            if not has_people and not include_creator:
+                raise serializers.ValidationError({
+                    'visible_to_user_ids': 'Select at least one user when visibility type is "Selected Users"'
+                })
+
+        actor = self._actor()
+        if actor is None:
+            return data
+
+        # People can only come from the actor's own clinic group.
+        for user in visible_to_users or []:
+            if user.clinic_id != actor.clinic_id:
+                raise serializers.ValidationError({'visible_to_user_ids': 'Selected users must belong to your clinic.'})
+
+        # Whose schedules does this save block? Everything newly affected must be blockable by the actor.
+        requested = set()
+        practitioner = data.get('practitioner')
+        if practitioner is not None:
+            requested.add(practitioner.id)
+        if visibility_type == 'SELECTED':
+            users = list(visible_to_users) if visible_to_users is not None else (
+                list(self.instance.visible_to_users.all()) if self.instance else [])
+            requested.update(Practitioner.objects.filter(
+                user__in=users, is_deleted=False).values_list('id', flat=True))
+        if include_creator:
+            creator = (self.instance.created_by if self.instance and self.instance.created_by_id else actor)
+            requested.update(Practitioner.objects.filter(user=creator, is_deleted=False).values_list('id', flat=True))
+        if self.instance is not None:
+            requested -= set(self.instance.affected_practitioner_ids())   # unchanged people are not re-checked
+
+        allowed = blockable_practitioner_ids(actor)
+        if allowed is not None:
+            refused = requested - allowed
+            if refused:
+                names = ', '.join(sorted(
+                    p.user.get_full_name() or p.user.email
+                    for p in Practitioner.objects.filter(id__in=refused).select_related('user')))
+                raise serializers.ValidationError({
+                    'visible_to_user_ids': f"You cannot block the schedule of: {names}. "
+                                           "Ask the Owner or a Branch Manager of that clinic."
+                })
         return data
 
-    def create(self, validated_data):
-        """Create block appointment and properly set visible_to_users M2M field"""
-        visible_to_users = validated_data.pop('visible_to_users', [])
-        visibility_type = validated_data.get('visibility_type', 'ALL')
-        request = self.context.get('request')
-        creator = getattr(request, 'user', None)
-        
-        instance = BlockAppointment.objects.create(**validated_data)
-        
-        # Handle visibility based on type
-        if visibility_type == 'SELF':
-            # Myself Only — store only the creator.
-            if creator and creator.is_authenticated:
-                instance.visible_to_users.set([creator])
+    @staticmethod
+    def _people(visibility_type, selected, creator, include_creator, currently_in):
+        """
+        The visible_to_users for the stored block: the selection, with the creator in it only when they
+        are wanted. `include_creator` (True / False) decides; when it was not sent, the creator stays
+        in the list only if they were selected (create) or already in it (update).
+        """
+        if visibility_type != 'SELECTED':
+            return []   # ALL: everyone; SELF: the creator sees it through created_by, nothing to store
+        people = {u.id: u for u in selected if u is not None}
+        if creator is not None:
+            keep = include_creator if include_creator is not None else (creator.id in people or currently_in)
+            if keep:
+                people[creator.id] = creator
             else:
-                instance.visible_to_users.clear()
-        elif visibility_type == 'SELECTED':
-            # Selected Users — always include creator plus selected users.
-            users_to_set = list(visible_to_users) if visible_to_users else []
-            if creator and creator.is_authenticated:
-                users_to_set.append(creator)
+                people.pop(creator.id, None)
+        return list(people.values())
 
-            # Deduplicate by user id before persisting.
-            unique_users = {user.id: user for user in users_to_set if getattr(user, 'id', None)}
-            instance.visible_to_users.set(unique_users.values())
-        else:
-            # ALL — visible to everyone; no need to track individual users.
-            instance.visible_to_users.clear()
-
+    def create(self, validated_data):
+        selected = validated_data.pop('visible_to_users', [])
+        include_creator = validated_data.pop('include_creator', None)
+        creator = self._actor()
+        instance = BlockAppointment.objects.create(**validated_data)
+        instance.visible_to_users.set(self._people(
+            instance.visibility_type, selected, creator, include_creator, False))
         return instance
 
     def update(self, instance, validated_data):
-        """Update block appointment and properly set visible_to_users M2M field"""
-        visible_to_users = validated_data.pop('visible_to_users', None)
-        visibility_type = validated_data.get('visibility_type', instance.visibility_type)
-        request = self.context.get('request')
-        request_user = getattr(request, 'user', None)
-        creator = instance.created_by or request_user
+        selected = validated_data.pop('visible_to_users', None)
+        include_creator = validated_data.pop('include_creator', None)
+        creator = instance.created_by
+        current = list(instance.visible_to_users.all())
 
-        # Update all other fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        
         instance.save()
 
-        # Handle visibility based on type
-        if visibility_type == 'SELF':
-            # Myself Only — keep only the creator.
-            if creator and getattr(creator, 'is_authenticated', False):
-                instance.visible_to_users.set([creator])
-            else:
-                instance.visible_to_users.clear()
-        elif visibility_type == 'SELECTED':
-            # Selected Users — enforce creator inclusion and keep user edits.
-            users_to_set = list(visible_to_users) if visible_to_users is not None else list(instance.visible_to_users.all())
-            if creator and getattr(creator, 'is_authenticated', False):
-                users_to_set.append(creator)
-
-            # Deduplicate by user id before persisting.
-            unique_users = {user.id: user for user in users_to_set if getattr(user, 'id', None)}
-            instance.visible_to_users.set(unique_users.values())
-        else:
-            # ALL — visible to everyone; no need to track individual users.
-            instance.visible_to_users.clear()
+        creator_in = creator is not None and any(u.id == creator.id for u in current)
+        # A selection sent without the creator, and without an explicit include_creator, drops them.
+        instance.visible_to_users.set(self._people(
+            instance.visibility_type, selected if selected is not None else current, creator,
+            include_creator, creator_in and selected is None))
+        return instance
 
 
 # ── Calendar Note Serializer ──────────────────────────────────────────────────

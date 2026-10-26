@@ -27,7 +27,7 @@ No patient data or secrets in examples.
 | Feature area | Frontend | Backend | Status |
 |--------------|----------|---------|--------|
 | Authentication & accounts | `auth`, `profile` | `accounts` | Partly documented: Owner/Manager roles and permission groups below (2026-10-22) |
-| Appointments | `appointments` | `appointments` | Not yet documented |
+| Appointments | `appointments` | `appointments` | Partly documented: Block Appointments below (2026-10-26) |
 | Billing & invoices | `billing` | `billing` | Not yet documented |
 | Clinical cases (session limits retired) | `patients` (Cases page, `CaseModal`), `clinical-documentation` | `patients` (`PatientCase`) | Partly documented: limits retired 2026-10-20, see the Private Package Sessions spec §7 |
 | Clinic setup & clinics | `clinic-setup`, `clinics`, `setup` | `clinics` | Not yet documented |
@@ -72,6 +72,27 @@ A "—" means no folder with a matching name was found. The feature may still ex
 
 **Key endpoints:** `GET/POST/PATCH /api/letters/templates/` (+ `active/`, `create_version/`, `merge_field_options/`), `POST /api/letters/generate/`, `POST /api/letters/preview/`, `sign/`, `send_email/`, `replicate/`.
 **Known issues (Proposed fixes, not built):** the addressee cannot be anyone but the patient; no signature or footer block in the editor; `{{patient.phone}}` and several other fields always print blank and the toolbar omits supported clinic / date / appointment fields; no heading, text colour, image, page break or line spacing tools; template Location shows "Branch #id" in the list; no permission check. A logo in the PDF letterhead was not tested. Full list F1–F12 (F1–F3, F8, F9 resolved 2026-10-24): [features/letter-templates.md §6](features/letter-templates.md).
+
+## Appointments → Block Appointments
+
+**Code:** `backend/apps/appointments/` (`models.py` `BlockAppointment`, `serializers.py`, `views.py` `BlockAppointmentViewSet`, `block_permissions.py`), `frontend/src/features/appointments/` (`Calendar.tsx`, `Diary.tsx`, `components/AddEventModal.tsx`, `EventViewModal.tsx`, `BlockHoverCard.tsx`, `utils/blockAffects.ts`)
+**Last verified:** 2026-10-26 (backend tests and an isolated browser check; see CHANGELOG "Block Appointments block only the selected practitioners")
+
+**What it does:** A block reserves a period on the Calendar and Diary during which selected practitioners are unavailable (leave, meetings, training, admin time, clinic holidays). It never cancels or refuses regular appointments.
+
+**Business rules:**
+- **Who is blocked** is decided by one rule, shared by availability, the patient portal, and every Calendar / Diary column: a block affects (a) the practitioner it is scoped to, (b) the practitioners among the selected users, (c) everyone if it is clinic-wide (no practitioner, visible to All), (d) for "Myself only" with no practitioner, the creator's own practitioner. — backend (`BlockAppointment.affecting`, `affected_practitioner_ids`), frontend (`blockAffects`)
+- **The creator is not blocked just for creating a block.** They are blocked only when they tick "Include me in this event" (stored as them being in the selection) or the block is scoped to their own column. Creators always see and can edit what they created. Superseded (2026-10-26): the creator was added to every selected-users block and the clicked column was always stored as the block's practitioner. — backend (`BlockAppointmentCreateSerializer`)
+- **Creating from a calendar:** the practitioner whose calendar is open (the filtered practitioner, or the practitioner column that was double-clicked) is pre-selected in the form and cannot be unticked; when that is the logged-in user, "Include me in this event" is ticked and locked. — frontend (`AddEventModal` `lockedUserId`, `Diary.tsx`); the backend permission rules still apply.
+- **Selected people who are not practitioners** (e.g. staff in a meeting) only get visibility; they have no schedule to block.
+- **Who may block whose schedule** (backend, direct API calls included): Owner any practitioner of the clinic; Branch Manager practitioners of the Diary branches they may change (managed clinics plus Other Branches' Diary: Edit grants); Frontdesk / Staff with Diary: Edit practitioners of their own clinics; a Practitioner only themselves. Selected users must belong to the clinic. On an edit only newly added practitioners are checked. — backend (`block_permissions.blockable_practitioner_ids`)
+- **A block never refuses or removes regular appointments**: staff bookings over a block are allowed and both are shown side by side. Only patient-portal booking and the recurring-availability check treat blocked time as unavailable. — owner decision 2026-10-26
+- A selected-users block with no practitioner is not clinic-wide any more (before, any block without a practitioner blocked every practitioner).
+
+- **Where / Location** is an optional free-text field (up to 200 characters) shown in the block's details and hover card. — `BlockAppointment.location`
+
+**Key endpoints:** `/api/block-appointments/` (create, update, `calendar/`; `include_creator` is write-only), `POST /api/appointments/check_recurring_availability/`.
+**Known issues:** blocks created before 2026-10-26 may still block their creator: count them with `manage.py report_block_creator_participants` (read-only); `GET /api/appointments/available_slots/` fails with a server error (pre-existing, unused by the frontend); 
 
 ## Online Booking (patient portal)
 

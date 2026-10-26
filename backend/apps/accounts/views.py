@@ -1136,8 +1136,8 @@ def _invalidate_practitioners_cache(user_or_instance):
     try:
         all_branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
         # Cache keys: '' suffix = All Branches query; numeric suffix = branch-specific
-        keys = [f'practitioners_v2_{main_clinic.id}_'] + [
-            f'practitioners_v2_{main_clinic.id}_{bid}' for bid in all_branch_ids
+        keys = [f'practitioners_v3_{main_clinic.id}_'] + [
+            f'practitioners_v3_{main_clinic.id}_{bid}' for bid in all_branch_ids
         ]
         cache.delete_many(keys)
     except Exception:

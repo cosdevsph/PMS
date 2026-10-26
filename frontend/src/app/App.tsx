@@ -41,7 +41,6 @@ import { Security }  from '@/features/landing/components/footer-pages/Product/Se
 // Footer Pages - Company
 import { About }     from '@/features/landing/components/footer-pages/Company/About';
 import { Blog }      from '@/features/landing/components/footer-pages/Company/Blog';
-import { Careers }   from '@/features/landing/components/footer-pages/Company/Careers';
 import { Contact }   from '@/features/landing/components/footer-pages/Company/Contact';
 
 // Footer Pages - Legal
@@ -261,7 +260,6 @@ function App() {
           {/* ── Footer Pages - Company ──────────────────────────────── */}
           <Route path="/about"     element={<PublicRoute><About /></PublicRoute>} />
           <Route path="/blog"      element={<PublicRoute><Blog /></PublicRoute>} />
-          <Route path="/careers"   element={<PublicRoute><Careers /></PublicRoute>} />
           <Route path="/contact"   element={<PublicRoute><Contact /></PublicRoute>} />
 
           {/* ── Footer Pages - Legal ────────────────────────────────── */}

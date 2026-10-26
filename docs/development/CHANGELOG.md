@@ -45,6 +45,131 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-10-26 — Block Event: "Where / Location" can be typed and is optional
+
+**Status:** Implemented and tested. **Needs a migration** (`appointments.0024_block_appointment_location`, one new optional column; not applied to the dev database). Nothing committed.
+**Module / feature:** Block Events (Diary / Calendar): create form, edit form, hover card.
+**Original behavior:** The "Where / Location" input in the create form was a placeholder with a hard-coded `value=""` and no state, so nothing could be typed, and the backend had no field to keep it (this was also the cause of the React "`value` prop without `onChange`" console warning).
+**Problem / requirement:** Owner: the field cannot be typed in, and it should be optional.
+**Files modified:** `backend/apps/appointments/models.py` (`BlockAppointment.location`, CharField up to 200, blank, default empty), `migrations/0024_block_appointment_location.py` (new), `serializers.py` (read and write), `test_block_appointments.py` (+3 tests), `frontend/src/types/appointment.ts`, `AddEventModal.tsx` (state and input, label "(optional)", sent trimmed), `EventViewModal.tsx` (shown as "Where", editable), `BlockHoverCard.tsx` ("Where" row, only when set).
+**Database / migrations:** `appointments.0024_block_appointment_location`: additive, existing blocks get an empty location. Run `python manage.py migrate appointments`.
+**API / data contract:** `location` (string, optional, max 200) accepted on create and update, returned on every block.
+**Tests executed:** `manage.py test apps.appointments` → 30 OK (default empty, saved, edited, cleared, 201 characters refused); `apps.accounts` and `apps.patients` unchanged and passing; `makemigrations --check` → none pending after the new file. `npx tsc -b` → clean; eslint on the three components → no new findings. Manual (scratch database copy where I applied the migration; removed afterwards): typed "Conference Room A", saved; a second block left empty saved with an empty location; opening the block shows "Where: Conference Room A", the edit form is prefilled, changing it to "Room B" saved; the console warning no longer appears.
+**Known limitations:** Free text only; not searchable or shown on the Calendar block itself (only the hover card and the block's details). The unused `AddDragEventModal` was not changed.
+**Regression risks:** Block creation and editing; any API client sending a longer location now gets a 400.
+
+---
+
+## 2026-10-26 — Block Event pre-selects and locks the practitioner the Calendar is showing
+
+**Status:** Implemented and tested. No migration. Nothing committed.
+**Module / feature:** Diary → "Event" tab of the slot options → Create Block Event (`AddEventModal`), practitioners list API.
+**Original behavior:** The Block Event form always opened with nobody selected. A manager who filtered the Calendar to a practitioner (e.g. Sofia) and added a block for her still had to find and tick her, and could forget.
+**Problem / requirement:** Owner: when the Calendar shows a practitioner, that practitioner is auto-checked in the form and cannot be unchecked, because the event is being added to her calendar.
+**Owner decisions (2026-10-26):** a filter on yourself locks you in too ("Include me in this event" ticked and disabled); a double-click in a practitioner's column in "Show All" locks that practitioner the same way.
+
+**Files modified:**
+- `backend/apps/appointments/views.py` — each entry of the practitioners list now carries `user_id`; the cache key moved to `practitioners_v3_*` (also in `accounts/views.py::_invalidate_practitioners_cache`) so cached lists without it are not served.
+- `backend/apps/appointments/test_block_appointments.py` — +1 test (the list carries `user_id`).
+- `frontend/src/features/appointments/Diary.tsx` — works out the user behind the clicked column, or the filtered practitioner, and passes `lockedUserId`.
+- `frontend/src/features/appointments/components/AddEventModal.tsx` — new prop `lockedUserId`: another practitioner is pre-selected, shown with a lock ("Open in the calendar") and cannot be unticked (click, Select All / Deselect All leave them in); yourself → "Include me" ticked and disabled with "You are viewing your own calendar". Helper text updated.
+- `frontend/src/features/clinics/clinic.api.ts` — `Practitioner.user_id` comment.
+**API / data contract:** `GET /api/appointments/practitioners/` entries gain `user_id`. Saving is unchanged: a "Selected Users" block with no practitioner column; the existing permission rules still apply (a refusal appears if the user may not block that practitioner).
+**Business rules & decisions:** The lock is a form convenience, not a backend rule: the backend still decides who may be blocked. The edit form (existing blocks) has no lock.
+**Tests executed:** `manage.py test apps.appointments` → 27 OK; `apps.accounts` → 139 OK; `apps.patients` → 141 OK; `check` → no issues. `npx tsc -b` → clean; eslint on the three frontend files → 9 findings, identical to `HEAD`. Manual (scratch copy of the dev database, removed afterwards), manager-practitioner "John", practitioners "Sofia" and "Reyes": (A) Calendar filtered to Sofia → Event → Sofia ticked and locked, "1 selected"; clicking her and "Deselect All" left her ticked; saving gave a block with no column scope, `affected = [Sofia]`, creator not included. (B) Filtered to John → "Include me" ticked and disabled. (C) "Show All", double-click in Sofia's column → Sofia locked the same way.
+**Known limitations:** If the practitioner's user is not in the clinic users list the form cannot show their row, but the id is still sent. Not checked: Week and Month views, a Staff user filtered to themselves, and the case where the user lacks permission to block the locked practitioner (the existing backend refusal message appears on save).
+**Regression risks:** Block Event creation from the Diary (the form no longer starts empty when a practitioner is shown); the practitioners list cache was reset once by the key change.
+
+---
+
+## 2026-10-26 — Block Appointments block only the selected practitioners (production bug)
+
+**Status:** Implemented and tested. No migration. Nothing committed.
+**Module / feature:** Diary and Calendar → Block Appointments (`AddEventModal`, `EventViewModal`, `BlockHoverCard`, `Calendar.tsx`); `backend/apps/appointments/`; patient portal availability. See FEATURES "Appointments → Block Appointments".
+
+**Production bug (client report):** a user who blocked another PT's schedule (leave of absence) also had their own schedule blocked.
+**Confirmed root cause (read from the code, then reproduced in a browser):**
+1. `BlockAppointmentCreateSerializer.create()/update()` added the creator to `visible_to_users` on every "Selected Users" block (so the creator could see it), and `participant_practitioner_ids` plus the Calendar column filters treated that list as "who is blocked", so the creator's column showed the block.
+2. `AddEventModal` always sent `practitioner` = the clicked column, or in Week View the logged-in practitioner, even when other users were selected. Booking availability reads only that field, so the creator's bookable time was really blocked.
+3. The selected practitioner's bookable time was never blocked: every availability query used `practitioner = X OR practitioner IS NULL`, ignoring the selected list. A block without a practitioner blocked everybody.
+4. `EventViewModal` hid the current user from the list but kept the stored creator id, so a creator could not remove themselves.
+5. No backend rule on whose schedule may be blocked: any logged-in user could block anyone, also by calling the API.
+
+**Owner decisions (2026-10-26):** reuse the selection list (no migration), the creator is never added automatically and is blocked only via a new "Include me in this event" checkbox; Owner / Branch Manager / Frontdesk-Staff with Diary Edit may block other practitioners (Practitioners only themselves), enforced in the backend; a block never refuses or removes regular appointments (it is a display and availability rule only).
+
+**Files modified:**
+- `backend/apps/appointments/models.py` — `BlockAppointment.affecting(practitioner)` (the one rule), `is_clinic_wide`, `affected_practitioner_ids()`.
+- `backend/apps/appointments/serializers.py` — write serializer: `include_creator`, creator no longer auto-added, selected users must belong to the clinic, permission check on every newly affected practitioner; read serializer: `affected_practitioner_ids`, `is_clinic_wide`, `creator_included`.
+- `backend/apps/appointments/block_permissions.py` — new: `blockable_practitioner_ids(actor)`.
+- `backend/apps/appointments/views.py` — creators always see their own blocks; `create`/`update`/`partial_update` use the write serializer and answer with the read serializer; two availability queries use the rule; view-only Diary access is reported first.
+- `backend/apps/patients/serializers.py`, `patients/views.py` — portal booking and portal slots use the same rule.
+- `backend/apps/appointments/management/commands/report_block_creator_participants.py` — new, read-only legacy report.
+- Tests: `appointments/test_block_appointments.py` (new, 26), `patients/test_case_limit_retirement.py` (expectation updated for bold merge fields, a leftover of the 2026-10-24 letters change), `accounts/test_diary_branch_access.py` (fixture: a block at the manager's own clinic is no longer scoped to another branch's practitioner).
+- Frontend: `types/appointment.ts`, `features/appointments/utils/blockAffects.ts` (new), `Calendar.tsx` (all Day / Week / compare column filters, plus the single-column Day view that did not filter at all), `AddEventModal.tsx`, `EventViewModal.tsx`, `BlockHoverCard.tsx` ("People Involved" is now "Blocked for").
+
+**Frontend changes:** The create form has a "Who is blocked" section: only the people you select are blocked; "Include me in this event" (off by default); with nobody selected the block applies to just the column you clicked; it asks you to choose someone when no column applies. People selected → no practitioner column is sent. The edit form shows the creator as a checkbox ("Include me…" or "Include <name>…"), prefilled, and always sends it. A column shows a block when it is clinic-wide or the practitioner is affected.
+**Backend changes:** see Files modified. A selected block with no practitioner is no longer clinic-wide; "Myself only" with no practitioner blocks the creator's own practitioner column.
+**Database / migrations:** None (`makemigrations --check` → no changes).
+**API / data contract:** `POST/PATCH/PUT /api/block-appointments/` accept `include_creator` (write-only); responses are always the read shape (now with `id` on create) plus `affected_practitioner_ids`, `is_clinic_wide`, `creator_included`. Refusals are 400 with `visible_to_user_ids` naming the practitioners.
+
+**Permissions (backend):** Owner: any practitioner. Branch Manager: practitioners of the Diary branches they may change (managed clinics plus Diary Edit grants). Frontdesk / Staff with Diary: Edit: practitioners of their own clinics. Practitioner: only themselves. Non-practitioner people in the list are only given visibility. On an edit, only newly added practitioners are checked.
+
+**Tests executed:**
+- `manage.py test apps.appointments` → 26 OK (creator not blocked, two practitioners, own block, include-me, clinic-wide, each role, direct API refusal, edit swap, legacy correction, booking over a block still allowed, legacy report). `apps.patients` → 141 OK; `apps.accounts` → 139 OK; `apps.letters` → 27 OK. `check` → no issues.
+- Mutation checks: re-adding the creator → 5 fail; dropping the permission check → 6 fail; old availability rule → 6 fail; restored → 26 OK.
+- `npx tsc -b` → clean. `npx eslint` on the changed files: the 3 findings are the ones that existed before (nothing new).
+- Manual (scratch copy of the dev database, removed afterwards), logged in as a Branch Manager who is also a practitioner, double-clicking a slot in her own column → Event: the new form shows; selecting only Dr Santos saved a block with no practitioner scope, `affected = [Santos]`, creator not included. Booking availability at the block time: Santos BOOKED, the manager and Dr Reyes AVAILABLE. The manager's own Day view shows no block; "Show All" shows it only in Santos's column. Editing the block (swap Santos for Reyes) → affected `[Reyes]`, creator still not included.
+
+**Known limitations / unresolved:**
+- **Legacy production data:** the dev database has no blocks, so the size on production is unknown. Old "Selected Users" blocks still include their creator, and old blocks scoped to the creator's column still block them. Run `manage.py report_block_creator_participants` on production to count them. Nothing was changed; fix them by editing the block (untick "Include me"), or decide a bulk rule with the owner.
+- Block permissions also apply to people the creator selects in a meeting: a practitioner cannot select another practitioner (refused with a message).
+- `GET /api/appointments/available_slots/` returns 500 for every request (it imports a name that does not exist, `ClinicService`; the line is unchanged since before this work and no frontend code calls it). Not fixed here.
+- A pre-existing React console warning on the create form (the Where/Location input is hard-coded `value=""`).
+- Staff appointment creation still ignores blocks, by owner decision (a block never refuses a booking).
+**Regression risks:** Calendar and Diary block display (every column filter and the single-column Day view); portal booking availability (a "selected users" block no longer blocks the whole clinic); who can create blocks for whom.
+
+---
+
+## 2026-10-26 — About page: "Our Story" rewritten
+
+**Status:** Implemented. No migration. Nothing committed.
+**Module / feature:** Landing site, About page.
+**Original behavior:** Story said Malasakit was founded by "a team of healthcare professionals and software engineers" and ended with "proud to serve hundreds of healthcare practitioners and clinics across the region".
+**Problem / requirement:** Owner: say it was founded by a clinician, a physiotherapist, and built by software engineers and developers based in Bacolod City, Negros Occidental, Philippines, 6100; add the vision and meaning of the name; end with who it serves, with no numbers.
+**Files modified:** `frontend/src/features/landing/components/footer-pages/Company/About.tsx` (four paragraphs). Supersedes the open point in the "statistics removed" entry (the "hundreds" claim is gone).
+**Business rules & decisions:** The owner's outline had blanks ("Started with a Vision...", "Malasakit is a..."); they were filled with wording already on the site (clinics struggling with fragmented systems; "Malasakit" means compassion in Filipino). The owner should read the final text.
+**Tests executed:** `npx tsc -b` → clean; `npx eslint` on the file → clean. Not run: the page in a browser.
+**Regression risks:** None.
+
+---
+
+## 2026-10-26 — About page: statistics removed
+
+**Status:** Implemented. No migration. Nothing committed.
+**Module / feature:** Landing site, About page.
+**Original behavior:** A row of four figures: 500+ Active Users, 150+ Healthcare Facilities, 1M+ Patient Records, 99.9% Uptime. They were fixed text in the page, not read from any data.
+**Problem / requirement:** Owner: remove the statistics for now; the site must be honest with clients.
+**Files modified:** `frontend/src/features/landing/components/footer-pages/Company/About.tsx` — the `stats` list and the Stats section removed.
+**Tests executed:** `npx tsc -b` → clean; `npx eslint` on the file → clean. Not run: the page in a browser.
+**Known limitations / open:** The Our Story section still says "Today, we're proud to serve hundreds of healthcare practitioners and clinics across the region", which is also an unverified number; left as is until the owner decides.
+**Regression risks:** None.
+
+---
+
+## 2026-10-26 — Careers page removed
+
+**Status:** Implemented. No migration. Nothing committed.
+**Module / feature:** Landing site (public footer pages).
+**Original behavior:** A public Careers page at `/careers`, linked from the footer's Company column.
+**Problem / requirement:** Owner: the page is not needed; remove the file completely.
+**Files modified:** `frontend/src/features/landing/components/footer-pages/Company/Careers.tsx` — deleted; `frontend/src/app/App.tsx` — import and the `/careers` route removed; `frontend/src/features/landing/components/Footer.tsx` — the "Careers" link removed.
+**API / data contract:** None. **Business rules & decisions:** `/careers` now falls through to the app's normal not-found handling; no redirect was added.
+**Tests executed:** `npx tsc -b` → clean; `npx eslint` on `App.tsx` and `Footer.tsx` → clean; a search of `frontend/src`, `frontend/public` and `docs` finds no remaining "careers" reference. Not run: the site in a browser.
+**Known limitations:** Outside links to `/careers` (search results, bookmarks) will no longer lead anywhere.
+**Regression risks:** None beyond the footer's Company column (now About, Blog, Contact).
+
+---
+
 ## 2026-10-24 — Merge-field values print bold with proper spacing
 
 **Status:** Implemented and tested. No migration. Nothing committed.

@@ -22,8 +22,11 @@ interface FormData {
   start_time: string;
   end_time: string;
   notes: string;
+  location: string;
   visibility_type: 'ALL' | 'SELECTED' | 'SELF' | null;
+  /** Everyone selected except the creator, who is the checkbox below the list. */
   visible_to_user_ids: number[];
+  include_creator: boolean;
 }
 
 const formatTime12Hour = (time: string): string => {
@@ -62,10 +65,14 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
   const { user: currentUser } = useAuthStore();
   const { users, loading: loadingUsers } = useClinicUsers(event?.clinic);
   
-  // Filter out current user from selection
+  // The block's creator is a checkbox ("Include ... in this event"), not part of the list, so they can be
+  // taken out; everyone else (including the person editing) is listed.
   const filteredUsers = useMemo(() => {
-    return users.filter(user => user.id !== currentUser?.id);
-  }, [users, currentUser?.id]);
+    return users.filter(user => user.id !== event?.created_by);
+  }, [users, event?.created_by]);
+  const creatorLabel = event?.created_by && event.created_by === currentUser?.id
+    ? 'Include me in this event'
+    : `Include ${event?.created_by_name || 'the creator'} in this event`;
 
   const timeOptions = useMemo(() => TIME_OPTIONS, []);
   
@@ -82,8 +89,10 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
         start_time: '09:00',
         end_time: '10:00',
         notes: '',
+        location: '',
         visibility_type: 'ALL',
         visible_to_user_ids: [],
+        include_creator: false,
       };
     }
     return {
@@ -92,9 +101,11 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
       start_time: normalizeTimeValue(event.start_time),
       end_time: normalizeTimeValue(event.end_time),
       notes: event.notes || '',
+      location: event.location || '',
       // Map SELF → null so no radio is pre-selected (empty = practitioner-owned)
       visibility_type: event.visibility_type === 'SELF' ? null : (event.visibility_type || 'ALL'),
-      visible_to_user_ids: event.visible_to_user_ids || [],
+      visible_to_user_ids: (event.visible_to_user_ids || []).filter(id => id !== event.created_by),
+      include_creator: !!event.creator_included,
     };
   };
 
@@ -109,9 +120,11 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
         start_time: normalizeTimeValue(event.start_time),
         end_time: normalizeTimeValue(event.end_time),
         notes: event.notes || '',
+        location: event.location || '',
         // Map SELF → null so no radio is pre-selected (empty = practitioner-owned)
         visibility_type: event.visibility_type === 'SELF' ? null : (event.visibility_type || 'ALL'),
-        visible_to_user_ids: event.visible_to_user_ids || [],
+        visible_to_user_ids: (event.visible_to_user_ids || []).filter(id => id !== event.created_by),
+        include_creator: !!event.creator_included,
       });
       setIsEditing(false);
       setIsDeleting(false);
@@ -150,7 +163,7 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
     }
 
     // Validate visibility
-    if (formData.visibility_type === 'SELECTED' && formData.visible_to_user_ids.length === 0) {
+    if (formData.visibility_type === 'SELECTED' && formData.visible_to_user_ids.length === 0 && !formData.include_creator) {
       newErrors.visible_to_user_ids = 'Select at least one user';
     }
 
@@ -169,12 +182,14 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
         start_time: formData.start_time,
         end_time: formData.end_time,
         notes: formData.notes,
+        location: formData.location.trim(),
         // null (no selection) → SELF (practitioner-owned)
         visibility_type: formData.visibility_type ?? 'SELF',
       };
 
       if ((formData.visibility_type ?? 'SELF') === 'SELECTED') {
         payload.visible_to_user_ids = formData.visible_to_user_ids;
+        payload.include_creator = formData.include_creator;   // explicit, so the creator is never re-added by accident
       }
 
       const updated = await updateBlockAppointment(event.id, payload);
@@ -183,8 +198,8 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
       onUpdated?.(updated);
     } catch (err: unknown) {
       console.error('Failed to update event:', err);
-      const msg = err instanceof Error ? err.message : 'Failed to update event';
-      toast.error(msg);
+      const data = (err as { response?: { data?: { detail?: string; visible_to_user_ids?: string[] } } })?.response?.data;
+      toast.error(data?.detail ?? data?.visible_to_user_ids?.[0] ?? (err instanceof Error ? err.message : 'Failed to update event'));
     } finally {
       setSaving(false);
     }
@@ -401,6 +416,21 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                   </div>
                 </div>
 
+                {/* Location */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Where / Location <span className="font-normal text-gray-400">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => handleChange('location', e.target.value)}
+                    maxLength={200}
+                    placeholder="e.g., Conference Room A"
+                    className="w-full h-10 px-3 rounded-lg border border-gray-300 text-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-200 focus:ring-offset-1 focus:outline-none"
+                  />
+                </div>
+
                 {/* Notes */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -426,7 +456,7 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
 
                 {/* Helper text */}
                 <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
-                  Leave User Selection empty to create a practitioner-specific block out.
+                  Only the people you select are blocked, not the person who created the block.
                 </div>
 
                 {/* Visibility Controls */}
@@ -492,8 +522,20 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                         Select Users <span className="text-red-500">*</span>
                       </label>
                       <div className="mb-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
-                        You are auto-included as the event creator.
+                        Only the people you select are blocked. The creator is blocked only when included below.
                       </div>
+                      <label className="mb-2 flex items-center gap-2 cursor-pointer rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={formData.include_creator}
+                          onChange={(e) => {
+                            setFormData(prev => ({ ...prev, include_creator: e.target.checked }));
+                            if (errors.visible_to_user_ids) setErrors(prev => ({ ...prev, visible_to_user_ids: '' }));
+                          }}
+                          className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">{creatorLabel}</span>
+                      </label>
                       <UserSelector
                         users={filteredUsers}
                         selectedUserIds={formData.visible_to_user_ids}
@@ -603,6 +645,16 @@ export const EventViewModal: React.FC<EventViewModalProps> = ({
                     <p className="text-sm font-medium text-gray-900">{formattedTime}</p>
                   </div>
                 </div>
+
+                {/* Location */}
+                {event.location && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                      Where
+                    </label>
+                    <p className="text-sm text-gray-900">{event.location}</p>
+                  </div>
+                )}
 
                 {/* Notes */}
                 {event.notes && (

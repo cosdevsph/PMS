@@ -560,7 +560,7 @@ class PortalBookingCreateSerializer(serializers.ModelSerializer):
                 is_deleted=False,
             )
             if prac:
-                block_qs = block_qs.filter(models.Q(practitioner=prac) | models.Q(practitioner__isnull=True))
+                block_qs = block_qs.filter(BlockAppointment.affecting(prac)).distinct()
             elif portal_link:
                 block_qs = block_qs.filter(clinic=portal_link.clinic)
 

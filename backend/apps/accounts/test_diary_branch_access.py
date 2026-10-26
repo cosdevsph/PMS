@@ -71,7 +71,8 @@ class DiaryBranchTestBase(TestCase):
         return self.client
 
     def _block(self, clinic, **kw):
-        data = {'clinic': clinic.id, 'practitioner': self.prac.id, 'event_name': 'Meeting',
+        # A block is scoped to a practitioner of that clinic; the manager's own clinic has none in this fixture.
+        data = {'clinic': clinic.id, 'practitioner': self.prac.id if clinic == self.b else None, 'event_name': 'Meeting',
                 'date': str(date.today()), 'start_time': '13:00:00', 'end_time': '14:00:00',
                 'visibility_type': 'ALL'}
         data.update(kw)

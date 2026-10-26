@@ -370,6 +370,13 @@ class BlockAppointment(TimeStampedModel, SoftDeleteModel):
         help_text='Optional notes about the blocked event'
     )
 
+    location = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text='Optional: where the event takes place (e.g. Conference Room A)'
+    )
+
     # ── Practitioner assignment (optional) ──────────────────────────────────────
     # When set, the block is scoped to this practitioner's column in Day View.
     # When null, the block is treated as clinic-wide (shown in every column).
@@ -430,6 +437,44 @@ class BlockAppointment(TimeStampedModel, SoftDeleteModel):
     def clean(self):
         if self.start_time and self.end_time and self.end_time <= self.start_time:
             raise ValidationError('End time must be after start time')
+
+    # ── Who is affected (the single rule used by availability, Calendar and Diary) ──────────
+    # A block makes a practitioner unavailable when:
+    #   * it is scoped to that practitioner (`practitioner`), or
+    #   * it is "Selected Users" and the practitioner's user is in the selection, or
+    #   * it is clinic-wide: no practitioner and visible to All, or
+    #   * it is "Myself Only" with no practitioner: the creator's own practitioner.
+    # The creator is affected only when they are in the selection (the "Include me" option) or the
+    # block is scoped to them. Being the creator alone never blocks anyone.
+
+    @classmethod
+    def affecting(cls, practitioner):
+        """Q for the blocks that make `practitioner` unavailable."""
+        user_id = practitioner.user_id
+        return (
+            models.Q(practitioner=practitioner)
+            | models.Q(practitioner__isnull=True, visibility_type='ALL')
+            | models.Q(visibility_type='SELECTED', visible_to_users=user_id)
+            | models.Q(practitioner__isnull=True, visibility_type='SELF', created_by_id=user_id)
+        )
+
+    @property
+    def is_clinic_wide(self):
+        return self.practitioner_id is None and self.visibility_type == 'ALL'
+
+    def affected_practitioner_ids(self):
+        """Ids of the practitioners this block makes unavailable (empty for a clinic-wide block)."""
+        from apps.clinics.models import Practitioner
+        ids = set()
+        if self.practitioner_id:
+            ids.add(self.practitioner_id)
+        if self.visibility_type == 'SELECTED':
+            ids.update(Practitioner.objects.filter(
+                user__in=self.visible_to_users.all(), is_deleted=False).values_list('id', flat=True))
+        elif self.visibility_type == 'SELF' and not self.practitioner_id and self.created_by_id:
+            ids.update(Practitioner.objects.filter(
+                user_id=self.created_by_id, is_deleted=False).values_list('id', flat=True))
+        return sorted(ids)
 
 
 # ── Rebooking Link ────────────────────────────────────────────────────────────

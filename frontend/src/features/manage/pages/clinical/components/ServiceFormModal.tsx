@@ -25,7 +25,7 @@ const EMPTY: ClinicServicePayload = {
 const DURATION_OPTIONS: { value: number; label: string }[] = Array.from(
   { length: 32 },
   (_, i) => {
-    const mins  = (i + 1) * 15;
+    const mins  = (i + 1) * 15; 
     const hours = Math.floor(mins / 60);
     const rem   = mins % 60;
 

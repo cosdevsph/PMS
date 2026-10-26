@@ -25,13 +25,6 @@ export const About: React.FC = () => {
     },
   ];
 
-  const stats = [
-    { value: '500+', label: 'Active Users' },
-    { value: '150+', label: 'Healthcare Facilities' },
-    { value: '1M+', label: 'Patient Records' },
-    { value: '99.9%', label: 'Uptime' },
-  ];
-
   return (
     <PublicPageLayout title="About">
       <PageHeader category="Company" title="About Malasakit" description="Transforming healthcare practice management" />
@@ -74,29 +67,23 @@ export const About: React.FC = () => {
             <h2 id="story-title" className="text-3xl tracking-tight text-gray-900 font-display mb-6">Our Story</h2>
             <div className="space-y-4 text-lg text-gray-700 leading-relaxed font-body">
               <p>
-                Malasakit was founded by a team of healthcare professionals and software engineers who recognized a critical gap in the market.
-                We saw firsthand how clinics were struggling with outdated, fragmented systems that wasted time and money.
+                Malasakit was founded by a clinician, a physiotherapist, and built by software engineers and developers
+                based in Bacolod City, Negros Occidental, Philippines, 6100.
               </p>
               <p>
-                "Malasakit" means compassion in Filipino – it reflects our commitment to serving healthcare providers with genuine care and understanding.
-                We've built a platform that addresses real pain points faced by clinics every single day.
+                It started with a vision: clinics should spend their time caring for patients, not struggling with outdated,
+                fragmented systems that waste time and money.
               </p>
               <p>
-                Today, we're proud to serve hundreds of healthcare practitioners and clinics across the region, helping them provide better care to their patients.
+                "Malasakit" is a Filipino word that means compassion. It reflects our commitment to serving healthcare providers
+                with genuine care and understanding, and to building a platform that addresses the real pain points clinics face every day.
+              </p>
+              <p>
+                Today, we are proud to serve healthcare clinics, practitioners and doctors, helping them provide better care to their patients.
               </p>
             </div>
           </div>
         </section>
-
-        {/* Stats */}
-        <dl className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-          {stats.map((stat) => (
-            <div key={stat.label} className="flex flex-col-reverse rounded-2xl bg-white ring-1 ring-gray-200/80 shadow-sm p-6 sm:p-8 text-center">
-              <dt className="text-sm sm:text-base text-steady-slate font-body">{stat.label}</dt>
-              <dd className="text-3xl sm:text-4xl font-heading font-extrabold tracking-tight text-care-blue mb-1">{stat.value}</dd>
-            </div>
-          ))}
-        </dl>
 
         {/* CTA */}
         <CtaBand title="Join Us on Our Mission" description="Transform your practice with Malasakit today">

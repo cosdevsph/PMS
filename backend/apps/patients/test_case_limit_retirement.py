@@ -216,4 +216,5 @@ class CaseLimitRetirementTests(TestCase):
             'E{{case.sessions.package_sessions}}|F{{case.title}}'
         )
         result = LetterGeneratorService.replace_variables(text, patient=self.patient, patient_case=case)
-        self.assertEqual(result, 'A|B|C|D|E|FKnee rehab')
+        # merge-field values print bold (2026-10-24), the retired session fields stay blank
+        self.assertEqual(result, 'A|B|C|D|E|F<strong>Knee rehab</strong>')

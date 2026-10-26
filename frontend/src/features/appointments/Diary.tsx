@@ -1383,6 +1383,12 @@ export const Diary: React.FC = () => {
 
             {/* Add Event Modal — opened via SelectOptionModal "Add Block Appointment" */}
             {(() => {
+              // The practitioner whose calendar is open: the clicked column first (Day View split columns),
+              // else the filter / own identity in Week View. Their user is locked into the block.
+              const eventPractitionerId = pendingSlot?.practitionerId ?? effectivePractitionerId;
+              const lockedEventUserId = eventPractitionerId != null
+                ? practitioners.find(p => p.id === eventPractitionerId)?.user_id ?? null
+                : null;
               const startH = pendingSlot ? String(pendingSlot.hour).padStart(2, '0') : '09';
               const startM = pendingSlot ? String(pendingSlot.minutes).padStart(2, '0') : '00';
               const endMin = pendingSlot
@@ -1404,12 +1410,8 @@ export const Diary: React.FC = () => {
                   initialTime={pendingSlot ? `${startH}:${startM}` : undefined}
                   initialEndTime={pendingSlot ? `${endH}:${endMm}` : undefined}
                   appointments={calendarAppointments}
-                  practitionerId={
-                    // Slot-column practitionerId takes first priority (Day View split columns).
-                    // Fall back to effectivePractitionerId which handles Week View
-                    // practitioner-identity-from-logged-in-user when filter is empty.
-                    pendingSlot?.practitionerId ?? effectivePractitionerId
-                  }
+                  practitionerId={eventPractitionerId}
+                  lockedUserId={lockedEventUserId}
                 />
               );
             })()}
