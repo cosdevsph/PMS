@@ -89,6 +89,7 @@ A "—" means no folder with a matching name was found. The feature may still ex
 - **A block never refuses or removes regular appointments**: staff bookings over a block are allowed and both are shown side by side. Only patient-portal booking and the recurring-availability check treat blocked time as unavailable. — owner decision 2026-10-26
 - A selected-users block with no practitioner is not clinic-wide any more (before, any block without a practitioner blocked every practitioner).
 
+- **Schedule Conflict warning** (when a block overlaps an appointment) considers only the appointments of the practitioners the block affects: the ticked people plus "Include me", or the clicked column when nobody is ticked; a clinic-wide block checks everyone. It only asks for confirmation. — frontend (`useBlockConflictDetection`, `AddEventModal`, `Calendar.tsx` drag)
 - **Where / Location** is an optional free-text field (up to 200 characters) shown in the block's details and hover card. — `BlockAppointment.location`
 
 **Key endpoints:** `/api/block-appointments/` (create, update, `calendar/`; `include_creator` is write-only), `POST /api/appointments/check_recurring_availability/`.

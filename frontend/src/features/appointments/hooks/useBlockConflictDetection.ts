@@ -5,6 +5,12 @@ interface BlockTime {
   date: string;
   start_time: string;
   end_time: string;
+  /**
+   * The practitioners the block applies to. Only their appointments can conflict with it.
+   * Omit (or null) for a clinic-wide block, which conflicts with everyone's appointments.
+   * An empty list means nobody with an appointment book is affected, so nothing conflicts.
+   */
+  practitionerIds?: number[] | null;
 }
 
 interface ConflictingAppointment {
@@ -15,6 +21,7 @@ interface ConflictingAppointment {
 
 /**
  * Hook to detect conflicts between block appointments and existing appointments
+ * (limited to the affected practitioners when the block names them)
  * 
  * Conflict definition:
  * block_event.start_time < appointment.end_time
@@ -67,6 +74,11 @@ export const useBlockConflictDetection = (appointments: Appointment[]) => {
 
       // Check if dates match
       if (appointment.date !== blockTime.date) {
+        continue;
+      }
+
+      // A block for specific practitioners only conflicts with THEIR appointments
+      if (blockTime.practitionerIds != null && !blockTime.practitionerIds.includes(appointment.practitioner as number)) {
         continue;
       }
 

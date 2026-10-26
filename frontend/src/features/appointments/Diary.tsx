@@ -1386,6 +1386,11 @@ export const Diary: React.FC = () => {
               // The practitioner whose calendar is open: the clicked column first (Day View split columns),
               // else the filter / own identity in Week View. Their user is locked into the block.
               const eventPractitionerId = pendingSlot?.practitionerId ?? effectivePractitionerId;
+              // user id → practitioner id, so the form can tell whose appointments a selection affects
+              const practitionerIdByUserId: Record<number, number> = {};
+              for (const p of practitioners) {
+                if (typeof p.id === 'number' && p.user_id != null) practitionerIdByUserId[p.user_id] = p.id;
+              }
               const lockedEventUserId = eventPractitionerId != null
                 ? practitioners.find(p => p.id === eventPractitionerId)?.user_id ?? null
                 : null;
@@ -1412,6 +1417,7 @@ export const Diary: React.FC = () => {
                   appointments={calendarAppointments}
                   practitionerId={eventPractitionerId}
                   lockedUserId={lockedEventUserId}
+                  practitionerIdByUserId={practitionerIdByUserId}
                 />
               );
             })()}

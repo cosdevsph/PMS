@@ -45,6 +45,24 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-10-26 — Block Event "Schedule Conflict" only for the people being blocked
+
+**Status:** Implemented and tested in the browser; frontend only. No migration. Nothing committed.
+**Module / feature:** Block Events: conflict check in the create form and when a block is dragged on the Calendar.
+**Original behavior:** Saving a block compared its time with **every appointment on screen**, whoever it belonged to. A block for Janine at 9:45–10:15 showed "Schedule Conflict" because John Doe had a Second Consultation then.
+**Problem / requirement:** Owner: the conflict must appear only when the person with the appointment is among those being blocked.
+**Files modified:**
+- `frontend/src/features/appointments/hooks/useBlockConflictDetection.ts` — the block time may name `practitionerIds`; only those practitioners' appointments can conflict. Omitted/null = clinic-wide (everyone); an empty list = nothing can conflict.
+- `frontend/src/features/appointments/components/AddEventModal.tsx` — the affected practitioners are the ticked people (plus "Include me"), mapped from user to practitioner; with nobody ticked, the clicked column.
+- `frontend/src/features/appointments/Diary.tsx` — passes the user→practitioner map (`practitionerIdByUserId`).
+- `frontend/src/features/appointments/Calendar.tsx` — dragging an existing block now checks only the appointments of the practitioners that block affects (`affected_practitioner_ids`; clinic-wide blocks check everyone).
+**Business rules & decisions:** Unchanged otherwise: a conflict still only asks for confirmation, and still never removes or refuses an appointment.
+**Tests executed:** `npx tsc -b` → clean; eslint on the four files → identical findings to `HEAD`. Manual (scratch copy of the dev database, removed afterwards; John has a 9:45–10:15 "Second Consultation", the Calendar filtered to Janine): (1) a block for Janine at 9:45–10:15 saved with no conflict modal, affecting only Janine; (2) the same block with "Include me" (John) showed "Schedule Conflict" naming John's Second Consultation. Not run: dragging a block in the browser (type-checked only); there are no frontend unit tests for the hook.
+**Known limitations:** `AddDragEventModal.tsx` (not used anywhere) still uses the unfiltered check. A selected person who is not a practitioner has no appointments, so they never conflict.
+**Regression risks:** Block creation and block drag-and-drop confirmations.
+
+---
+
 ## 2026-10-26 — Block Event: "Where / Location" can be typed and is optional
 
 **Status:** Implemented and tested. **Needs a migration** (`appointments.0024_block_appointment_location`, one new optional column; not applied to the dev database). Nothing committed.

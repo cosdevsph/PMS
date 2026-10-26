@@ -826,10 +826,12 @@ const CalendarComponent: React.FC<CalendarProps> = ({
     const newDateStr = format(newDate, 'yyyy-MM-dd');
 
     // Check for conflicts with existing appointments
+    // Only the appointments of the practitioners this block affects can conflict (clinic-wide: everyone's)
     const conflict = getFirstConflict({
       date: newDateStr,
       start_time: newStartTime,
       end_time: newEndTime,
+      practitionerIds: block.is_clinic_wide ? null : (block.affected_practitioner_ids ?? []),
     });
 
     if (conflict) {

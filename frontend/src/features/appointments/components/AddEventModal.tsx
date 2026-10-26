@@ -27,6 +27,8 @@ interface AddEventModalProps {
    * They are ticked and cannot be unticked: you are adding the event to their calendar.
    */
   lockedUserId?: number | null;
+  /** user id → practitioner id; lets the conflict check look only at the people being blocked. */
+  practitionerIdByUserId?: Record<number, number>;
 }
 
 interface FormData {
@@ -50,6 +52,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   appointments = [],
   practitionerId = null,
   lockedUserId = null,
+  practitionerIdByUserId = {},
 }) => {
   const { user: currentUser } = useAuthStore();
   const { branches } = useClinicBranches();
@@ -221,11 +224,20 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
 
     if (!validate()) return;
 
-    // Check for conflicts with existing appointments
+    // Check for conflicts with existing appointments of the people being blocked, not everyone on screen:
+    // the people ticked (plus "Include me"), or the clicked column when nobody is ticked.
+    const blockedPractitionerIds = formData.selected_user_ids.length > 0 || includeMe
+      ? [
+          ...formData.selected_user_ids,
+          ...(includeMe && currentUser?.id != null ? [currentUser.id] : []),
+        ].map(userId => practitionerIdByUserId[userId]).filter((id): id is number => id != null)
+      : (practitionerId != null ? [practitionerId] : []);
+
     const conflict = getFirstConflict({
       date: formData.date,
       start_time: formData.start_time,
       end_time: formData.end_time,
+      practitionerIds: blockedPractitionerIds,
     });
 
     if (conflict) {
