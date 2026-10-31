@@ -327,14 +327,17 @@ export const ViewClinicalNoteModal: React.FC<ViewClinicalNoteModalProps> = ({
                             const chartName =
                                  field.chartType === 'head'
                                   ? 'Head Chart'
-                                  : 'Body Chart';
+                                  : field.chartType === 'back'
+                                    ? 'Back Chart'
+                                    : 'Body Chart';
                             
-                            const chartType = (field.chartType as 'body' | 'head' | 'hand' | 'feet') || 'body';
+                            const chartType = (field.chartType as 'body' | 'head' | 'hand' | 'feet' | 'back') || 'body';
                             const fallbackImageMap: Record<string, string> = {
                               body: '/src/assets/charts/body-chart.webp',
                               head: '/src/assets/charts/head-chart.webp',
                               hand: '/src/assets/charts/hand-chart.webp',
                               feet: '/src/assets/charts/feet-chart.webp',
+                              back: '/src/assets/charts/back-chart.webp',
                             };
                             const fallbackImage = fallbackImageMap[chartType] || fallbackImageMap.body;
                             const finalImage = canvasImage || fallbackImage;

@@ -1,0 +1,55 @@
+{
+  "schema": "malasakit.outcome-definition/1",
+  "code": "BQ_BACK",
+  "version": "1.0.0",
+  "name": "Bournemouth Back Questionnaire",
+  "abbreviation": "BQ",
+  "category": "back",
+  "language": "en",
+  "description": "Seven short scales about your back pain and how it is affecting you.",
+  "instructions": "The following scales have been designed to find out about your back pain and how it is affecting you. Please answer ALL the scales, and mark the ONE number on EACH scale that best describes how you feel.",
+  "licence": {
+    "category": "B",
+    "owner": "Bolton JE, Breen AC",
+    "permission_confirmed": true,
+    "permission_note": "The clinic owner states they hold permission to use this questionnaire; the form they supplied is marked 'With Permission from: Bolton JE, Breen AC'. The written permission and whether it covers use inside Malasakit for all clinics are not in the repository.",
+    "notes": "Wording is from the form supplied by the owner on 2026-10-31. Scoring (sum of the seven items, 0 to 70, higher is worse) is from Kamonseki et al., Sao Paulo Med J 2019. The article states no missing-answer rule and no minimal important change value, so none is recorded.",
+    "approved_for_production": true
+  },
+  "sources": [
+    { "citation": "Bolton JE, Breen AC. The Bournemouth Questionnaire: a short-form comprehensive outcome measure. I. Psychometric properties in back pain patients. J Manipulative Physiol Ther 1999;22(8):503-510.", "url": "https://pubmed.ncbi.nlm.nih.gov/10543579/" },
+    { "citation": "Kamonseki DH, Fonseca LF, Calixtre LB. The Brazilian version of the Bournemouth questionnaire for low back pain: translation and cultural adaptation. Sao Paulo Med J 2019 (score calculation).", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9744002" }
+  ],
+  "items": [
+    { "id": "pain", "type": "nrs", "required": true, "min": 0, "max": 10, "step": 1,
+      "prompt": "Over the past week, on average, how would you rate your back pain?",
+      "anchors": { "min": "No pain", "max": "Worst pain possible" } },
+    { "id": "daily_activities", "type": "nrs", "required": true, "min": 0, "max": 10, "step": 1,
+      "prompt": "Over the past week, how much has your back pain interfered with your daily activities (housework, washing, dressing, walking, climbing stairs, getting in/out of bed/chair)?",
+      "anchors": { "min": "No interference", "max": "Unable to carry out activity" } },
+    { "id": "social_activities", "type": "nrs", "required": true, "min": 0, "max": 10, "step": 1,
+      "prompt": "Over the past week, how much has your back pain interfered with your ability to take part in recreational, social, and family activities?",
+      "anchors": { "min": "No interference", "max": "Unable to carry out activity" } },
+    { "id": "anxiety", "type": "nrs", "required": true, "min": 0, "max": 10, "step": 1,
+      "prompt": "Over the past week, how anxious (tense, uptight, irritable, difficulty in concentrating/relaxing) have you been feeling?",
+      "anchors": { "min": "Not at all anxious", "max": "Extremely anxious" } },
+    { "id": "depression", "type": "nrs", "required": true, "min": 0, "max": 10, "step": 1,
+      "prompt": "Over the past week, how depressed (down-in-the-dumps, sad, in low spirits, pessimistic, unhappy) have you been feeling?",
+      "anchors": { "min": "Not at all depressed", "max": "Extremely depressed" } },
+    { "id": "work_effect", "type": "nrs", "required": true, "min": 0, "max": 10, "step": 1,
+      "prompt": "Over the past week, how have you felt your work (both inside and outside the home) has affected (or would affect) your back pain?",
+      "anchors": { "min": "Have made it no worse", "max": "Have made it much worse" } },
+    { "id": "self_control", "type": "nrs", "required": true, "min": 0, "max": 10, "step": 1,
+      "prompt": "Over the past week, how much have you been able to control (reduce/help) your back pain on your own?",
+      "anchors": { "min": "Completely control it", "max": "No control whatsoever" } }
+  ],
+  "scoring": {
+    "method": "sum",
+    "items": ["pain", "daily_activities", "social_activities", "anxiety", "depression", "work_effect", "self_control"],
+    "range": [0, 70],
+    "direction": "higher_worse",
+    "missing": { "max_missing": 0, "rule": "invalid" }
+  },
+  "interpretation": null,
+  "mcid": null
+}

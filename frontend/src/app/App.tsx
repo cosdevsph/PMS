@@ -65,6 +65,7 @@ import PatientInvoicesPage from '@/features/patients/pages/PatientInvoicesPage';
 import PatientPrivatePackagesPage from '@/features/patients/pages/PatientPrivatePackagesPage';
 import PatientCasesPage from '@/features/patients/PatientCasesPage';
 import ClinicalDocumentationWorkspace from '@/features/clinical-documentation/ClinicalDocumentationWorkspace';
+import OutcomeQuestionnairePage from '@/features/outcomes/OutcomeQuestionnairePage';
 import { PatientDocumentsPage } from '@/features/patients/PatientDocumentsPage';
 import { PatientCommunicationHistoryPage } from '@/features/patients/PatientCommunicationHistoryPage';
 import { AppointmentCaseResolution } from '@/features/appointments/components/AppointmentCaseResolution';
@@ -303,6 +304,11 @@ function App() {
           <Route path="/contacts"  element={<ProtectedRoute><FeatureAccessGuard feature="contacts" featureLabel="Contacts"><Contacts /></FeatureAccessGuard></ProtectedRoute>} />
           <Route path="/reports"   element={<ProtectedRoute><Reports /></ProtectedRoute>} />
           <Route path="/profile"   element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
+          <Route
+            path="/patients/:patientId/cases/:caseId/outcome-measures/:definitionId"
+            element={<ProtectedRoute><FeatureAccessGuard feature="outcome_measures" featureLabel="Outcome Measures" required="edit"><OutcomeQuestionnairePage /></FeatureAccessGuard></ProtectedRoute>}
+          />
 
           <Route
             path="/patients/:patientId"

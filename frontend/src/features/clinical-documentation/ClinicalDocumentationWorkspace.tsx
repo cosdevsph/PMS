@@ -8,6 +8,8 @@ import { WorkspaceLettersPanel } from './components/WorkspaceLettersPanel';
 import { ClinicalLetterEditor } from './components/ClinicalLetterEditor';
 import { ClinicalNoteEditor } from './components/ClinicalNoteEditor';
 import { ViewClinicalLetterModal } from './components/ViewClinicalLetterModal';
+import { WorkspaceOutcomesPanel } from '@/features/outcomes/components/WorkspaceOutcomesPanel';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const ClinicalWorkspaceLayout = () => {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ const ClinicalWorkspaceLayout = () => {
   const { cases, patient } = usePatientProfileContext();
   const { selectedCaseId, setSelectedCaseId, editorContext, activeLeftTab, setActiveLeftTab } = useClinicalWorkspace();
   const location = useLocation();
+  const { canView } = usePermissions();
   const state = location.state as { appointmentId?: number } | null;
 
   const currentCase = cases.find(c => c.id === Number(caseId));
@@ -75,9 +78,18 @@ const ClinicalWorkspaceLayout = () => {
                   >
                     Letters
                   </button>
+                  {canView('outcome_measures') && (
+                    <button
+                      onClick={() => setActiveLeftTab('outcomes')}
+                      className={`flex-1 min-w-[100px] py-2.5 text-sm font-semibold transition-colors ${activeLeftTab === 'outcomes' ? 'bg-white border-t-2 border-t-sky-600 text-sky-600' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                      Outcomes
+                    </button>
+                  )}
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                  {activeLeftTab === 'templates' ? <WorkspaceTemplatesPanel /> : <WorkspaceLettersPanel />}
+                  {activeLeftTab === 'templates' ? <WorkspaceTemplatesPanel /> : activeLeftTab === 'letters' ? <WorkspaceLettersPanel /> : <WorkspaceOutcomesPanel />}
                 </div>
               </>
             )}

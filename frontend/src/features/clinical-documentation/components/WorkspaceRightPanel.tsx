@@ -1,10 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { History, Loader2, Plus } from 'lucide-react';
 import { getNotes, getActiveTemplates } from '@/features/clinical-template/clinical-templates.api';
 import { getCaseDocuments, type CaseDocument } from '../api/caseDocuments.api';
 import { getPatientConsentDocuments, type PatientConsentDocumentRecord } from '@/features/patients/patient.api';
 import { getAppointments } from '@/features/appointments/appointment.api';
+import { useQuery } from '@tanstack/react-query';
 import { usePatientProfileContext } from '@/features/patients/context/PatientProfileContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { getAssessments } from '@/features/outcomes/outcomes.api';
+import { OutcomeFeedItem } from '@/features/outcomes/components/OutcomeFeedItem';
+import { groupAssessments } from '@/features/outcomes/outcomes.utils';
+import type { OutcomeGroup } from '@/features/outcomes/outcomes.utils';
 import { useClinicalWorkspace } from '../context/ClinicalWorkspaceContext';
 import { ClinicalNoteFeedItem } from './ClinicalNoteFeedItem';
 import { WorkspaceDocumentsFeed } from './WorkspaceDocumentsFeed';
@@ -15,6 +21,9 @@ import type { Appointment } from '@/types';
 export const WorkspaceRightPanel = () => {
   const { patient, refreshCases } = usePatientProfileContext();
   const { selectedCaseId, refreshTrigger, triggerRefresh, setEditorContext, activeRightTab, setActiveRightTab } = useClinicalWorkspace();
+
+  const { canView, canEdit } = usePermissions();
+  const mayViewOutcomes = canView('outcome_measures');
 
   const [notes, setNotes] = useState<ClinicalNote[]>([]);
   const [documents, setDocuments] = useState<(CaseDocument | (PatientConsentDocumentRecord & { category: string, description?: string }))[]>([]);
@@ -106,6 +115,31 @@ export const WorkspaceRightPanel = () => {
   }, [fetchData, refreshTrigger]);
 
 
+  const assessmentsQuery = useQuery({
+    queryKey: ['outcomes', 'assessments', patient?.id, selectedCaseId],
+    queryFn: () => getAssessments({ patient: patient!.id, patient_case: selectedCaseId as number }),
+    enabled: !!patient && !!selectedCaseId && mayViewOutcomes,
+    retry: false,
+  });
+
+  // Saved outcome measures join the timeline without reordering the notes: each goes above the first note that
+  // was created before it.
+  const timeline = useMemo(() => {
+    // One card per measure in this case, placed by when it last changed.
+    const groups = groupAssessments(assessmentsQuery.data ?? []);
+    const entries: ({ kind: 'note'; note: ClinicalNote } | { kind: 'outcome'; group: OutcomeGroup })[] = [];
+    let next = 0;
+    for (const note of notes) {
+      const noteTime = new Date(note.created_at).getTime();
+      while (next < groups.length && groups[next].lastActivity >= noteTime) {
+        entries.push({ kind: 'outcome', group: groups[next++] });
+      }
+      entries.push({ kind: 'note', note });
+    }
+    while (next < groups.length) entries.push({ kind: 'outcome', group: groups[next++] });
+    return entries;
+  }, [notes, assessmentsQuery.data]);
+
   const handleRefreshFeed = () => {
     setEditorContext({ type: 'IDLE' });
     triggerRefresh();
@@ -141,11 +175,11 @@ export const WorkspaceRightPanel = () => {
           </div>
         ) : activeRightTab === 'history' ? (
           <div className="w-full space-y-4">
-            {notes.length === 0 ? (
+            {timeline.length === 0 ? (
               <div className="text-center py-20 text-slate-400 bg-white rounded-xl border border-slate-200 shadow-sm">
                 <History className="w-12 h-12 mx-auto mb-4 opacity-20" />
                 <h3 className="text-base 2xl:text-lg font-medium text-slate-600 mb-2">No Clinical Notes Found</h3>
-                <p className="text-xs 2xl:text-sm">There are no finalized or drafted clinical notes for this case.</p>
+                <p className="text-xs 2xl:text-sm">There are no finalized or drafted clinical notes or outcome measures for this case.</p>
               </div>
             ) : (
               <>
@@ -167,7 +201,12 @@ export const WorkspaceRightPanel = () => {
                   </div>
                 </div>
                 <div className="space-y-3 pl-6 border-l-2 border-slate-200 ml-3 relative before:absolute before:top-0 before:bottom-0 before:-left-[2px] before:w-[2px] before:bg-gradient-to-b before:from-slate-200 before:via-indigo-200 before:to-slate-200">
-                  {notes.map((note) => (
+                  {timeline.map((entry) => entry.kind === 'outcome' ? (
+                    <div key={`outcome-${entry.group.code}`} className="relative">
+                      <div className="absolute -left-[33px] top-6 w-4 h-4 rounded-full bg-white border-2 border-sky-400 shadow-sm z-10" />
+                      <OutcomeFeedItem group={entry.group} canEdit={canEdit('outcome_measures')} />
+                    </div>
+                  ) : (() => { const note = entry.note; return (
                     <div key={note.id} className="relative">
                       {/* Timeline dot */}
                       <div className="absolute -left-[33px] top-6 w-4 h-4 rounded-full bg-white border-2 border-indigo-400 shadow-sm z-10" />
@@ -191,7 +230,7 @@ export const WorkspaceRightPanel = () => {
                         }}
                       />
                     </div>
-                  ))}
+                  ); })())}
                 </div>
               </>
             )}

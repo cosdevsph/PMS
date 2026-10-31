@@ -1,0 +1,27 @@
+{
+  "schema": "malasakit.dataset-inventory/1",
+  "generated_on": "2026-10-31",
+  "status": "research",
+  "note": "Metadata only. No questionnaire wording. Licence categories: A commercial use clearly permitted, B permission required, C research only, D unverified.",
+  "instruments": [
+    { "code": "QuickDASH", "owner": "Institute for Work & Health", "category": "B", "items": 11, "source": "https://dash.iwh.on.ca/terms-and-conditions" },
+    { "code": "DASH", "owner": "Institute for Work & Health", "category": "B", "items": 30, "source": "https://dash.iwh.on.ca/terms-and-conditions" },
+    { "code": "KOOS", "owner": "Ewa M. Roos", "category": "B", "items": 42, "source": "https://www.koos.nu/faq.html" },
+    { "code": "HOOS", "owner": "Ewa M. Roos", "category": "B", "items": null, "source": "https://www.koos.nu/" },
+    { "code": "PROMIS-PF", "owner": "HealthMeasures", "category": "B", "items": null, "source": "https://www.healthmeasures.net/" },
+    { "code": "WHODAS-2.0", "owner": "WHO", "category": "B", "items": [12, 36], "source": "https://www.who.int/" },
+    { "code": "EQ-5D", "owner": "EuroQol", "category": "B", "items": null, "source": "https://euroqol.org/" },
+    { "code": "ODI", "owner": "Fairbank", "category": "B", "items": 10, "source": "https://www.sralab.org/rehabilitation-measures/oswestry-disability-index" },
+    { "code": "NDI", "owner": "Vernon", "category": "B", "items": 10, "source": "https://www.sralab.org/rehabilitation-measures/neck-disability-index" },
+    { "code": "RMDQ", "owner": "Roland & Morris", "category": "A-provisional", "items": 24, "source": "https://www.sralab.org/rehabilitation-measures/roland-morris-disability-questionnaire", "confirm": "Verify public-domain status at the source" },
+    { "code": "LEFS", "owner": "Binkley 1999", "category": "D", "items": 20, "source": "https://www.sralab.org/" },
+    { "code": "FAAM", "owner": "Martin 2005", "category": "D", "items": [21, 8], "source": null },
+    { "code": "SPADI", "owner": "Roach 1991", "category": "D", "items": 13, "source": null },
+    { "code": "STarT-Back", "owner": "Keele University", "category": "D", "items": null, "source": "https://keele.health/startback/" },
+    { "code": "BQ_BACK", "owner": "Bolton JE, Breen AC", "category": "B-owner-confirmed", "items": 7, "source": "https://pubmed.ncbi.nlm.nih.gov/10543579/", "scoring_source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9744002", "note": "Permission stated by the owner; written permission and scope not in the repo" },
+    { "code": "Bournemouth-Neck", "owner": "Bolton", "category": "D", "items": null, "source": null },
+    { "code": "PSFS", "owner": "Stratford 1995", "category": "D", "items": null, "source": null },
+    { "code": "NPRS", "owner": "generic", "category": "D-low-risk", "items": 1, "source": null },
+    { "code": "VAS-pain", "owner": "generic", "category": "D-low-risk", "items": 1, "source": null }
+  ]
+}

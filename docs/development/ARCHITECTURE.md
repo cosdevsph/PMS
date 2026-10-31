@@ -34,7 +34,22 @@ When something changes, update this file in place and add a CHANGELOG entry. Rec
 | Media storage | Local filesystem (`backend/media`) | Cloudinary (`config.storage.AutoMediaCloudinaryStorage`) |
 | Static files | WhiteNoise (compressed manifest) | WhiteNoise (compressed manifest) |
 
-**Apps** (`backend/apps/`): accounts, appointments, billing, clinical_templates, clinics, common, contacts, gateway, integrations, inventory, letters, messages, notifications, patients, records, reports, smsgateway, subscriptions, support.
+**Apps** (`backend/apps/`): accounts, appointments, billing, clinical_templates, clinics, common, contacts, gateway, integrations, inventory, letters, messages, notifications, outcomes, patients, records, reports, smsgateway, subscriptions, support.
+
+### Security controls
+
+As verified 2026-10-31. The open gaps and proposed fixes are in the CHANGELOG entry "Security controls checklist review" (2026-10-31, Proposed).
+
+| Concern | Current implementation |
+|---------|------------------------|
+| Authentication | Email + password (`apps.accounts.backend.EmailBackend`), JWT via `rest_framework_simplejwt` with rotation and blacklist. No MFA; OTP only for Owner sign-up and password reset. Lockout: 5 failures per IP+email per 15 min, 50 per IP (`accounts/services/login_throttle_service.py`). |
+| Passwords | Django default PBKDF2-SHA256; validators: min length 8, common, numeric, user-attribute similarity. Staff temporary passwords expire in 48 h with forced change. |
+| Sessions | Access token 10 h, refresh token 7 days, both in `localStorage`. Inactivity logout (10 h) and close-browser logout are browser-side only (`hooks/useInactivityLogout.ts`, `store/auth.store.ts`). The store's `logout()` does not call `/auth/logout/`, so refresh tokens are not blacklisted on logout. |
+| Authorization | `IsAuthenticated` default; permission groups (None/View/Edit per feature) and clinic/branch scoping in `accounts/utils/rbac.py`. Open gaps F5–F7 (see FEATURES.md, Roles & permissions). |
+| Audit | Per-domain audit models: `ClinicalNoteAuditLog`, `InvoiceAuditLog`, `UserRoleChangeLog`, `PrivatePackageSessionAuditLog`, `PatientMergeLog`, `OutcomeAssessmentAuditLog`, plus notification logs. No login or record-view log (except outcome measures). |
+| In transit | Production: SSL redirect, secure session/CSRF cookies, nosniff, `X_FRAME_OPTIONS=DENY`; database `ssl_require=True`. No HSTS. |
+| At rest | Fernet field encryption (`apps/common/encryption.py`, key `FIELD_ENCRYPTION_KEY`, required in production) for clinical note content and outcome answers. Everything else relies on Render (PostgreSQL) and Cloudinary (files) disk encryption. Cloudinary uploads use the default public delivery type. |
+| Backups / DR | Render-managed database backups and restore (owner-confirmed, not in code). Cloudinary files are outside Render backups. No written runbook. |
 
 ## Frontend
 
@@ -50,6 +65,14 @@ When something changes, update this file in place and add a CHANGELOG entry. Rec
 ## Decisions
 
 Architecture Decision Records, newest first. Each one: date, decision, context, alternatives considered, consequences, status (`Accepted` / `Superseded (YYYY-MM-DD)`).
+
+### ADR-008: Outcome measures live in a separate `outcomes` app with immutable versioned definitions
+
+**Status:** Accepted and implemented (2026-10-31); see the CHANGELOG entry of the same date for what differs from the first proposal.
+**Decision:** Master definitions are version-controlled JSON loaded into immutable rows keyed by code and version. Each patient assessment stores the version, its answers (encrypted with `FieldEncryptor`), server-computed scores and a snapshot of the scoring rules, so editing a master never changes past results. Clinics enable or disable platform measures. Scoring runs on the server with a fixed set of methods; no formula text from JSON is executed. Chart annotations extend `ClinicalNote.chart_annotation_data` additively with an asset id, version and normalised coordinates.
+**Context:** `records.OutcomeMeasure` holds only a free-text name and a score, with no definition, version or answers. Most standard instruments need a licence, so the library must be able to hold definitions that are not yet enabled.
+**Alternatives considered:** extending `records.OutcomeMeasure` (no place for items or versions); storing definitions only in code (no clinic-level control).
+**Consequences:** four new tables (`outcomes.0001`); the patient merge moves assessments (done); the legacy table stays but is now clinic-scoped. **Differences from the proposal:** no `DRAFT` status; chart markers are kept in the existing `doodle_data` list (no new `points` key, so no backend or note-reload changes); no region IDs. Visibility of a patient's assessments reuses the patients-list branch rule (`outcomes/services.py` `visible_patients`).
 
 ### ADR-007: A Branch Manager delegates only inside their clinics and their own level
 

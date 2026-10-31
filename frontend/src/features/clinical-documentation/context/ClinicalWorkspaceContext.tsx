@@ -1,7 +1,7 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 
-export type WorkspaceLeftTab = 'templates' | 'letters';
+export type WorkspaceLeftTab = 'templates' | 'letters' | 'outcomes';
 export type WorkspaceRightTab = 'history' | 'documents';
 
 export type EditorContextType = 

@@ -30,6 +30,7 @@ const FIELD_TYPE_OPTIONS: { value: FieldType; label: string }[] = [
 // 'spine' is intentionally excluded — deprecated for new templates (existing data preserved)
 const CHART_TYPE_OPTIONS: { value: ChartType; label: string }[] = [
   { value: 'body', label: 'Body Chart' },
+  { value: 'back', label: 'Back Chart' },
   { value: 'head', label: 'Head Chart' },
   { value: 'hand', label: 'Hand Chart' },
   { value: 'feet', label: 'Feet Chart' },

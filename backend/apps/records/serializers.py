@@ -31,6 +31,13 @@ class OutcomeMeasureSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
     
+    def validate_patient(self, patient):
+        request = self.context.get('request')
+        clinic = getattr(request.user, 'clinic', None) if request else None
+        if request and patient.clinic_id != getattr(clinic, 'id', None) and getattr(patient.clinic, 'parent_clinic_id', None) != getattr(clinic, 'id', None):
+            raise serializers.ValidationError('This patient does not belong to your clinic.')
+        return patient
+
     def get_percentage(self, obj):
         if obj.max_score and obj.max_score > 0:
             return round((obj.score / obj.max_score) * 100, 2)

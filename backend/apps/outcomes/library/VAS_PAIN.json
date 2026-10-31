@@ -1,0 +1,39 @@
+{
+  "schema": "malasakit.outcome-definition/1",
+  "code": "VAS_PAIN",
+  "version": "1.0.0",
+  "name": "Pain Visual Analogue Scale",
+  "abbreviation": "VAS",
+  "category": "pain",
+  "language": "en",
+  "description": "A slider from 0 to 100 for pain intensity; the exact value is saved.",
+  "licence": {
+    "category": "D",
+    "owner": null,
+    "notes": "Generic single-item scale; no copyright owner or licence statement was found. The prompt and end labels are neutral wording written for Malasakit. Owner to confirm before wider use.",
+    "approved_for_production": true
+  },
+  "sources": [],
+  "items": [
+    {
+      "id": "pain_vas",
+      "type": "slider",
+      "prompt": "Move the slider to show your pain.",
+      "required": true,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "mm",
+      "anchors": { "min": "No pain", "max": "Worst pain imaginable" }
+    }
+  ],
+  "scoring": {
+    "method": "sum",
+    "items": ["pain_vas"],
+    "range": [0, 100],
+    "direction": "higher_worse",
+    "missing": { "max_missing": 0, "rule": "invalid" }
+  },
+  "interpretation": null,
+  "mcid": null
+}

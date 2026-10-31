@@ -2,6 +2,7 @@ import bodyChart from '@/assets/charts/body-chart.webp';
 import headChart from '@/assets/charts/head-chart.webp';
 import handChart from '@/assets/charts/hand-chart.webp';
 import feetChart from '@/assets/charts/feet-chart.webp';
+import backChart from '@/assets/charts/back-chart.webp';
 import type { ChartType } from '@/types/clinicalTemplate';
 
 export const chartImageMap: Record<ChartType, string> = {
@@ -9,6 +10,7 @@ export const chartImageMap: Record<ChartType, string> = {
   head: headChart,
   hand: handChart,
   feet: feetChart,
+  back: backChart,
 };
 
 export const chartLabel: Record<ChartType, string> = {
@@ -16,4 +18,5 @@ export const chartLabel: Record<ChartType, string> = {
   head: 'Head Chart',
   hand: 'Hand Chart',
   feet: 'Feet Chart',
+  back: 'Back Chart',
 };

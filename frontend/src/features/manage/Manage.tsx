@@ -14,6 +14,7 @@ import { ClinicalMenu1 } from './pages/clinical/ClinicalMenu1';
 import { ClinicalMenu2 } from './pages/clinical/ClinicalMenu2';
 import { ClinicServices } from './pages/clinical/ClinicServices';
 import { ClinicProfile } from './pages/clinical/ClinicProfile';
+import { OutcomeMeasuresLibrary } from '@/features/outcomes/OutcomeMeasuresLibrary';
 import { EmailReminder } from './pages/communications/EmailReminder';
 import { Records } from './pages/communications/Records';
 import { ClinicalAuditLogs } from './pages/communications/ClinicalAuditLogs';
@@ -63,6 +64,7 @@ const MANAGE_CATEGORIES: ManageCategory[] = [
       { id: 'clinical5', label: 'Letter Templates',    path: 'clinical5', component: LetterTemplatesPage },
       { id: 'clinical3', label: 'Clinic Services',     path: 'clinical3', component: ClinicServices },
       { id: 'clinical4', label: 'Clinic Profile',      path: 'clinical4', component: ClinicProfile },
+      { id: 'clinical6', label: 'Outcome Measures',    path: 'clinical6', component: OutcomeMeasuresLibrary },
     ],
   },
   {

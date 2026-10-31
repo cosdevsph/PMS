@@ -31,6 +31,10 @@ Analysis-only tasks: record findings with status **Proposed** or **Pending**, ne
 - When a decision changes, update the existing note and mark the old behavior `Superseded (YYYY-MM-DD)`. Don't leave contradictory notes in different files.
 - No credentials, API keys, passwords, `.env` values, patient information or other secrets in any note.
 
+## UI conventions
+
+- Show every time of day in **12-hour format with AM/PM** (for example `4:27 PM`), never 24-hour. Set `hour12: true` explicitly when formatting; the browser's default locale can give 24-hour times. Applies to screens, printouts, PDFs and emails.
+
 ## Checks
 
 - Frontend: `npm run build` (runs `tsc -b` then `vite build`) and `npm run lint`, from `frontend/`.

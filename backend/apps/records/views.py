@@ -2,6 +2,8 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q
+from apps.common.permissions import HasFeaturePermission
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 from .serializers import (
@@ -58,28 +60,26 @@ class NoteTemplateViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'description']
     
     def get_queryset(self):
-        user = self.request.user
-        if user.is_owner:
-            return self.queryset
-        return self.queryset.filter(clinic=user.clinic)
+        # Owners are limited to their own clinic like everyone else.
+        return self.queryset.filter(clinic=self.request.user.clinic)
 
 
 class OutcomeMeasureViewSet(viewsets.ModelViewSet):
     """CRUD operations for outcome measures"""
-    
+
     queryset = OutcomeMeasure.objects.all().select_related('patient', 'practitioner__user')
     serializer_class = OutcomeMeasureSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFeaturePermission]
+    rbac_feature = 'outcome_measures'
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['patient', 'practitioner', 'measure_name', 'date']
     ordering_fields = ['date', 'score']
-    
+
     def get_queryset(self):
-        user = self.request.user
-        if user.is_owner:
-            return self.queryset
-        return self.queryset.filter(patient__clinic=user.clinic)
-    
+        # Only patients of the user's own clinic (or one of its branches), Owners included.
+        clinic = self.request.user.clinic
+        return self.queryset.filter(Q(patient__clinic=clinic) | Q(patient__clinic__parent_clinic=clinic))
+
     @action(detail=False, methods=['get'])
     def trends(self, request):
         """Get outcome measure trends for a patient"""

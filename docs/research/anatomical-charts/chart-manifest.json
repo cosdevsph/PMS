@@ -1,0 +1,12 @@
+{
+  "schema": "malasakit.chart-manifest-inventory/1",
+  "generated_on": "2026-10-31",
+  "status": "research",
+  "note": "Regions are intentionally empty: no SVG has been inspected yet, and region IDs must come from the real paths.",
+  "charts": [
+    { "asset_id": "body-legacy", "format": "webp", "file": "frontend/src/assets/charts/body-chart.webp", "views": ["front", "right-lateral", "left-lateral", "back"], "licence": { "status": "created by the owner with Gemini (AI-generated); generator terms not checked" }, "regions": [] },
+    { "asset_id": "head-legacy", "format": "webp", "file": "frontend/src/assets/charts/head-chart.webp", "views": ["front", "left-lateral", "right-lateral", "back"], "licence": { "status": "created by the owner with Gemini (AI-generated); generator terms not checked" }, "regions": [] },
+    { "asset_id": "back-legacy", "format": "webp", "file": "frontend/src/assets/charts/back-chart.webp", "views": ["posterior"], "derived_from": "body-legacy (posterior view cropped)", "licence": { "status": "same as body-legacy" }, "regions": [] },
+    { "asset_id": "body-front-back-cc0", "format": "svg", "file": null, "views": ["anterior", "posterior"], "licence": { "name": "CC0-1.0", "author": "Cdang", "source_url": "https://commons.wikimedia.org/wiki/File:Silhouette_humain_asexue_anterieur_posterieur.svg" }, "regions": [] }
+  ]
+}

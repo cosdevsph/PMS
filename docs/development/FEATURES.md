@@ -39,6 +39,7 @@ No patient data or secrets in examples.
 | Messaging | `clinic-messages` | `messages` | Not yet documented |
 | Notifications | `notifications` | `notifications` | Not yet documented |
 | SMS | — | `smsgateway` | Not yet documented |
+| Outcome measures & anatomical charts | `outcomes`, `clinical-documentation` (Outcomes tab), `clinical-template` (chart field), `manage` | `outcomes`, `records` (legacy `OutcomeMeasure`) | Implemented 2026-10-31 with two generic measures and marker charts; licensed instruments and SVG regions not built — [research](../research/outcome-measures/outcome-measures-research.md) |
 | Letters & letter templates | `manage` (Clinical → Letter Templates editor), `clinical-documentation` (write / view letters) | `letters` | Documented 2026-10-24; editor shell and shared letter layout implemented, remaining findings **Proposed** — [deep dive](features/letter-templates.md) |
 | Inventory | — | `inventory` | Not yet documented |
 | Reports & dashboard | `reports`, `dashboard` | `reports` | Not yet documented |
@@ -51,6 +52,38 @@ No patient data or secrets in examples.
 | Private Package Sessions | `patients` (sidebar page), `appointments` (assignment card), `billing` (invoice screen) | `patients` (`package_*`), `billing`, `appointments` | Implemented and tested; **migrations not yet applied to the dev database**; transfers not built — [spec](features/private-package-sessions.md) |
 
 A "—" means no folder with a matching name was found. The feature may still exist under a different name; confirm when documenting it.
+
+## Outcome measures & anatomical charts
+
+**Code:** `backend/apps/outcomes/`, `backend/apps/records/` (legacy `OutcomeMeasure`), `frontend/src/features/outcomes/`, `frontend/src/features/clinical-template/` (chart field), `docs/research/`
+**Last verified:** 2026-10-31
+**Deep dive:** [outcome-measures-research.md](../research/outcome-measures/outcome-measures-research.md), [anatomical-charts-research.md](../research/anatomical-charts/anatomical-charts-research.md)
+
+**What it does (Implemented 2026-10-31):**
+- **Library:** platform measures are JSON files in `backend/apps/outcomes/library/`, loaded into immutable versioned rows by `load_outcome_definitions`, which also runs automatically after every `migrate`. Today: Numeric Pain Rating Scale (0 to 10), Pain VAS (slider 0 to 100) and the Bournemouth Back Questionnaire (7 scales, sum 0 to 70, higher is worse; category B with the owner's stated permission).
+- **Clinic choice:** an Owner or Branch Manager switches measures on or off in Manage → Clinical → Outcome Measures.
+- **Assessments:** in the patient's Clinical Documentation workspace, the **Outcomes** tab lists the enabled measures. Choosing one opens a full-page questionnaire (no top bar): a description page with "Get Started", then one question per page with Previous / Next (a numbered, draggable scale for 0 to 10 questions), "Save" on the last question, and a password prompt (Back / Enter). The result is linked to the patient, the open Case and, if given, an appointment, and appears in the case's **History** timeline. There is **one card per measure per case**: recording the same measure again adds a result to that card and a point to its graph, not a new card. The card shows who created it and when (the first result), who modified it and when (the latest result or void), the latest and previous score, the progress graph, the list of results (open an answer sheet, void) and Print and Send via Email icons.
+- **Charts:** the chart field has Pen and Marker tools. A marker records its position, the view (front, back, right or left side) and the patient's left or right, plus a note. A new **Back Chart** type shows the posterior view.
+
+**Business rules:**
+- A definition can never be edited; a change is a new version. A saved result keeps its version, questions, answers and scoring rules — backend.
+- Answers are validated on the server (type, option, range, step; no unknown items) and the score is computed on the server; a client-sent score is ignored — backend.
+- Missing answers are not counted as zero. A score is "no score" unless the definition allows missing items by its own rule — backend.
+- Switching a measure off hides it from new assessments only; history stays — backend and frontend.
+- Saving needs the recording user's own password; it is checked on the server, never stored or logged, and wrong tries share the login lockout (5 per 15 minutes) — backend.
+- Each result is its own saved record and is never overwritten; the History card groups them. A report can be printed (preview, Print, Download PDF) or emailed as a PDF (addresses validated, up to 10, PDF up to 10 MB, audited as `EMAILED`; needs Edit access) — backend and frontend.
+- Mistakes are voided with a reason, never edited. The graph leaves out voided and unscored results and splits the line when the scoring rules differ — backend and frontend.
+- The Outcomes tab needs `outcome_measures` View, recording and voiding need Edit; the library needs the Owner or Branch Manager role. Patients are limited by the same branch rule as the patients list — backend.
+- Answers are encrypted with `FieldEncryptor`; reads of one assessment are written to the audit log.
+- Legacy `/api/outcome-measures/` shows only the caller's clinic and needs the `outcome_measures` permission — backend.
+- Markers are stored with the note's chart annotation, positions as 0 to 1 of the image. The Body chart's first side view is the patient's right side; the Head chart's first side view is the left. Within 1.2% of the figure's centre line counts as midline.
+
+**Key endpoints:** `/api/outcomes/definitions/`, `/api/outcomes/library/`, `/api/outcomes/assessments/` (`void/`, `trend/`, `<id>/email/`).
+**Known issues / gaps:**
+- NPRS and VAS are licence category D (generic scales). The Bournemouth Back Questionnaire is category B: the owner states they hold permission, and the written permission and its scope are not in the repository. Licensed instruments (DASH, KOOS, ODI, NDI, PROMIS and others) need a signed licence before any are added; see the licensing inventory.
+- No SVG charts, selectable regions or spine chart (no licensed source yet). The Back chart is cropped from the existing body chart.
+- Marker notes appear in the editor and the feed, not on the printed note. The outcome email dialog has no contact suggestions.
+- No draft status for assessments; a reload of the questionnaire page loses unsaved answers. The Reports → "Outcome Measures" page still shows note-completion rates. `ClinicalNoteViewSet` and `AttachmentViewSet` still let an Owner see every clinic's rows.
 
 ## Letters & letter templates
 
@@ -155,5 +188,6 @@ A "—" means no folder with a matching name was found. The feature may still ex
 - **Who may grant access (client feedback, 2026-10-23):** only the Owner and Branch Managers create staff, change clinics or assign groups; role changes are Owner only; clinicians and staff never. A Branch Manager grants access only to the clinics they manage and never above their own level. Clinician availability per clinic and day is set by the Owner or a Branch Manager (no self-service).
 
 **Key endpoints:** `/api/permission-groups/` (+ `duplicate/`), `GET /api/patients/booking-lookup/`, `PATCH /api/users/<id>/` with `extra_diary_branch_ids` (Owner only) or `work_branch_ids` (Frontdesk / Finance).
+**Known issues (security review 2026-10-31, Proposed fixes, not built):** logging out (button or inactivity timeout) clears the browser only and does not blacklist the refresh token, so it stays valid for up to 7 days; the 10-hour inactivity and close-browser logouts are enforced only in the browser; F6 below is still open, and because `PractitionerScheduleViewSet` is writable, any Owner can also change or delete other clinics' schedules. See the CHANGELOG entry "Security controls checklist review".
 **Known issues:** see CHANGELOG findings F5–F9 and the limitations of "Branch Manager clinics": booking into a branch the user cannot view works via the API for non-Branch Manager paths; Diary/Calendar/Appointments "View" is not enforced as read-only in a user's own branch (frontend or backend); two appointment viewsets return all clinics' rows to any Owner; manager branch assignment is not checked against the clinic group; a Branch Manager with only `clinic_branch` sees no patients.
 

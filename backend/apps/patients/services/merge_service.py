@@ -15,6 +15,7 @@ from apps.patients.models import (
 )
 from apps.appointments.models import Appointment, RebookingLink
 from apps.records.models import ClinicalNote as RecordsClinicalNote, OutcomeMeasure, Attachment, CaseDocument
+from apps.outcomes.models import OutcomeAssessment
 from apps.billing.models import Invoice, AgeingDebtEntry
 from apps.notifications.models import Notification, CommunicationLog
 from apps.integrations.models import PhilHealthClaim, HMOClaim
@@ -90,6 +91,7 @@ class PatientMergeService:
         # 3. Records App
         transferred['records_clinical_notes'] = cls._transfer(RecordsClinicalNote, duplicate, primary)
         transferred['outcome_measures'] = cls._transfer(OutcomeMeasure, duplicate, primary)
+        transferred['outcome_assessments'] = cls._transfer(OutcomeAssessment, duplicate, primary)
         transferred['attachments'] = cls._transfer(Attachment, duplicate, primary)
         transferred['case_documents'] = cls._transfer(CaseDocument, duplicate, primary)
 

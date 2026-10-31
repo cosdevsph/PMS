@@ -95,6 +95,7 @@ urlpatterns = [
     path('api/', include('apps.patients.urls')),
     path('api/clinical-templates/', include('apps.clinical_templates.urls')),
     path('api/letters/', include('apps.letters.urls')),
+    path('api/outcomes/', include('apps.outcomes.urls')),
     path('api/', include('apps.inventory.urls')),
     path('api/', include('apps.contacts.urls')),
     path('api/', include('apps.messages.urls')),

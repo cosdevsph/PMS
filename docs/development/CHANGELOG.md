@@ -45,6 +45,309 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-10-31 — Security controls checklist review
+
+**Status:** Proposed (analysis only; no code changed)
+**Module / feature:** Security (authentication, sessions, roles, audit, encryption, storage, backups)
+
+**Original behavior:** None (analysis of current behavior).
+**Problem / requirement:** The owner is answering an 11-item security checklist (role-based access, audit logs, encryption in transit and at rest, automated backups, disaster recovery, hashed passwords, session timeout, unique accounts, role-restricted viewing/editing, MFA) and asked which items the system meets.
+**Reason for the change:** Record the verified answer for each item, so the checklist and later fixes start from the same facts. Each item was checked against the working tree on 2026-10-31, including uncommitted changes. Items 5 and 6 can't be seen in code and are **Owner-confirmed**.
+
+**Files modified:**
+- `docs/development/CHANGELOG.md` — this entry.
+- `docs/development/ARCHITECTURE.md` — new "Security controls" section; `outcomes` added to the app list.
+- `docs/development/FEATURES.md` — Roles & permissions known issues: session and logout findings, F6 status.
+
+**Frontend changes:** None
+**Backend changes:** None
+**Database / migrations:** None
+**API / data contract:** None
+
+**Findings:**
+
+| # | Item | Answer | Evidence |
+|---|---|---|---|
+| 1 | Role-based access controls | Yes, with one gap (F6 below) | Code |
+| 2 | Audit logs | Partial | Code |
+| 3 | Encryption in transit | Yes; HSTS header not set | Code |
+| 4 | Encryption at rest | Partial | Code + provider dashboards |
+| 5 | Automated backups | Yes, database only | Owner-confirmed (Render) |
+| 6 | Disaster recovery | Yes for the database through Render restore; no written runbook | Owner-confirmed (Render) |
+| 7 | Hashed passwords | Yes | Code |
+| 8 | Session timeout | Yes, but enforced only in the browser | Code |
+| 9 | Unique user accounts | Yes | Code |
+| 10 | Restrict viewing/editing by role | Yes, with known gaps F5–F7 | Code |
+| 11 | Multi-factor authentication | No | Code |
+
+1. **Roles:** `PermissionGroup` / `FeaturePermission` (None / View / Edit per feature, `accounts/models.py`), clinic and branch scoping in `accounts/utils/rbac.py` and `DiaryBranchScopeMixin`, `IsAuthenticated` by default. **F6 is still open:** `PractitionerScheduleViewSet` and `AppointmentReminderViewSet` (`appointments/views.py`) return `objects.all()` for any `user.is_owner`. Any Owner can therefore list every clinic's practitioner schedules and reminder logs, and can change or delete other clinics' schedules (it is a `ModelViewSet`).
+2. **Audit:**
+   - Logged with user, IP and browser: clinical notes (`ClinicalNoteAuditLog`, read-only in admin and API), invoices, role changes, private packages, patient merges, PayMongo payments, email/SMS/communication logs, and outcome measures (including views).
+   - Not logged: views of patient records, clinical notes and invoices (`VIEWED` exists on notes and invoices but nothing writes it); edits to patient details; logins, logouts and failed logins (failures are counted only in the cache for lockout).
+3. **In transit:** production sets SSL redirect, secure session and CSRF cookies, nosniff and `X_FRAME_OPTIONS=DENY`, and the database connection has `ssl_require=True`. `SECURE_HSTS_SECONDS` is not set.
+4. **At rest:**
+   - Fernet app encryption covers clinical note content and outcome answers (`apps/common/encryption.py`). Production refuses to start without `FIELD_ENCRYPTION_KEY`. There is no key rotation.
+   - Patient details, letters, invoices, appointments and files rely on Render and Cloudinary disk encryption, which can only be confirmed on the provider dashboards.
+   - Uploaded files go through `MediaCloudinaryStorage`, which uploads as the public `upload` type by default. PDF URL signing in `records/serializers.py` only gets past Cloudinary's strict-PDF delivery and doesn't make files private. Files are therefore **probably reachable by anyone with the URL**; confirm the delivery type in Cloudinary.
+5. **Backups:** nothing in code does backups. The owner confirmed Render backups are on. Cloudinary files are not part of Render's backups.
+6. **Disaster recovery:** the owner confirmed recovery uses Render's restore. Missing:
+   - a written runbook (roles, steps, recovery-time and data-loss targets);
+   - any record of a restore test;
+   - a plan for Cloudinary files;
+   - a safe copy of `FIELD_ENCRYPTION_KEY` outside Render. Without it, a restored database can't decrypt clinical notes.
+7. **Passwords:**
+   - Hashing is Django's default salted PBKDF2-SHA256 (no `PASSWORD_HASHERS` override).
+   - Validators: minimum 8 characters, not common, not all numeric, not similar to user details.
+   - Staff temporary passwords expire after 48 hours and must be changed at first login.
+   - Lockout: 5 failures per IP+email per 15 minutes, 50 per IP (`login_throttle_service.py`).
+8. **Sessions:**
+   - Inactivity logout after 10 hours (`useInactivityLogout.ts`). Closing the browser forces a new login (`sessionStorage` marker in `auth.store.ts`).
+   - Both checks run only in the browser. The access token lives 10 hours and the refresh token 7 days, both in `localStorage`.
+   - The app's logout (`auth.store.ts` `logout`, used by the logout button and the inactivity timeout) clears the browser but **never calls `/auth/logout/`**, so the refresh token is not blacklisted and stays usable for up to 7 days.
+9. **Accounts:** `email` is unique and is the login field. Staff accounts are created one by one.
+10. **Role-restricted access:** same mechanism as 1. Open gaps:
+    - F5: booking into a branch the user can't view works through the API.
+    - F6: see item 1.
+    - F7: Diary/Calendar/Appointments "View" is not read-only in the user's own branch.
+11. **MFA:** none. One-time codes (`otp_service.py`) are used only for Owner sign-up and password reset.
+
+**Business rules & decisions:**
+- Owner's checklist wording for 5 and 6: say "database" rather than "all data", because uploaded files are on Cloudinary.
+- Proposed fixes, in priority order (none started):
+  1. Make logout call the existing `authApi.logout(refreshToken)` so the refresh token is blacklisted.
+  2. Scope the two F6 viewsets to the Owner's clinic group, and add tests.
+  3. Add `SECURE_HSTS_SECONDS` and `SECURE_HSTS_INCLUDE_SUBDOMAINS` to the production settings.
+  4. Shorten the inactivity timeout to 30–60 minutes, the access token to 15–30 minutes and the refresh token to 12–24 hours. Silent refresh on 401 already exists.
+  5. Write `VIEWED` audit rows on note and invoice retrieve, and log logins, logouts and failed logins.
+  6. Make Cloudinary files private (`authenticated` type with short-lived signed URLs, and migrate existing files).
+  7. Write a disaster-recovery runbook (Render restore steps, a safe copy of the encryption key, Cloudinary files, a yearly restore test).
+  8. Add TOTP MFA, Owner and Branch Manager first.
+
+**Tests executed:**
+- None (analysis only). Findings come from reading the code and grepping `backend/config/settings.py`, `backend/apps/accounts/`, `backend/apps/appointments/views.py`, `backend/apps/clinical_templates/`, `backend/apps/outcomes/`, `backend/apps/records/serializers.py`, `backend/config/storage.py`, `frontend/src/store/auth.store.ts`, `frontend/src/hooks/useInactivityLogout.ts`, `frontend/src/app/App.tsx` and `frontend/src/features/auth/auth.api.ts`.
+
+**Known limitations / unresolved issues:**
+- The Render backup plan, frequency and retention weren't recorded; the owner should note them.
+- Cloudinary delivery type and backups, and Render/Cloudinary disk encryption, are not verified.
+**Regression risks:** None (no code changed).
+
+## 2026-10-31 — Outcome graph tooltip showed the wrong result; times in 12-hour format
+
+**Status:** Implemented (browser retest and backend tests executed)
+**Module / feature:** Outcome Measures → progress graph, History card, print / email report
+
+**Original behavior:** Hovering a point on the progress graph showed the first result recorded on that date, not the hovered one. Times showed in 24-hour format (for example 16:43).
+**Problem / requirement:** The tooltip must describe the hovered point; times must be 12-hour with AM / PM.
+**Reason for the change:** The graph keyed its horizontal axis by the date label, so two results on the same day shared one position and the tooltip resolved to the first. Reproduced in a browser before the fix (hovering a 21 showed the 10 from the same day).
+
+**Files modified:**
+- `frontend/src/features/outcomes/components/TrendChart.tsx` — each point is keyed by its result id; tooltip shows date, time, version and the score of that point.
+- `backend/apps/outcomes/views.py` — trend points include `completed_at`; `tests.py` checks it.
+- `frontend/src/features/outcomes/outcomes.types.ts`, `outcomes.utils.ts` — `formatStamp` now uses a 12-hour clock with uppercase AM / PM (used by the History card, results list, tooltip, print report and email PDF).
+- `CLAUDE.md` — new "UI conventions" rule: 12-hour times everywhere.
+
+**Frontend changes:** as above. **Backend changes:** one extra field in the trend response. **Database / migrations:** None. **API / data contract:** `trend/` points gain `completed_at`.
+
+**Business rules & decisions:** Times shown to users are always 12-hour with AM / PM.
+
+**Tests executed:**
+- `backend/virt/bin/python manage.py test apps.outcomes --noinput` (`REDIS_URL=` empty) → Ran 53 tests, OK.
+- `npm run build` → built. `npm run lint` → 518 problems with and without these changes.
+- Browser run on a scratch database copy (dropped afterwards): three results (40 three weeks ago; 10 and 21 on the same day). Before the fix, hovering the 21 showed 10. After the fix, hovering the three points showed 40, 10 and 21, each with its own date, time and version; times read as 12-hour.
+- Not re-run: the print and email screens after the time change (they use the same formatter).
+
+**Known limitations / unresolved issues:** Other screens in the app may still show 24-hour times; only the Outcome Measures screens were checked and changed.
+**Regression risks:** the graph's x axis labels (short dates now come from a lookup by result id).
+
+---
+
+## 2026-10-31 — Outcome Measures: one History card per measure per case, created / modified, Print and Email
+
+**Status:** Implemented (tests and a browser run executed)
+**Module / feature:** Outcome Measures → History feed
+
+**Original behavior:** Every saved result was its own History card, with no record of who created or changed it, and no way to print or email it.
+**Problem / requirement:** (1) show who created it and when; (2) who modified it and when; (3) Print and Send via Email icons like the clinical notes; (4) recording the same measure again in the same case must not add a new History card — it must update that card and change its graph (for example 40, then 10, shows the line going down).
+**Reason for the change:** One card per measure per case reads as a progress record; each result is still saved as its own row, so no earlier result is overwritten and the history stays auditable.
+
+**Files modified:**
+- `frontend/src/features/outcomes/outcomes.utils.ts` — `groupAssessments` (one group per measure in the case; created, modified, latest and previous result), `formatStamp`, `answerText` (moved here).
+- `frontend/src/features/outcomes/components/OutcomeFeedItem.tsx` — rewritten as the grouped card; new `OutcomePrintTemplate.tsx`, `PrintOutcomeModal.tsx`, `SendOutcomeEmailModal.tsx`; `utils/pdf.ts` (off-screen A4 render to PDF).
+- `frontend/src/features/outcomes/outcomes.api.ts`, `outcomes.types.ts`, `components/AssessmentDetailModal.tsx`, `components/TrendChart.tsx`.
+- `frontend/src/features/clinical-documentation/components/WorkspaceRightPanel.tsx` — the timeline now holds one outcome card per measure, placed by when it last changed.
+- `backend/apps/outcomes/views.py` (new `email` action), `serializers.py` (`voided_at`, `voided_by_name`), `models.py` (audit action `EMAILED`), `migrations/0002_audit_emailed_action.py`, `tests.py`.
+
+**Frontend changes:** The card shows the measure name and version, how many results are recorded, "Created by" (first result: name, date and time), "Modified by" (latest result or void: name, date and time), the latest score with the previous one, the progress graph for the case (all its results), a "Results (n)" list (each opens its answers and can be voided), and Print and Send via Email icons. Print opens a preview with Print and Download PDF. Email opens a dialog (recipients with the patient's address prefilled, subject, message, the PDF attached) and sends.
+**Backend changes:** `POST /api/outcomes/assessments/<id>/email/` (multipart: `to`, `subject`, `body`, `attachment`) validates each address (up to 10), requires a real PDF up to 10 MB, sends from the clinic's address, and writes an `EMAILED` audit entry. Needs `outcome_measures` Edit and the clinic's own data. A send failure returns 502 with a clear message.
+**Database / migrations:** `outcomes.0002_audit_emailed_action` (a choices change only; no table or column change).
+**API / data contract:** list results gain `voided_at` and `voided_by_name`; new email endpoint above.
+
+**Business rules & decisions:**
+- One card per measure per case; each result stays an immutable saved record (a new result never overwrites an old one). A new result adds a point to the graph.
+- Created = the oldest result for that measure in the case (any status). Modified = the newest change: a result being recorded, or a result being voided. With a single result, Modified shows the same person and time as Created.
+- The card's latest and previous scores ignore voided results; Print and Email are disabled when every result is voided; Email also needs Edit access.
+- The report states scores and who recorded them; it makes no improvement claim.
+
+**Tests executed:**
+- `backend/virt/bin/python manage.py test apps.outcomes --noinput` (`REDIS_URL=` empty) → Ran 53 tests, OK (adds: voided_by in the list, email sends a PDF and is audited, bad address / non-PDF / missing file rejected, defaults to the patient's address and needs one, other clinic 404, read-only 403).
+- `... test apps.records --noinput` → Ran 15, OK. `manage.py check` → no issues. `makemigrations --check --dry-run` → no changes.
+- `npm run build` → built. `npm run lint` → 518 problems with and without these changes.
+- Browser run on a scratch database copy, dropped afterwards: two results by different users (40, then 10) showed as one card ("2 results recorded", latest 10, previous 40, created by one person and modified by the other, graph with two points); recording the measure a third time through the full flow (answers summing to 21, password) still showed one card with "3 results recorded", latest 21, previous 10, modified by the new recorder and three points on the graph; the Results list; the print preview (header, created / modified, scores, graph, results table, latest answers); the email dialog built a PDF and sent — the captured message had the right subject and recipient and a 2-page PDF attachment; a mail-backend failure showed "The email could not be sent" and kept the dialog open. Notes in the same timeline kept their actions.
+- Not run: the print window (browser Print / Download buttons were not exercised, only the preview and the PDF used by email); `apps.clinical_templates` tests.
+
+**Known limitations / unresolved issues:**
+- The email dialog has no contact suggestions list (the clinical-note email dialog has one); addresses are typed or the patient's is prefilled.
+- The PDF is an image-based A4 render, like the clinical-note PDF; long reports are cut across pages.
+- Results from before this change group automatically; there is nothing to migrate.
+**Regression risks:** the History timeline merge in `WorkspaceRightPanel.tsx`; the shared `AssessmentDetailModal`.
+
+---
+
+## 2026-10-31 — Outcome Measures: full-page questionnaire flow, password confirmation, History cards, Bournemouth Back Questionnaire
+
+**Status:** Implemented (tests and a browser run executed)
+**Module / feature:** Outcome Measures → assessment screen, History feed, library
+
+**Original behavior:** Choosing a measure opened a dialog with every question on one screen and saved immediately. Saved results appeared only in the Outcomes tab's own list; the History feed showed notes only (supersedes the earlier dialog flow in the entry below).
+**Problem / requirement:** A test-style flow: choose a measure → full page with no top bar → description and "Get Started" → one question per page with Previous / Next and draggable scales → "Save" on the last question → password prompt (Back / Enter) → the result appears in the case's History.
+**Reason for the change:** Requested by the owner (reference screenshots of a numbered, draggable 0 to 10 scale and a History card with a progress graph).
+
+**Files modified:**
+- `frontend/src/features/outcomes/OutcomeQuestionnairePage.tsx` (new) — the full-page flow, leave warning, save with password.
+- `frontend/src/features/outcomes/components/`: `PasswordConfirmDialog.tsx`, `OutcomeFeedItem.tsx` (new); `answers/RangeTrack.tsx` (new, shared draggable track), `answers/NrsInput.tsx` (numbered gradient bar plus draggable track), `answers/SliderInput.tsx`, `TrendChart.tsx` (optional case filter), `WorkspaceOutcomesPanel.tsx` (now only a launcher); `AssessmentForm.tsx` removed.
+- `frontend/src/app/App.tsx` — route `/patients/:patientId/cases/:caseId/outcome-measures/:definitionId` (outside the patient layout, so no top bar or sidebar).
+- `frontend/src/features/clinical-documentation/components/WorkspaceRightPanel.tsx` — assessments join the History timeline.
+- `frontend/src/features/outcomes/outcomes.api.ts`, `outcomes.types.ts` — password on create, case filter on trend, `instructions`.
+- `backend/apps/outcomes/views.py`, `serializers.py`, `validation.py`, `tests.py`; `library/BQ_BACK.json` (new).
+
+**Frontend changes:** see files. Previous keeps answers; Next stays disabled until a required question is answered; the last page shows "Save" and opens the password dialog; a wrong password shows an error and nothing is saved; success returns to the case workspace. The History timeline shows each result as a card (date and time, measure, version, who recorded it, score, progress graph for that case, "View answers"). Notes keep their order; each result is placed above the first note created before it.
+**Backend changes:** `POST /api/outcomes/assessments/` requires `password` (the recording user's own). It is checked with `check_password` before anything is saved; wrong tries use the login throttle (5 per 15 minutes, then 429). The password is never stored, logged or returned. A definition may carry `instructions`. A category B instrument can be approved for production only with `licence.permission_confirmed` true and a `permission_note`; category C never.
+**Database / migrations:** None.
+**API / data contract:** `password` (required) added to the assessment create request; `patient_case` filter (already supported by the list) now used by `trend/`.
+
+**Business rules & decisions:**
+- Only the person recording needs the password; it is checked against the logged-in user.
+- Bournemouth Back Questionnaire (`BQ_BACK`): wording is from the form the owner supplied; scoring is the sum of the seven 0 to 10 items (0 to 70, higher is worse) as stated in an open article (Kamonseki et al., Sao Paulo Med J 2019, PMC9744002). That article gives no missing-answer rule and no minimal important change, so every answer is required (as the form's instructions say) and no MCID is recorded.
+- The form cites the original paper as J Manipulative Physiol Ther 1999;22(9); PubMed lists it as 22(8): 503-510. The library uses the PubMed volume and issue.
+- Licence: category B. The owner states they hold permission (the form reads "With Permission from: Bolton JE, Breen AC"). The written permission and whether it covers use inside Malasakit for every clinic are not in the repository; the owner should keep it on file and confirm its scope.
+
+**Tests executed:**
+- `backend/virt/bin/python manage.py test apps.outcomes --noinput` (`REDIS_URL=` empty) → Ran 48 tests, OK (adds: password required, wrong password saves nothing, five wrong tries lock out even the right password, right password after a wrong one saves, password not returned, Bournemouth scores a sum of 35 for all-5 answers and needs every answer, permission-confirmed licence rules).
+- `... test apps.records --noinput` → Ran 15, OK. `manage.py check` → no issues. `makemigrations --check --dry-run` → no changes.
+- `npm run build` → built. `npm run lint` → 518 problems with and without these changes.
+- Browser run on a scratch database copy (backend :8001, `REDIS_URL=` empty), dropped afterwards: switched Bournemouth on in Manage; launched it from the Outcomes tab; the page covered the top bar; description and instructions showed; Next was disabled until answered; clicking the track set a value; Previous kept it; keyboard and the numbered bar set others; last page showed "Save"; a wrong password showed "Incorrect password." and stayed on the page; the right password saved, returned to the workspace and showed a History card with score 30 out of 70 (the sum of the seven answers given), a graph and "View answers". A note and a result showed together with the note actions intact. Mobile width (390 px) checked.
+- Not run: browser test of the 429 lockout message (covered by a backend test); `apps.clinical_templates` tests.
+
+**Known limitations / unresolved issues:**
+- After saving, the workspace opens on its default tab (Templates) and History; it does not return to the Outcomes tab.
+- Five wrong passwords lock that user's login for 15 minutes (shared counter).
+- Appointment link comes from the workspace's router state and is not covered by an API test.
+- A reload of the questionnaire page loses unsaved answers (a leave warning is shown).
+**Regression risks:** the History feed in `WorkspaceRightPanel.tsx` (merged timeline), the new route, the questionnaire inputs shared by all measures.
+
+---
+
+## 2026-10-31 — Outcome Measures library, assessments and progress graph; chart markers and Back chart
+
+**Status:** Implemented (backend, frontend, tests run) · Pending owner actions listed below
+**Module / feature:** New `outcomes` app; Clinical Documentation workspace; Manage → Clinical; clinical-note chart field
+
+**Original behavior:** Outcome measures were a free-text `records.OutcomeMeasure` table nobody used. Chart fields allowed freehand pen only, with no left/right information, and there was no Back chart.
+**Problem / requirement:** A versioned library of outcome measures that clinics switch on or off, server-scored assessments with history and a progress graph, and chart markers with view and side (see [docs/research](../research/outcome-measures/outcome-measures-research.md)).
+**Reason for the change:** Follows ADR-008 (separate app, immutable versioned definitions, answers encrypted, scores computed on the server).
+
+**Files modified:**
+- `backend/apps/outcomes/` (new): `models.py`, `validation.py`, `scoring.py`, `services.py`, `serializers.py`, `views.py`, `urls.py`, `admin.py`, `migrations/0001_initial.py`, `management/commands/load_outcome_definitions.py`, `library/NPRS.json`, `library/VAS_PAIN.json`, `tests.py`.
+- `backend/config/settings.py`, `backend/config/urls.py` — app registered, routes under `/api/outcomes/`.
+- `backend/apps/patients/services/merge_service.py` — a patient merge now moves `OutcomeAssessment` rows.
+- `frontend/src/features/outcomes/` (new): API, types, answer inputs (`NrsInput`, `SliderInput`, `ChoiceInput`, `NumberInput`), `AssessmentForm`, `AssessmentDetailModal`, `TrendChart`, `WorkspaceOutcomesPanel`, `OutcomeMeasuresLibrary`.
+- `frontend/src/features/clinical-documentation/ClinicalDocumentationWorkspace.tsx`, `context/ClinicalWorkspaceContext.tsx` — new "Outcomes" tab (shown with `outcome_measures` View access).
+- `frontend/src/features/manage/Manage.tsx` — Manage → Clinical → "Outcome Measures".
+- `frontend/src/features/clinical-template/components/ChartDrawingCanvas.tsx`, `utils/chartViews.ts` (new), `utils/chartMapping.ts`, `components/TemplateBuilder.tsx`, `components/ViewClinicalNoteModal.tsx`, `frontend/src/types/clinicalTemplate.ts` — marker tool, view / side, `back` chart type.
+- `frontend/src/assets/charts/back-chart.webp` (new) — the posterior (back) view cropped from the existing `body-chart.webp` (789 x 1536).
+
+**Frontend changes:** Outcomes tab (start an assessment, history, progress graph, open or void a result); Manage page with an on/off switch per measure; chart field gets Pen / Marker tools, numbered markers with a note each, an editable list, and a read-only list in the feed.
+**Backend changes:** See files. Definition rows are immutable (code, version and content cannot change; delete is refused). Answers are validated against the definition (type, option, range, step), scored on the server, and stored encrypted with `FieldEncryptor`; scores are stored in plain form with a copy of the scoring rules used.
+**Database / migrations:** `outcomes.0001_initial` (tables `outcome_definitions`, `clinic_outcome_measures`, `outcome_assessments`, `outcome_assessment_audit_logs`). **Not applied to the development database**; applied only to a throw-away scratch copy.
+**API / data contract:**
+- `GET /api/outcomes/definitions/` (enabled measures, with items)
+- `GET /api/outcomes/library/` and `POST /api/outcomes/library/<code>/` `{enabled}` (Owner or Branch Manager only)
+- `GET/POST /api/outcomes/assessments/`, `GET .../<id>/`, `POST .../<id>/void/`, `GET .../trend/?patient=&code=`
+- Chart annotation: markers are stored in the existing `doodle_data` list as `{tool:'marker', x, y, view, side, note, color, chart_version}`. x and y are 0 to 1 of the image. No backend change was needed; older notes have no markers.
+
+**Business rules & decisions:**
+- Only definitions with `licence.approved_for_production = true` appear in a clinic's library; the loader refuses to approve a category B or C instrument.
+- Turning a measure off never deletes results; a saved result keeps the version, questions and scoring rules it was taken with. A repeat assessment is a new row. A mistake is voided with a reason, not edited.
+- Missing answers are never counted as zero: a score is "no score" unless the definition's own rule allows missing items.
+- The graph joins only results scored by the same rules, shows the direction text from the definition, and makes no "improvement" claim.
+- Slider: stored value is the exact number; no default position, so an untouched slider is not an answer; validated for range and step on the server.
+- A patient is visible to the user by the same branch rule as the patients list.
+- Deviations from the plan: `DRAFT` status not built (only `COMPLETED` / `VOIDED`); `PainScaleInput` not reused (it shows an empty answer as 0); markers live in `doodle_data` instead of a new `points` key; no region IDs (no SVG exists to take them from).
+
+**Tests executed:**
+- `backend/virt/bin/python manage.py test apps.outcomes --noinput` (`REDIS_URL=` empty) → Ran 40 tests, OK (validation, scoring on synthetic test-only definitions, immutability, loader, clinic library, assessments, history after a new version, void, trend, merge).
+- `... test apps.records --noinput` → Ran 15, OK. `... test apps.patients --noinput` → Ran 141, OK.
+- `manage.py check` → no issues; `makemigrations --check --dry-run` → no changes.
+- `npm run build` (from `frontend/`) → built. `npm run lint` → 518 problems with and without these changes (none new).
+- Browser run against a scratch DB copy (backend on :8001, `REDIS_URL=` empty), then dropped: switched NPRS and VAS on in Manage; Outcomes tab; empty submit refused; NPRS 7 saved and scored 7 of 10; slider showed "Not answered" until used, keyboard moved it to 5 mm, a click set 40 mm, saved as 40; history, progress graph, detail view, void with reason, and the mobile (390 px) bottom sheet. Charts: markers on the Back, Body and Head charts gave the expected view and patient side (front/back left-right, side views); a note saved and reopened in the editor and the history feed with its markers and note; the stored annotation held the markers with 0 to 1 coordinates.
+- Not run: `apps.clinical_templates` tests (no backend change there); API tests that link an appointment to an assessment (only the case link is tested).
+
+**Known limitations / unresolved issues:**
+- The body, head, hand and feet chart images were created by the owner with Gemini (AI-generated). Whether those images can be used commercially depends on Google's terms for that tool, which have **not** been checked here; the owner should confirm. The Back chart inherits this status.
+- Only NPRS and Pain VAS exist, both licence category D (generic scales, no owner found) and marked approved by the plan's decision. **The owner must confirm** this before clinics rely on them. No RMDQ, PSFS or any licensed instrument is included because no verified wording or licence exists.
+- No SVG charts, regions or spine chart: no licensed source yet. The Back chart is a crop of the owner's body chart.
+- Marker notes are not printed (the image with the numbered markers is); `ClinicalNotePrintTemplate` is unchanged.
+- The old Reports → "Outcome Measures" page still shows note-completion rates. `ClinicalNoteViewSet` and `AttachmentViewSet` still let an Owner see every clinic's rows.
+- A patient with no clinic-enabled measures sees an empty state pointing to Manage.
+
+**Owner actions before this is live:** run `python manage.py migrate` on each environment (applies `outcomes.0001`; since the follow-up fix below it also loads the library); switch the measures on per clinic in Manage → Clinical → Outcome Measures; confirm the licence status of NPRS and VAS.
+**Follow-up 2026-10-31 (Implemented):** the Manage page showed "No measures are available yet" on the development database, which had `outcomes.0001` applied but no definitions loaded (the library was only loaded by the manual `load_outcome_definitions` command). `apps/outcomes/apps.py` now publishes the library files in a `post_migrate` handler, so every `migrate` fills or refreshes the library (idempotent; a problem is logged and does not fail `migrate`). `apps.outcomes` tests: Ran 40, OK, including a check that the migrated test database already holds NPRS. The development database was not changed by Claude: run `python manage.py migrate` (or `load_outcome_definitions`) once to load the two measures.
+**Regression risks:** the clinical-note chart field (new tool state, `touch-action: none` on the canvas, Back chart type); the Workspace tab bar; the patient merge (new model moved).
+
+---
+
+## 2026-10-31 — Outcome Measures & Anatomical Charts: research record and records-endpoint scoping
+
+**Status:** Implemented (endpoint scoping, tests run) · Research recorded in `docs/research/` (the proposed design was built later the same day, see the entry above)
+**Module / feature:** Records → Outcome Measures; Clinical Documentation charts
+
+**Original behavior:** `OutcomeMeasureViewSet` and `NoteTemplateViewSet` returned every clinic's rows to any user with the Owner role. The outcome-measures endpoint only required a login (no `outcome_measures` permission check) and accepted a patient from any clinic on create.
+**Problem / requirement:** Outcome Measures, Back / Body / Head charts are planned. Their licensing research had to be recorded in the repo, and the existing endpoint had a cross-clinic data leak that the new feature would build on.
+**Reason for the change:** Fix the leak first, in a small independent change, and record the research as research, not as built behavior.
+
+**Files modified:**
+- `backend/apps/records/views.py` — `OutcomeMeasureViewSet` limited to patients of the user's clinic or its branches (Owners included), now uses `HasFeaturePermission` with `outcome_measures`; `NoteTemplateViewSet` Owner bypass removed (same clinic filter as other roles).
+- `backend/apps/records/serializers.py` — `OutcomeMeasureSerializer.validate_patient` rejects a patient outside the user's clinic.
+- `backend/apps/records/test_outcome_measures.py` — new, 8 tests.
+- `docs/research/outcome-measures/{outcome-measures-research.md, licensing-inventory.md, dataset-inventory.json}` — new, metadata only.
+- `docs/research/anatomical-charts/{anatomical-charts-research.md, licensing-inventory.md, chart-manifest.json}` — new, metadata only.
+- `docs/development/{FEATURES.md, ARCHITECTURE.md}` — new Outcome Measures section and ADR-008 (Proposed).
+
+**Frontend changes:** None.
+**Backend changes:** As listed above.
+**Database / migrations:** None.
+**API / data contract:** Same URLs (`/api/outcome-measures/`, `/api/note-templates/`). Rows from other clinics are no longer returned; users whose role has no `outcome_measures` access get 403; a create for another clinic's patient returns 400.
+
+**Business rules & decisions:**
+- Owners are limited to their own clinic like every other role.
+- No questionnaire wording or scoring text is stored anywhere in the repo until a licence is confirmed.
+- The four existing `.webp` charts were created by the owner with Gemini (AI-generated); see the 2026-10-31 outcome-measures entry for the open licence question.
+
+**Tests executed:**
+- `backend/virt/bin/python manage.py test apps.records --noinput` (with `REDIS_URL=` empty) → Ran 15 tests, OK (the 8 new tests plus the existing case-document tests).
+- The 8 new tests run against the pre-change `views.py` and `serializers.py` → 7 failed, 1 passed, so they do exercise the fix.
+- `python manage.py check` → no issues. `python manage.py makemigrations --check --dry-run` → no changes detected.
+- Manual: none.
+
+**Known limitations / unresolved issues:**
+- `ClinicalNoteViewSet` and `AttachmentViewSet` in the same file have the same Owner bypass; left unchanged because they are in use and outside the approved chunk. Needs a decision.
+- `OutcomeMeasure.practitioner` is not checked against the clinic on create.
+- No frontend code calls the legacy outcome-measures endpoint, so nothing visible changes.
+- Licensing results come from public pages and are not legal advice; see the inventories.
+**Regression risks:** Any hidden consumer of the unscoped endpoints; the note-templates change affects Owners only. Re-check the note-template screens.
+
+---
+
 ## 2026-10-26 — Block Event "Schedule Conflict" only for the people being blocked
 
 **Status:** Implemented and tested in the browser; frontend only. No migration. Nothing committed.

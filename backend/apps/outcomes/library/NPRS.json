@@ -1,0 +1,40 @@
+{
+  "schema": "malasakit.outcome-definition/1",
+  "code": "NPRS",
+  "version": "1.0.0",
+  "name": "Numeric Pain Rating Scale",
+  "abbreviation": "NPRS",
+  "category": "pain",
+  "language": "en",
+  "description": "A single 0 to 10 rating of pain intensity.",
+  "licence": {
+    "category": "D",
+    "owner": null,
+    "notes": "Generic single-item scale; no copyright owner or licence statement was found. The prompt and end labels are neutral wording written for Malasakit, not text of a licensed questionnaire. Owner to confirm before wider use.",
+    "approved_for_production": true
+  },
+  "sources": [
+    { "citation": "SRALab Rehabilitation Measures Database, Numeric Pain Rating Scale", "url": "https://www.sralab.org/rehabilitation-measures/numeric-pain-rating-scale" }
+  ],
+  "items": [
+    {
+      "id": "pain_now",
+      "type": "nrs",
+      "prompt": "Rate your pain on the scale below.",
+      "required": true,
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "anchors": { "min": "No pain", "max": "Worst pain imaginable" }
+    }
+  ],
+  "scoring": {
+    "method": "sum",
+    "items": ["pain_now"],
+    "range": [0, 10],
+    "direction": "higher_worse",
+    "missing": { "max_missing": 0, "rule": "invalid" }
+  },
+  "interpretation": null,
+  "mcid": null
+}
