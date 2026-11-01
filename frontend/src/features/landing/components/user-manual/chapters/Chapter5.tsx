@@ -247,7 +247,7 @@ const Chapter5: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Regenerating QR Codes</h4>
           <p className="text-gray-700 font-body leading-relaxed mb-6">
-            If your QR code is ever compromised or you wish to invalidate old marketing materials, you can click the <strong>Regenerate</strong> button. This instantly creates a new booking URL and QR code, rendering all previous versions permanently inactive.
+            The <strong>Regenerate</strong> button asks you to confirm and then regenerates the branch's booking token. The booking address is built from your clinic's short name, so the booking URL and the QR code <strong>stay the same</strong> and codes you have already printed keep working. To stop patients from booking at a branch, switch off its <strong>Public Access</strong> toggle instead.
           </p>
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img

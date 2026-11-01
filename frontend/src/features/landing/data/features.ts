@@ -1,4 +1,15 @@
-import { Calendar, Users, FileText, BarChart3, Shield, Clock } from 'lucide-react';
+import {
+  QrCode,
+  CalendarClock,
+  Users,
+  ClipboardList,
+  Send,
+  BarChart3,
+  Package,
+  Building2,
+  Shield,
+  LifeBuoy,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface Feature {
@@ -10,39 +21,63 @@ export interface Feature {
 
 export const features: Feature[] = [
   {
+    id: 'online-booking',
+    icon: QrCode,
+    title: 'Online Booking & Patient Engagement',
+    description: 'Allow patients to book appointments online via QR code, select their preferred branch, service, and provider, and receive automated confirmations, reminders, cancellation notifications, and rebooking links.'
+  },
+  {
     id: 'appointments',
-    icon: Calendar,
+    icon: CalendarClock,
     title: 'Smart Scheduling',
-    description: 'Intelligent appointment management with automated reminders and real-time availability.'
+    description: 'Streamline clinic operations with drag-and-drop rescheduling, recurring schedules, automated appointment reminders, and real-time calendar management.'
   },
   {
     id: 'patients',
     icon: Users,
     title: 'Patient Management',
-    description: 'Comprehensive patient records with secure data storage and instant access.'
+    description: 'Centralize patient demographics, clinical history, referrals, treatment notes, supporting documents, and communication records in one secure and accessible location.'
   },
   {
     id: 'records',
-    icon: FileText,
-    title: 'Digital Records',
-    description: 'Paperless documentation with intake forms, prescriptions, and treatment notes.'
+    icon: ClipboardList,
+    title: 'Clinical Documentation & Templates',
+    description: 'Create unlimited customizable SOAP notes, consent forms, assessments, and documentation templates that automatically integrate into patient records and streamline clinical workflows.'
+  },
+  {
+    id: 'documents',
+    icon: Send,
+    title: 'Document Automation & Communication',
+    description: 'Generate invoices, medical certificates, referral letters, and customizable document templates with auto-populated patient information, then securely send them directly from the platform.'
   },
   {
     id: 'analytics',
     icon: BarChart3,
-    title: 'Analytics & Reports',
-    description: 'Actionable insights with custom reports and practice performance metrics.'
+    title: 'Business Analytics & Insights',
+    description: 'Make informed business decisions with real-time insights into revenue, practitioner utilization, practitioner performance, branch performance, occupancy rates, outstanding balances, and operational trends across custom reporting periods.'
+  },
+  {
+    id: 'inventory',
+    icon: Package,
+    title: 'Inventory & Package Management',
+    description: 'Track inventory levels, receive low-stock alerts, manage treatment packages, and monitor session utilization and remaining balances from one centralized platform.'
+  },
+  {
+    id: 'multi-branch',
+    icon: Building2,
+    title: 'Multi-Branch Management',
+    description: 'Manage multiple clinic locations from one platform with centralized scheduling, patient records, reporting, and operational oversight.'
   },
   {
     id: 'security',
     icon: Shield,
     title: 'Data Privacy & Security',
-    description: 'Built to support Philippine Data Privacy Act compliance with consent records, role-based access and encrypted clinical notes.'
+    description: 'Support patient confidentiality with Philippine Data Privacy Act requirements, HIPAA-aligned security safeguards, and encrypted clinical records.'
   },
   {
     id: 'support',
-    icon: Clock,
+    icon: LifeBuoy,
     title: 'Guided Onboarding & Support',
-    description: 'A guided setup, video guides and a written manual, plus email and in-app support during business hours.'
+    description: 'Get started confidently with guided onboarding, video tutorials, user manuals, implementation support, and responsive assistance when you need it.'
   }
 ];

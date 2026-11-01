@@ -6,52 +6,79 @@ import Screenshot15_2 from '@/assets/manual/Chapter 15/Screenshot 15.2.webp';
 import Screenshot15_3 from '@/assets/manual/Chapter 15/Screenshot 15.3.webp';
 import Screenshot15_4 from '@/assets/manual/Chapter 15/Screenshot 15.4.webp';
 import Screenshot15_5 from '@/assets/manual/Chapter 15/Screenshot 15.5.webp';
-import Screenshot15_6 from '@/assets/manual/Chapter 15/Screenshot 15.6.webp';
 
 const Chapter15: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how to navigate the operational center of Malasakit PMS to monitor appointments, explore different calendar perspectives, and track clinic occupancy.
+        Learn the two simple methods to register new clients in Malasakit PMS: directly from the Client Directory or quickly while booking an appointment on the Calendar.
       </p>
 
       {/* QUICK OVERVIEW FLOW */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-2">Calendar & Diary Overview</h3>
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Patient Registration Pathways</h3>
         <p className="text-gray-700 font-body mb-6">
-          Malasakit PMS provides multiple dedicated views to help clinic staff easily plan and coordinate patient care:
+          Depending on your immediate task, you can add new clients through two convenient workflows:
         </p>
 
-        <div className="bg-white p-4 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.08)]">
-          <p className="text-xs font-bold text-sky-800 uppercase tracking-wider mb-2">Core Calendar & Diary Perspectives</p>
-          <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700 font-mono">
-            <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">1. Full Calendar</span>
-            <span className="text-sky-400 font-bold">→</span>
-            <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">2. Day View</span>
-            <span className="text-sky-400 font-bold">→</span>
-            <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">3. Week View</span>
-            <span className="text-sky-400 font-bold">→</span>
-            <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">4. Month View</span>
-            <span className="text-sky-400 font-bold">→</span>
-            <span className="px-2.5 py-1 bg-purple-50 text-purple-800 rounded border border-purple-200 font-medium">5. Whole Diary Page</span>
-            <span className="text-sky-400 font-bold">→</span>
-            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-bold">6. Occupancy Statistics</span>
+        <div className="space-y-4">
+          {/* Flow 1 Summary */}
+          <div className="bg-white p-4 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.08)]">
+            <p className="text-xs font-bold text-sky-800 uppercase tracking-wider mb-2">1st Flow — From the Client Directory</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700 font-mono">
+              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Client Page</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Add Client Button</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-bold">Add Client Modal</span>
+            </div>
+          </div>
+
+          {/* Flow 2 Summary */}
+          <div className="bg-white p-4 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.08)]">
+            <p className="text-xs font-bold text-purple-800 uppercase tracking-wider mb-2">2nd Flow — Directly from the Calendar</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700 font-mono">
+              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Calendar</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Double-Click Blank Slot</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Type Name</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Create New Client</span>
+              <span className="text-sky-400 font-bold">→</span>
+              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-bold">Add New Client Modal</span>
+            </div>
           </div>
         </div>
       </div>
 
 
-      {/* SECTION 15.1 — Full Calendar Photo */}
+      {/* SECTION 15.1 — 1st Flow: Client Page > Add Client button > Add Client Modal */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        15.1 Full Calendar Interface
+        15.1 1st Flow: Registering via the Client Page
       </h3>
-      <p className="text-gray-700 font-body mb-6">A complete overview of the centralized scheduling workspace.</p>
+      <p className="text-gray-700 font-body mb-6">Standard registration workflow through the centralized client directory.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            The <strong>Calendar</strong> serves as the central operational hub for Malasakit PMS. From here, clinic owners, practitioners, and front desk personnel can oversee schedules across branches, track arrivals, book appointments, and review daily provider availability at a glance.
+            Use this flow when onboarding patients in advance, performing front-desk intake, or registering a client without immediately scheduling an appointment:
           </p>
+
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Navigate to Client Page:</strong> Click <strong>Clients</strong> in the main navigation sidebar to open the full client directory.
+            </li>
+            <li>
+              <strong>Click the Add Client Button:</strong> Locate and click the primary <strong>Add Client</strong> button at the top right of the table.
+            </li>
+            <li>
+              <strong>Complete the Add Client Modal:</strong> The <strong>Add Client Modal</strong> appears. Enter the required personal demographics (First Name, Last Name, Date of Birth, Gender), contact details (Phone, Email, Address), and optional emergency contact.
+            </li>
+            <li>
+              <strong>Save Client:</strong> Click <strong>Save Client</strong> to register the record. The new patient immediately appears in the directory table and is available across all clinic branches.
+            </li>
+          </ol>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
@@ -59,25 +86,10 @@ const Chapter15: React.FC = () => {
               width={1032}
               height={976}
               decoding="async"
-              alt="Screenshot 15.1: Full Calendar Photo"
+              alt="Screenshot 15.1: Client Page with Add Client button"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
-        </div>
-      </div>
-
-
-      {/* SECTION 15.2 — Day View */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        15.2 Day View
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Detailed single-day schedule broken down by practitioner columns.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            <strong>Day View</strong> organizes the daily schedule into 15-minute intervals across individual practitioner columns. This allows front desk staff to monitor simultaneous sessions, view active duty hours, identify open slots, and manage incoming patient traffic smoothly throughout the day.
-          </p>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
@@ -86,7 +98,7 @@ const Chapter15: React.FC = () => {
               height={976}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 15.2: Day View"
+              alt="Screenshot 15.2: Add Client Modal"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -94,21 +106,39 @@ const Chapter15: React.FC = () => {
       </div>
 
       <DocCallout type="info">
-        In Day View, active working hours are clearly shaded according to each practitioner's configured Duty Hours, making it easy to spot bookable periods.
+        Clients registered via the Client Page are instantly saved to the centralized database and can be accessed by authorized staff across all assigned clinic branches.
       </DocCallout>
 
 
-      {/* SECTION 15.3 — Week View */}
+      {/* SECTION 15.2 — 2nd Flow: Calendar > Double Click Blank Appointment > Type Name > Create New Client > Add New Client Modal */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        15.3 Week View
+        15.2 2nd Flow: Fast Registration from the Calendar
       </h3>
-      <p className="text-gray-700 font-body mb-6">Seven-day schedule to balance weekly workloads and spot booking gaps.</p>
+      <p className="text-gray-700 font-body mb-6">Register a first-time client directly while booking an appointment slot.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            <strong>Week View</strong> expands the schedule across seven consecutive days. It provides clinicians and managers with a comprehensive short-term outlook to check upcoming patient volume, prevent provider burnout, and balance appointment bookings across all operating days.
+            This quick-creation flow is designed for rapid phone bookings or walk-ins, allowing front desk staff to register a brand-new client without losing their calendar place:
           </p>
+
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Open Calendar:</strong> Navigate to the <strong>Calendar</strong> (or Diary) to view the daily or weekly schedule.
+            </li>
+            <li>
+              <strong>Double-Click Blank Appointment:</strong> Double-click directly on any open, blank time slot under the desired practitioner and time.
+            </li>
+            <li>
+              <strong>Type Name into Search:</strong> In the appointment booking pop-up, type the patient's name into the client search bar.
+            </li>
+            <li>
+              <strong>Click Create New Client:</strong> If no existing patient matches the entered name, click the <strong>+ Add New Client</strong> button in the dropdown.
+            </li>
+            <li>
+              <strong>Complete Add New Client Modal:</strong> The <strong>Add New Client Modal</strong> opens directly over the calendar. Enter the client's information and click <strong>Save</strong>. The newly created client is automatically linked to the pending appointment slot.
+            </li>
+          </ol>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
@@ -117,29 +147,10 @@ const Chapter15: React.FC = () => {
               height={976}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 15.3: Week View"
+              alt="Screenshot 15.3: Calendar Blank Appointment"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
-        </div>
-      </div>
-
-      <DocCallout type="tip">
-        Use Week View to spot open scheduling gaps before accepting new bookings, ensuring balanced provider occupancy throughout the week.
-      </DocCallout>
-
-
-      {/* SECTION 15.4 — Month View */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        15.4 Month View
-      </h3>
-      <p className="text-gray-700 font-body mb-6">High-level density calendar for long-term capacity planning.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            <strong>Month View</strong> displays a traditional calendar grid that visually represents appointment density for every day of the month. Clicking on any individual date immediately zooms into that day's detailed Day View for faster drill-down navigation.
-          </p>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
@@ -148,25 +159,10 @@ const Chapter15: React.FC = () => {
               height={976}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 15.4: Month View"
+              alt="Screenshot 15.4: Booking Pop-up Client Search"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
-        </div>
-      </div>
-
-
-      {/* SECTION 15.5 — Whole Diary Page */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        15.5 Whole Diary Page
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Chronological agenda view for sequential patient tracking.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            The <strong>Diary Page</strong> arranges the day's appointments in a clean, chronological list. This format allows practitioners and receptionists to sequentially review patient consultations, check arrival statuses, and review treatment services without relying on grid alignments.
-          </p>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
@@ -175,65 +171,15 @@ const Chapter15: React.FC = () => {
               height={976}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 15.5: Whole Diary Page"
+              alt="Screenshot 15.5: Add New Client Modal from Calendar"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
       </div>
 
-
-      {/* SECTION 15.6 — Occupancy Statistics */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        15.6 Occupancy Statistics
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Real-time practitioner utilization and patient visit analytics.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Located directly at the top of the schedule, the <strong>Occupancy Statistics</strong> bar provides key operational metrics:
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="p-4 rounded-xl border border-sky-100 bg-sky-50/50">
-              <h5 className="font-bold text-sky-900 text-sm mb-1">Occupancy %</h5>
-              <p className="text-xs text-sky-800 font-body">
-                Calculated strictly by comparing booked appointment duration against configured practitioner Duty Hours.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/50">
-              <h5 className="font-bold text-emerald-900 text-sm mb-1">Total Clients</h5>
-              <p className="text-xs text-emerald-800 font-body">
-                The total number of patients with scheduled appointments on the active date.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-purple-100 bg-purple-50/50">
-              <h5 className="font-bold text-purple-900 text-sm mb-1">New Clients</h5>
-              <p className="text-xs text-purple-800 font-body">
-                The number of first-time patients visiting your clinic today.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot15_6}
-              width={810}
-              height={52}
-              decoding="async"
-              loading="lazy"
-              alt="Screenshot 15.6: Occupancy Statistics"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
-          </div>
-        </div>
-      </div>
-
-      <DocCallout type="important">
-        Occupancy % is based on working duty hours rather than raw appointment count, providing an accurate measure of clinic resource utilization.
+      <DocCallout type="tip">
+        Registering clients directly from the calendar saves valuable time during phone inquiries because the appointment time and practitioner remain held while you record the patient's details.
       </DocCallout>
 
 
@@ -242,15 +188,11 @@ const Chapter15: React.FC = () => {
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you explored the primary calendar and diary features of Malasakit PMS:
+        In this chapter, you learned the two standard methods to register clients in Malasakit PMS:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li><strong>Full Calendar Photo:</strong> Central overview workspace for managing clinic appointments across branches.</li>
-        <li><strong>Day View:</strong> Single-day 15-minute grid divided by practitioner columns for active daily operations.</li>
-        <li><strong>Week View:</strong> Seven-day schedule overview to monitor capacity and balance weekly workloads.</li>
-        <li><strong>Month View:</strong> Monthly calendar grid to inspect overall density and forecast future booking capacity.</li>
-        <li><strong>Whole Diary Page:</strong> Chronological agenda list for sequential consultation tracking.</li>
-        <li><strong>Occupancy Statistics:</strong> Real-time utilization metrics calculated from practitioner duty hours.</li>
+        <li><strong>1st Flow (Client Page):</strong> Navigate to <strong>Clients</strong> → click <strong>Add Client</strong> → complete and save the <strong>Add Client Modal</strong>.</li>
+        <li><strong>2nd Flow (Calendar):</strong> Open <strong>Calendar</strong> → double-click a blank appointment slot → type the patient's name → click <strong>+ Add New Client</strong> → complete the <strong>Add New Client Modal</strong> to register and book in one seamless step.</li>
       </ul>
     </>
   );

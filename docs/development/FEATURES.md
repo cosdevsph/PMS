@@ -48,7 +48,7 @@ No patient data or secrets in examples.
 | Subscriptions & pricing | `setup` (Subscription page, upgrade modal), `landing` (pricing, FAQ) | `subscriptions` | Documented below (2026-10-21); **migrations 0004/0005 not yet applied to the dev database** |
 | Integrations & gateway | — | `integrations`, `gateway` | Not yet documented |
 | Support | `support` | `support` | Not yet documented |
-| Landing page | `landing` | — | Not yet documented |
+| Landing page | `landing` | — | Partly documented: the home page copy (Hero, About, Features, Why Clinics Choose Malasakit), 2026-11-01 — [brief and claim check](features/landing-page-revision.md); the User Manual, 35 chapters, 2026-11-01 — [deep dive](features/user-manual.md) |
 | Private Package Sessions | `patients` (sidebar page), `appointments` (assignment card), `billing` (invoice screen) | `patients` (`package_*`), `billing`, `appointments` | Implemented and tested; **migrations not yet applied to the dev database**; transfers not built — [spec](features/private-package-sessions.md) |
 
 A "—" means no folder with a matching name was found. The feature may still exist under a different name; confirm when documenting it.
@@ -160,6 +160,25 @@ A "—" means no folder with a matching name was found. The feature may still ex
 
 **Key endpoints:** `GET /api/subscription/status/`, `GET /api/subscription/plans/`, `POST /api/subscription/cancel/`, `POST /api/subscription/cancel/withdraw/`. Management command: `backfill_subscription_terms [--apply]` (dry run by default).
 **Known issues:** No renewal automation (each payment is a one-off checkout). Expiry and cancellation are enforced when read, not by a scheduler. Chapter 25 screenshots in the user manual are outdated. The Contact page form does not send anything. Superseded (2026-10-21): the "1 seat per assigned branch" rule and the 2,000/2,500/3,000 add-on, see the CHANGELOG entry.
+
+## Landing page
+
+**Code:** `frontend/src/features/landing/` (`LandingPage.tsx`, `components/Hero.tsx`, `About.tsx`, `Features.tsx`, `WhyChoose.tsx`, `Plans.tsx`, `FAQ.tsx`; copy in `data/features.ts`, `data/whyChoose.ts`, `data/faqs.ts`, `data/pricing.ts`, `data/support.ts`); the AI assistant's instructions in `backend/apps/common/services/gemini_service.py`
+**Last verified:** 2026-11-01 (home page: exact text, rotating words, accordion by mouse and keyboard, 375 px width, reduced motion; user manual: all 35 chapters opened in a browser)
+**Deep dive:** [features/landing-page-revision.md](features/landing-page-revision.md) (owner's brief, claim check, open points)
+
+**What it does:** The public home page, in this order: Navbar, Hero, About, Features, Why Clinics Choose Malasakit, Plans, FAQ, Footer, plus the AI chat button.
+
+**Business rules:**
+- Hero: "Smarter" then a rotating word (Health, Care, Clinics, Workflow), the subtext "Clinic management software built for Philippine healthcare practices.", and three buttons (Start Trial, Video Guides, User Manual). With reduced motion the word does not rotate. — `Hero.tsx`
+- About: "Built by Healthcare Professionals", three value cards and a three-paragraph founding story (written as "Malasakit Systems"). No usage statistics: the "10,000 practitioners" claim was removed (see also the earlier "statistics removed" entry for the footer About page). — `About.tsx`
+- Features: ten cards in `data/features.ts`; the order there is the order on the page. — `Features.tsx`
+- Why Clinics Choose Malasakit: eleven items in `data/whyChoose.ts`, one open at a time. — `WhyChoose.tsx`
+- Copy rules still in force (2026-10-21/22, see "Subscriptions & pricing"): say "HIPAA-aligned", never "compliant" or certified; support is email and in-app on business hours; no 24/7, phone or account-manager claims. The 2026-11-01 owner copy has two lines that sit at the edge of these rules: "responsive assistance when you need it" and "receive low-stock alerts". They were published as the owner wrote them; see the open points in the deep dive.
+- The AI assistant's feature list and this copy are separate texts. Change both together.
+- **User Manual** (`/user-manual`): 35 chapters in 12 parts. Chapter ids are permanent URL keys and chapter numbers are display-only (ADR-009). Screenshots are demo-data WebP files under `assets/manual/Chapter N/`, never real clinic or patient data. Each new chapter describes only what the code does; where a client request has no matching feature the chapter says so (for example no low-stock reminders, no single audit log, only Occupancy has a branch filter). Full chapter map, conventions, how screenshots are made and the list of product gaps: [features/user-manual.md](features/user-manual.md).
+
+**Known issues:** Manual chapter 29 still describes the older case-package billing fields; about 127 older manual screenshots were not audited. The Navbar has no link to the new section. The footer About page (`footer-pages/Company/About.tsx`) has its own founding story. The Features bottom line still says "practice".
 
 ## Roles & permissions (Owner / Branch Manager)
 

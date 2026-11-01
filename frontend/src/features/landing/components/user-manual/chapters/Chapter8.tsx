@@ -1,157 +1,106 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
+import Diagram8_1 from '@/assets/manual/Chapter 8/Diagram 8.1.webp';
 import Screenshot8_1 from '@/assets/manual/Chapter 8/Screenshot 8.1.webp';
 import Screenshot8_2 from '@/assets/manual/Chapter 8/Screenshot 8.2.webp';
 import Screenshot8_3 from '@/assets/manual/Chapter 8/Screenshot 8.3.webp';
 import Screenshot8_4 from '@/assets/manual/Chapter 8/Screenshot 8.4.webp';
+import Screenshot8_5 from '@/assets/manual/Chapter 8/Screenshot 8.5.webp';
+import Screenshot8_6 from '@/assets/manual/Chapter 8/Screenshot 8.6.webp';
 
 const Chapter8: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how to navigate to the Staff Management module and create new staff members and practitioners with assigned roles and clinic branches.
+        Learn how to create, manage, and assign legal and operational consent forms for your clinic branches.
       </p>
 
-      {/* QUICK OVERVIEW FLOW */}
+      {/* IMPORTANT CONCEPT — Branch-Based Clinic Consent Forms */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-2">Staff Creation Quick Guide</h3>
-        <p className="text-gray-700 font-body mb-6">
-          Follow this streamlined path to access user management and register a new team member into Malasakit PMS:
+        <h3 className="text-xl font-bold text-sky-900 mb-4">Understanding Branch-Based Consent</h3>
+        
+        <p className="text-gray-700 font-body mb-4">
+          Because every clinic branch may offer different services, employ different practitioners, and face distinct legal or operational requirements, Malasakit introduces a <strong>Branch-Based Consent Architecture</strong>. 
         </p>
 
-        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Workflow Summary</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
-            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Setup Page</span>
-            <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Staff Card</span>
-            <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Staff Page</span>
-            <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">New Staff Member</span>
-            <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">Created Successfully</span>
-          </div>
+        <p className="text-gray-700 font-body mb-6">
+          This means that every clinic branch owns and maintains its own independent consent agreement. Patients automatically receive and sign the exact consent form associated with the specific branch where their appointment is booked.
+        </p>
+
+        <div className="mt-6 w-full flex justify-center bg-white border border-sky-200 rounded-xl overflow-hidden p-2 shadow-sm">
+          <img
+            src={Diagram8_1}
+            width={1536}
+            height={1024}
+            decoding="async"
+            alt="Diagram 8.1: Branch → Consent Relationship"
+            className="w-full max-h-[500px] object-contain rounded-lg"
+          />
         </div>
       </div>
 
 
-      {/* SECTION 8.1 — Accessing the Staff Page */}
+      {/* SECTION 8.1 — Creating/Editing a Clinic Consent Form */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        8.1 Navigating to the Staff Page
+        8.1 Creating and Editing a Consent Form
       </h3>
-      <p className="text-gray-700 font-body mb-6">Access the centralized staff and practitioner directory from the Setup hub.</p>
+      <p className="text-gray-700 font-body mb-6">Learn how to write the legal or operational agreement for a branch.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <ol className="list-decimal pl-6 space-y-4 text-gray-700 font-body leading-relaxed mb-6">
-            <li>
-              <strong>Go to the Setup Page:</strong> In the main navigation sidebar, click on <strong>Setup</strong>. This opens the central configuration hub.
-            </li>
-            <li>
-              <strong>Locate the Staff / Users Card:</strong> Find the <strong>Users</strong> card (or Staff card) in the setup options grid.
-            </li>
-            <li>
-              <strong>Click Staff:</strong> Select the <strong>Staff</strong> option under the card.
-            </li>
-            <li>
-              <strong>Staff Page is Displayed:</strong> The system opens the <strong>Staff Management</strong> directory, listing all existing staff members, their roles, active branches, and status toggles.
-            </li>
-          </ol>
-
+          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Step 1: Open Clinic Consent Forms</h4>
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            Navigate to the <strong>Clinic Consent Forms</strong> page. This page lists all branches that you have access to, along with their current consent form status, creator, and last modified date. To begin, click the <strong>Edit</strong> button next to a branch.
+          </p>
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot8_1}
-              width={1031}
-              height={976}
-              decoding="async"
-              alt="Screenshot 8.1: Setup Page"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
-          </div>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot8_2}
-              width={1032}
-              height={976}
+              width={3420}
+              height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 8.2: Staff Management Page"
+              alt="Screenshot 8.1: Clinic Consent Forms page"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
-      </div>
 
-
-      {/* SECTION 8.2 — Creating a New Staff Member */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        8.2 Creating a New Staff Member
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Open the registration modal and configure employee information, roles, and branch access.</p>
-
-      <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Step 1: Click "New Staff Member"</h4>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            At the top right of the Staff page, click the blue <strong>New Staff Member</strong> button. The staff creation modal will open.
+          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Step 2: Enter Consent Content</h4>
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            In the Configure Clinic Consent Form modal, you will find two primary text fields to define your agreement:
           </p>
-
-          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Step 2: Enter Staff Details</h4>
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Complete the form fields across the three main sections:
-          </p>
-
-          {/* Form Breakdown Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            {/* Card 1: Personal Information */}
-            <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
-              <h5 className="font-bold text-gray-900 mb-2 border-b border-gray-200 pb-2">1. Personal Information</h5>
-              <ul className="text-sm space-y-2 text-gray-700 font-body">
-                <li><strong>Title:</strong> Dr., Mr., Ms., Mrs., or Prof.</li>
-                <li><strong>Full Name:</strong> First Name and Last Name (required), Middle Name, and Nickname.</li>
-                <li><strong>Gender:</strong> Select Male, Female, or Other.</li>
-                <li><strong>Date of Birth:</strong> Staff member's birth date for identification records.</li>
-              </ul>
-            </div>
-
-            {/* Card 2: Professional Information */}
-            <div className="p-5 rounded-xl border border-sky-200 bg-sky-50/50">
-              <h5 className="font-bold text-sky-900 mb-2 border-b border-sky-200 pb-2">2. Professional & Roles</h5>
-              <ul className="text-sm space-y-2 text-gray-700 font-body">
-                <li><strong>Clinical Role:</strong> Select one or more roles (Owner, Branch Manager, Practitioner, Staff / Front Desk, Finance, Read-Only).</li>
-                <li><strong>Discipline:</strong> Clinical discipline (e.g., Occupational Therapy, Physical Therapy, Psychology) for practitioners.</li>
-                <li><strong>Practitioner Schedule:</strong> Configure duty days, working shift hours, and lunch breaks per branch.</li>
-                <li><strong>Branch Assignment:</strong> Assign the user to their authorized clinic branch or branches.</li>
-              </ul>
-            </div>
-
-            {/* Card 3: Contact Information */}
-            <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
-              <h5 className="font-bold text-gray-900 mb-2 border-b border-gray-200 pb-2">3. Contact Information</h5>
-              <ul className="text-sm space-y-2 text-gray-700 font-body">
-                <li><strong>Email Address:</strong> Required for login. An automated check detects if an existing clinician account can be linked to additional branches.</li>
-                <li><strong>Phone Number:</strong> Official mobile number for system alerts and communication.</li>
-                <li><strong>Address:</strong> Residential or clinic location address (optional).</li>
-              </ul>
-            </div>
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li><strong>Header Content (Optional):</strong> A brief introductory sentence or subtitle, such as "Acknowledgment of Policies and Procedures".</li>
+            <li><strong>Body Content (Required):</strong> The main terms and conditions. This is where you outline privacy policies, operational rules, and medical liabilities.</li>
+          </ul>
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+            <img
+              src={Screenshot8_2}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
+              alt="Screenshot 8.2: Consent Editor"
+              className="w-full max-h-[500px] object-contain rounded-lg"
+            />
           </div>
+        </div>
 
-          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Step 3: Save and Submit</h4>
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Step 3: Live Preview & Save</h4>
           <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Review the entered details and click the <strong>Create Staff Member</strong> button (or <strong>Assign to Selected Branch</strong> if linking an existing practitioner).
+            Before saving, click the <strong>Live Preview</strong> button. This opens a realistic mockup of exactly what the patient will see on their mobile device or computer before confirming their booking. Once satisfied, click <strong>Save Configuration</strong>.
           </p>
-
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot8_3}
-              width={1032}
-              height={976}
+              width={3420}
+              height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 8.3: Create Staff Member Modal"
+              alt="Screenshot 8.3: Live Preview Modal"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -159,45 +108,95 @@ const Chapter8: React.FC = () => {
       </div>
 
       <DocCallout type="tip">
-        Always enter the staff member's official work email address. Malasakit uses this address to deliver temporary login credentials and automated password setup instructions.
+        Use simple and understandable language so patients can easily understand the consent they are signing. Avoid overly complex legal jargon when possible.
       </DocCallout>
 
 
-      {/* SECTION 8.3 — Successful Creation */}
+      {/* SECTION 8.2 — Branch Assignment & Access Control */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        8.3 Successful Account Creation
+        8.2 Branch Assignment & Access Control
       </h3>
-      <p className="text-gray-700 font-body mb-6">What happens after submitting the form.</p>
+      <p className="text-gray-700 font-body mb-6">Understand how different roles configure consent forms.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Once saved, the system completes the following automated actions:
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            When configuring a consent form, the system enforces Role-Based Access Control (RBAC) to ensure staff can only modify forms for branches they are assigned to.
           </p>
-
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li><strong>Instant Directory Update:</strong> The new staff member immediately appears in the <strong>Staff</strong> table with their assigned role badges and active branch tags.</li>
-            <li><strong>Automated Welcome Email:</strong> An email containing system login credentials and a secure temporary password is dispatched to the user.</li>
-            <li><strong>Mandatory First-Time Password Reset:</strong> Upon their first login, the user is required to set a new password before accessing clinic data.</li>
-            <li><strong>Immediate RBAC Scoping:</strong> Role permissions and branch boundaries take effect instantly on both the user interface and backend API.</li>
-          </ul>
-
+          
+          <h5 className="font-bold text-gray-900 mb-2 mt-6">For Clinic Owners & Branch Managers (Multiple Branches)</h5>
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Staff with access to multiple branches will see an <strong>Assign To</strong> dropdown menu at the top of the modal. They can select any branch under their jurisdiction to configure its specific consent form.
+          </p>
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot8_4}
-              width={1032}
-              height={976}
+              width={1338}
+              height={316}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 8.4: Staff Table with New Member"
+              alt="Screenshot 8.4: Branch Manager (Multiple Branches) - Branch selection dropdown"
+              className="w-full max-h-[500px] object-contain rounded-lg"
+            />
+          </div>
+
+          <h5 className="font-bold text-gray-900 mb-2 mt-8">For Branch Managers with a Single Branch</h5>
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            If a manager is only assigned to a single location, the system automatically detects their branch. The dropdown menu is locked and read-only, preventing them from modifying agreements for other branches.
+          </p>
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+            <img
+              src={Screenshot8_5}
+              width={1448}
+              height={242}
+              decoding="async"
+              loading="lazy"
+              alt="Screenshot 8.5: Branch Manager (Single Branch) - Locked auto-selected branch"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
       </div>
 
-      <DocCallout type="info">
-        If you ever need to update a staff member's roles, contact details, or assigned clinic branches, simply click their row in the Staff directory to open the edit modal.
+      <DocCallout type="important">
+        Review all legal and operational wording with a professional before publishing updates to a consent form, as these act as binding agreements.
+      </DocCallout>
+
+
+      {/* SECTION 8.3 — Activating and Deactivating Consent Forms */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        8.3 Activating and Deactivating Consent Forms
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Control when a consent form is presented to patients.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Require Consent Signature</h4>
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            Inside the consent configuration modal, there is a toggle switch labeled <strong>Require Consent Signature</strong>.
+          </p>
+          
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li><strong>Active (Enabled):</strong> New patients booking online at this branch will be required to read and electronically sign this document before their appointment is confirmed.</li>
+            <li><strong>Inactive (Disabled):</strong> The consent form is turned off. New patients will bypass the consent step during registration. However, any previously signed historical consent records remain securely stored in the system.</li>
+          </ul>
+          
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+            <img
+              src={Screenshot8_6}
+              width={1378}
+              height={470}
+              decoding="async"
+              loading="lazy"
+              alt="Screenshot 8.6: Require Consent Signature Toggle"
+              className="w-full max-h-[500px] object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      </div>
+
+      <DocCallout type="warning">
+        Deactivating a consent form removes the legal safety net for new bookings at that branch. Ensure this is intentional before saving the configuration.
       </DocCallout>
 
       {/* CHAPTER SUMMARY */}
@@ -205,13 +204,14 @@ const Chapter8: React.FC = () => {
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned the simplified process for registering team members in Malasakit PMS:
+        In this chapter, you learned how to manage legal and operational agreements across different clinic locations. You should now know how to:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li>Navigating from <strong>Setup</strong> &rarr; <strong>Staff Card</strong> &rarr; <strong>Staff Page</strong>.</li>
-        <li>Launching the creation modal via the <strong>New Staff Member</strong> button.</li>
-        <li>Entering <strong>Personal Information</strong>, <strong>Professional Roles & Schedules</strong>, and <strong>Contact Details</strong>.</li>
-        <li>Successfully saving the account and verifying immediate directory and email dispatch.</li>
+        <li>Understand the independent branch-based consent architecture.</li>
+        <li>Locate and edit a specific branch's consent form.</li>
+        <li>Write Header and Body content for the agreement.</li>
+        <li>Use the Live Preview tool to verify patient experience.</li>
+        <li>Activate or deactivate the signature requirement.</li>
       </ul>
     </>
   );

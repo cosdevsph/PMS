@@ -70,7 +70,7 @@ export const Hero: React.FC = () => {
           <div className="text-center lg:text-left flex flex-col items-center lg:items-start">
             <h1 className="text-[length:clamp(2.5rem,14vw,6rem)] sm:text-8xl md:text-[7rem] lg:text-7xl xl:text-8xl 2xl:text-[7rem] text-white leading-[1.08] tracking-tight font-display">
               {/* Stable heading text for screen readers and crawlers; the rotating visual is aria-hidden */}
-              <span className="sr-only">Smarter care, clinics, workflows, and health</span>
+              <span className="sr-only">Smarter health, care, clinics, and workflow</span>
               <span aria-hidden="true" className="block">
                 <BlurText
                   text="Smarter"
@@ -81,7 +81,7 @@ export const Hero: React.FC = () => {
                 {/* Own line, so width changes of the rotating word never reflow "Smarter" */}
                 <span className="flex justify-center lg:justify-start mt-2 sm:mt-3 xl:mt-4">
                   <RotatingText
-                    texts={['Care', 'Clinics', 'Workflows', 'Health']}
+                    texts={['Health', 'Care', 'Clinics', 'Workflow']}
                     effect="slide"
                     direction="up"
                     highlight
@@ -101,6 +101,10 @@ export const Hero: React.FC = () => {
                 </span>
               </span>
             </h1>
+
+            <p className="mt-6 sm:mt-7 max-w-2xl text-balance text-lg sm:text-xl leading-relaxed text-white/90 font-body [text-shadow:0_1px_12px_rgba(10,40,90,0.35)]">
+              Clinic management software built for Philippine healthcare practices.
+            </p>
 
             {/* Call-to-Actions: one group of three equal buttons (same size, shape, alignment and spacing) */}
             <div className="mt-8 sm:mt-10 w-full max-w-xl">

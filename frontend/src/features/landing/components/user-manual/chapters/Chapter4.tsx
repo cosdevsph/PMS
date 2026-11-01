@@ -191,7 +191,7 @@ const Chapter4: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-4">Email Notifications</h4>
           <p className="text-gray-700 font-body leading-relaxed mb-6">
-            At the bottom of the Clinic Profile section is a toggle for <strong>Email Notifications</strong>. Leaving this enabled ensures the system will send automated appointment reminders, booking confirmations, and welcome messages to your patients. SMS Notifications are currently under development.
+            At the bottom of the Clinic Profile section is a toggle for <strong>Email Notifications</strong>, followed by a toggle for <strong>SMS Notifications</strong>. Leaving <strong>Email Notifications</strong> enabled ensures the system will send automated appointment reminders, booking confirmations, and welcome messages to your patients. Turn on <strong>SMS Notifications</strong> as well to send SMS reminders through your clinic's own Android phone; the phone is set up in the SMS Gateway Setup chapter, and the Automated SMS &amp; Notifications chapter explains what is sent.
           </p>
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img

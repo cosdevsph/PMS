@@ -6,77 +6,69 @@ import Screenshot13_2 from '@/assets/manual/Chapter 13/Screenshot 13.2.webp';
 import Screenshot13_3 from '@/assets/manual/Chapter 13/Screenshot 13.3.webp';
 import Screenshot13_4 from '@/assets/manual/Chapter 13/Screenshot 13.4.webp';
 import Screenshot13_5 from '@/assets/manual/Chapter 13/Screenshot 13.5.webp';
+import Screenshot13_6 from '@/assets/manual/Chapter 13/Screenshot 13.6.webp';
 
 const Chapter13: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn the two simple methods to register new clients in Malasakit PMS: directly from the Client Directory or quickly while booking an appointment on the Calendar.
+        Learn how clinic Owners and Branch Managers configure practitioner duty hours, view schedules across different calendar layouts, and monitor clinic occupancy calculations.
       </p>
 
       {/* QUICK OVERVIEW FLOW */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-2">Patient Registration Pathways</h3>
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Duty Hours & Calendar Overview</h3>
         <p className="text-gray-700 font-body mb-6">
-          Depending on your immediate task, you can add new clients through two convenient workflows:
+          Configuring duty hours ensures appointment calendars accurately reflect when practitioners are available and powers automated occupancy reporting:
         </p>
 
-        <div className="space-y-4">
-          {/* Flow 1 Summary */}
-          <div className="bg-white p-4 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.08)]">
-            <p className="text-xs font-bold text-sky-800 uppercase tracking-wider mb-2">1st Flow — From the Client Directory</p>
-            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700 font-mono">
-              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Client Page</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Add Client Button</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-bold">Add Client Modal</span>
-            </div>
-          </div>
-
-          {/* Flow 2 Summary */}
-          <div className="bg-white p-4 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.08)]">
-            <p className="text-xs font-bold text-purple-800 uppercase tracking-wider mb-2">2nd Flow — Directly from the Calendar</p>
-            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700 font-mono">
-              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Calendar</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Double-Click Blank Slot</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Type Name</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Create New Client</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-bold">Add New Client Modal</span>
-            </div>
+        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Workflow Sequence</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Setup → Staff</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Staff Modal</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Configure Duty Hours</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Diary / Calendar Views</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">Live Occupancy Stats</span>
           </div>
         </div>
       </div>
 
 
-      {/* SECTION 13.1 — 1st Flow: Client Page > Add Client button > Add Client Modal */}
+      {/* SECTION 13.1 — Setting Duty Hours in CreateStaffAccountModal */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        13.1 1st Flow: Registering via the Client Page
+        13.1 Configuring Practitioner Duty Hours in Staff Modal
       </h3>
-      <p className="text-gray-700 font-body mb-6">Standard registration workflow through the centralized client directory.</p>
+      <p className="text-gray-700 font-body mb-6">Set working days, daily shifts, and break intervals for clinic practitioners.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Use this flow when onboarding patients in advance, performing front-desk intake, or registering a client without immediately scheduling an appointment:
+            Clinic Owners and Branch Managers configure practitioner working schedules directly inside the <strong>Create / Edit Staff Account Modal</strong> (<code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 text-sky-700 font-mono">CreateStaffAccountModal</code>):
           </p>
 
           <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
             <li>
-              <strong>Navigate to Client Page:</strong> Click <strong>Clients</strong> in the main navigation sidebar to open the full client directory.
+              <strong>Open Staff Member Form:</strong> Navigate to <strong>Setup → Staff</strong>, then click <strong>New Staff Member</strong> or click <strong>Edit</strong> on an existing practitioner record.
             </li>
             <li>
-              <strong>Click the Add Client Button:</strong> Locate and click the primary <strong>Add Client</strong> button at the top right of the table.
+              <strong>Assign Role:</strong> Ensure the staff member has the <strong>Practitioner</strong> role enabled to display the duty hours configuration section.
             </li>
             <li>
-              <strong>Complete the Add Client Modal:</strong> The <strong>Add Client Modal</strong> appears. Enter the required personal demographics (First Name, Last Name, Date of Birth, Gender), contact details (Phone, Email, Address), and optional emergency contact.
+              <strong>Select Working Days:</strong> Toggle the practitioner's active duty days (e.g., Monday through Friday). Unselected days will be treated as non-working days.
             </li>
             <li>
-              <strong>Save Client:</strong> Click <strong>Save Client</strong> to register the record. The new patient immediately appears in the directory table and is available across all clinic branches.
+              <strong>Configure Shift Blocks & Branches:</strong> Set the shift <strong>Start Time</strong> and <strong>End Time</strong> for each active day, and assign the specific clinic branch for that shift. Additional working periods can be added per day if needed.
+            </li>
+            <li>
+              <strong>Set Lunch Break:</strong> Specify the <strong>Lunch Start</strong> and <strong>Lunch End</strong> times. The system automatically reserves this time window so appointments are not booked during lunch.
+            </li>
+            <li>
+              <strong>Save Schedule:</strong> Click <strong>Save Changes</strong> or <strong>Create Staff</strong> to apply the duty hours across the clinic calendars.
             </li>
           </ol>
 
@@ -86,9 +78,60 @@ const Chapter13: React.FC = () => {
               width={1032}
               height={976}
               decoding="async"
-              alt="Screenshot 13.1: Client Page with Add Client button"
+              alt="Screenshot 13.1: Setting Duty Hours in CreateStaffAccountModal"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
+          </div>
+        </div>
+      </div>
+
+      <DocCallout type="info">
+        Only clinic Owners and Branch Managers have access to configure or modify practitioner duty schedules.
+      </DocCallout>
+
+
+      {/* SECTION 13.2 — Diary Week View: Duty Hours vs Non-Duty Hours */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        13.2 Diary Week View: Duty Hours vs. Non-Duty Hours
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Understand how practitioner availability and off-duty intervals appear on the weekly schedule.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            The Diary Week View visually translates the configured duty hours into clear scheduling intervals:
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="p-5 rounded-xl border border-emerald-200 bg-emerald-50/50">
+              <h5 className="font-bold text-emerald-900 mb-2 border-b border-emerald-200 pb-2 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                Duty Hours (Available)
+              </h5>
+              <p className="text-xs text-emerald-800 font-body mb-3">
+                Open bookable intervals where the practitioner is active on duty:
+              </p>
+              <ul className="text-sm space-y-1.5 text-gray-700 font-body">
+                <li>Displayed with a clear, open background.</li>
+                <li>Ready for one-click appointment slotting.</li>
+                <li>Counts directly toward total available minutes for daily occupancy.</li>
+              </ul>
+            </div>
+
+            <div className="p-5 rounded-xl border border-purple-200 bg-purple-50/50">
+              <h5 className="font-bold text-purple-900 mb-2 border-b border-purple-200 pb-2 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                Non-Duty Hours & Days (Unavailable)
+              </h5>
+              <p className="text-xs text-purple-800 font-body mb-3">
+                Off-duty times, unscheduled days, and configured break intervals:
+              </p>
+              <ul className="text-sm space-y-1.5 text-gray-700 font-body">
+                <li>Clearly distinguished with a shaded / tinted background.</li>
+                <li>Displays a "Non-duty" indicator to prevent accidental bookings.</li>
+                <li>Staff can still apply administrative overrides if an urgent appointment is required.</li>
+              </ul>
+            </div>
           </div>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
@@ -98,80 +141,7 @@ const Chapter13: React.FC = () => {
               height={976}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 13.2: Add Client Modal"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
-          </div>
-        </div>
-      </div>
-
-      <DocCallout type="info">
-        Clients registered via the Client Page are instantly saved to the centralized database and can be accessed by authorized staff across all assigned clinic branches.
-      </DocCallout>
-
-
-      {/* SECTION 13.2 — 2nd Flow: Calendar > Double Click Blank Appointment > Type Name > Create New Client > Add New Client Modal */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        13.2 2nd Flow: Fast Registration from the Calendar
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Register a first-time client directly while booking an appointment slot.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            This quick-creation flow is designed for rapid phone bookings or walk-ins, allowing front desk staff to register a brand-new client without losing their calendar place:
-          </p>
-
-          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
-            <li>
-              <strong>Open Calendar:</strong> Navigate to the <strong>Calendar</strong> (or Diary) to view the daily or weekly schedule.
-            </li>
-            <li>
-              <strong>Double-Click Blank Appointment:</strong> Double-click directly on any open, blank time slot under the desired practitioner and time.
-            </li>
-            <li>
-              <strong>Type Name into Search:</strong> In the appointment booking pop-up, type the patient's name into the client search bar.
-            </li>
-            <li>
-              <strong>Click Create New Client:</strong> If no existing patient matches the entered name, click the <strong>+ Add New Client</strong> button in the dropdown.
-            </li>
-            <li>
-              <strong>Complete Add New Client Modal:</strong> The <strong>Add New Client Modal</strong> opens directly over the calendar. Enter the client's information and click <strong>Save</strong>. The newly created client is automatically linked to the pending appointment slot.
-            </li>
-          </ol>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot13_3}
-              width={1032}
-              height={976}
-              decoding="async"
-              loading="lazy"
-              alt="Screenshot 13.3: Calendar Blank Appointment"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
-          </div>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot13_4}
-              width={1032}
-              height={976}
-              decoding="async"
-              loading="lazy"
-              alt="Screenshot 13.4: Booking Pop-up Client Search"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
-          </div>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot13_5}
-              width={1032}
-              height={976}
-              decoding="async"
-              loading="lazy"
-              alt="Screenshot 13.5: Add New Client Modal from Calendar"
+              alt="Screenshot 13.2: Diary Week View Showing Duty Hours and Non-Duty Hours"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -179,7 +149,124 @@ const Chapter13: React.FC = () => {
       </div>
 
       <DocCallout type="tip">
-        Registering clients directly from the calendar saves valuable time during phone inquiries because the appointment time and practitioner remain held while you record the patient's details.
+        Shaded non-duty slots help Front Desk staff instantly identify when a clinician is off-duty without needing to memorize individual staff timetables.
+      </DocCallout>
+
+
+      {/* SECTION 13.3 — Different Calendar Views */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        13.3 Different Calendar Views
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Switch between Day, Week, and Month perspectives to fit your daily workflow.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            The calendar toolbar provides three distinct view modes designed for different operational needs:
+          </p>
+
+          <div className="space-y-8">
+            {/* Day View */}
+            <div className="border-t border-gray-100 pt-6 first:border-0 first:pt-0">
+              <h4 className="text-lg font-bold text-gray-900 mb-2">1. Day View</h4>
+              <p className="text-gray-700 font-body mb-4">
+                Provides an hour-by-hour operational breakdown of a single day across practitioners. Best for Front Desk staff managing patient check-ins, walk-ins, and daily clinical flow.
+              </p>
+              <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+                <img
+                  src={Screenshot13_3}
+                  width={1032}
+                  height={976}
+                  decoding="async"
+                  loading="lazy"
+                  alt="Screenshot 13.3: Calendar Day View"
+                  className="w-full max-h-[500px] object-contain rounded-lg"
+                />
+              </div>
+            </div>
+
+            {/* Week View */}
+            <div className="border-t border-gray-100 pt-6">
+              <h4 className="text-lg font-bold text-gray-900 mb-2">2. Week View</h4>
+              <p className="text-gray-700 font-body mb-4">
+                Displays a 7-day schedule breakdown for a practitioner or branch. Ideal for reviewing weekly shift coverage, spotting open appointment slots, and balancing booking distribution.
+              </p>
+              <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+                <img
+                  src={Screenshot13_4}
+                  width={1032}
+                  height={976}
+                  decoding="async"
+                  loading="lazy"
+                  alt="Screenshot 13.4: Calendar Week View"
+                  className="w-full max-h-[500px] object-contain rounded-lg"
+                />
+              </div>
+            </div>
+
+            {/* Month View */}
+            <div className="border-t border-gray-100 pt-6">
+              <h4 className="text-lg font-bold text-gray-900 mb-2">3. Month View</h4>
+              <p className="text-gray-700 font-body mb-4">
+                Offers a high-level monthly calendar grid showing appointment volumes, holidays, and overall clinic booking density at a glance.
+              </p>
+              <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+                <img
+                  src={Screenshot13_5}
+                  width={1032}
+                  height={976}
+                  decoding="async"
+                  loading="lazy"
+                  alt="Screenshot 13.5: Calendar Month View"
+                  className="w-full max-h-[500px] object-contain rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      {/* SECTION 13.4 — Occupancy Calculations */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        13.4 Occupancy Calculations
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Track practitioner utilization and clinic volume in real time.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Malasakit PMS automatically computes daily practitioner utilization using the configured duty hours. The calendar header displays real-time performance statistics:
+          </p>
+
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li>
+              <strong>Occupancy %:</strong> Calculated as <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 text-sky-700 font-mono">(Booked Appointment Minutes / Total Duty Minutes) × 100%</code>. Shows how much of a practitioner's scheduled working time is filled with appointments.
+            </li>
+            <li>
+              <strong>Number of Clients:</strong> The total count of unique patients scheduled for consultations during the selected period.
+            </li>
+            <li>
+              <strong>New Clients:</strong> The number of first-time visitors attending their initial clinic appointment.
+            </li>
+          </ul>
+
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+            <img
+              src={Screenshot13_6}
+              width={851}
+              height={109}
+              decoding="async"
+              loading="lazy"
+              alt="Screenshot 13.6: Occupancy Calculations and Statistics"
+              className="w-full max-h-[500px] object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      </div>
+
+      <DocCallout type="tip">
+        Review occupancy percentages regularly to identify peak utilization hours, prevent practitioner burnout, and adjust duty schedules to meet patient demand.
       </DocCallout>
 
 
@@ -188,11 +275,13 @@ const Chapter13: React.FC = () => {
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned the two standard methods to register clients in Malasakit PMS:
+        In this chapter, you learned how practitioner duty hours and calendar views operate in Malasakit PMS:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li><strong>1st Flow (Client Page):</strong> Navigate to <strong>Clients</strong> → click <strong>Add Client</strong> → complete and save the <strong>Add Client Modal</strong>.</li>
-        <li><strong>2nd Flow (Calendar):</strong> Open <strong>Calendar</strong> → double-click a blank appointment slot → type the patient's name → click <strong>+ Add New Client</strong> → complete the <strong>Add New Client Modal</strong> to register and book in one seamless step.</li>
+        <li>Configuring working days, shift hours, branch locations, and lunch breaks in the <strong>CreateStaffAccountModal</strong>.</li>
+        <li>Distinguishing active duty hours from shaded non-duty periods in the <strong>Diary Week View</strong>.</li>
+        <li>Switching between <strong>Day View</strong>, <strong>Week View</strong>, and <strong>Month View</strong> based on operational tasks.</li>
+        <li>Monitoring practitioner utilization and clinic volume via real-time <strong>Occupancy Calculations</strong>.</li>
       </ul>
     </>
   );

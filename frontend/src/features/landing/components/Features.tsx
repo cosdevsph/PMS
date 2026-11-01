@@ -20,16 +20,18 @@ export const Features: React.FC = () => {
         <SectionHeader
           id="features-title"
           eyebrow="Features"
-          title="Powerful Features for Your Practice"
+          title="Powerful Features for Your Clinic"
           description="Everything you need to streamline your clinic operations and deliver exceptional patient care."
         />
 
         <ul className="mt-14 sm:mt-16 grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
           {features.map((feature, index) => {
             const Icon = feature.icon;
+            // A lone card on the last row of the three-column grid sits in the middle column.
+            const isLoneLastCard = features.length % 3 === 1 && index === features.length - 1;
 
             return (
-              <Reveal as="li" key={feature.id} delay={(index % 3) * 80} className="h-full">
+              <Reveal as="li" key={feature.id} delay={(index % 3) * 80} className={`h-full ${isLoneLastCard ? 'lg:col-start-2' : ''}`}>
                 <div className="group h-full flex flex-col bg-white rounded-2xl p-7 sm:p-8 ring-1 ring-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200">
                   <div className={`w-12 h-12 ${tints[index % tints.length]} rounded-xl flex items-center justify-center mb-5`} aria-hidden="true">
                     <Icon className="w-6 h-6" />

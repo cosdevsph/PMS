@@ -1,26 +1,26 @@
 import React from 'react';
-import { Target, Award, Users } from 'lucide-react';
+import { Lightbulb, ShieldCheck, Handshake } from 'lucide-react';
 import { SectionHeader } from './public/SectionHeader';
 import { Reveal } from './motion/Reveal';
 
 export const About: React.FC = () => {
   const values = [
     {
-      icon: Target,
-      title: 'Mission-Driven',
-      description: 'Empowering healthcare providers with technology that simplifies practice management.',
+      icon: Lightbulb,
+      title: 'Practical Solutions',
+      description: 'Focused on solving real-world clinic management challenges through technology that simplifies daily operations.',
       color: 'blue'
     },
     {
-      icon: Award,
-      title: 'Quality First',
-      description: 'Built with best practices, security, and compliance at the core of everything we do.',
+      icon: ShieldCheck,
+      title: 'Security & Compliance First',
+      description: 'Built with security, privacy, and healthcare compliance at the core of everything we do, including support for Philippine Data Privacy Act requirements and HIPAA-aligned security safeguards.',
       color: 'harbor'
     },
     {
-      icon: Users,
-      title: 'Customer-Centric',
-      description: 'Your success is our priority. We listen, adapt, and continuously improve.',
+      icon: Handshake,
+      title: 'Long-Term Partnership',
+      description: 'Supporting clinics through onboarding, training, implementation, and continuous platform improvement.',
       color: 'mint'
     }
   ];
@@ -44,7 +44,7 @@ export const About: React.FC = () => {
         <SectionHeader
           id="about-title"
           eyebrow="About"
-          title="Built for Healthcare Professionals"
+          title="Built by Healthcare Professionals"
           description="We understand the challenges of running a modern practice. That's why we created a platform that combines simplicity with powerful features."
         />
 
@@ -81,13 +81,20 @@ export const About: React.FC = () => {
             <div className="absolute inset-y-0 left-0 w-1.5 bg-primary-gradient" aria-hidden="true" />
             <div className="max-w-3xl mx-auto text-center space-y-5">
               <p className="text-lg sm:text-xl text-gray-700 leading-relaxed font-body">
-                Founded by healthcare professionals and technologists, Malasakit was born from
-                firsthand experience with outdated practice management systems. We believe
-                that technology should enhance patient care, not complicate it.
+                Founded by healthcare professionals and technologists, Malasakit Systems was born from
+                firsthand experience with outdated clinic workflows, paper-based processes, and the
+                growing cost of healthcare software.
               </p>
               <p className="text-lg sm:text-xl text-gray-700 leading-relaxed font-body">
-                Today, we serve over 10,000 practitioners across multiple specialties,
-                helping them save time, reduce errors, and focus on what matters most—their patients.
+                Drawing inspiration from modern healthcare technologies used around the world, Malasakit
+                Systems was founded on the belief that Philippine healthcare practices should have access
+                to the same efficiencies without the complexity or cost often associated with many
+                international and local clinic management platforms.
+              </p>
+              <p className="text-lg sm:text-xl text-gray-700 leading-relaxed font-body">
+                By simplifying scheduling, documentation, billing, and clinic operations, Malasakit
+                Systems helps healthcare teams spend less time on administration and more time delivering
+                exceptional patient care.
               </p>
             </div>
           </div>

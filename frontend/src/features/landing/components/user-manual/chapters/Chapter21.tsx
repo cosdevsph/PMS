@@ -11,74 +11,64 @@ const Chapter21: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how clinicians and practitioners navigate to and document patient consultations in Malasakit PMS—from selecting an appointment and launching templates to annotating interactive body charts and choosing whether to save drafts or finalize clinical notes.
+        Learn how to schedule recurring appointments from an existing booking in Malasakit PMS, validate clinician availability across future dates, and display the generated series on the Calendar.
       </p>
 
       {/* QUICK OVERVIEW FLOW */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-2">Clinical Notes Documentation Workflow</h3>
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Recurring Appointments Workflow</h3>
         <p className="text-gray-700 font-body mb-6">
-          Documenting a consultation follows five structured, user-friendly steps:
+          Generating a recurring appointment series follows five clear steps from the Diary:
         </p>
 
         <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Clinical Documentation Journey</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">5-Step Sequence</p>
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
-            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">21.1 Calendar Appointment</span>
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">21.1 Existing Appointment</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">21.2 Clinical Notes Tab</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">21.2 Action Dropdown</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">21.3 Notes Page Display</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">21.3 Input Details</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">21.4 Select Template</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">21.4 Check Availability & Save</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">21.5 Details & Save / Finalize</span>
+            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">21.5 Saved on Calendar</span>
           </div>
         </div>
       </div>
 
 
-      {/* SECTION 21.1 — Various kind to navigate to notes */}
+      {/* SECTION 21.1 — Diary Showing Existing Appointment */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        21.1 Navigating to Clinical Notes
+        21.1 Diary Showing the Existing Appointment
       </h3>
-      <p className="text-gray-700 font-body mb-6">Access clinical documentation through the Calendar view or the Patient Profile.</p>
+      <p className="text-gray-700 font-body mb-6">Locate and select the base appointment from your practitioner's schedule.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Malasakit provides flexible access points to patient clinical notes, allowing practitioners to initiate documentation seamlessly from their daily schedule or client records:
+            To create a recurring appointment series, start by finding the patient's current appointment on the schedule:
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/50">
-              <h5 className="font-bold text-sky-950 mb-2 text-sm flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-                Primary Pathway: Calendar / Diary View
-              </h5>
-              <p className="text-xs text-gray-700 leading-relaxed">
-                From the <strong>Diary</strong> or <strong>Calendar</strong>, locate the patient's booked appointment card (e.g. <em>John Doe · 6/3 Sessions · 9:45 AM</em>) under the practitioner column. Clicking the appointment card opens the centralized <strong>Appointment View</strong> modal.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-              <h5 className="font-bold text-gray-900 mb-2 text-sm flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-gray-500"></span>
-                Secondary Pathway: Patient Profile
-              </h5>
-              <p className="text-xs text-gray-700 leading-relaxed">
-                Navigate to <strong>Clients</strong>, search for the patient, click <strong>View Profile</strong>, and select the <strong>Clinical note</strong> item from the patient sidebar menu to access all historical and case notes.
-              </p>
-            </div>
-          </div>
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Open Diary / Calendar:</strong> Navigate to the <strong>Diary</strong> from the main navigation sidebar.
+            </li>
+            <li>
+              <strong>Locate Existing Appointment:</strong> Find the patient's booked appointment card under the practitioner's column.
+            </li>
+            <li>
+              <strong>Click Appointment Card:</strong> Click directly on the appointment card to open the detailed <strong>AppointmentView</strong> modal.
+            </li>
+          </ol>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot21_1}
-              width={858}
-              height={722}
+              width={1154}
+              height={1054}
               decoding="async"
-              alt="Screenshot 21.1: Calendar view selecting Appointment and Patient Profile"
+              alt="Screenshot 21.1: Diary showing the existing appointment"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -86,37 +76,38 @@ const Chapter21: React.FC = () => {
       </div>
 
 
-      {/* SECTION 21.2 — Appointment View Modal, select the Clinical Notes Tab */}
+      {/* SECTION 21.2 — AppointmentView Modal Showing Dropdown Recurring Appointment */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        21.2 Appointment View Modal: Clinical Notes Tab
+        21.2 AppointmentView Modal Showing Dropdown Recurring Appointment
       </h3>
-      <p className="text-gray-700 font-body mb-6">Access clinical documentation directly from the consultation header tabs.</p>
+      <p className="text-gray-700 font-body mb-6">Access the appointment options menu to initiate recurrence.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Upon opening the <strong>Appointment View</strong> modal, the top navigation tab bar displays operational and clinical tools for the consultation:
+            The <strong>AppointmentView</strong> modal displays the complete consultation details and includes an action dropdown menu for advanced scheduling:
           </p>
 
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li><strong>Client Information:</strong> Review patient demographics, contact details, and attendance flags.</li>
-            <li><strong>Appointment ⌵:</strong> Manage appointment actions (Cancel, Add Recurring, Rebook).</li>
-            <li><strong>Status:</strong> Update attendance (Arrived, Did Not Arrive, In Consultation, Completed).</li>
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
             <li>
-              <strong>Clinical Notes:</strong> Click this tab to navigate directly into the clinical note workspace, automatically binding the active appointment session.
+              <strong>Open Actions Menu:</strong> In the top header of the AppointmentView modal, click the actions dropdown button (three dots or options button).
             </li>
-            <li><strong>Generate Invoice:</strong> Bill consultation fees and generate patient receipts.</li>
-            <li><strong>Communications:</strong> Review automated reminders and messaging logs.</li>
-          </ul>
+            <li>
+              <strong>Select Add Recurring Appointments:</strong> In the menu list, click <strong>Add Recurring Appointments</strong> (repeat icon).
+            </li>
+            <li>
+              <strong>Recurring Modal Opens:</strong> The system automatically launches the <strong>Add Recurring Appointments</strong> configuration modal with the patient, practitioner, and clinic branch pre-filled.
+            </li>
+          </ol>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot21_2}
-              width={1840}
-              height={152}
+              width={1606}
+              height={1396}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 21.2: Appointment View Modal, select the Clinical Notes Tab"
+              alt="Screenshot 21.2: AppointmentView modal showing dropdown recurring appointment"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -124,44 +115,35 @@ const Chapter21: React.FC = () => {
       </div>
 
 
-      {/* SECTION 21.3 — redirected to Patient Profile > Clinical Note Page */}
+      {/* SECTION 21.3 — Inputting Details in Recurring Appointments Modal */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        21.3 Redirected to Patient Profile: Clinical Note Page
+        21.3 Inputting Details in Recurring Appointments Modal
       </h3>
-      <p className="text-gray-700 font-body mb-6">Manage templates, letters, and chronological medical history for the active case.</p>
+      <p className="text-gray-700 font-body mb-6">Configure the frequency, repeating weekdays, repetition count, and appointment time.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Clicking the <strong>Clinical Notes</strong> tab redirects you directly to the patient's dedicated <strong>Clinical note</strong> dashboard within their profile (e.g. <em>John Doe — LOW BACKPAIN</em>):
+            Inside the recurring modal, specify the parameters for the future appointment series:
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-              <h5 className="font-bold text-gray-900 mb-2 text-sm">Patient Sidebar Context</h5>
-              <p className="text-xs text-gray-600 mb-2">Preserves complete patient orientation:</p>
-              <ul className="text-xs space-y-1 text-gray-700 font-body list-disc pl-4">
-                <li>Patient Avatar & Name (e.g. <em>John Doe</em>)</li>
-                <li>Unique Client ID (e.g. <em>20261004-0002</em>)</li>
-                <li>Active menu item: <strong>Clinical note</strong></li>
-              </ul>
-            </div>
-
-            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-              <h5 className="font-bold text-gray-900 mb-2 text-sm">Workspace Navigation Tabs</h5>
-              <p className="text-xs text-gray-600 mb-2">Four core clinical modules:</p>
-              <ul className="text-xs space-y-1 text-gray-700 font-body list-disc pl-4">
-                <li><strong>Templates:</strong> Browse and launch documentation templates.</li>
-                <li><strong>Letters:</strong> Issue medical certificates and referral letters.</li>
-                <li><strong>History:</strong> Chronological record of drafted and finalized notes.</li>
-                <li><strong>Documents:</strong> Attached diagnostic scans and patient files.</li>
-              </ul>
-            </div>
-          </div>
-
-          <DocCallout type="info">
-            If this is the patient's initial session, the History panel displays <em>"No Clinical Notes Found"</em>, allowing the practitioner to begin documentation fresh from the Templates catalog.
-          </DocCallout>
+          <ul className="list-disc pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Service & Duration:</strong> Pre-selected from the original appointment. You can adjust the consultation type or duration (minutes) if needed.
+            </li>
+            <li>
+              <strong>Frequency:</strong> Select the recurrence pattern — <strong>Weekly</strong> (most common for therapy/rehab), <strong>Monthly</strong>, or <strong>Yearly</strong>.
+            </li>
+            <li>
+              <strong>Repetitions:</strong> Enter the total number of sessions to generate (e.g., 4, 8, or 12 sessions).
+            </li>
+            <li>
+              <strong>Days of the Week:</strong> Toggle the specific weekdays when the patient will attend (e.g., Monday and Thursday).
+            </li>
+            <li>
+              <strong>Start Time:</strong> Set the appointment start time for each recurring visit.
+            </li>
+          </ul>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
@@ -170,7 +152,7 @@ const Chapter21: React.FC = () => {
               height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 21.3: redirected to Patient Profile > Clinical Note Page"
+              alt="Screenshot 21.3: Inputting details in Recurring appointments modal"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -178,137 +160,94 @@ const Chapter21: React.FC = () => {
       </div>
 
 
-      {/* SECTION 21.4 — Creating a note, select a template */}
+      {/* SECTION 21.4 — Checking of Schedule Availability and Save Recurring */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        21.4 Creating a Note: Select a Template
+        21.4 Checking of Schedule Availability and Save Recurring
       </h3>
-      <p className="text-gray-700 font-body mb-6">Select standardized clinical forms tailored to the specialty and consultation type.</p>
+      <p className="text-gray-700 font-body mb-6">Validate future dates against practitioner duty hours and confirm the series.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Under the <strong>Templates</strong> tab, pre-configured documentation forms are structured by clinical department to ensure comprehensive, standardized medical record keeping:
+            Before generating future bookings, Malasakit performs an automated conflict and duty-hour availability check:
           </p>
 
-          <div className="space-y-4 mb-6">
-            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-              <h5 className="font-bold text-gray-900 mb-1 text-sm">Search Templates</h5>
-              <p className="text-xs text-gray-600">
-                Use the search input (<em>Search templates...</em>) to quickly find templates across all departments.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40">
-              <h5 className="font-bold text-teal-950 mb-1 text-sm">General Templates</h5>
-              <p className="text-xs text-gray-700">
-                <strong>General SOAP</strong> (<span className="text-teal-700 font-semibold">Malasakit Default</span>): Standardized Subjective, Objective, Assessment, and Plan note for routine consultations.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40">
-              <h5 className="font-bold text-blue-950 mb-1 text-sm">Occupational Therapy Templates</h5>
-              <ul className="text-xs space-y-1.5 text-gray-700 list-disc pl-4">
-                <li><strong>SOAP Note – OT:</strong> Tailored for occupational therapy assessments and progress tracking.</li>
-                <li><strong>Head Injury Consultation:</strong> Specialized neurological and concussion assessment protocols.</li>
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Check Availability:</strong> Click the <strong>Check Availability</strong> button. The system scans the practitioner's calendar and duty hours for every requested date in the series.
+            </li>
+            <li>
+              <strong>Review Generated Slots Preview:</strong> The modal displays a clear list of all calculated session dates:
+              <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-gray-600">
+                <li><strong className="text-emerald-700">Available:</strong> Confirms the clinician is on duty and the time slot is free.</li>
+                <li><strong className="text-amber-700">Booked / Unavailable:</strong> Alerts you if another appointment already occupies that time or if the clinician is off-duty.</li>
               </ul>
-            </div>
-          </div>
-
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Clicking on any template card (such as <strong>SOAP Note – OT</strong>) immediately loads the interactive clinical note editor.
-          </p>
+            </li>
+            <li>
+              <strong>Save Recurring Appointments:</strong> Once satisfied with the validated schedule preview, click <strong>Save Recurring Appointments</strong> to book the entire series.
+            </li>
+          </ol>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot21_4}
-              width={1414}
-              height={920}
+              width={3420}
+              height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 21.4: Creating a note, select a template"
+              alt="Screenshot 21.4: Checking schedule availability and save recurring"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
       </div>
 
+      <DocCallout type="info">
+        The availability check guarantees that recurring appointments never create unintended double-bookings or fall outside approved clinician duty hours.
+      </DocCallout>
 
-      {/* SECTION 21.5 — Enter Note details > Save Draft or Finalize Note */}
+
+      {/* SECTION 21.5 — Saved Recurring Display on Calendar */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        21.5 Enter Note Details: Save Draft or Finalize Note
+        21.5 Saved Recurring Display on Calendar
       </h3>
-      <p className="text-gray-700 font-body mb-6">Record clinical findings, annotate anatomical charts, and control finalization status.</p>
+      <p className="text-gray-700 font-body mb-6">View the newly generated appointment series directly on your calendar view.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            The note editor presents a structured documentation interface pre-linked to the consultation session:
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Upon saving, the series is committed to the database and immediately reflected across the Diary:
           </p>
 
-          <div className="space-y-4 mb-6">
-            {/* Header & Session */}
-            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-              <h5 className="font-bold text-gray-900 mb-2 text-sm">1. Session & Timing Linking</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-700 font-body">
-                <div>
-                  <strong>DATE:</strong> Date of the clinical evaluation (e.g. <em>17 / 10 / 2026</em>).
-                </div>
-                <div>
-                  <strong>SESSION:</strong> Automatically links to the specific booked appointment (e.g. <em>Oct 17, 2026 — 9:45 AM — John Doe</em>) to preserve chronological integrity.
-                </div>
-              </div>
-            </div>
-
-            {/* Template Fields & Interactive Body Chart */}
-            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-              <h5 className="font-bold text-gray-900 mb-2 text-sm">2. Template Fields & Interactive Body Chart</h5>
-              <ul className="text-xs space-y-2 text-gray-700 font-body list-disc pl-4">
-                <li>
-                  <strong>Clinical Fields:</strong> Fill in customizable fields such as <em>Physical Test</em>, numerical measurements, and timing details.
-                </li>
-                <li>
-                  <strong>Multi-Color Body Chart:</strong> Interactive anatomical diagrams (front view, side profiles, and back view). Clinicians can select drawing colors (blue, red, orange, yellow, purple, black), sketch areas of pain or tenderness with the <strong>Pen</strong> tool, and use <strong>Undo</strong> or <strong>Clear</strong> to refine annotations.
-                </li>
-              </ul>
-            </div>
-
-            {/* Saving Actions */}
-            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-              <h5 className="font-bold text-gray-900 mb-2 text-sm">3. Saving Actions</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-700 font-body">
-                <div className="p-2.5 bg-white rounded-lg border border-gray-200">
-                  <strong className="text-gray-700">Cancel:</strong>
-                  <p className="mt-1 text-gray-600">Discards unsaved edits and returns to the patient clinical notes list.</p>
-                </div>
-                <div className="p-2.5 bg-white rounded-lg border border-gray-200">
-                  <strong className="text-sky-800">Save Draft:</strong>
-                  <p className="mt-1 text-gray-600">Saves your progress without locking the note, allowing you to resume and edit details at a later time.</p>
-                </div>
-                <div className="p-2.5 bg-blue-50/50 rounded-lg border border-blue-200">
-                  <strong className="text-blue-900">Finalize:</strong>
-                  <p className="mt-1 text-gray-600">Permanently locks and signs the clinical note as an official medical record in the patient's case history.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DocCallout type="warning">
-            Finalized clinical notes cannot be deleted or casually edited, ensuring strict medico-legal compliance. If notes are still preliminary, always choose <strong>Save Draft</strong> until all assessments and treatment plans are complete.
-          </DocCallout>
+          <ul className="list-disc pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Immediate Calendar Sync:</strong> All confirmed recurring appointments populate their respective date and time slots on the Calendar across upcoming weeks.
+            </li>
+            <li>
+              <strong>Connected Patient Case:</strong> Each occurrence automatically remains connected to the patient's assigned treatment case, tracking session numbers towards approved limits.
+            </li>
+            <li>
+              <strong>Independent Flexibility:</strong> While created as a series, each individual booking can be rescheduled, edited, or marked as completed as the patient's care progresses.
+            </li>
+          </ul>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot21_5}
               width={3420}
-              height={2001}
+              height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 21.5: Enter Note details > Save Draft or Finalize Note"
+              alt="Screenshot 21.5: Saved recurring display on calendar"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
       </div>
+
+      <DocCallout type="tip">
+        Switch to the <strong>Week</strong> or <strong>Month</strong> view on the Calendar toolbar to quickly inspect the full progression of your patient's recurring sessions.
+      </DocCallout>
 
 
       {/* CHAPTER SUMMARY */}
@@ -316,14 +255,14 @@ const Chapter21: React.FC = () => {
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned how to document consultations using the Clinical Notes module in Malasakit PMS. You should now understand:
+        In this chapter, you learned how to easily schedule recurring appointments in Malasakit PMS:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li>How to <strong>navigate to clinical notes</strong> directly from the Calendar appointment or Patient Profile.</li>
-        <li>How the <strong>Clinical Notes tab</strong> in the Appointment View modal bridges scheduling and documentation.</li>
-        <li>How the <strong>Patient Profile Clinical Note page</strong> centralizes templates, letters, and note history.</li>
-        <li>How to <strong>select standardized templates</strong> (such as General SOAP or Occupational Therapy notes).</li>
-        <li>How to <strong>record consultation details</strong>, annotate the <strong>interactive Body Chart</strong>, and choose between <strong>Save Draft</strong> and <strong>Finalize</strong>.</li>
+        <li>Opening an existing booking from the <strong>Diary</strong>.</li>
+        <li>Selecting <strong>Add Recurring Appointments</strong> from the <strong>AppointmentView</strong> actions dropdown.</li>
+        <li>Setting recurrence frequency, repetition counts, weekdays, and start times.</li>
+        <li>Validating clinician availability and confirming the series with <strong>Save Recurring</strong>.</li>
+        <li>Reviewing the automatically populated recurring appointments across the <strong>Calendar</strong>.</li>
       </ul>
     </>
   );

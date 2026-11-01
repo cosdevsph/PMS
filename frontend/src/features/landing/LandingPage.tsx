@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { About } from './components/About';
 import { Features } from './components/Features';
+import { WhyChoose } from './components/WhyChoose';
 import { Plans } from './components/Plans';
 import { FAQ } from './components/FAQ';
 import { Footer } from './components/Footer';
@@ -15,6 +16,7 @@ export const LandingPage: React.FC = () => {
       <Hero />
       <About />
       <Features />
+      <WhyChoose />
       <Plans />
       <FAQ />
       <Footer />

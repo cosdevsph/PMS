@@ -45,6 +45,86 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-11-01 — User manual: nine new chapters, renumbering and screenshot refresh
+
+**Status:** Implemented
+**Module / feature:** Landing site → User Manual (`/user-manual`). See FEATURES "Landing page", [features/user-manual.md](features/user-manual.md) and ADR-009.
+
+**Original behavior:** 26 chapters. Services, the SMS gateway, automated messages, note-template building, prepaid packages, inventory, documents, audit logs and multi-branch reporting were missing or only named in passing. Chapter 14 (Patient Cases) described the retired case session limits; Chapter 4 said SMS was "under development"; chapters 5 and 24 (then 19) said regenerating a QR code invalidates old links; several screenshots (22.3, 24.1, 24.2 and the Chapter 33 set) showed the old "Administrator" label and the old "Professional" plan name.
+**Problem / requirement:** Client feedback listing ten missing topics (Services & Pricing, SMS Gateway Setup, Automated SMS & Notifications, Online Booking Links & QR Codes, Clinical Note Templates, Prepaid Packages & Session Tracking, Inventory Management, Audit Logs, Patient Documents & Attachments, Multi-Branch Reporting), with real screenshots. Owner choices: insert the new chapters in their matching parts and renumber; also retake the "Administrator" shots, rewrite the package text in Chapter 14, retake the Chapter 25 (Subscription) shots and remove "SMS under development".
+**Reason for the change:** Chapters follow the existing format. Each was written from the code, not from the client's wording, so it states what the product does; the gaps are in the deep dive.
+
+**Files modified:**
+- `frontend/src/features/landing/components/user-manual/chapters/` — **new** `Chapter6` (Services & Pricing), `Chapter7` (SMS Gateway Setup), `Chapter17` (Prepaid Packages & Session Tracking), `Chapter18` (Patient Documents & Attachments), `Chapter23` (Automated SMS & Notifications), `Chapter26` (Clinical Note Templates), `Chapter30` (Inventory Management), `Chapter32` (Multi-Branch Reporting), `Chapter34` (Audit Logs & Change History). Renamed with `git mv` and renumbered: old 6–26 → 8–35 (21 files, about 744 number rewrites). Edited: `Chapter4` (SMS text), `Chapter5` and `Chapter24` (regenerate, PNG card and "link closed" wording; new section 24.3 sharing the link and QR code for websites, social media and print), `Chapter14` (menu list, Communication History description), `Chapter16` (payer options, no approved sessions, points to packages), `Chapter25` (no packages online).
+- `frontend/src/features/landing/data/manual-registry.ts` — 35 entries sorted by number; existing chapters keep their `chapter-N` ids; search keywords added.
+- `frontend/src/assets/manual/` — 41 new screenshots (3420×2002 WebP or one-dialog crops); folders and files of old chapters 6–26 renamed to the new numbers; the misspelt `Screensbot 25.*` files renamed `Screenshot 33.*`; retaken: 22.3, 24.1, 24.2, 33.1, 33.2, 33.2.1 (current UI, no "Administrator" label, "Enterprise" plan name), and 16.3–16.6 (no Pre-Approved Sessions).
+- `docs/development/features/user-manual.md` — **new**; `docs/development/FEATURES.md`, `docs/development/ARCHITECTURE.md` (ADR-009), `docs/development/features/landing-page-revision.md` (chapter reference updated).
+
+**Frontend changes:** as above; no new components or dependencies.
+**Backend changes:** None.
+**Database / migrations:** None.
+**API / data contract:** None.
+
+**Business rules & decisions:**
+- Chapter ids stay as permanent URL keys while numbers change (ADR-009), so `#chapter-19` still opens the Patient Portal (now chapter 24).
+- Online Booking Links & QR Codes needed no new chapter: Chapters 5 and 24 already covered it, so the text was corrected and section 24.3 added.
+- Chapters state limits plainly: no online-booking switch on services, no low-stock reminders, one Clinical Audit page rather than a general activity log, Occupancy as the only branch-filtered report, no versioning of note templates.
+- All screenshots use demo data: the owner clinic in a scratch copy of the dev database was renamed ("Malasakit Clinic – Bacolod / South") and every staff and patient name, email and phone was replaced before capture. Uploads went to a scratch media folder.
+
+**Tests executed:**
+- `npx tsc -b` and `npm run build` (from `frontend/`) → pass; every renamed image import resolves.
+- `npm run lint` → 518 problems, the same count as before (none new).
+- Manual (headless Chromium, scratch database, `REDIS_URL=` empty): opened all 35 chapters at `/user-manual#<id>`. Each showed its own "Chapter N", every `N.M` section and screenshot number matched the chapter, every image loaded, and there were no console errors. Search found Inventory, SMS Gateway, Audit Logs and Prepaid Packages and found the QR text in Patient Portal; the sidebar listed 35 chapters in order under 12 parts; previous / next followed the registry; `#chapter-19` opened Patient Portal (chapter 24); chapters 6, 7, 17 and 30 had no horizontal scroll at 375 px. Every new screenshot was viewed. **Regenerate QR** was run: the booking URL did not change and the same address still opened.
+- Two of my own checks were wrong and were fixed or discounted: a sidebar test that expected the text "Chapter N" (the sidebar shows a number badge) and a part-title count that included a container element.
+- Not run: backend tests (no backend change).
+
+**Known limitations / unresolved issues:** See the table in `features/user-manual.md` §5. In short: SMS for non-main branches and three scheduled follow-up jobs look broken from reading the code (`Clinic.objects.filter(main_clinic__isnull=True)` filters on a Python property) but were **not** run; the regenerate message in the app still says old QR codes stop working; the pairing dialog says "Link to Clinic" but the app button is "Scan QR Code"; Android app screens are not pictured; Chapter 29 and about 127 older screenshots were not audited; Chapter 4 screenshot 4.7 still shows only the Email toggle.
+**Regression risks:** Any saved link that uses a chapter number rather than the id (none found in the repo); screenshots and registry entries now depend on the renumbered folder names, so renaming chapters again needs the same rewrite.
+
+## 2026-11-01 — Landing page content revision
+
+**Status:** Implemented
+**Module / feature:** Landing site → home page (Hero, About, Features, new "Why Clinics Choose Malasakit"); AI chat assistant. See FEATURES "Landing page" and the [brief](features/landing-page-revision.md).
+
+**Original behavior:** Hero rotated Care, Clinics, Workflows, Health with no subtext. About was headed "Built for Healthcare Professionals", with cards Mission-Driven / Quality First / Customer-Centric and a two-paragraph story that claimed "over 10,000 practitioners". Features was headed "Powerful Features for Your Practice" with six cards. There was no "Why choose" section.
+**Problem / requirement:** Owner brief of 2026-11-01: new Hero words and subtext, new About headline, cards and story, ten Features cards under "…for Your Clinic", and a new section with eleven expandable reasons.
+**Reason for the change:** Owner-supplied copy, applied word for word. Before coding, each product claim was checked against the code (see the claim check in the brief); everything is backed except two lines noted under Known limitations.
+
+**Files modified:**
+- `frontend/src/features/landing/components/Hero.tsx` — words Health, Care, Clinics, Workflow; hidden heading text; subtext paragraph.
+- `frontend/src/features/landing/components/About.tsx` — headline, three cards (new icons), three-paragraph story; the "10,000 practitioners" claim is gone.
+- `frontend/src/features/landing/components/Features.tsx` — heading; the tenth card is centred on the last row (`lg:col-start-2`).
+- `frontend/src/features/landing/data/features.ts` — ten cards with new icons.
+- `frontend/src/features/landing/components/WhyChoose.tsx` — **new**, accordion like the FAQ (one open at a time, first open on load, closed panels `inert`).
+- `frontend/src/features/landing/data/whyChoose.ts` — **new**, the eleven items.
+- `frontend/src/features/landing/LandingPage.tsx` — section added between Features and Plans.
+- `backend/apps/common/services/gemini_service.py` — the assistant's feature list now matches the page, limited to what the code backs; says low-stock "warnings", not "alerts".
+- `docs/development/features/landing-page-revision.md` — **new**, the brief, claim check, open points. `docs/development/FEATURES.md` — new "Landing page" section and Index row.
+
+**Frontend changes:** as above. No new dependencies; icons are from the installed `lucide-react`.
+**Backend changes:** assistant instruction text only.
+**Database / migrations:** None.
+**API / data contract:** None.
+
+**Business rules & decisions:**
+- The owner's text is copied exactly, including "organisation" and "Workflow" (singular).
+- Rotating words are used in the order the brief lists them (Health first). The brief also opens with "Smarter Care (animated)"; if Care should show first, reorder the list in `Hero.tsx`.
+- The Navbar, the footer About page, the Features bottom line ("Ready to transform your practice?") and the subtitles under the About and Features headings were not changed because the brief did not mention them.
+
+**Tests executed:**
+- `npm run build` (from `frontend/`) → exit 0 (`tsc -b` and `vite build`).
+- `npm run lint` → 518 problems, the same count as before the change (none new).
+- `python manage.py check` → no issues.
+- `REDIS_URL= backend/virt/bin/python manage.py test apps.common.test_assistant_prompt --noinput` → 6 tests OK (prices, 12-month rules, "HIPAA-aligned" wording, support limits, training offer).
+- Manual: headless Chromium against the dev frontend on port 3000 (read-only, no data touched), 29 of 29 checks passed. They covered every heading, card and item compared word for word with the brief (3 About cards, 3 story paragraphs, 10 Features cards, 11 reasons including the two-paragraph item 4); the subtext directly under the headline; the words appearing in the order Health, Care, Clinics, Workflow with no plural; the new section's position between Features and Pricing; the accordion opening and closing by mouse, Enter and Space; the tenth card centred on desktop; no horizontal scroll at 375 px; reduced motion stopping the rotation with nothing left invisible; no console errors. Screenshots were viewed. The first run had two failures in my test script, not the page (a selector that also matched the About subtitle, and a reader that caught letters mid-animation); both were fixed and the run repeated. A desktop screenshot also showed the subtext ending with a lone word, so it was widened and set to balanced wrapping, then re-checked.
+- Not checked: the Hero video (headless Chromium cannot play the MP4), the AI chat's live answers (they need the Gemini key), other screen widths between 375 and 1400 px.
+
+**Known limitations / unresolved issues:**
+- "Receive low-stock alerts" (Features card 7) is published as written, but Inventory only shows a red Low Stock count and a per-item flag; nothing is sent. Soften the wording or build notifications.
+- "Responsive assistance when you need it" (Features card 10) can be read as always-available help; the rule in `landing/data/support.ts` is email and in-app support on business hours. Published as written; a safer line would be "responsive assistance during business hours".
+- The footer About page has its own founding story and was not aligned.
+**Regression risks:** Anything that links to a section id or counts feature cards (the Navbar scroll links use `about`, `features`, `plans`, `faq`, unchanged); the AI assistant now describes more features, so recheck a few of its answers when the Gemini key is available.
+
 ## 2026-10-31 — Security controls checklist review
 
 **Status:** Proposed (analysis only; no code changed)

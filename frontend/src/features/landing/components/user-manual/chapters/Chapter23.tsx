@@ -3,64 +3,67 @@ import { DocCallout } from '../DocCallout';
 
 import Screenshot23_1 from '@/assets/manual/Chapter 23/Screenshot 23.1.webp';
 import Screenshot23_2 from '@/assets/manual/Chapter 23/Screenshot 23.2.webp';
-import Screenshot23_3 from '@/assets/manual/Chapter 23/Screenshot 23.3.webp';
 import Screenshot23_4 from '@/assets/manual/Chapter 23/Screenshot 23.4.webp';
 import Screenshot23_5 from '@/assets/manual/Chapter 23/Screenshot 23.5.webp';
+import Screenshot23_5_1 from '@/assets/manual/Chapter 23/Screenshot 23.5.1.webp';
 
 const Chapter23: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how to generate an invoice directly from an existing diary appointment, configure line items and payment methods, and review patient billing history.
+        Learn how automated appointment messages work in Malasakit: how to switch them on, what is sent and when, how a patient can opt out, and how to check what was actually sent.
       </p>
 
-      {/* QUICK WORKFLOW SEQUENCE */}
+      {/* QUICK OVERVIEW FLOW */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-2">Invoice Generation Sequence</h3>
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Automated Messages Overview</h3>
         <p className="text-gray-700 font-body mb-6">
-          Generating a patient invoice from an appointment follows five straightforward steps:
+          Malasakit sends appointment confirmations, reminders and follow-ups for you. A message is sent only when the right switches are on:
         </p>
 
         <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Billing Workflow Steps</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
-            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">23.1 Select Appointment</span>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Setting Up Automated Messages</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-700 font-mono">
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">23.1 Clinic Switches</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">23.2 "Generate Invoice" Tab</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">23.2 Communication Settings</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">23.3 Click Generate Invoice</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">23.3 What Is Sent</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-amber-50 text-amber-800 rounded-lg border border-amber-200 font-medium">23.4 Enter Details & Save</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">23.4 Patient Settings</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">23.5 Billing History</span>
+            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">23.5 Check What Was Sent</span>
           </div>
         </div>
       </div>
 
 
-      {/* SECTION 23.1 — Select an existing appointment */}
+      {/* SECTION 23.1 — Switching Notifications On for the Clinic */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        23.1 Select an Existing Appointment in the Diary Calendar
+        23.1 Switching Notifications On for the Clinic
       </h3>
-      <p className="text-gray-700 font-body mb-6">Locate and select the scheduled consultation or service in the clinic diary.</p>
+      <p className="text-gray-700 font-body mb-6">The master switches for email and SMS.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Navigate to the <strong>Diary</strong> page from the top navigation bar. Click on the target patient appointment on the calendar grid to open the appointment preview popover:
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
-            <li>Review the patient name, appointment status (e.g., <em>Completed</em>), consultation date and time slot.</li>
-            <li>Confirm the assigned practitioner, rendered service (e.g., <em>Second Consultation</em>), and chief complaint.</li>
-          </ul>
+          <ol className="list-decimal pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li>Go to <strong>Setup</strong> and click <strong>Locations</strong> in the <strong>Practice</strong> card.</li>
+            <li>On your main branch, click <strong>Edit Details</strong>.</li>
+            <li>Scroll to <strong>Notification Preferences</strong>.</li>
+            <li>Tick <strong>Email Notifications</strong> and <strong>SMS Notifications</strong> as needed, then click <strong>Save Changes</strong>.</li>
+          </ol>
+
+          <DocCallout type="important" title="SMS needs three things">
+            An SMS is sent only when (1) <strong>SMS Notifications</strong> is ticked here, (2) the patient's own <strong>SMS notifications</strong> switch is on (see 23.4), and (3) a clinic phone is paired and online. See the SMS Gateway chapter for the phone.
+          </DocCallout>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot23_1}
-              width={992}
-              height={812}
+              width={1408}
+              height={1866}
               decoding="async"
-              alt="Screenshot 23.1: Select an existing appointment in the diary calendar"
+              alt="Screenshot 23.1: Notification Preferences in the Edit Branch dialog"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -68,172 +71,127 @@ const Chapter23: React.FC = () => {
       </div>
 
 
-      {/* SECTION 23.2 — Navigate to Generate Invoice Tab */}
+      {/* SECTION 23.2 — Automated Communication Settings */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        23.2 Navigate to the "Generate Invoice" Tab in Appointment View
+        23.2 Automated Communication Settings
       </h3>
-      <p className="text-gray-700 font-body mb-6">Access billing actions directly from the appointment details modal.</p>
+      <p className="text-gray-700 font-body mb-6">Choose which messages go out and how.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            In the <strong>Appointment Details</strong> window, locate the top tab navigation bar. Click on the <strong>Generate Invoice</strong> tab:
+            Go to <strong>Setup &gt; Communication &gt; Settings</strong>. At the top, a card shows the paired gateway phone and its status. Below it, each message type has an on/off switch. Changes save as you click; the page briefly shows <em>Saving...</em> and then <em>Settings saved</em>.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-6 text-center text-xs font-medium text-gray-600">
-            <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200">Client Information</div>
-            <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200">Appointment</div>
-            <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200">Status</div>
-            <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200">Clinical Notes</div>
-            <div className="p-2.5 bg-blue-50 text-care-blue rounded-lg border border-blue-300 font-bold">Generate Invoice</div>
-            <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-200">Communications</div>
-          </div>
+
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li><strong>Booking Confirmations:</strong> sent when an appointment is booked. Choose the <strong>Delivery Channel</strong>: Email, SMS or Both.</li>
+            <li><strong>Appointment Reminders:</strong> reminds patients before their appointment and lets them reply Y to confirm or N if they cannot attend. Choose the <strong>Delivery Channel</strong>. A <strong>Reminder Timing</strong> box (hours before the appointment) is also shown.</li>
+            <li><strong>DNA / Decline Follow-up:</strong> sends a link to reschedule after a missed or declined appointment.</li>
+            <li><strong>No-Rebook Follow-up</strong> and <strong>Inactive Patient Wellness Check-in:</strong> follow-up options for patients who have not rebooked and for patients who have not visited for a while, with a delay in days or months.</li>
+          </ul>
+
+          <DocCallout type="info">
+            The settings of a message type appear when its switch is on and you click its row to open it.
+          </DocCallout>
+
+          <DocCallout type="warning" title="Check the Logs">
+            The daily reminder is sent every morning at 8:00 AM for the next day's appointments and does not change with the <strong>Reminder Timing</strong> box. The follow-up options are sent by scheduled jobs, so check the <strong>Logs</strong> page (see 23.5) to confirm they are going out for your clinic.
+          </DocCallout>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot23_2}
-              width={1625}
-              height={205}
-              decoding="async"
-              loading="lazy"
-              alt="Screenshot 23.2: From appointment view modal, navigate to Generate Invoice Tab"
-              className="w-full max-h-[300px] object-contain rounded-lg shadow-sm"
-            />
-          </div>
-        </div>
-      </div>
-
-
-      {/* SECTION 23.3 — Click Generate Invoice */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        23.3 Click "Generate Invoice" to Create the Draft
-      </h3>
-      <p className="text-gray-700 font-body mb-6">Review the session summary and trigger invoice generation.</p>
-
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            The <strong>Generate Invoice</strong> tab presents a consolidated <strong>Appointment Summary</strong> card verifying:
-          </p>
-          <ul className="list-disc pl-6 space-y-1.5 text-gray-700 font-body mb-6">
-            <li><strong>Patient:</strong> Verified client profile name.</li>
-            <li><strong>Practitioner:</strong> Doctor or clinician who conducted the session.</li>
-            <li><strong>Date & Time:</strong> Appointment schedule timestamp and duration.</li>
-            <li><strong>Service:</strong> Scheduled clinical procedure or consultation type.</li>
-          </ul>
-
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Click the prominent blue <strong>+ Generate Invoice</strong> button to open the full invoice editor.
-          </p>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot23_3}
               width={3420}
-              height={2001}
+              height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 23.3: Click Generate Invoice to generate an invoice"
+              alt="Screenshot 23.2: Automated Communication Settings"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
       </div>
 
-      <DocCallout type="info">
-        Malasakit automatically prevents duplicate billing: each appointment is uniquely associated with its generated invoice.
-      </DocCallout>
 
-
-      {/* SECTION 23.4 — Enter Details & Generate Invoice */}
+      {/* SECTION 23.3 — What Is Sent and When */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        23.4 Enter Invoice Details & Complete Generation
+        23.3 What Is Sent and When
       </h3>
-      <p className="text-gray-700 font-body mb-6">Configure line items, apply payments, add notes, and finalize the invoice.</p>
+      <p className="text-gray-700 font-body mb-6">The messages patients receive.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            On the <strong>New Invoice</strong> page, review the pre-populated appointment details and fill in the required billing information:
-          </p>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-              <h5 className="font-bold text-gray-900 mb-2 text-sm">Invoice Details & Line Items</h5>
-              <ul className="text-xs space-y-1.5 text-gray-700 font-body">
-                <li>• Pre-loaded consultation service item, quantity, and unit price.</li>
-                <li>• Set optional discounts or tax (GST) rates.</li>
-                <li>• Click <strong>Add item</strong> to include extra medications, supplies, or add-on procedures.</li>
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">Before the appointment</h5>
+              <ul className="text-xs space-y-1 text-gray-700 font-body list-disc pl-4">
+                <li><strong>Booking confirmation:</strong> sent when staff book an appointment. A patient who books online also receives a confirmation email.</li>
+                <li><strong>Reminder:</strong> every morning at 8:00 AM, for appointments the next day, by email and, with SMS on, by SMS from the clinic phone.</li>
               </ul>
             </div>
-
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-              <h5 className="font-bold text-gray-900 mb-2 text-sm">Payment Methods & Summary</h5>
-              <ul className="text-xs space-y-1.5 text-gray-700 font-body">
-                <li>• Log received amounts under <strong>Cash</strong>, <strong>Debit Card</strong>, <strong>Credit Card</strong>, <strong>Cheque</strong>, or <strong>GCash</strong>.</li>
-                <li>• Check live calculations for <em>Package Subtotal</em>, <em>Total Amount Paid</em>, and remaining <em>Package Balance Due</em>.</li>
-              </ul>
-            </div>
-
-            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70 md:col-span-2">
-              <h5 className="font-bold text-gray-900 mb-2 text-sm">Invoice & Account Notes</h5>
-              <ul className="text-xs space-y-1.5 text-gray-700 font-body">
-                <li>• <strong>Invoice Notes:</strong> Notes specific to this billing document (printed on patient receipts).</li>
-                <li>• <strong>Account Notes:</strong> Persistent internal billing reminders for the patient's record.</li>
+              <h5 className="font-bold text-gray-900 mb-2 text-sm">Changes and missed visits</h5>
+              <ul className="text-xs space-y-1 text-gray-700 font-body list-disc pl-4">
+                <li><strong>Cancellation:</strong> when staff cancel an appointment the patient receives an email. When a patient cancels with the link in a message, the clinic phone sends an SMS.</li>
+                <li><strong>Rescheduling:</strong> when a patient picks a new time with the rebooking link, the clinic phone sends an SMS about the change.</li>
+                <li><strong>Missed appointment (DNA):</strong> marking an appointment DNA, or a patient replying N to a reminder, sends a follow-up with a link to choose a new time.</li>
               </ul>
             </div>
           </div>
 
-          <p className="text-gray-700 font-body leading-relaxed mb-6">
-            Once all details are verified, click the dark <strong>Generate Invoice</strong> button in the bottom right corner.
+          <DocCallout type="tip" title="Patient replies">
+            A patient who replies <strong>Y</strong> to a reminder confirms the appointment, and <strong>N</strong> declines it. The reply is saved with the appointment.
+          </DocCallout>
+
+          <DocCallout type="info">
+            The wording of each message is fixed by Malasakit. You choose whether a message is sent and, for confirmations and reminders, by which channel.
+          </DocCallout>
+        </div>
+      </div>
+
+
+      {/* SECTION 23.4 — A Patient's Notification Settings */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        23.4 A Patient's Notification Settings
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Let a patient opt out of email or SMS.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Open the patient and click <strong>Settings</strong> in the patient's left menu. The <strong>Notification Settings</strong> card has switches for <strong>Email notifications</strong> and <strong>SMS notifications</strong>. <strong>Push notifications</strong> is marked <em>Coming soon</em>. Click <strong>Save Changes</strong> after changing a switch.
           </p>
+
+          <DocCallout type="important">
+            If a patient's switch is off, they do not receive that kind of message, even when the clinic switch is on.
+          </DocCallout>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot23_4}
               width={3420}
-              height={2169}
+              height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 23.4: Enter necessary invoice details and click Generate Invoice"
+              alt="Screenshot 23.4: Notification Settings on the patient's Settings page"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
       </div>
 
-      <DocCallout type="tip">
-        Partial payments are fully supported. If a patient pays only a portion today, enter the collected amount in the appropriate payment field, and the system will automatically track the remaining balance due.
-      </DocCallout>
 
-
-      {/* SECTION 23.5 — Redirect to Billing History */}
+      {/* SECTION 23.5 — Checking What Was Sent */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        23.5 Redirect to Billing History via Patient Profile
+        23.5 Checking What Was Sent
       </h3>
-      <p className="text-gray-700 font-body mb-6">Review the saved invoice, payment statuses, and outstanding balances.</p>
+      <p className="text-gray-700 font-body mb-6">The Logs page and the patient's Communication History.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Upon saving the invoice, the system automatically redirects you to the patient's <strong>Billing History</strong> page under <strong>Patient Profile &gt; Invoices</strong>:
+            Go to <strong>Setup &gt; Communication &gt; Logs</strong>. The summary cards show <strong>Total Sent</strong>, <strong>Delivered</strong>, <strong>Failed</strong> and <strong>Replied</strong>. Use the search box and the <strong>All Types</strong>, <strong>Channel</strong> and <strong>Status</strong> filters, then click a patient to read the messages sent to them.
           </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/50">
-              <h5 className="font-bold text-sky-950 mb-1 text-sm">Master Invoices</h5>
-              <p className="text-xs text-gray-600">Displays treatment packages, total amounts paid, and pending balance summaries.</p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50">
-              <h5 className="font-bold text-emerald-950 mb-1 text-sm">Standard Transactions</h5>
-              <p className="text-xs text-gray-600">Lists invoice numbers, dates, payment status (<em>Paid</em> / <em>Pending</em>), and quick actions (Print, Email, Edit, Delete).</p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50">
-              <h5 className="font-bold text-amber-950 mb-1 text-sm">Outstanding Balance Monitoring</h5>
-              <p className="text-xs text-gray-600">Tracks unpaid amounts across visits to maintain accurate patient financial ledgers.</p>
-            </div>
-          </div>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
@@ -242,7 +200,27 @@ const Chapter23: React.FC = () => {
               height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 23.5: Redirect to Billing History page via Patient Profile > Invoices menu"
+              alt="Screenshot 23.5: Communication Logs"
+              className="w-full max-h-[500px] object-contain rounded-lg"
+            />
+          </div>
+
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            A patient's own <strong>Communication History</strong> (in the patient's left menu) is a shorter list. It shows reminder replies and missed-appointment follow-ups with their outcome, such as <em>Confirmed</em>, <em>Cancelled</em> or <em>Rescheduled</em>. You can filter it by time and by status.
+          </p>
+
+          <DocCallout type="info">
+            Use <strong>Logs</strong> to see every message sent by the clinic. The patient's Communication History shows outcomes, not every message.
+          </DocCallout>
+
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+            <img
+              src={Screenshot23_5_1}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
+              alt="Screenshot 23.5.1: Communication History in the patient profile"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -255,14 +233,14 @@ const Chapter23: React.FC = () => {
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned how simple it is to generate and manage patient invoices:
+        In this chapter, you learned how automated messages work in Malasakit PMS. You should now understand:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li><strong>23.1 Select Appointment:</strong> Open the target appointment card directly on the Diary calendar.</li>
-        <li><strong>23.2 Generate Invoice Tab:</strong> Navigate to the dedicated billing tab within the Appointment Details view.</li>
-        <li><strong>23.3 Create Draft Bill:</strong> Click the "+ Generate Invoice" button to start creating the invoice.</li>
-        <li><strong>23.4 Configure Details:</strong> Add line items, specify payment methods (Cash, Card, GCash), and save notes.</li>
-        <li><strong>23.5 Billing History:</strong> Review invoices and monitor outstanding balances in the patient's billing profile.</li>
+        <li>How to switch <strong>Email and SMS notifications</strong> on for the clinic.</li>
+        <li>How to use <strong>Automated Communication Settings</strong>.</li>
+        <li>Which messages are sent, and <strong>when</strong>.</li>
+        <li>How a patient's <strong>notification settings</strong> affect what they receive.</li>
+        <li>How to check messages in <strong>Logs</strong> and the patient's <strong>Communication History</strong>.</li>
       </ul>
     </>
   );

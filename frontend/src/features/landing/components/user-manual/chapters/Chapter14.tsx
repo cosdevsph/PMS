@@ -4,98 +4,55 @@ import { DocCallout } from '../DocCallout';
 import Screenshot14_1 from '@/assets/manual/Chapter 14/Screenshot 14.1.webp';
 import Screenshot14_2 from '@/assets/manual/Chapter 14/Screenshot 14.2.webp';
 import Screenshot14_3 from '@/assets/manual/Chapter 14/Screenshot 14.3.webp';
-import Screenshot14_4 from '@/assets/manual/Chapter 14/Screenshot 14.4.webp';
-import Screenshot14_5 from '@/assets/manual/Chapter 14/Screenshot 14.5.webp';
-import Screenshot14_6 from '@/assets/manual/Chapter 14/Screenshot 14.6.webp';
 
 const Chapter14: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn how to manage Patient Cases through the Patient Profile and how to assign or create cases directly while scheduling an appointment in the Diary.
+        Learn how to locate the Client/Patient directory in Malasakit PMS, open a patient record, and navigate the full-screen Patient Profile layout.
       </p>
 
       {/* QUICK OVERVIEW FLOW */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-2">Patient Case Workflows</h3>
+        <h3 className="text-xl font-bold text-sky-900 mb-2">Patient Records Navigation Guide</h3>
         <p className="text-gray-700 font-body mb-6">
-          Patient Cases group related appointments, treatment plans, clinical notes, and invoices under a single condition. You can create cases from two locations:
+          Accessing and reviewing a patient's complete medical and administrative record follows a straightforward path:
         </p>
 
-        <div className="space-y-4">
-          {/* Pathway 1 Summary */}
-          <div className="bg-white p-4 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.08)]">
-            <p className="text-xs font-bold text-sky-800 uppercase tracking-wider mb-2">1. Patient Profile Location</p>
-            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700 font-mono">
-              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Patient Page</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Click View Profile</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Select Cases Menu</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Cases List</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-bold">Create New Case Modal</span>
-            </div>
-          </div>
-
-          {/* Pathway 2 Summary */}
-          <div className="bg-white p-4 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.08)]">
-            <p className="text-xs font-bold text-purple-800 uppercase tracking-wider mb-2">2. Diary / Calendar Appointment Booking</p>
-            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700 font-mono">
-              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Diary Page</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-gray-50 rounded border border-gray-200 font-medium">Select Patient</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-sky-50 text-sky-800 rounded border border-sky-200 font-medium">Creating Appointment Modal</span>
-              <span className="text-sky-400 font-bold">→</span>
-              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-bold">Assigned Case Field (Existing or New)</span>
-            </div>
+        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Workflow Summary</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Main Sidebar</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Click Clients</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Client / Patient List</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Select Patient</span>
+            <span className="text-sky-400 font-bold">→</span>
+            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">Full-Screen Patient Profile</span>
           </div>
         </div>
       </div>
 
 
-      {/* SECTION 14.1 — Patient Case Location (From Patient Profile) */}
+      {/* SECTION 14.1 — Locating the Client/Patient List Page */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        14.1 Patient Case Location (Patient Profile)
+        14.1 Locating the Client / Patient List Page
       </h3>
-      <p className="text-gray-700 font-body mb-6">Manage patient cases and treatment plans directly within the patient file.</p>
+      <p className="text-gray-700 font-body mb-6">Find and open the central patient directory from the main navigation.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Follow this path to view existing cases or establish a new treatment case from the patient profile:
-          </p>
-
-          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+          <ol className="list-decimal pl-6 space-y-4 text-gray-700 font-body leading-relaxed mb-6">
             <li>
-              <strong>Open Patient Page:</strong> Navigate to the <strong>Clients</strong> (Patients) directory from the main sidebar navigation.
+              <strong>Locate Clients in the Navigation Bar:</strong> Look at the main left-hand sidebar menu and find the <strong>Clients</strong> tab (users icon).
             </li>
             <li>
-              <strong>Click View Profile in Action:</strong> Find the patient record and click <strong>View Profile</strong> under the <strong>Action</strong> column (or click the patient row).
+              <strong>Click Clients:</strong> Clicking this item takes you directly to the primary patient directory route (<code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 text-sky-700 font-mono">/clients</code>).
             </li>
             <li>
-              <strong>Select Cases Menu:</strong> On the dedicated left-hand patient sidebar, click on the <strong>Cases</strong> menu tab.
-            </li>
-            <li>
-              <strong>Patient Cases List Displayed:</strong> The system displays all ongoing and past cases for this patient, detailing active statuses, session counts, primary practitioners, and payer types.
-            </li>
-            <li>
-              <strong>Click Create Case Button:</strong> Click the <strong>New Case</strong> (or Create Case) button at the top of the cases view.
-            </li>
-            <li>
-              <strong>Enter Details in Create New Case Modal:</strong> Complete the case details:
-              <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-gray-600">
-                <li><strong>Case Title:</strong> Name of the clinical condition or care plan (e.g., Post-Op ACL Rehabilitation, Chronic Cervical Pain).</li>
-                <li><strong>Primary Practitioner:</strong> Assign the attending clinician responsible for the case.</li>
-                <li><strong>Payer & Billing:</strong> Choose payment source (Self-Pay, HMO, Insurance, or Package).</li>
-                <li><strong>Approved Sessions:</strong> Enter the allocated number of sessions or enable Unlimited.</li>
-                <li><strong>Description & Referral:</strong> Add clinical notes, referral information, or diagnosis summary.</li>
-              </ul>
-            </li>
-            <li>
-              <strong>Save and Create Case:</strong> Click <strong>Create Case</strong> to save the treatment program.
+              <strong>Client / Patient List Page is Displayed:</strong> The system displays the comprehensive patient directory table, complete with live search, branch filtering, quick statistics, and pagination.
             </li>
           </ol>
 
@@ -103,9 +60,9 @@ const Chapter14: React.FC = () => {
             <img
               src={Screenshot14_1}
               width={1032}
-              height={976}
+              height={44}
               decoding="async"
-              alt="Screenshot 14.1: Patient Page View Profile Action"
+              alt="Screenshot 14.1: Clients Navigation Bar"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -117,9 +74,97 @@ const Chapter14: React.FC = () => {
               height={976}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 14.2: Patient Cases Menu & Cases List Display"
+              alt="Screenshot 14.2: Client / Patient List Page"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
+          </div>
+        </div>
+      </div>
+
+      <DocCallout type="info">
+        In accordance with Role-Based Access Control (RBAC), the patient directory only displays records belonging to clinic branches that your account is actively authorized to access.
+      </DocCallout>
+
+
+      {/* SECTION 14.2 — How to View a Patient Profile */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        14.2 How to View a Patient Profile
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Select a patient from the directory to open their detailed clinical and personal file.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-4">
+            Opening a patient's complete file requires just a few simple steps from the list page:
+          </p>
+
+          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
+            <li>
+              <strong>Search or Browse:</strong> Use the search bar at the top of the table to find a patient by first name, last name, phone number, or unique Client ID.
+            </li>
+            <li>
+              <strong>Click on the Patient Record:</strong> Click directly on the patient's name or row in the table.
+            </li>
+            <li>
+              <strong>Open Full-Screen Profile:</strong> The system automatically navigates to that patient's dedicated profile route (<code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 text-sky-700 font-mono">/clients/:id</code>), loading their entire clinical and operational dashboard.
+            </li>
+          </ol>
+        </div>
+      </div>
+
+      <DocCallout type="tip">
+        You can also quickly navigate to a patient's profile from any appointment card on the Calendar or Diary by clicking on the patient's name.
+      </DocCallout>
+
+
+      {/* SECTION 14.3 — Patient Profile Page Layout */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        14.3 Patient Profile Page Layout
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Understand the full-screen layout, dedicated sidebar, and patient details workspace.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            The Patient Profile page is designed as an immersive full-screen workspace with two primary functional zones:
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Zone 1: Dedicated Sidebar */}
+            <div className="p-5 rounded-xl border border-sky-200 bg-sky-50/50">
+              <h5 className="font-bold text-sky-900 mb-2 border-b border-sky-200 pb-2">1. Dedicated Patient Sidebar (Left)</h5>
+              <p className="text-xs text-sky-700 font-body mb-3">
+                Provides persistent patient identification and fast navigation between clinical modules:
+              </p>
+              <ul className="text-sm space-y-1.5 text-gray-700 font-body">
+                <li><strong>Patient Identity:</strong> Avatar, Full Name, and unique Client ID.</li>
+                <li><strong>Profile:</strong> General demographics, contact numbers, and emergency contacts.</li>
+                <li><strong>Appointments:</strong> Upcoming bookings, attendance history, and re-booking.</li>
+                <li><strong>Cases:</strong> Ongoing clinical conditions, treatment plans, and diagnoses.</li>
+                <li><strong>Documents:</strong> Uploaded PDF, DOC and DOCX files, signed consent forms, and generated letters (see the Patient Documents &amp; Attachments chapter).</li>
+                <li><strong>Clinical note:</strong> SOAP notes, examination entries, and signed medical charts for the case you choose.</li>
+                <li><strong>Invoices:</strong> Billing statements, payments, and outstanding balances.</li>
+                <li><strong>Private Package Sessions:</strong> Prepaid session packages with the sessions used and remaining (see the Prepaid Packages &amp; Session Tracking chapter).</li>
+                <li><strong>Communication History:</strong> Patient replies to appointment reminders and missed-appointment follow-ups, with their outcome.</li>
+                <li><strong>Settings:</strong> Merging duplicates, archiving, or profile administration.</li>
+              </ul>
+            </div>
+
+            {/* Zone 2: Patient Details Workspace */}
+            <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
+              <h5 className="font-bold text-gray-900 mb-2 border-b border-gray-200 pb-2">2. Patient Details Workspace (Main)</h5>
+              <p className="text-xs text-gray-500 font-body mb-3">
+                Displays the primary information and workspace corresponding to the active sidebar tab:
+              </p>
+              <ul className="text-sm space-y-1.5 text-gray-700 font-body">
+                <li><strong>Personal Demographics:</strong> Date of birth, gender, marital status, and occupation.</li>
+                <li><strong>Contact Information:</strong> Primary email address, mobile phone, and home address.</li>
+                <li><strong>Emergency Contacts:</strong> Primary contact person, relationship, and emergency phone.</li>
+                <li><strong>Clinic & Branch Association:</strong> Primary home branch and registration date.</li>
+                <li><strong>Account Status:</strong> Active, archived, or merged status flags.</li>
+                <li><strong>Action Buttons:</strong> Edit details, book new appointment, or create a clinical note.</li>
+              </ul>
+            </div>
           </div>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
@@ -129,7 +174,7 @@ const Chapter14: React.FC = () => {
               height={976}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 14.3: Create New Case Modal"
+              alt="Screenshot 14.3: Full-Screen Patient Profile Page"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -137,98 +182,38 @@ const Chapter14: React.FC = () => {
       </div>
 
       <DocCallout type="info">
-        Cases allow clinics to organize multiple appointments over time under a unified clinical diagnosis, making it easy to track treatment progression and billing packages.
+        Clicking any tab on the dedicated patient sidebar updates the main workspace without leaving the patient's record, ensuring a smooth and focused clinical workflow.
       </DocCallout>
 
 
-      {/* SECTION 14.2 — Diary Page (Appointment Booking with Assigned Case) */}
+      {/* SECTION 14.4 — Branch Visibility */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        14.2 Diary Page: Assigning or Creating Cases during Appointment Booking
+        14.4 Branch Visibility & Privacy
       </h3>
-      <p className="text-gray-700 font-body mb-6">Link appointments to an existing case or create a brand-new case on the fly.</p>
+      <p className="text-gray-700 font-body mb-6">How patient privacy is enforced across multi-branch clinic organizations.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            Every appointment in Malasakit PMS connects to a case. You can select an ongoing case or create a new one directly while booking in the Diary:
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            To strictly enforce patient confidentiality, access to patient records is governed by role permissions and assigned branches:
           </p>
 
-          <ol className="list-decimal pl-6 space-y-3 text-gray-700 font-body leading-relaxed mb-6">
-            <li>
-              <strong>Open Diary Page:</strong> Navigate to the <strong>Diary</strong> (or Calendar) to view practitioner appointment schedules.
-            </li>
-            <li>
-              <strong>Create an Appointment:</strong> Double-click an available time slot or click the <strong>Create Appointment</strong> button.
-            </li>
-            <li>
-              <strong>Select Patient:</strong> Search and select the patient, then click the <strong>Create Appointment</strong> button in the pop-up to proceed.
-            </li>
-            <li>
-              <strong>Creating Appointment Modal is Displayed:</strong> The comprehensive appointment modal opens with clinician, branch, date, and service options.
-            </li>
-            <li>
-              <strong>Configure the Assigned Case Field:</strong>
-              <div className="mt-2 space-y-2">
-                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wide">Option A — Select Existing Case</p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    Select an ongoing case from the dropdown. The system automatically tracks this visit against the patient's approved sessions and package balance.
-                  </p>
-                </div>
-                <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg">
-                  <p className="text-xs font-bold text-sky-900 uppercase tracking-wide">Option B — Create New Case</p>
-                  <p className="text-xs text-sky-700 mt-1">
-                    Select <strong>+ Create New Case</strong> in the dropdown. An inline form opens immediately inside the modal where you enter the Case Title, Payer, Approved Sessions, and optional Package Cost without ever leaving your calendar.
-                  </p>
-                </div>
-              </div>
-            </li>
-            <li>
-              <strong>Confirm and Save Appointment:</strong> Complete service selection and click <strong>Create Appointment</strong>. The appointment is immediately booked and linked to the chosen or newly created case.
-            </li>
-          </ol>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot14_4}
-              width={1032}
-              height={976}
-              decoding="async"
-              loading="lazy"
-              alt="Screenshot 14.4: Diary Page Patient Selection"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
-          </div>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot14_5}
-              width={1032}
-              height={976}
-              decoding="async"
-              loading="lazy"
-              alt="Screenshot 14.5: Creating Appointment Modal Assigned Case Field"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
-          </div>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot14_6}
-              width={1030}
-              height={931}
-              decoding="async"
-              loading="lazy"
-              alt="Screenshot 14.6: Creating Appointment Modal Inline New Case"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+              <h5 className="font-bold text-gray-900 mb-1">Owner</h5>
+              <p className="text-xs text-gray-600">Can view all patient records across all clinic branches system-wide.</p>
+            </div>
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+              <h5 className="font-bold text-gray-900 mb-1">Branch Manager & Front Desk</h5>
+              <p className="text-xs text-gray-600">Can view patients registered at or attending their assigned clinic branches.</p>
+            </div>
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+              <h5 className="font-bold text-gray-900 mb-1">Practitioner</h5>
+              <p className="text-xs text-gray-600">Can view patients scheduled for appointments across their authorized branches.</p>
+            </div>
           </div>
         </div>
       </div>
-
-      <DocCallout type="tip">
-        Creating a case directly within the appointment booking modal saves time during fast front-desk intake, ensuring new consultations are always tied to a structured clinical plan.
-      </DocCallout>
 
 
       {/* CHAPTER SUMMARY */}
@@ -236,11 +221,15 @@ const Chapter14: React.FC = () => {
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned how to navigate and manage Patient Cases in Malasakit PMS:
+        In this chapter, you learned how to access and navigate patient records in Malasakit PMS:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li><strong>Patient Profile Location:</strong> Navigate to <strong>Clients</strong> → <strong>View Profile</strong> → <strong>Cases</strong> menu → click <strong>New Case</strong> to enter case details and create the treatment plan.</li>
-        <li><strong>Diary Page Booking:</strong> Start an appointment in the <strong>Diary</strong> → select patient → open the <strong>Creating Appointment Modal</strong> → use the <strong>Assigned Case</strong> field to either link an existing case or create a new case inline.</li>
+        <li>Finding the <strong>Clients</strong> link in the main navigation sidebar.</li>
+        <li>Browsing, filtering, and searching the <strong>Client / Patient List Page</strong>.</li>
+        <li>Selecting a patient record to open their dedicated full-screen file.</li>
+        <li>Navigating between clinical modules using the <strong>Patient Sidebar</strong> (Profile, Appointments, Cases, Documents, Clinical note, Invoices, Private Package Sessions, Communication History, Settings).</li>
+        <li>Reviewing personal demographics and emergency contacts within the <strong>Patient Details</strong> workspace.</li>
+        <li>Understanding how multi-branch role permissions keep patient records secure and compliant.</li>
       </ul>
     </>
   );

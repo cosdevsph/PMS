@@ -1,11 +1,10 @@
 import React from 'react';
 import { DocCallout } from '../DocCallout';
 
+import Diagram9_1 from '@/assets/manual/Chapter 9/Diagram 9.1.webp';
 import Screenshot9_1 from '@/assets/manual/Chapter 9/Screenshot 9.1.webp';
 import Screenshot9_2 from '@/assets/manual/Chapter 9/Screenshot 9.2.webp';
-import Screenshot9_3 from '@/assets/manual/Chapter 9/Screenshot 9.3.webp';
 import Screenshot9_4 from '@/assets/manual/Chapter 9/Screenshot 9.4.webp';
-import Screenshot9_5 from '@/assets/manual/Chapter 9/Screenshot 9.5.webp';
 import Screenshot9_6 from '@/assets/manual/Chapter 9/Screenshot 9.6.webp';
 import Screenshot9_7 from '@/assets/manual/Chapter 9/Screenshot 9.7.webp';
 
@@ -13,73 +12,121 @@ const Chapter9: React.FC = () => {
   return (
     <>
       <p className="text-xl text-gray-500 font-body mb-8">
-        Learn where to find the Permission Groups page in Malasakit PMS, understand the core permission groups, and see what features each group can access.
+        Learn how Malasakit combines Role-Based Access Control (RBAC) and Multi-Branch Authorization to securely govern feature permissions and clinic-specific patient data.
       </p>
 
-      {/* QUICK OVERVIEW FLOW */}
+      {/* IMPORTANT CONCEPT — How Multi-Branch RBAC Works */}
       <div className="bg-sky-50 border-l-4 border-sky-500 p-6 md:p-8 rounded-r-2xl mb-12">
-        <h3 className="text-xl font-bold text-sky-900 mb-2">Permission Groups Quick Overview</h3>
+        <h3 className="text-xl font-bold text-sky-900 mb-4">Understanding Multi-Branch RBAC</h3>
+        
+        <p className="text-gray-700 font-body mb-4">
+          In Malasakit, every user account is assigned one or more roles and authorized for specific clinic branches. A user's effective permissions and visible data are calculated by evaluating two distinct authorization layers:
+        </p>
+        
+        <ol className="list-decimal pl-6 space-y-2 text-gray-700 font-body mb-6 font-medium">
+          <li>
+            <strong>Role Permissions (What you can do):</strong> Assigned roles (e.g., Practitioner, Branch Manager, Front Desk, Finance) determine which features, modules, and administrative tools are unlocked.
+          </li>
+          <li>
+            <strong>Branch Authorization (Where you can do it):</strong> Assigned clinic branches determine which physical clinic locations, patient records, appointment calendars, and reports you are authorized to view and manage.
+          </li>
+        </ol>
+
         <p className="text-gray-700 font-body mb-6">
-          Permission Groups define the exact tools and modules that users assigned to a specific role template can view, edit, or manage across your clinic:
+          This dual-layer architecture guarantees that staff and clinicians have all the tools needed to perform their duties while maintaining strict patient confidentiality across separate clinic locations.
         </p>
 
-        <div className="bg-white p-5 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] text-center">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Navigation Path</p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-700 font-mono">
-            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Setup Page</span>
+        {/* Permission Flow Diagram */}
+        <div className="bg-white p-6 rounded-xl border border-sky-100 shadow-[0_4px_12px_rgb(14,165,233,0.1)] mb-6 text-center">
+          <p className="text-sm font-semibold text-gray-800 mb-3">Multi-Branch Authorization Flow</p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-sm text-gray-700 font-mono">
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">User Account</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Users Card</span>
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Assigned Role(s)</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 font-medium">Click Permissions</span>
+            <span className="px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200 font-medium">Assigned Branch(es)</span>
             <span className="text-sky-400 font-bold">→</span>
-            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-300 font-bold">Permission Groups Page</span>
+            <span className="px-3 py-1.5 bg-sky-50 text-sky-800 rounded-lg border border-sky-300 font-bold">Authorized Branch Data</span>
+          </div>
+          <p className="text-xs text-gray-500 font-body mt-3">
+            Roles define functional capabilities; branch assignments restrict access to authorized clinic locations only.
+          </p>
+        </div>
+
+        <div className="mt-6 w-full flex justify-center bg-white border border-sky-200 rounded-xl overflow-hidden p-2 shadow-sm">
+          <img
+            src={Diagram9_1}
+            width={1536}
+            height={1024}
+            decoding="async"
+            alt="Diagram 9.1: Multi-Branch RBAC Flow"
+            className="w-full max-h-[500px] object-contain rounded-lg"
+          />
+        </div>
+      </div>
+
+
+      {/* SECTION 9.1 — Owner */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
+        9.1 Owner
+      </h3>
+      <p className="text-gray-700 font-body mb-6">The highest level of administrative access across the entire organization.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            <strong>Owners</strong> hold full system control and unrestricted access across all clinic branches. Because the Owner role operates at the organizational root, it is branch-independent and not restricted by branch assignment lists.
+          </p>
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li>Manage organization subscription, plans, and billing</li>
+            <li>Create, configure, and manage all clinic branches</li>
+            <li>Configure global clinic settings, services, and inventory templates</li>
+            <li>Create and manage all staff accounts, role assignments, and branch authorizations</li>
+            <li>View all branch calendars, diaries, patient lists, and appointments</li>
+            <li>Access consolidated and branch-specific financial records and performance reports</li>
+            <li>Oversee all branch consent forms, public booking links, and QR codes</li>
+          </ul>
+          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
+            <img
+              src={Screenshot9_1}
+              width={3420}
+              height={2002}
+              decoding="async"
+              loading="lazy"
+              alt="Screenshot 9.1: Owner Dashboard"
+              className="w-full max-h-[500px] object-contain rounded-lg"
+            />
           </div>
         </div>
       </div>
 
 
-      {/* SECTION 9.1 — Locating the Permission Groups Page */}
-      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-12 mb-4 border-b border-gray-100 pb-2">
-        9.1 Locating the Permission Groups Page
+      {/* SECTION 9.2 — Branch Manager */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        9.2 Branch Manager
       </h3>
-      <p className="text-gray-700 font-body mb-6">Find and access the centralized permissions configuration page.</p>
+      <p className="text-gray-700 font-body mb-6">Administrative leaders overseeing operations for designated clinic branches.</p>
 
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <ol className="list-decimal pl-6 space-y-4 text-gray-700 font-body leading-relaxed mb-6">
-            <li>
-              <strong>Go to the Setup Page:</strong> Click on <strong>Setup</strong> in the left-hand navigation sidebar to open your clinic's administrative hub.
-            </li>
-            <li>
-              <strong>Find the Users Card:</strong> In the setup grid, locate the <strong>Users</strong> card (teal icon).
-            </li>
-            <li>
-              <strong>Click Permissions:</strong> Select the <strong>Permissions</strong> option under the card.
-            </li>
-            <li>
-              <strong>Permission Groups Page is Displayed:</strong> The system opens the <strong>Permission Groups</strong> builder, displaying all system templates, member counts, and customization controls.
-            </li>
-          </ol>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot9_1}
-              width={1032}
-              height={976}
-              decoding="async"
-              alt="Screenshot 9.1: Permission Group Location"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
-          </div>
-
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            <strong>Branch Managers</strong> act as operational administrators for the specific branches assigned to their account. A Branch Manager can be assigned to oversee a single branch or multiple regional branches.
+          </p>
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li>Manage practitioners, front desk, and finance staff assigned to their authorized branches</li>
+            <li>Oversee patient records and manage branch appointment calendars</li>
+            <li>View branch-specific performance metrics and financial reports</li>
+            <li>Configure branch-specific consent agreements and legal disclosures</li>
+            <li>Manage branch public booking links and QR codes</li>
+          </ul>
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot9_2}
-              width={1032}
-              height={976}
+              width={3420}
+              height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 9.2: Permission Groups Page"
+              alt="Screenshot 9.2: Branch Manager Dashboard"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
@@ -87,271 +134,241 @@ const Chapter9: React.FC = () => {
       </div>
 
       <DocCallout type="info">
-        Only clinic <strong>Owners</strong> have permission to open and configure the Permission Groups page. Restricted roles cannot modify group settings.
+        If a Branch Manager is assigned to a single branch, the branch selector is locked to that location. If assigned to multiple branches, a dropdown allows seamless switching between authorized branches. Branch Managers can never view or modify unassigned branches.
       </DocCallout>
 
 
-      {/* SECTION 9.2 — Permission Groups & What They Can Access */}
+      {/* SECTION 9.3 — Practitioner */}
       <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
-        9.2 Permission Groups & What They Can Access
+        9.3 Practitioner
       </h3>
-      <p className="text-gray-700 font-body mb-6">
-        Malasakit PMS includes five built-in system permission groups tailored for standard healthcare clinic workflows.
-      </p>
+      <p className="text-gray-700 font-body mb-6">Clinical professionals delivering patient care across authorized clinic locations.</p>
 
-      {/* Group 1: Owner */}
-      <div className="space-y-8 mb-8">
+      <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold uppercase tracking-wider">
-              System Protected
-            </span>
-            <h4 className="text-xl font-bold text-gray-900 font-heading">1. Owner</h4>
-          </div>
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            The <strong>Owner</strong> permission group grants full, unrestricted administrative and clinical authority across all clinic branches.
+          <h4 className="text-xl font-semibold text-trust-harbor font-heading mb-3">Multi-Branch Practitioner Architecture</h4>
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            In Malasakit PMS, <strong>a Practitioner can be assigned to multiple clinic branches using a single user account</strong>. Clinicians who divide their working hours between different branches do not need separate login accounts for each location.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
-            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
-              <p className="font-semibold text-emerald-900 mb-2">✔ What They Can Access:</p>
-              <ul className="space-y-1 text-emerald-800 list-disc pl-5">
-                <li>Full access to all clinic branches and locations</li>
-                <li>Subscription, plan management, and invoices</li>
-                <li>Staff account creation, editing, and archiving</li>
-                <li>Permission groups configuration and customization</li>
-                <li>All branch calendars, diaries, and patient records</li>
-                <li>Organization-wide financial and performance reports</li>
-                <li>Global clinic setup and communication settings</li>
-              </ul>
-            </div>
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <p className="font-semibold text-gray-900 mb-2">✘ System Restrictions:</p>
-              <ul className="space-y-1 text-gray-600 list-disc pl-5">
-                <li>None — Owners have unrestricted access to all modules and system data.</li>
-                <li>Protected group: cannot be deleted or revoked.</li>
-              </ul>
+          {/* Practitioner Multi-Branch Visual Model */}
+          <div className="p-5 rounded-xl border border-purple-200 bg-purple-50/60 mb-6">
+            <h5 className="font-bold text-purple-900 mb-2">Multi-Branch Assignment Model</h5>
+            <p className="text-sm text-purple-800 font-body mb-4">
+              A single practitioner identity connects to multiple clinic locations with independent schedules, while preserving strict data isolation from unassigned branches:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center text-xs font-body">
+              <div className="p-3 bg-white rounded-lg border border-purple-200 shadow-sm">
+                <p className="font-bold text-purple-900">Branch A (Makati)</p>
+                <p className="text-emerald-600 font-medium mt-1">✔ Assigned</p>
+                <p className="text-gray-500 text-[11px] mt-1">Mon / Wed / Fri</p>
+                <p className="text-gray-500 text-[11px]">9:00 AM – 5:00 PM</p>
+              </div>
+              <div className="p-3 bg-white rounded-lg border border-purple-200 shadow-sm">
+                <p className="font-bold text-purple-900">Branch B (BGC)</p>
+                <p className="text-emerald-600 font-medium mt-1">✔ Assigned</p>
+                <p className="text-gray-500 text-[11px] mt-1">Tue / Thu</p>
+                <p className="text-gray-500 text-[11px]">10:00 AM – 6:00 PM</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-300 opacity-75">
+                <p className="font-bold text-gray-700">Branch C (Pasig)</p>
+                <p className="text-red-500 font-medium mt-1">✘ Not Assigned</p>
+                <p className="text-gray-400 text-[11px] mt-1">No Access</p>
+                <p className="text-gray-400 text-[11px]">Strictly Blocked</p>
+              </div>
             </div>
           </div>
 
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot9_3}
-              width={1032}
-              height={976}
-              decoding="async"
-              loading="lazy"
-              alt="Screenshot 9.3: Owner Permission Group Settings"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
-          </div>
-        </div>
-      </div>
+          <h5 className="font-bold text-gray-900 mb-2">Key Practitioner Capabilities</h5>
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li><strong>Single Sign-On Identity:</strong> Log in once with a single email address to practice across all authorized clinic locations.</li>
+            <li><strong>Branch-Specific Schedules:</strong> Set independent duty days, working hours, and lunch breaks for each assigned branch (e.g., Makati on Mondays/Wednesdays, BGC on Tuesdays/Thursdays).</li>
+            <li><strong>Cross-Branch Conflict Prevention:</strong> Appointments booked at one branch automatically block the clinician's availability across all other branches during that time window, preventing double-booking.</li>
+            <li><strong>Multi-Branch Patient Access:</strong> Review records, medical history, and treatment plans for patients registered in their authorized branches.</li>
+            <li><strong>Clinical Notes & Treatment:</strong> Create, edit, and securely sign clinical notes for treated patients.</li>
+            <li><strong>Calendar & Diary Access:</strong> Seamlessly toggle between authorized branches to view and manage appointments and daily schedules.</li>
+          </ul>
 
-      {/* Group 2: Branch Manager */}
-      <div className="space-y-8 mb-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="px-3 py-1 rounded-full bg-violet-100 text-violet-800 border border-violet-200 text-xs font-bold uppercase tracking-wider">
-              Management
-            </span>
-            <h4 className="text-xl font-bold text-gray-900 font-heading">2. Branch Manager</h4>
-          </div>
+          <h5 className="font-bold text-gray-900 mb-2">System Boundaries & Security Restrictions</h5>
           <p className="text-gray-700 font-body leading-relaxed mb-4">
-            The <strong>Branch Manager</strong> group is designed for administrative leaders overseeing day-to-day operations for their authorized clinic branches.
+            Practitioner permissions are strictly scoped to clinical workflows within authorized branches. Practitioners cannot view unassigned branches, modify clinic billing subscriptions, configure system-wide settings, or access staff management. Restricted administrative modules in the sidebar appear disabled or hidden.
           </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
-            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
-              <p className="font-semibold text-emerald-900 mb-2">✔ What They Can Access:</p>
-              <ul className="space-y-1 text-emerald-800 list-disc pl-5">
-                <li>Manage staff and practitioners in assigned branches</li>
-                <li>Patient records, appointments, calendar, and diary</li>
-                <li>Branch-specific financial and performance reports</li>
-                <li>Configure branch consent forms and public booking links</li>
-                <li>Inventory and item management</li>
-                <li>Invoices, billing, and operational communication</li>
-                <li>View clinical notes for supervision (read-only)</li>
-              </ul>
-            </div>
-            <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl">
-              <p className="font-semibold text-rose-900 mb-2">✘ What They Cannot Access:</p>
-              <ul className="space-y-1 text-rose-800 list-disc pl-5">
-                <li>Cannot manage clinic subscription or billing settings</li>
-                <li>Cannot modify system permission groups</li>
-                <li>Cannot edit or sign medical clinical notes</li>
-                <li>Cannot view or manage unassigned clinic branches</li>
-              </ul>
-            </div>
-          </div>
 
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot9_4}
-              width={1032}
-              height={976}
+              width={3420}
+              height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 9.4: Branch Manager Permission Group Settings"
+              alt="Screenshot 9.4: Practitioner Calendar"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
       </div>
 
-      {/* Group 3: Practitioner */}
-      <div className="space-y-8 mb-8">
+      <DocCallout type="warning">
+        Practitioners cannot bypass branch boundaries by manually editing URLs or altering browser storage. Branch access is strictly enforced by the backend server; unauthorized branch requests return an immediate 403 Forbidden error.
+      </DocCallout>
+
+
+      {/* SECTION 9.4 — Front Desk */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        9.4 Front Desk (Staff)
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Frontline operators managing patient intake and scheduling for designated branches.</p>
+
+      <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200 text-xs font-bold uppercase tracking-wider">
-              Clinical
-            </span>
-            <h4 className="text-xl font-bold text-gray-900 font-heading">3. Practitioner</h4>
-          </div>
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            The <strong>Practitioner</strong> group is tailored specifically for clinical providers focused on treating patients across their authorized clinic locations.
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            <strong>Front Desk</strong> users handle day-to-day scheduling, patient check-ins, and reception workflows within their assigned clinic branches.
           </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
-            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
-              <p className="font-semibold text-emerald-900 mb-2">✔ What They Can Access:</p>
-              <ul className="space-y-1 text-emerald-800 list-disc pl-5">
-                <li>Create, edit, and sign Clinical Notes and treatment records</li>
-                <li>Patient medical charts, client cases, and documents</li>
-                <li>Manage appointment schedules across authorized branches</li>
-                <li>View branch calendar, diary, and own working availability</li>
-                <li>View clinical outcome measures and treatment history</li>
-                <li>View treatment invoices associated with their patients</li>
-              </ul>
-            </div>
-            <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl">
-              <p className="font-semibold text-rose-900 mb-2">✘ What They Cannot Access:</p>
-              <ul className="space-y-1 text-rose-800 list-disc pl-5">
-                <li>Cannot access Staff Management or edit employee accounts</li>
-                <li>Cannot modify system permissions or clinic settings</li>
-                <li>Cannot manage subscription plans or organization billing</li>
-                <li>Cannot access financial accounting reports</li>
-                <li>Strictly blocked from unassigned clinic branches</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
-            <img
-              src={Screenshot9_5}
-              width={1032}
-              height={976}
-              decoding="async"
-              loading="lazy"
-              alt="Screenshot 9.5: Practitioner Permission Group Settings"
-              className="w-full max-h-[500px] object-contain rounded-lg"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Group 4: Front Desk */}
-      <div className="space-y-8 mb-8">
-        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="px-3 py-1 rounded-full bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold uppercase tracking-wider">
-              Reception & Intake
-            </span>
-            <h4 className="text-xl font-bold text-gray-900 font-heading">4. Front Desk (Staff)</h4>
-          </div>
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            The <strong>Front Desk</strong> group is designed for receptionists and intake coordinators who manage appointments and patient check-ins.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
-            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
-              <p className="font-semibold text-emerald-900 mb-2">✔ What They Can Access:</p>
-              <ul className="space-y-1 text-emerald-800 list-disc pl-5">
-                <li>Book, reschedule, and cancel calendar appointments</li>
-                <li>Manage branch diary and incoming public portal bookings</li>
-                <li>Register new patients and update contact demographics</li>
-                <li>Manage patient check-ins and attendance statuses</li>
-                <li>Generate invoices and process payment receipts at the front desk</li>
-                <li>View patient clinical notes (read-only reference)</li>
-              </ul>
-            </div>
-            <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl">
-              <p className="font-semibold text-rose-900 mb-2">✘ What They Cannot Access:</p>
-              <ul className="space-y-1 text-rose-800 list-disc pl-5">
-                <li>Cannot author, edit, or sign clinical medical notes</li>
-                <li>Cannot manage staff accounts or user permissions</li>
-                <li>Cannot configure clinic settings or subscriptions</li>
-                <li>Cannot access unassigned clinic branches</li>
-              </ul>
-            </div>
-          </div>
-
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li>Register new patients and update demographics for their assigned branches</li>
+            <li>Book, reschedule, and cancel appointments on the branch calendar</li>
+            <li>Review and process incoming online bookings submitted via public portals</li>
+            <li>Manage patient check-ins and appointment attendance statuses</li>
+          </ul>
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot9_6}
-              width={1032}
-              height={976}
+              width={3420}
+              height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 9.6: Front Desk Permission Group Settings"
+              alt="Screenshot 9.6: Front Desk Dashboard"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
           </div>
         </div>
       </div>
 
-      {/* Group 5: Finance */}
-      <div className="space-y-8 mb-8">
+
+      {/* SECTION 9.5 — Finance */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        9.5 Finance
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Financial specialists managing billing, payments, and invoices.</p>
+
+      <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="px-3 py-1 rounded-full bg-green-100 text-green-800 border border-green-200 text-xs font-bold uppercase tracking-wider">
-              Accounting & Billing
-            </span>
-            <h4 className="text-xl font-bold text-gray-900 font-heading">5. Finance</h4>
-          </div>
-          <p className="text-gray-700 font-body leading-relaxed mb-4">
-            The <strong>Finance</strong> group is focused strictly on billing, invoicing, payments, and financial reporting for authorized clinic branches.
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            <strong>Finance</strong> users are granted dedicated access to billing and revenue tools for their assigned clinic branches, without clinical record editing rights.
           </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm font-body">
-            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl">
-              <p className="font-semibold text-emerald-900 mb-2">✔ What They Can Access:</p>
-              <ul className="space-y-1 text-emerald-800 list-disc pl-5">
-                <li>Create, edit, issue, and manage client invoices</li>
-                <li>Record payments, track balances, and handle refunds</li>
-                <li>Process bulk invoicing runs for corporate/insurance accounts</li>
-                <li>Generate financial statements, revenue summaries, and tax reports</li>
-                <li>View patient demographic information for invoicing purposes</li>
-                <li>View appointment lists to verify billing items</li>
-              </ul>
-            </div>
-            <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-xl">
-              <p className="font-semibold text-rose-900 mb-2">✘ What They Cannot Access:</p>
-              <ul className="space-y-1 text-rose-800 list-disc pl-5">
-                <li>Cannot access clinical medical notes or treatment records</li>
-                <li>Cannot access or manage clinic diary</li>
-                <li>Cannot modify staff members or permission groups</li>
-                <li>Cannot view financial data for unassigned clinic branches</li>
-              </ul>
-            </div>
-          </div>
-
+          <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body mb-6">
+            <li>Generate, review, and issue invoices for appointments and services</li>
+            <li>Record patient payments and track outstanding receivables</li>
+            <li>Process bulk invoicing batches for corporate or insurance accounts</li>
+            <li>Generate financial reports and reconciliation summaries for assigned branches</li>
+          </ul>
           <div className="mt-6 w-full flex justify-center bg-clinical-cloud/60 border border-gray-200 rounded-2xl overflow-hidden p-2 sm:p-3 shadow-sm">
             <img
               src={Screenshot9_7}
-              width={1032}
-              height={976}
+              width={3420}
+              height={2002}
               decoding="async"
               loading="lazy"
-              alt="Screenshot 9.7: Finance Permission Group Settings"
+              alt="Screenshot 9.7: Finance Dashboard"
               className="w-full max-h-[500px] object-contain rounded-lg"
             />
+          </div>
+        </div>
+      </div>
+
+
+      {/* SECTION 9.6 — Multi-Role Accounts */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        9.6 Multi-Role Accounts & Permission Resolution
+      </h3>
+      <p className="text-gray-700 font-body mb-6">How permissions are calculated when a user holds more than one role.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            In many clinics, a staff member may fulfill multiple responsibilities—such as a clinical Practitioner who also serves as the Branch Manager. Malasakit PMS supports assigning multiple roles to a single account using an intuitive <strong>permission union policy</strong>:
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
+              <h5 className="font-bold text-gray-900 mb-2">Union-Based Feature Access</h5>
+              <p className="text-sm text-gray-700 font-body leading-relaxed">
+                When a user holds multiple roles, the system evaluates the union of permissions across each role. The highest privilege level (<code className="text-xs bg-gray-200 px-1 py-0.5 rounded">none &lt; view &lt; edit</code>) always takes precedence. For example, a Branch Manager who is also a Practitioner can edit both clinical notes and staff assignments.
+              </p>
+            </div>
+            <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
+              <h5 className="font-bold text-gray-900 mb-2">Branch Boundaries Still Apply</h5>
+              <p className="text-sm text-gray-700 font-body leading-relaxed">
+                Assigning multiple roles broadens what tools a user can access, but <strong>does not grant unassigned branch access</strong>. All actions—clinical, administrative, or financial—remain strictly confined to the clinic branches assigned to that account.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DocCallout type="important">
+        Assigning multiple roles never overrides branch security. A user who is both a Branch Manager and Practitioner can only manage and treat patients in their authorized branches.
+      </DocCallout>
+
+
+      {/* SECTION 9.7 — Branch Scope Scenarios */}
+      <h3 className="text-2xl font-semibold text-trust-harbor font-heading mt-16 mb-4 border-b border-gray-100 pb-2">
+        9.7 Branch Scope Scenarios
+      </h3>
+      <p className="text-gray-700 font-body mb-6">Real-world examples illustrating how role and branch assignments dictate system visibility.</p>
+
+      <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <p className="text-gray-700 font-body leading-relaxed mb-6">
+            When creating or updating staff accounts, administrators assign one or more roles along with specific branch authorizations. Here is how different account configurations translate to live system access:
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Example 1: Branch Manager */}
+            <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
+              <h5 className="font-bold text-gray-900 mb-2 border-b border-gray-200 pb-2">Example 1: Branch Manager (Multiple Branches)</h5>
+              <p className="text-xs text-gray-500 mb-1"><strong>Role:</strong> Branch Manager</p>
+              <p className="text-xs text-gray-500 mb-3"><strong>Branches:</strong> Branch 1 & Branch 2</p>
+              <ul className="text-sm space-y-1.5 font-body">
+                <li className="text-emerald-700">✔ Full manager access in Branch 1</li>
+                <li className="text-emerald-700">✔ Full manager access in Branch 2</li>
+                <li className="text-emerald-700">✔ Seamless branch switching</li>
+                <li className="text-red-500">✘ Completely blocked from Branch 3</li>
+              </ul>
+            </div>
+
+            {/* Example 2: Multi-Branch Practitioner */}
+            <div className="p-5 rounded-xl border border-purple-200 bg-purple-50/50">
+              <h5 className="font-bold text-purple-900 mb-2 border-b border-purple-200 pb-2">Example 2: Multi-Branch Practitioner</h5>
+              <p className="text-xs text-purple-700 mb-1"><strong>Role:</strong> Practitioner (Dr. Santos)</p>
+              <p className="text-xs text-purple-700 mb-3"><strong>Branches:</strong> Branch 1 & Branch 2</p>
+              <ul className="text-sm space-y-1.5 font-body">
+                <li className="text-emerald-700">✔ Access patients & diary at Branch 1</li>
+                <li className="text-emerald-700">✔ Access patients & diary at Branch 2</li>
+                <li className="text-emerald-700">✔ Independent branch duty hours</li>
+                <li className="text-emerald-700">✔ Cross-branch booking protection</li>
+                <li className="text-red-500">✘ Blocked from Branch 3 (Unassigned)</li>
+                <li className="text-red-500">✘ No access to global clinic setup</li>
+              </ul>
+            </div>
+
+            {/* Example 3: Owner */}
+            <div className="p-5 rounded-xl border border-blue-200 bg-blue-50/50">
+              <h5 className="font-bold text-blue-900 mb-2 border-b border-blue-200 pb-2">Example 3: System Owner</h5>
+              <p className="text-xs text-blue-700 mb-1"><strong>Role:</strong> Owner</p>
+              <p className="text-xs text-blue-700 mb-3"><strong>Branches:</strong> System-Wide (All Branches)</p>
+              <ul className="text-sm space-y-1.5 font-body">
+                <li className="text-blue-800">✔ Unrestricted access to all branches</li>
+                <li className="text-blue-800">✔ Organization-wide reports & billing</li>
+                <li className="text-blue-800">✔ Global staff & permission setup</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
 
       <DocCallout type="tip">
-        Remember that a user's final access is governed by both their <strong>Permission Group</strong> (which features are unlocked) and their <strong>Branch Assignment</strong> (which clinic locations they can see).
+        Assign staff and practitioners only to the branches where they actively work. This keeps calendars, patient queues, and daily schedules clean while enforcing zero-trust data privacy between locations.
       </DocCallout>
 
       {/* CHAPTER SUMMARY */}
@@ -359,15 +376,16 @@ const Chapter9: React.FC = () => {
         Summary
       </h3>
       <p className="text-gray-700 font-body leading-relaxed mb-4">
-        In this chapter, you learned how to navigate and understand Permission Groups in Malasakit PMS:
+        In this chapter, you learned how Malasakit combines role permissions and branch authorizations to provide secure, location-specific access throughout the practice. You should now understand:
       </p>
       <ul className="list-disc pl-6 space-y-2 text-gray-700 font-body">
-        <li>Navigating to <strong>Setup</strong> &rarr; <strong>Users Card</strong> &rarr; <strong>Permissions</strong> to find the Permission Groups page.</li>
-        <li>The system-wide governance of the <strong>Owner</strong> group.</li>
-        <li>The operational and staff oversight of the <strong>Branch Manager</strong> group.</li>
-        <li>The dedicated clinical treatment authority of the <strong>Practitioner</strong> group.</li>
-        <li>The scheduling and intake focus of the <strong>Front Desk (Staff)</strong> group.</li>
-        <li>The billing, invoicing, and revenue focus of the <strong>Finance</strong> group.</li>
+        <li>The system-wide administrative governance of the <strong>Owner</strong> role.</li>
+        <li>The branch-level operational responsibilities of a <strong>Branch Manager</strong> across authorized locations.</li>
+        <li>How <strong>Practitioners</strong> practice across multiple branches using a single user account with independent duty hours.</li>
+        <li>How cross-branch conflict prevention keeps multi-branch practitioner schedules synchronized.</li>
+        <li>The scheduling intake duties of <strong>Front Desk</strong> staff and billing workflows of <strong>Finance</strong> specialists.</li>
+        <li>How the <strong>permission union policy</strong> combines privileges for users holding multiple roles without weakening branch security.</li>
+        <li>How backend authorization strictly isolates patient records, calendars, and reports from unauthorized branches.</li>
       </ul>
     </>
   );

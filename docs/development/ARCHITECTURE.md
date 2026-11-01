@@ -66,6 +66,14 @@ As verified 2026-10-31. The open gaps and proposed fixes are in the CHANGELOG en
 
 Architecture Decision Records, newest first. Each one: date, decision, context, alternatives considered, consequences, status (`Accepted` / `Superseded (YYYY-MM-DD)`).
 
+### ADR-009: User manual chapter ids are permanent URL keys; chapter numbers are display-only
+
+**Date:** 2026-11-01 · **Status:** Accepted and implemented. No migration.
+**Decision:** In `landing/data/manual-registry.ts`, `id` is the URL hash and never changes; `chapterNumber` is only what readers see and is allowed to change. Existing chapters keep their original `chapter-N` ids when new chapters are inserted and the rest are renumbered; new chapters get descriptive ids (`inventory`, `audit-logs`). Prev / next links and the sidebar follow the registry order, not the numbers.
+**Context:** The client asked for nine new chapters placed in their matching parts, which renumbered 21 of 26 chapters. Using the number as the id would have made every old `#chapter-N` link, such as one shared with a customer by support, open a different chapter.
+**Alternatives considered:** append new chapters as 27+ (no renumbering, but related topics end up far apart); id equals number (breaks old links).
+**Consequences:** an id such as `chapter-19` can now belong to chapter 24; the registry comment says so. Numbers typed inside each chapter file (section headings, captions, image names) still have to be renumbered by hand or by script when chapters move. Nothing outside the manual links to chapter numbers.
+
 ### ADR-008: Outcome measures live in a separate `outcomes` app with immutable versioned definitions
 
 **Status:** Accepted and implemented (2026-10-31); see the CHANGELOG entry of the same date for what differs from the first proposal.
