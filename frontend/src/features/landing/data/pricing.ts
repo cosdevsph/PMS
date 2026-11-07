@@ -32,7 +32,7 @@ export const PRICING_TIERS: PricingTier[] = [
     clinicianLimit: 4,
     monthly: 3999,
     annual: 43189.2,
-    description: 'Perfect for single clinics and boutique group practices.',
+    description: 'Perfect for solo practitioners, single-clinic teams, and boutique healthcare practices.',
   },
   {
     id: 'growth',
@@ -41,7 +41,7 @@ export const PRICING_TIERS: PricingTier[] = [
     clinicianLimit: 8,
     monthly: 6999,
     annual: 75589.2,
-    description: 'Ideal for expanding multi-discipline practices.',
+    description: 'Ideal for expanding clinics, multidisciplinary teams, and growing healthcare businesses.',
     highlight: true,
   },
   {
@@ -50,14 +50,14 @@ export const PRICING_TIERS: PricingTier[] = [
     clinicianLimit: 12,
     monthly: 9999,
     annual: 107989.2,
-    description: 'Built for high-volume polyclinics and multi-site centers.',
+    description: 'Built for larger clinics, high-volume centres, and multi-branch healthcare organisations.',
   },
 ];
 
 /** Features are identical on every plan, so one list is shared by all cards. */
 export const SHARED_FEATURES: string[] = [
-  '100% full feature access on every plan',
-  'Unlimited Owner, Branch Manager and Staff accounts',
+  'Full system access included on every plan',
+  'Unlimited non-clinical staff profile accounts',
   'Appointments & visual diary',
   'Electronic medical records & clinical notes',
   'PhilHealth & HMO claims workflow',
@@ -65,6 +65,34 @@ export const SHARED_FEATURES: string[] = [
   'SMS & email notifications',
   'Patient portal & online booking',
 ];
+
+/** Plan-card line for non-clinical staff, with the roles it covers. Shared by the landing page and /pricing. */
+export const STAFF_ACCOUNTS_LINE = {
+  label: 'Unlimited Non-Clinical Staff Profile Accounts',
+  sublabel: '(Receptionists, Administrators, Managers, Finance Staff & Support Staff)',
+};
+
+/** Heading line and paragraph under the plan cards, shared by the landing page and /pricing. */
+export const PRICING_INTRO = {
+  lead: 'Everything Your Clinic Needs. Nothing Locked Behind Upgrades.',
+  text: 'All plans include unlimited non-clinical staff profile accounts, unlimited custom templates, unlimited appointment reminders, online and QR booking, and full system access. Simply choose the plan that matches your number of clinicians.',
+};
+
+/** Callout for clinics that outgrow the 12-clinician plan. */
+export const CUSTOM_PLAN = {
+  title: 'Custom Plans & Healthcare Networks',
+  text: 'Need more than 12 clinicians or additional branches? Malasakit scales with your organisation. Contact us to discuss a custom plan tailored to your clinic network and operational requirements.',
+};
+
+/** Why the plans have a minimum term. Shared by the landing page and /pricing. */
+export const COMMITMENT_REASON = {
+  title: `Why Do We Require a ${COMMITMENT_MONTHS}-Month Commitment?`,
+  paragraphs: [
+    'Successful implementation of a clinic management platform takes time. Clinics often need several months to fully transition workflows, train staff, customize documentation, and integrate core processes such as scheduling, patient records, billing, and reporting.',
+    `Our ${COMMITMENT_MONTHS}-month commitment allows clinics to receive the full benefit of onboarding resources, platform updates, ongoing support, and workflow adoption support while maximising long-term value from the platform.`,
+    'Monthly and annual payment options remain available throughout the commitment period.',
+  ],
+};
 
 /** Whole pesos show without decimals; amounts with centavos show two decimals. */
 export const formatPeso = (amount: number): string => {

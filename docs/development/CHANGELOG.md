@@ -45,6 +45,47 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-11-06 — Landing page: Why Malasakit nav link, pricing copy and FAQ
+
+**Status:** Implemented
+**Module / feature:** Landing site → Navbar, Pricing (home page and `/pricing`), FAQ, Contact; AI chat assistant. See FEATURES "Landing page" and "Subscriptions & pricing", and [features/landing-page-revision.md](features/landing-page-revision.md) §8.
+
+**Original behavior:** The top bar had About, Features, Pricing and FAQ. Pricing said "100% Full Feature Parity" and "Unlimited Owner, Branch Manager and Staff Accounts", had older plan descriptions and a one-line commitment banner. The FAQ had six entries. The training text said the clinic would confirm "the schedule and any fees".
+**Problem / requirement:** Client testing feedback (2026-11-06): add a "Why Malasakit" shortcut in the top bar, new pricing subtext, card lines, plan descriptions, custom-plan text, a new "Why Do We Require a 12-Month Commitment?" block, and eight FAQ answers. Owner decisions: apply the wording to the public pages and the AI assistant only (not the in-app Subscription page or Upgrade dialog); training is free.
+**Reason for the change:** Client wording copied exactly. Shared text moved into `data/pricing.ts` so the home page and `/pricing` cannot drift apart.
+
+**Files modified:**
+- `frontend/src/features/landing/components/Navbar.tsx` — "Why Malasakit" link (id `why-malasakit`) between Features and Pricing; the mobile drawer reuses the same list.
+- `frontend/src/features/landing/components/Plans.tsx` — new subtext (bold lead line + paragraph), card lines (the staff line has a role list as a second line through the existing `sublabel`), custom-plan callout, and the commitment block replacing the one-line banner.
+- `frontend/src/features/landing/data/pricing.ts` — new plan descriptions and shared-feature strings; new exports `PRICING_INTRO`, `STAFF_ACCOUNTS_LINE`, `CUSTOM_PLAN`, `COMMITMENT_REASON`.
+- `frontend/src/features/landing/components/footer-pages/Product/Pricing.tsx` — same header text, card lines, custom-plan text and commitment block; the feature list now starts after the staff line (`SHARED_FEATURES.slice(2)`) so it is not shown twice.
+- `frontend/src/features/landing/data/faqs.ts` — eight entries; two new (multi-branch, affordability).
+- `frontend/src/features/landing/data/support.ts` — `TRAINING_SUMMARY`: free demo and free training, no fee wording (also shown on the Contact page).
+- `backend/apps/common/services/gemini_service.py` — plan lines and the training line (training is free; "a price" removed from the never-promise list).
+- `docs/development/FEATURES.md`, `docs/development/features/landing-page-revision.md`, this file.
+
+**Frontend changes:** as above. No new components or dependencies (icon `CalendarCheck`).
+**Backend changes:** assistant instruction text only.
+**Database / migrations:** None.
+**API / data contract:** None.
+
+**Business rules & decisions:**
+- Training is free. This supersedes the 2026-10-22 rule that the team confirms "the schedule and any fees" and the "never quote a training price" rule. The other training limits stay: online or on-site within the Negros Island Region only, scheduled in advance, no booking system.
+- "Administrators" in the staff list is a job title, as in the client's copy; the system roles are still Owner and Branch Manager.
+- Prices, clinician limits and branch fees are unchanged.
+
+**Tests executed:**
+- `npm run build` (from `frontend/`) → exit 0 (`tsc -b` and `vite build`).
+- `npm run lint` → 518 problems, the same count as before (none new).
+- `REDIS_URL= backend/virt/bin/python manage.py test apps.common.test_assistant_prompt --noinput` → 6 tests OK.
+- Manual (headless Chromium against the dev frontend on port 3000, read-only): text compared word for word with the client's brief. Passed: the heading kept; the bold lead line and subtext; all three cards (new lines, staff role list, new descriptions, old wording gone); the commitment block (title and three paragraphs); the custom-plan heading and text; the old banner removed; the FAQ (8 questions in order and all 8 answers exact, FAQ 6 with its link and no fee wording); `/pricing` (same text and cards); the Contact page training text (free, no "any fees"); nav order About · Features · Why Malasakit · Pricing · FAQ on one line at 1440 px and 1024 px; the link scrolls the section top to 112 px under the bar from `/`, `/pricing` and `/contact`, identical to the Features link; the mobile drawer lists the five links in order and the link scrolls; no horizontal scroll at 375 px on `/` and `/pricing`; no console errors. Two first-run failures were my test, not the page: a selector that also matched list items inside each card, and a scroll limit I had guessed too tight (the heading sits 260 px down because of the section's top padding).
+- Not run: the in-app Subscription page and Upgrade dialog (unchanged by decision); backend tests other than the assistant prompt tests.
+
+**Known limitations / unresolved issues:**
+- The in-app Subscription page and Upgrade dialog, and manual Chapter 33, still say "100% Full Feature Parity" and "Unlimited Owner, Branch Manager and staff accounts", so the public and in-app wording now differ.
+- The `/pricing` page's own small FAQ list still says "100% of the features" and "unlimited Owner, Branch Manager and Staff accounts", and the explainer under the cards still repeats the minimum-term sentence just above the new commitment block. Both agree in meaning; reword if the client wants identical phrasing.
+**Regression risks:** Anything that scrolls to `#plans` (the Features "Learn more" links and the footer) is unchanged. The AI assistant now describes the plans with the new wording, so spot-check a few of its answers when the Gemini key is available.
+
 ## 2026-11-01 — User manual: nine new chapters, renumbering and screenshot refresh
 
 **Status:** Implemented

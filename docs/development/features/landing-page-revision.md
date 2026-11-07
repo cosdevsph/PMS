@@ -108,7 +108,7 @@ Heading: "Why Clinics Choose Malasakit". Each item is marked ▼ in the brief, s
 2. **Support wording.** `landing/data/support.ts` says to advertise only email and in-app support on business hours (Monday to Friday, 9:00 AM to 6:00 PM Philippine Time, reply within one business day) and not 24/7 support. "Responsive assistance when you need it" (Features card 10) was kept as written because it is the owner's wording, but it can be read as always-available help. A safer line would be "responsive assistance during business hours".
 3. **Low-stock alerts.** Kept as written. Today this is an on-screen indicator only. Either soften to "low-stock indicators", or build notifications as a separate feature.
 4. **Footer About page.** `landing/components/footer-pages/Company/About.tsx` has its own founding story and was **not** changed.
-5. **Navbar.** The new section has the id `why-malasakit`. The top menu was **not** given a link.
+5. **Navbar.** Superseded (2026-11-06): the top menu now has a "Why Malasakit" link between Features and Pricing (see Revision 2).
 6. **Spelling.** "organisation" (item 10) is kept as written; the rest of the site uses American spelling.
 7. **Text outside the brief, left unchanged.** The subtitles under the About and Features headings, the Features bottom line "Ready to transform your practice?", and the Hero capability chips (Patient Records & SOAP, Smart Scheduling, Billing & Invoicing). The Features bottom line still says "practice" although the heading now says "Clinic".
 
@@ -119,3 +119,12 @@ Heading: "Why Clinics Choose Malasakit". Each item is marked ▼ in the brief, s
 - **Features:** `data/features.ts` (10 cards, new icons) and `Features.tsx` (heading; the tenth card is centred on the last row on large screens through `lg:col-start-2` whenever the card count leaves one card alone).
 - **Why Clinics Choose Malasakit:** new `data/whyChoose.ts` and `components/WhyChoose.tsx`, an accordion built like the FAQ (one item open at a time, the first open on load, closed panels `inert`), placed between Features and Pricing in `LandingPage.tsx`, id `why-malasakit`.
 - **AI assistant:** `gemini_service.py` feature list extended with only what the code backs (online booking by QR, drag-and-drop and recurring scheduling, unlimited templates, documents emailed from the platform, inventory with low-stock **warnings**, business reports, SMS through the clinic's own gateway). The assistant says "warnings", not "alerts", because it is told never to claim features that do not exist.
+
+## 8. Revision 2 (2026-11-06): client testing feedback
+
+- **Navbar:** `Navbar.tsx` gets "Why Malasakit" (id `why-malasakit`) between Features and Pricing. It scrolls like the other links (section top at 112 px, just under the fixed bar), including from `/pricing` and `/contact`.
+- **Pricing section:** heading kept; new bold lead line and paragraph; card lines "Full System Access Included" and "Unlimited Non-Clinical Staff Profile Accounts" with the roles in a small second line; new plan descriptions; custom-plan callout renamed "Custom Plans & Healthcare Networks" with new text; the one-line commitment banner is replaced by a "Why Do We Require a 12-Month Commitment?" block. The text lives in `landing/data/pricing.ts` (`PRICING_INTRO`, `STAFF_ACCOUNTS_LINE`, `CUSTOM_PLAN`, `COMMITMENT_REASON`) and is shared with the `/pricing` page.
+- **FAQ:** eight entries in the client's order; "Can I manage multiple branches?" and "Why is Malasakit more affordable…?" are new. The support and cancellation answers are built from `SUPPORT_HOURS`, `SUPPORT_RESPONSE_TIME`, `COMMITMENT_MONTHS` and `ANNUAL_DISCOUNT_PERCENT`.
+- **Training is free** (owner clarification): the old "…and any fees" wording was removed from `TRAINING_SUMMARY` (Contact page) and from the AI assistant prompt. FAQ 6 is the client's text with no fee sentence.
+- **AI assistant:** the plan lines now say full system access, unlimited non-clinical staff profile accounts, unlimited custom templates, unlimited reminders and online and QR booking.
+- **Not changed, by owner decision:** the in-app Subscription page and Upgrade dialog, manual Chapter 33, and the `/pricing` page's own small FAQ list.

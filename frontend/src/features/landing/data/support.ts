@@ -12,7 +12,7 @@ export const SUPPORT_SUMMARY = `Email and in-app support tickets, ${SUPPORT_HOUR
 /** Live demos and staff training. On-site visits are limited to this area; online sessions are not. */
 export const ONSITE_TRAINING_AREA = 'Negros Island Region (Negros Occidental, Negros Oriental and Siquijor)';
 
-export const TRAINING_SUMMARY = `We offer a free live demo and staff training sessions, online or on-site at your clinic within the ${ONSITE_TRAINING_AREA}. Sessions are scheduled in advance: email us your clinic details and preferred dates, and we will confirm the schedule and any fees. You can also use the guided clinic setup, video guides, the User Manual and the AI assistant at any time.`;
+export const TRAINING_SUMMARY = `We offer a free live demo and free staff training sessions, online or on-site at your clinic within the ${ONSITE_TRAINING_AREA}. Sessions are scheduled in advance: email us your clinic details and preferred dates, and we will confirm the schedule. You can also use the guided clinic setup, video guides, the User Manual and the AI assistant at any time.`;
 
 const DEMO_REQUEST_SUBJECT = 'Live Demo / Staff Training Request';
 const DEMO_REQUEST_BODY = [

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { Building2, CalendarCheck, Check, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { PublicPageLayout } from '../../public/PublicPageLayout';
 import { PageHeader } from '../../public/PageHeader';
 import { PlanCard } from '../../public/pricing/PlanCard';
@@ -9,8 +9,12 @@ import {
   BRANCH_ADDON_ANNUAL,
   BRANCH_LINE,
   COMMITMENT_MONTHS,
+  COMMITMENT_REASON,
+  CUSTOM_PLAN,
+  PRICING_INTRO,
   PRICING_TIERS,
   SHARED_FEATURES,
+  STAFF_ACCOUNTS_LINE,
   annualSavings,
   formatPeso,
 } from '../../../data/pricing';
@@ -48,7 +52,12 @@ export const Pricing: React.FC = () => {
         category="Product"
         title="Simple, Predictable Clinic Pricing"
         breadcrumbLabel="Pricing"
-        description={`Every plan includes 100% full feature access and unlimited Owner, Branch Manager and staff accounts. ${COMMITMENT_MONTHS}-month minimum term, paid monthly or annually (annual saves ${ANNUAL_DISCOUNT_PERCENT}%).`}
+        description={
+          <>
+            <strong className="block mb-2 text-white font-heading font-bold">{PRICING_INTRO.lead}</strong>
+            {PRICING_INTRO.text}
+          </>
+        }
       />
 
       <div className="bg-clinical-cloud">
@@ -77,9 +86,10 @@ export const Pricing: React.FC = () => {
                   highlights={[
                     { icon: Users, label: `Up to ${tier.clinicianLimit} clinicians`, emphasis: true },
                     { icon: Building2, label: BRANCH_LINE },
-                    { icon: ShieldCheck, label: '100% Full Feature Parity', emphasis: true },
+                    { icon: ShieldCheck, label: 'Full System Access Included', emphasis: true },
+                    { icon: Check, label: STAFF_ACCOUNTS_LINE.label, sublabel: STAFF_ACCOUNTS_LINE.sublabel },
                   ]}
-                  features={SHARED_FEATURES.slice(1)}
+                  features={SHARED_FEATURES.slice(2)}
                   ctaLabel="Start 14-Day Free Trial"
                   ctaTo="/register"
                   ctaNote="No credit card required for trial"
@@ -97,9 +107,9 @@ export const Pricing: React.FC = () => {
                 <Sparkles className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl text-white font-display">Custom Plan & Healthcare Networks</h2>
+                <h2 className="text-xl text-white font-display">{CUSTOM_PLAN.title}</h2>
                 <p className="mt-1 text-sm text-white/80 max-w-2xl leading-relaxed font-body">
-                  Need more than 12 clinicians or a larger multi-branch network? Contact us and we will quote a plan that fits.
+                  {CUSTOM_PLAN.text}
                 </p>
               </div>
             </div>
@@ -111,6 +121,21 @@ export const Pricing: React.FC = () => {
               Contact Us
             </a>
           </div>
+
+          {/* Why a minimum term */}
+          <section aria-labelledby="pricing-commitment-title" className="mt-12 rounded-3xl bg-white ring-1 ring-gray-200/80 p-6 sm:p-8 flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-care-blue/10 text-care-blue flex items-center justify-center shrink-0" aria-hidden="true">
+              <CalendarCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 id="pricing-commitment-title" className="text-xl text-gray-900 font-display">{COMMITMENT_REASON.title}</h2>
+              <div className="mt-2 space-y-3 max-w-3xl text-steady-slate leading-relaxed font-body">
+                {COMMITMENT_REASON.paragraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+            </div>
+          </section>
 
           {/* FAQ Section */}
           <section aria-labelledby="pricing-faq-title" className="mt-16 sm:mt-20 rounded-3xl bg-white ring-1 ring-gray-200/80 px-6 py-10 sm:px-12 sm:py-12">

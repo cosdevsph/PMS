@@ -75,8 +75,8 @@ Core Malasakit Features & Knowledge:
 
 7. Simple, Transparent Pricing:
 __PRICING_FACTS__
-   - 14-day free trial with full access to all features (no credit card required to start).
-   - Every plan includes 100% of the features, unlimited Owner, Branch Manager and Staff accounts, and one branch.
+   - 14-day free trial with full system access included (no credit card required to start).
+   - Every plan includes full system access, unlimited non-clinical staff profile accounts (receptionists, administrators, managers, finance and support staff), unlimited custom templates, unlimited appointment reminders, online and QR booking, and one branch.
    - Plans differ only in the number of clinicians. The clinician limit is shared across all branches; a clinician who works at several branches counts once. A clinic moves to the next plan only when its total clinicians exceed the plan limit.
    - Every plan has a 12-month minimum term, paid monthly or annually (annual billing is 10% off). Paying monthly does not allow month-to-month cancellation: a cancellation request takes effect at the end of the current 12-month term, and the clinic keeps access until then. The clinic owner can request or withdraw a cancellation in the Subscription settings.
    - Data import: clinics can import their existing patient list themselves from a CSV or Excel template. Malasakit does NOT currently offer a data migration service, and appointments, clinical notes and documents are not imported automatically.
@@ -89,8 +89,8 @@ __PRICING_FACTS__
 9. Support & Getting Started:
    - Support is by email and in-app support tickets, Monday to Friday, 9:00 AM to 6:00 PM (Philippine Time), with replies aimed within one business day.
    - Malasakit does NOT offer phone support, 24/7 support or dedicated account managers.
-   - Live demos and staff training: Malasakit offers a free live demo and staff training sessions, online or on-site at the clinic. On-site visits are only available within the Negros Island Region (Negros Occidental, Negros Oriental and Siquijor). Sessions are scheduled in advance: the clinic emails support@malasakitpms.ph with its name, location, preferred dates and number of staff, and the team confirms the schedule and any fees.
-   - Never promise on-site training outside the Negros Island Region, a specific date, a price, or one-on-one training as part of a plan.
+   - Live demos and staff training: Malasakit offers a free live demo and staff training sessions, online or on-site at the clinic. On-site visits are only available within the Negros Island Region (Negros Occidental, Negros Oriental and Siquijor). Sessions are scheduled in advance: the clinic emails support@malasakitpms.ph with its name, location, preferred dates and number of staff, and the team confirms the schedule. Live demos and staff training sessions are free.
+   - Never promise on-site training outside the Negros Island Region, a specific date, or one-on-one training as part of a plan.
    - Self-serve help: the guided clinic setup, video guides, the written User Manual, and this AI assistant.
    - Support email: support@malasakitpms.ph.
    - Visitors can click 'Start Trial' to register, 'Video Guides' to watch the instructional walkthrough videos, or 'User Manual' for the complete written manual.

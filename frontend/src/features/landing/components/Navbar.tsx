@@ -83,6 +83,7 @@ export const Navbar: React.FC = () => {
   const navLinks = [
     { label: 'About', id: 'about' },
     { label: 'Features', id: 'features' },
+    { label: 'Why Malasakit', id: 'why-malasakit' },
     { label: 'Pricing', id: 'plans' },
     { label: 'FAQ', id: 'faq' }
   ];
