@@ -1,5 +1,5 @@
 import { axiosInstance } from '@/lib/axios';
-import type { StaffMember, CreateStaffData, PractitionerRoleImpact, UserLookupResult, AssignBranchData } from '../types/staff.types';
+import type { StaffMember, CreateStaffData, PractitionerRoleImpact, UserLookupResult, AssignBranchData, PractitionerMatch } from '../types/staff.types';
 
 /**
  * Get all staff members for the current clinic
@@ -162,9 +162,15 @@ export const deactivateBranchAssignment = async (
  */
 export const saveStaffSchedule = async (
   userId: number,
-  duty_schedule: NonNullable<StaffMember['duty_schedule']>
+  duty_schedule: NonNullable<StaffMember['duty_schedule']>,
+  confirmAppointmentImpact = false
 ): Promise<StaffMember> => {
-  const response = await axiosInstance.patch<StaffMember>(`/users/${userId}/`, { duty_schedule });
+  // Without the confirmation the backend answers 409 (nothing saved) when upcoming appointments would
+  // fall outside the new hours; with it the hours are saved and no appointment is changed.
+  const response = await axiosInstance.patch<StaffMember>(`/users/${userId}/`, {
+    duty_schedule,
+    ...(confirmAppointmentImpact ? { confirm_appointment_impact: true } : {}),
+  });
   emitPractitionerUpdated(userId, response.data.practitioner_id ?? null);
   return response.data;
 };
@@ -176,4 +182,15 @@ export const saveStaffSchedule = async (
 export const saveStaffClinics = async (userId: number, work_branch_ids: number[]): Promise<StaffMember> => {
   const response = await axiosInstance.patch<StaffMember>(`/users/${userId}/`, { work_branch_ids });
   return response.data;
+};
+
+/**
+ * Practitioner accounts of this organisation with the same first and last name (advisory: one person
+ * with two logins would hide their hours at other clinics from the overlap check).
+ */
+export const findPractitionerMatches = async (firstName: string, lastName: string): Promise<PractitionerMatch[]> => {
+  const response = await axiosInstance.get<{ matches: PractitionerMatch[] }>('/users/practitioner-matches/', {
+    params: { first_name: firstName, last_name: lastName },
+  });
+  return response.data.matches ?? [];
 };

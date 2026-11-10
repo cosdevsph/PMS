@@ -111,6 +111,13 @@ Architecture Decision Records, newest first. Each one: date, decision, context, 
 
 **Consequences.** Anything that asks "which clinics does this person work at" must use active rows (`get_assigned_branch_ids`), not all rows. The seat counter still reads all rows (an archived or inactive Practitioner still counts).
 
+**Amendment (2026-11-10): the overlap rule is enforced on every write and under a lock.**
+- The per-clinic rows (`UserBranchAccess`) are the source of truth for a practitioner's hours; the combined `duty_schedule` on the profile is a mirror. The Branch Manager scope check and the Diary "All branches" availability now read the rows (`schedule_from_accesses`).
+- `assign_branch`, `update_branch_assignment` and `deactivate_branch_assignment` take `lock_person` (a row lock on the user) inside a transaction before reading the other clinics, so two simultaneous saves cannot both pass the overlap check. The user update's check is on the submitted payload, which is the whole schedule, so it needs no lock beyond the sync.
+- `PractitionerSerializer` no longer accepts the schedule fields and `PractitionerScheduleViewSet` is read-only, so the user update is the only writer of hours.
+- Changes that would put upcoming appointments outside the practitioner's hours answer 409 until `confirm_appointment_impact` is sent; nothing is ever cancelled or moved by a schedule change.
+- *Alternatives rejected:* a whole-day rule (owner chose time overlap); a database constraint (hours are JSON on several rows, so it cannot express an overlap); a merge tool for duplicate accounts (advisory name warning only).
+
 ### ADR-005: A Branch Manager's clinics are flagged rows, and the database enforces one manager per clinic
 
 **Date:** 2026-10-22 · **Status:** Accepted and implemented. **Not yet deployed:** `accounts.0026` and `0027` are unapplied on the development database.

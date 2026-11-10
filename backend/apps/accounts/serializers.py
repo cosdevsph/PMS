@@ -4,7 +4,7 @@ from django.db import transaction
 import logging
 from .roles import normalize_role, normalize_roles, normalize_role_payload
 from .utils.rbac import clinics_of, group_lock_reason, validate_branches_free_for_manager
-from .utils.schedule import blocks_outside, find_overlap, overlap_message
+from .utils.schedule import blocks_outside, clinic_names, conflict_error, lock_person, schedule_from_accesses
 from .models import (
     User, Role, Permission, PermissionGroup, FeaturePermission,
     UserBranchAccess,
@@ -572,13 +572,10 @@ class UserSerializer(serializers.ModelSerializer):
                             {'duty_schedule': f'Branch #{bid} does not exist.'}
                         )
 
-        overlap = find_overlap(schedule)
-        if overlap:
-            names = dict(Clinic.objects.filter(
-                pk__in={b.get('branch_id') for blocks in schedule.values() for b in blocks if b.get('branch_id')}
-            ).values_list('id', 'name'))
+        clash = conflict_error(schedule, clinic_names(schedule))
+        if clash:
             raise serializers.ValidationError(
-                {'duty_schedule': overlap_message(overlap, lambda branch_id: names.get(int(branch_id)))}
+                {'duty_schedule': clash['detail'], 'schedule_conflicts': clash['schedule_conflicts']}
             )
 
         # A Branch Manager may only change hours at the clinics they manage. Hours at any other clinic
@@ -592,11 +589,17 @@ class UserSerializer(serializers.ModelSerializer):
                 )
 
     def _stored_schedule(self):
-        """The combined working hours currently saved for the user being edited."""
+        """
+        The combined working hours currently saved for the user being edited: their active clinic
+        rows (the source of truth), else the combined copy on the profile / user.
+        """
         user = self.instance
         if user is None:
             return {}
         if 'PRACTITIONER' in user.get_effective_roles():
+            rows = schedule_from_accesses(user)
+            if rows:
+                return rows
             profile = getattr(user, 'practitioner_profile', None)
             if profile is not None and not profile.is_deleted and isinstance(profile.duty_schedule, dict):
                 return profile.duty_schedule
@@ -920,6 +923,7 @@ class UserSerializer(serializers.ModelSerializer):
             branch_periods[default_branch_id] = duty_schedule or {}
 
         with db_transaction.atomic():
+            lock_person(user)
             # 1. Update/create active branch accesses for branches in the new schedule
             for branch_id, sched in branch_periods.items():
                 try:

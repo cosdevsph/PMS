@@ -158,7 +158,12 @@ class PractitionerSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Practitioner
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        # Working hours are changed only through the user update, which checks them against the
+        # practitioner's other clinics (accounts/utils/schedule.py); never through this serializer.
+        read_only_fields = [
+            'id', 'created_at', 'updated_at',
+            'duty_days', 'duty_start_time', 'duty_end_time', 'lunch_start_time', 'lunch_end_time', 'duty_schedule',
+        ]
 
     def get_availability(self, obj):
         return obj.availability

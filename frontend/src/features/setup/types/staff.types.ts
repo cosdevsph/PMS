@@ -60,6 +60,44 @@ export interface StaffMember {
   duty_schedule?: DutySchedule | null;
 }
 
+/** One clash between two clinics' hours, as returned in a 400 response (`schedule_conflicts`). */
+export interface ScheduleConflict {
+  day: DutyDay;
+  branch_id: number | null;
+  branch_name: string | null;
+  start: string;
+  end: string;
+  other_branch_id: number | null;
+  other_branch_name: string | null;
+  other_start: string;
+  other_end: string;
+}
+
+/** An upcoming appointment that would fall outside the new working hours (no patient details). */
+export interface AffectedAppointment {
+  id: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  branch_id: number | null;
+  branch_name: string | null;
+}
+
+/** The 409 `SCHEDULE_AFFECTS_APPOINTMENTS` response: nothing was saved, the user must confirm. */
+export interface ScheduleImpact {
+  detail: string;
+  affected_count: number;
+  affected_appointments: AffectedAppointment[];
+}
+
+/** A practitioner account that has the same first and last name as the one being created. */
+export interface PractitionerMatch {
+  id: number;
+  name: string;
+  email: string;
+  clinics: string[];
+}
+
 export interface BranchAssignment {
   id?: number;
   branch_id: number;

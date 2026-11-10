@@ -23,7 +23,10 @@ from .services.email_service import EmailService
 from .services import otp_service
 from .services import login_throttle_service
 from .utils.generators import generate_verification_code
-from .utils.schedule import branch_overlap_error, sync_combined_schedule
+from .utils.schedule import (
+    appointments_losing_hours, branch_overlap_error, lock_person, merge_schedules, proposed_for_branch,
+    schedule_from_accesses, sync_combined_schedule,
+)
 from .utils.rbac import cap_levels, ceiling_violations, group_lock_reason, is_within_manager_scope, users_managed_by
 from apps.clinics.models import Clinic, Practitioner
 from apps.common.permissions import IsOwnerBranchManagerOrStaff, HasFeaturePermission
@@ -1136,12 +1139,36 @@ def _invalidate_practitioners_cache(user_or_instance):
     try:
         all_branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
         # Cache keys: '' suffix = All Branches query; numeric suffix = branch-specific
-        keys = [f'practitioners_v3_{main_clinic.id}_'] + [
-            f'practitioners_v3_{main_clinic.id}_{bid}' for bid in all_branch_ids
+        keys = [f'practitioners_v4_{main_clinic.id}_'] + [
+            f'practitioners_v4_{main_clinic.id}_{bid}' for bid in all_branch_ids
         ]
         cache.delete_many(keys)
     except Exception:
         pass  # cache invalidation is best-effort; never break the response
+
+
+def _appointment_impact_response(request, user, new_schedule, default_branch_id=None):
+    """
+    A 409 listing the future appointments that would fall outside `new_schedule`, or None when none
+    are affected or the caller already confirmed (`confirm_appointment_impact: true`). Nothing is
+    cancelled, moved or saved either way: the warning only asks for a confirmation.
+    """
+    if str(request.data.get('confirm_appointment_impact', '')).lower() in ('true', '1'):
+        return None
+    impact = appointments_losing_hours(user, new_schedule, default_branch_id)
+    if not impact['count']:
+        return None
+    n = impact['count']
+    return Response(
+        {
+            'code': 'SCHEDULE_AFFECTS_APPOINTMENTS',
+            'detail': f"{n} upcoming appointment{'s' if n != 1 else ''} would fall outside the new working hours. "
+                      "They will not be cancelled or moved.",
+            'affected_count': n,
+            'affected_appointments': impact['appointments'],
+        },
+        status=status.HTTP_409_CONFLICT,
+    )
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -1625,6 +1652,13 @@ class UserViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_403_FORBIDDEN,
                     )
 
+        # ── Upcoming appointments that would fall outside the new hours: ask first ──
+        new_hours = serializer.validated_data.get('duty_schedule')
+        if isinstance(new_hours, dict) and 'PRACTITIONER' in instance.get_effective_roles():
+            warning = _appointment_impact_response(request, instance, new_hours, instance.clinic_branch_id)
+            if warning is not None:
+                return warning
+
         self.perform_update(serializer)
         instance.refresh_from_db()
         new_role  = instance.role
@@ -1956,6 +1990,38 @@ class UserViewSet(viewsets.ModelViewSet):
 
     # ── Multi-Branch Practitioner Actions ─────────────────────────────────────
 
+    @action(detail=False, methods=['get'], url_path='practitioner-matches')
+    def practitioner_matches(self, request):
+        """
+        GET /api/users/practitioner-matches/?first_name=...&last_name=...
+        Practitioners of the requester's organisation with the same first and last name (ignoring case).
+        Used by the Add Staff form to warn that one person may be about to get a second account, which
+        would hide their hours at the other clinics from the overlap check. Advisory only.
+        """
+        actor = request.user
+        if not (actor.is_owner or actor.is_branch_manager):
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        first = (request.query_params.get('first_name') or '').strip()
+        last = (request.query_params.get('last_name') or '').strip()
+        main_clinic = actor.clinic.main_clinic if actor.clinic else None
+        if not (first and last and main_clinic):
+            return Response({'matches': []})
+
+        branch_ids = list(main_clinic.get_all_branches().values_list('id', flat=True))
+        users = User.objects.filter(
+            first_name__iexact=first, last_name__iexact=last,
+            roles__contains=['PRACTITIONER'], is_deleted=False, is_permanently_deleted=False,
+        ).filter(
+            Q(clinic=main_clinic) | Q(clinic_branch_id__in=branch_ids) | Q(branch_accesses__branch_id__in=branch_ids)
+        ).distinct()
+
+        matches = []
+        for u in users[:5]:
+            clinics = list(u.branch_accesses.filter(is_active=True).values_list('branch__name', flat=True))
+            matches.append({'id': u.id, 'name': u.get_full_name(), 'email': u.email, 'clinics': clinics})
+        return Response({'matches': matches})
+
     @action(detail=False, methods=['get'])
     def lookup(self, request):
         """
@@ -2068,6 +2134,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         with transaction.atomic():
             from apps.accounts.models import UserBranchAccess
+            lock_person(user)
             uba = UserBranchAccess.objects.select_for_update().filter(user=user, branch=branch).first()
             if uba and uba.is_active:
                 return Response(
@@ -2091,7 +2158,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 duty_days=duty_days, start=duty_start_time, end=duty_end_time,
             )
             if clash:
-                return Response({'detail': clash}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(clash, status=status.HTTP_400_BAD_REQUEST)
 
             if not uba:
                 uba = UserBranchAccess.objects.create(
@@ -2144,40 +2211,51 @@ class UserViewSet(viewsets.ModelViewSet):
                 return Response({'detail': 'You do not have permission to manage this branch.'}, status=status.HTTP_403_FORBIDDEN)
 
         from apps.accounts.models import UserBranchAccess
-        uba = UserBranchAccess.objects.filter(user=user, branch_id=branch_id).first()
-        if not uba:
-            return Response({'detail': 'Branch assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        will_be_active = bool(request.data['is_active']) if 'is_active' in request.data else uba.is_active
-        if will_be_active:
-            clash = branch_overlap_error(
-                user, uba.branch_id,
-                duty_schedule=request.data.get('duty_schedule', uba.duty_schedule),
-                duty_days=request.data.get('duty_days', uba.duty_days),
-                start=request.data.get('duty_start_time', uba.duty_start_time),
-                end=request.data.get('duty_end_time', uba.duty_end_time),
-            )
-            if clash:
-                return Response({'detail': clash}, status=status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            lock_person(user)
+            uba = UserBranchAccess.objects.select_for_update().filter(user=user, branch_id=branch_id).first()
+            if not uba:
+                return Response({'detail': 'Branch assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if 'duty_days' in request.data:
-            uba.duty_days = request.data['duty_days']
-        if 'duty_start_time' in request.data:
-            uba.duty_start_time = request.data['duty_start_time']
-        if 'duty_end_time' in request.data:
-            uba.duty_end_time = request.data['duty_end_time']
-        if 'lunch_start_time' in request.data:
-            uba.lunch_start_time = request.data['lunch_start_time']
-        if 'lunch_end_time' in request.data:
-            uba.lunch_end_time = request.data['lunch_end_time']
-        if 'duty_schedule' in request.data:
-            uba.duty_schedule = request.data['duty_schedule']
-        if 'is_active' in request.data:
-            uba.is_active = bool(request.data['is_active'])
+            will_be_active = bool(request.data['is_active']) if 'is_active' in request.data else uba.is_active
+            others = schedule_from_accesses(user, exclude_branch_id=uba.branch_id)
+            if will_be_active:
+                proposal = dict(
+                    duty_schedule=request.data.get('duty_schedule', uba.duty_schedule),
+                    duty_days=request.data.get('duty_days', uba.duty_days),
+                    start=request.data.get('duty_start_time', uba.duty_start_time),
+                    end=request.data.get('duty_end_time', uba.duty_end_time),
+                )
+                clash = branch_overlap_error(user, uba.branch_id, **proposal)
+                if clash:
+                    return Response(clash, status=status.HTTP_400_BAD_REQUEST)
+                after = merge_schedules(others, proposed_for_branch(uba.branch_id, **proposal))
+            else:
+                after = others
 
-        uba.save()
-        sync_combined_schedule(user)
-        _invalidate_practitioners_cache(user)
+            warning = _appointment_impact_response(request, user, after)
+            if warning is not None:
+                return warning
+
+            if 'duty_days' in request.data:
+                uba.duty_days = request.data['duty_days']
+            if 'duty_start_time' in request.data:
+                uba.duty_start_time = request.data['duty_start_time']
+            if 'duty_end_time' in request.data:
+                uba.duty_end_time = request.data['duty_end_time']
+            if 'lunch_start_time' in request.data:
+                uba.lunch_start_time = request.data['lunch_start_time']
+            if 'lunch_end_time' in request.data:
+                uba.lunch_end_time = request.data['lunch_end_time']
+            if 'duty_schedule' in request.data:
+                uba.duty_schedule = request.data['duty_schedule']
+            if 'is_active' in request.data:
+                uba.is_active = bool(request.data['is_active'])
+
+            uba.save()
+            sync_combined_schedule(user)
+            _invalidate_practitioners_cache(user)
 
         serializer = UserSerializer(user, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -2205,14 +2283,23 @@ class UserViewSet(viewsets.ModelViewSet):
                 return Response({'detail': 'You do not have permission to manage this branch.'}, status=status.HTTP_403_FORBIDDEN)
 
         from apps.accounts.models import UserBranchAccess
-        uba = UserBranchAccess.objects.filter(user=user, branch_id=branch_id).first()
-        if not uba:
-            return Response({'detail': 'Branch assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        uba.is_active = False
-        uba.save(update_fields=['is_active'])
-        sync_combined_schedule(user)
-        _invalidate_practitioners_cache(user)
+        with transaction.atomic():
+            lock_person(user)
+            uba = UserBranchAccess.objects.select_for_update().filter(user=user, branch_id=branch_id).first()
+            if not uba:
+                return Response({'detail': 'Branch assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+            warning = _appointment_impact_response(
+                request, user, schedule_from_accesses(user, exclude_branch_id=uba.branch_id)
+            )
+            if warning is not None:
+                return warning
+
+            uba.is_active = False
+            uba.save(update_fields=['is_active'])
+            sync_combined_schedule(user)
+            _invalidate_practitioners_cache(user)
 
         serializer = UserSerializer(user, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)

@@ -1086,6 +1086,7 @@ class AppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def practitioners(self, request):
         from apps.clinics.models import Practitioner
+        from apps.accounts.utils.schedule import schedule_from_accesses
 
         user = request.user
         if not user.clinic:
@@ -1095,7 +1096,7 @@ class AppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
         clinic_branch_param = request.query_params.get('clinic_branch', '')
 
         # 'v2': bumped when the roles were renamed (OWNER / BRANCH_MANAGER) so cached lists with old codes are never served.
-        cache_key = f'practitioners_v3_{main_clinic.id}_{clinic_branch_param}'
+        cache_key = f'practitioners_v4_{main_clinic.id}_{clinic_branch_param}'
         cached    = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
@@ -1157,6 +1158,12 @@ class AppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
                 uba = p.user.branch_accesses.filter(branch_id=branch_id_num, is_active=True).first()
                 if uba and (uba.duty_schedule or uba.duty_days):
                     avail = uba.availability
+            else:
+                # All branches: the hours come from the active clinic rows (the source of truth), not
+                # the combined copy on the profile, which can lag behind them.
+                rows = schedule_from_accesses(p.user)
+                if rows:
+                    avail = {**avail, 'duty_schedule': rows}
 
             assigned_branches = list(p.user.branch_accesses.filter(is_active=True).values('branch_id', 'branch__name'))
 
@@ -1412,7 +1419,8 @@ class AppointmentViewSet(DiaryBranchScopeMixin, viewsets.ModelViewSet):
 
 # ── Other ViewSets (unchanged) ────────────────────────────────────────────────
 
-class PractitionerScheduleViewSet(viewsets.ModelViewSet):
+# Read-only: hours are set per clinic through the user update, which checks overlaps across clinics.
+class PractitionerScheduleViewSet(viewsets.ReadOnlyModelViewSet):
     queryset           = PractitionerSchedule.objects.all().select_related('practitioner__user', 'location')
     serializer_class   = PractitionerScheduleSerializer
     permission_classes = [IsAuthenticated]

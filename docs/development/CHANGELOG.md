@@ -45,6 +45,75 @@ Copy this block to the top of the entries list. Write "None" for sections that d
 
 ## Entries
 
+## 2026-11-10 — Practitioner hours across clinics: gaps in the overlap check closed
+
+**Status:** Implemented (analysis 2026-11-09; approved by the owner the same day)
+**Module / feature:** Setup → Staff and Permissions → "Clinics for Practitioners"; practitioner availability (Diary, Calendar, booking, online booking). See FEATURES "Roles & permissions" → "Practitioner clinics" and ARCHITECTURE ADR-006 (amended).
+
+**Original behavior:** The overlap rule already existed (2026-10-23, ADR-006): hours at two clinics may not overlap on the same day, back-to-back is allowed. It ran on the user create and update and on `assign_branch` / `update_branch_assignment`. A client still reported saving the same days and hours at a second branch. Reading the code found these gaps:
+1. **Add Staff with an existing practitioner's email** loaded the name, phone and discipline but not their current clinics or hours. The form started from default Mon–Fri 8:00 AM–5:00 PM at the chosen clinic and sent only that clinic, with `roles: ['PRACTITIONER']` and a new home clinic. Neither the form check nor the server check ever saw the other clinic. For an Owner the save succeeded and silently deactivated the other clinic, stripped a Branch Manager role and moved the home clinic. For a Branch Manager it was refused with "You can only change working hours at the clinics you manage." The banner also said "independent duty hours (Consumes 1 clinician allocation)", which has been wrong since 2026-10-23. This is the most likely source of the report; it was confirmed by reading the code and by the scratch-database check below, not reproduced on the client's data.
+2. `PATCH /api/practitioners/{id}/` (`PractitionerSerializer`, `fields='__all__'`) and `/api/practitioner-schedules/` (writable `ModelViewSet`) wrote hours with no check. No screen or Android code uses them.
+3. `assign_branch`, `update_branch_assignment` and `deactivate_branch_assignment` did not lock the person, so two simultaneous saves could both pass the check (unlikely, but possible). `update_branch_assignment` had no transaction.
+4. The Staff form never showed a server `duty_schedule` refusal (only a generic "Request failed").
+5. The refusal named only the first clashing day.
+6. The "All branches" Diary hours came from the combined copy on the profile, which can lag behind the clinic rows (dev data: 9 of 15 differed).
+7. Shortening hours or removing a clinic left upcoming appointments outside the hours with no warning.
+8. One person with two logins is two practitioners, and nothing links their hours.
+
+**Problem / requirement:** A practitioner must never have overlapping duty hours at two clinics, whichever clinic is being edited. The check must be in the backend and shown in the frontend; availability must stay consistent across Diary, Calendar and booking; existing appointments must never be cancelled, moved or reassigned silently.
+**Reason for the change:** Close the gaps around the existing rule instead of building a new scheduling system. Owner decisions (2026-11-09): keep the time-overlap rule (not whole-day); warn, then allow, when upcoming appointments would fall outside new hours; add a duplicate-account warning; do not lock down `/api/practitioners/` beyond its schedule fields.
+
+**Files modified:**
+- `backend/apps/accounts/utils/schedule.py` — times compared as `HH:MM` (so `12:00:00` and `12:00` match); `find_overlaps` (all pairs), `schedule_conflicts` (structured list), `conflicts_message` (grouped by clash, 12-hour times), `conflict_error`, `clinic_names`, `proposed_for_branch`, `branch_overlap_error` now returns `{detail, schedule_conflicts}`, `lock_person` (row lock on the user), `appointments_losing_hours`. `overlap_message` removed (replaced by `conflicts_message`).
+- `backend/apps/accounts/serializers.py` — `_validate_duty_schedule` raises the grouped message plus `schedule_conflicts`; `_stored_schedule` reads the practitioner's active clinic rows first (the Branch Manager scope check compared against a copy that could drift); `_sync_practitioner_branch_schedules` locks the person first.
+- `backend/apps/accounts/views.py` — `assign_branch` locks the person before reading and returns the structured conflict; `update_branch_assignment` and `deactivate_branch_assignment` run in a transaction with the lock; the 409 appointment warning (`_appointment_impact_response`) on `update`, `update_branch_assignment` and `deactivate_branch_assignment`; new `GET /api/users/practitioner-matches/`; cache key `practitioners_v3_` → `practitioners_v4_`.
+- `backend/apps/clinics/serializers.py` — `PractitionerSerializer`: `duty_days`, `duty_start_time`, `duty_end_time`, `lunch_start_time`, `lunch_end_time`, `duty_schedule` are read-only.
+- `backend/apps/appointments/views.py` — `PractitionerScheduleViewSet` is read-only; the practitioners list builds "All branches" hours from the active clinic rows.
+- `backend/apps/accounts/management/commands/report_practitioner_schedule_conflicts.py` — new, read-only report.
+- `backend/apps/accounts/test_schedule_conflicts.py` — new, 26 tests.
+- `frontend/src/features/setup/components/modals/CreateStaffAccountModal.tsx` — existing practitioner: their current hours at every active clinic are loaded, the banner lists them, only the hours (and lunch) are sent (name, roles, home clinic stay as they are); one overlap check across all clinics with the server's wording; server `duty_schedule` errors are shown; 409 dialog; duplicate-name warning with "Use this account". Old single-day `checkScheduleConflict` and the "already assigned, choose a different branch" banner removed.
+- `frontend/src/features/setup/pages/users/permissions/PractitionerBranchPanel.tsx` — "Already works at" list, live "Schedule Conflict" box (Save disabled), 409 dialog.
+- `frontend/src/features/setup/pages/users/permissions/practitionerSchedule.ts` — `scheduleConflictMessage` (same wording as the backend), `scheduleImpactOf`.
+- `frontend/src/features/setup/pages/users/permissions/ScheduleImpactDialog.tsx` — new "Upcoming appointments affected" dialog.
+- `frontend/src/features/setup/pages/users/Permissions.tsx`, `services/StaffService.ts`, `types/staff.types.ts` — confirmation flag, `findPractitionerMatches`, new types.
+
+**Frontend changes:** See the files above. Times are 12-hour in the new text and dialog.
+**Backend changes:** See the files above.
+**Database / migrations:** None. No model change (`makemigrations --check --dry-run` reports no changes). No data is changed; legacy conflicts are only reported.
+**API / data contract:**
+- 400 conflict responses (`PATCH /users/{id}/`, `assign_branch`, `update_branch_assignment`) gain `schedule_conflicts: [{day, branch_id, branch_name, start, end, other_branch_id, other_branch_name, other_start, other_end}]`. The message text changed (grouped by clash) and still contains "cannot work in two places simultaneously".
+- New 409 `{code: 'SCHEDULE_AFFECTS_APPOINTMENTS', detail, affected_count, affected_appointments: [{id, date, start_time, end_time, branch_id, branch_name}]}` (no patient details, first 10) on `PATCH /users/{id}/`, `update_branch_assignment` and `deactivate_branch_assignment`. Nothing is saved; resend with `confirm_appointment_impact: true` to save. No appointment is ever changed.
+- New `GET /api/users/practitioner-matches/?first_name=&last_name=` (Owner or Branch Manager, own organisation only) → `{matches: [{id, name, email, clinics}]}`.
+- `PATCH /api/practitioners/{id}/` ignores the schedule fields; `/api/practitioner-schedules/` allows reads only (405 on writes).
+
+**Business rules & decisions:**
+- Conflict rule (owner, 2026-11-09): **time overlap**, not whole day. Mon 8:00 AM–12:00 PM at A plus Mon 1:00–5:00 PM at B is allowed; back-to-back is allowed. No travel gap. A whole-day rule would have made 2 practitioners in the dev data (two clinics on the same day) invalid.
+- Appointment warning: counts future active appointments (`SCHEDULED`, `CONFIRMED`, `CHECKED_IN`, `IN_PROGRESS`; later today counts) that fit the current hours at their clinic but not the new ones. Lunch is ignored in this check. Past, cancelled and already-outside appointments are not counted. Warn, then allow.
+- Duplicate-account warning is advisory and matches on first and last name only (the Staff form has no licence field). No merge tool.
+- Hours stay per clinic row (`UserBranchAccess`); the profile's combined copy is a mirror.
+
+**Tests executed:**
+- `REDIS_URL= virt/bin/python manage.py test apps.accounts.test_schedule_conflicts --noinput` → 26 tests, OK (a first run failed one test of mine that expected `12:00:01` to be an overlap; seconds are intentionally ignored, test corrected to a one-minute overlap).
+- `... test apps.accounts` → 165 tests, OK. `... test apps.appointments` → 30, OK. `... test apps.patients` → 141, OK. `... test apps.clinics` → 0 tests found. (`apps.clinical_templates` was not run.)
+- `manage.py check` → no issues. `manage.py makemigrations --check --dry-run` → no changes.
+- `cd frontend && npm run build` → passed. `npm run lint` → 518 problems, the same count as before the change.
+- `manage.py report_practitioner_schedule_conflicts` on the dev database (read-only): 15 practitioners; 0 overlapping clinic rows; 9 profile-vs-row differences; 1 same-name pair whose hours would overlap if they were one person (users 2 and 7, possibly test data); 0 legacy `PractitionerSchedule` rows.
+- Manual (isolated stack: scratch copy of the dev database, `REDIS_URL=` empty, ports 8100/3100, then removed; the dev database and the shared Redis were not touched). As Owner: Add clinic with the same days and hours shows "Schedule Conflict" naming both clinics, the days and 12-hour times, and disables Save; Sat/Sun saves; shortening a practitioner's hours with an upcoming Monday appointment opens the dialog, "Go back" keeps the form, "Save anyway" saves and the appointment stays unchanged (checked in the database); Add Staff with an existing practitioner's email loads both clinics' hours, an overlapping Monday period is refused with the grouped message, a back-to-back period saves with both clinics still active and name, phone, roles and home clinic unchanged; typing the name of an existing practitioner shows the duplicate warning, other organisations' practitioners are not listed, "Use this account" switches to the existing-practitioner flow. No console errors besides the form's own validation log. One bug found and fixed during this check: the edit-hours form compared a clinic's new hours with its own current hours.
+
+**Known limitations / unresolved issues:**
+- Concurrency is covered by a test that the lock is taken on all three single-clinic endpoints and by sequential refusal, not by two truly simultaneous requests.
+- Pending online bookings (`PortalBooking` PENDING) are not counted in the appointment warning.
+- The Branch Manager screens (Permissions panel, Add Staff with locked clinics) were covered by backend tests only, not driven in a browser.
+- Open (not changed): when availability is asked for a clinic where the practitioner has no row, `get_practitioner_working_windows` falls back to the profile's combined hours instead of "not working here" (existing behavior; changing it could affect Owner+Practitioner users who have no branch restriction). Needs an owner decision.
+- Open (not changed, recorded): on `/api/practitioners/` any logged-in user can still DELETE a practitioner (which cancels their future appointments) or change non-schedule fields, and an Owner can reach other organisations' practitioners; F6 (read access to every clinic's schedules and reminder logs for any Owner) is still open.
+- A clinic switched off (`Clinic.is_active=False`) still holds the practitioner's hours until the clinic is removed from them.
+- Users 2 and 7 in the dev data need an owner decision (one person or two). Nothing was changed.
+- Not confirmed: whether the client tested on production and whether production includes the 2026-10-23 release. Run the report command there.
+
+**Regression risks:** Staff form for existing practitioners (hours are now loaded and only hours are sent); the Diary "All branches" availability (now from clinic rows); the Branch Manager scope check (compares against clinic rows); any caller that reads the old message text or `branch_overlap_error`'s old string result (none found in the repo).
+
+---
+
 ## 2026-11-06 — Landing page: Why Malasakit nav link, pricing copy and FAQ
 
 **Status:** Implemented

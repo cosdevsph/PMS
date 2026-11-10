@@ -1,5 +1,5 @@
 import type { DutyDay, DutySchedule, ShiftBlock } from '@/features/clinics/clinic.api';
-import type { BranchAssignment } from '../../../types/staff.types';
+import type { AffectedAppointment, BranchAssignment, ScheduleImpact } from '../../../types/staff.types';
 
 export const WEEKDAYS: DutyDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -91,4 +91,52 @@ export const scheduleErrorText = (err: unknown, fallback: string): string => {
   const pick = (value: unknown): string | null =>
     typeof value === 'string' ? value : Array.isArray(value) && typeof value[0] === 'string' ? value[0] : null;
   return pick(data.duty_schedule) ?? pick(data.detail) ?? pick(data.error) ?? fallback;
+};
+
+/** The 409 "upcoming appointments would fall outside the new hours" response, else null. */
+export const scheduleImpactOf = (err: unknown): ScheduleImpact | null => {
+  const res = (err as { response?: { status?: number; data?: Record<string, unknown> } })?.response;
+  const data = res?.data;
+  if (res?.status !== 409 || !data) return null;
+  const code = Array.isArray(data.code) ? data.code[0] : data.code;
+  if (code !== 'SCHEDULE_AFFECTS_APPOINTMENTS') return null;
+  return {
+    detail: typeof data.detail === 'string' ? data.detail : '',
+    affected_count: Number(data.affected_count ?? 0),
+    affected_appointments: (data.affected_appointments as AffectedAppointment[] | undefined) ?? [],
+  };
+};
+
+/**
+ * Same wording as the backend refusal (`conflicts_message` in accounts/utils/schedule.py): the days that
+ * clash in the same way are grouped, e.g. "Mon, Wed, Fri: 8:00 AM–5:00 PM at Branch A overlaps 8:00 AM–5:00 PM
+ * at Branch B." Blocks that merely touch do not overlap. Returns null when nothing overlaps.
+ */
+export const scheduleConflictMessage = (
+  combined: DutySchedule,
+  nameOf: (branchId: number | null | undefined) => string | null,
+): string | null => {
+  const groups = new Map<string, { head: string; tail: string; days: DutyDay[] }>();
+  const part = (b: ShiftBlock) => {
+    const name = b.branch_id ? nameOf(b.branch_id) : null;
+    return `${formatTime(b.start)}–${formatTime(b.end)}${name ? ` at ${name}` : ''}`;
+  };
+  WEEKDAYS.forEach((day) => {
+    const blocks = (combined[day] ?? [])
+      .map((b) => ({ ...b, start: hhmm(b.start), end: hhmm(b.end) }))
+      .filter((b) => b.start && b.end)
+      .sort((a, b) => a.start.localeCompare(b.start));
+    blocks.forEach((first, i) => {
+      blocks.slice(i + 1).forEach((second) => {
+        if (second.start >= first.end) return;
+        const key = `${part(first)}|${part(second)}`;
+        const group = groups.get(key) ?? { head: part(first), tail: part(second), days: [] };
+        group.days.push(day);
+        groups.set(key, group);
+      });
+    });
+  });
+  if (groups.size === 0) return null;
+  const lines = [...groups.values()].map((g) => `${g.days.join(', ')}: ${g.head} overlaps ${g.tail}.`);
+  return `Schedule conflict. ${lines.join(' ')} A practitioner cannot work in two places simultaneously. Choose different days or hours that do not overlap.`;
 };

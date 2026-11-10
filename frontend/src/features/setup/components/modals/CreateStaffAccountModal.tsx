@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, UserPlus, AlertCircle, Building2, RefreshCw, Clock, Plus, Trash2, Check, CheckCircle2, ShieldCheck, Stethoscope, Users, DollarSign, Crown, Eye, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { clinicIdsOf } from '../../pages/users/permissions/staffClinics';
-import type { CreateStaffData, StaffFormErrors, StaffMember, PractitionerRoleImpact, UserLookupResult } from '../../types/staff.types';
+import type {
+  CreateStaffData, StaffFormErrors, StaffMember, PractitionerRoleImpact, UserLookupResult, PractitionerMatch, ScheduleImpact,
+} from '../../types/staff.types';
 import type { DutySchedule, DutyDay, ShiftBlock } from '@/features/clinics/clinic.api';
 import { TITLE_OPTIONS, GENDER_OPTIONS } from '../../types/staff.types';
 import { useDisciplineOptions } from '../../hooks/useDisciplineOptions';
@@ -14,7 +16,11 @@ import 'react-phone-number-input/style.css';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PractitionerRemovalModal } from './PractitionerRemovalModal';
 import { ClinicianLimitReachedModal, type ClinicianLimitInfo } from './ClinicianLimitReachedModal';
-import { getPractitionerRoleImpact, lookupUserByEmail, updateStaff } from '../../services/StaffService';
+import { findPractitionerMatches, getPractitionerRoleImpact, lookupUserByEmail, updateStaff } from '../../services/StaffService';
+import { ScheduleImpactDialog } from '../../pages/users/permissions/ScheduleImpactDialog';
+import {
+  WEEKDAYS, describeSlice, scheduleConflictMessage, scheduleImpactOf, sliceOf,
+} from '../../pages/users/permissions/practitionerSchedule';
 import { emitPractitionerRemoved, emitPractitionerUpdated } from '@/events/practitionerEvents';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -113,18 +119,6 @@ export const formatTime12h = (timeStr?: string | null): string => {
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
   return `${formattedHour}:${minuteStr} ${ampm}`;
-};
-
-/** Returns the conflicting pair if any two blocks overlap in time. */
-const checkScheduleConflict = (blocks: ShiftBlock[]): { prev: ShiftBlock; curr: ShiftBlock } | null => {
-  if (!blocks || blocks.length < 2) return null;
-  const sorted = [...blocks].sort((a, b) => a.start.localeCompare(b.start));
-  for (let i = 0; i < sorted.length - 1; i++) {
-    if (sorted[i].end > sorted[i + 1].start) {
-      return { prev: sorted[i], curr: sorted[i + 1] };
-    }
-  }
-  return null;
 };
 
 const makeDefaultSchedule = (days: DutyDay[], defaultBranchId: number | null = null): DutySchedule =>
@@ -325,11 +319,12 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
   const [isLookingUpEmail, setIsLookingUpEmail]   = useState(false);
   const lookupDebounceRef = useRef<any>(null);
 
-  const isAlreadyAssignedToSelectedBranch = Boolean(
-    existingUserMatch &&
-    formData.clinic_branch &&
-    existingUserMatch.assigned_branch_ids?.includes(Number(formData.clinic_branch))
-  );
+  // Another account with the same name (possibly the same person with a second login): advisory only.
+  const [nameMatches, setNameMatches] = useState<PractitionerMatch[]>([]);
+
+  // Upcoming appointments that would fall outside the new hours: nothing is saved until the user confirms.
+  const [impactPending, setImpactPending] = useState<{ impact: ScheduleImpact; retry: () => Promise<void> } | null>(null);
+  const [impactBusy, setImpactBusy]       = useState(false);
 
   // ── Discipline create-inline state ─────────────────────────────────────────
   const [showCreateDiscipline, setShowCreateDiscipline] = useState(false);
@@ -487,6 +482,12 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
         const res = await lookupUserByEmail(email);
         if (res.found && res.user && res.user.is_practitioner) {
           setExistingUserMatch(res.user);
+          // Load their CURRENT hours at every clinic they work at, so hours at the new clinic are
+          // checked against them (and saving never drops a clinic they already work at).
+          const active = (res.user.assigned_branches ?? []).filter(b => b.is_active);
+          const current = active.length > 0
+            ? buildDutySchedule({ branch_assignments: active } as unknown as StaffMember)
+            : null;
           setFormData(prev => ({
             ...prev,
             first_name: res.user!.first_name,
@@ -494,6 +495,12 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
             phone: res.user!.phone || prev.phone,
             discipline: res.user!.discipline || prev.discipline,
             roles: ['PRACTITIONER'],
+            ...(current ? {
+              duty_schedule: current,
+              duty_days: WEEKDAYS.filter(d => (current[d] ?? []).length > 0),
+              lunch_start_time: active[0].lunch_start_time || prev.lunch_start_time,
+              lunch_end_time: active[0].lunch_end_time || prev.lunch_end_time,
+            } : {}),
           }));
         } else {
           setExistingUserMatch(null);
@@ -509,6 +516,27 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
       if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
     };
   }, [formData.email, isEditMode]);
+
+  // Warn when the name matches an existing practitioner: two accounts for one person hide their hours
+  // at the other clinics from the overlap check. Never blocks the save.
+  useEffect(() => {
+    const first = (formData.first_name || '').trim();
+    const last = (formData.last_name || '').trim();
+    if (isEditMode || existingUserMatch || !(formData.roles ?? []).includes('PRACTITIONER') || first.length < 2 || last.length < 2) {
+      setNameMatches([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const matches = await findPractitionerMatches(first, last);
+        if (!cancelled) setNameMatches(matches);
+      } catch {
+        if (!cancelled) setNameMatches([]);
+      }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [formData.first_name, formData.last_name, formData.roles, isEditMode, existingUserMatch]);
 
   useEffect(() => {
     if (editingStaff) {
@@ -627,15 +655,15 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
             }
           }
           if (e.duty_schedule) break;
-          const conflict = checkScheduleConflict(blocks);
-          if (conflict) {
-            const prevBranchName = conflict.prev.branch_name || branches.find(b => b.id === (conflict.prev.branch_id ?? effectiveDefaultBranch))?.name;
-            const currBranchName = conflict.curr.branch_name || branches.find(b => b.id === (conflict.curr.branch_id ?? effectiveDefaultBranch))?.name;
-            const prevBranchStr = prevBranchName ? ` (${prevBranchName})` : '';
-            const currBranchStr = currBranchName ? ` (${currBranchName})` : '';
-            e.duty_schedule = `${day}: Working periods overlap: ${formatTime12h(conflict.prev.start)}–${formatTime12h(conflict.prev.end)}${prevBranchStr} and ${formatTime12h(conflict.curr.start)}–${formatTime12h(conflict.curr.end)}${currBranchStr}. Shifts cannot overlap.`;
-            break;
+        }
+        // Hours at ALL clinics are checked together (the same rule and wording as the server).
+        if (!e.duty_schedule) {
+          const combined: DutySchedule = {};
+          for (const day of (formData.duty_days ?? [])) {
+            combined[day] = (formData.duty_schedule[day] ?? []).map(b => ({ ...b, branch_id: b.branch_id ?? effectiveDefaultBranch }));
           }
+          const message = scheduleConflictMessage(combined, id => branches.find(b => b.id === id)?.name ?? null);
+          if (message) e.duty_schedule = message;
         }
       }
       if (!formData.lunch_start_time) e.lunch_start_time = 'Required';
@@ -652,7 +680,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
 
   // ── Core submit helper (shared by direct submit & confirmed removal) ────────
   const executeSubmit = async (
-    payload: CreateStaffData & { confirm_practitioner_removal?: boolean }
+    payload: CreateStaffData & { confirm_practitioner_removal?: boolean; confirm_appointment_impact?: boolean }
   ) => {
     try {
       await onSubmit(payload as CreateStaffData);
@@ -664,6 +692,13 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
     } catch (err: any) {
       const data = err?.response?.data as Record<string, any> | undefined;
       console.log('[DEBUG-MODAL] Error Data:', data);
+
+      // Upcoming appointments would fall outside the new hours: nothing was saved; ask first.
+      const impact = scheduleImpactOf(err);
+      if (impact) {
+        setImpactPending({ impact, retry: () => executeSubmit({ ...payload, confirm_appointment_impact: true }) });
+        throw err;
+      }
 
       if (data?.error === 'CLINICIAN_LIMIT_REACHED' || data?.code === 'CLINICIAN_LIMIT_REACHED') {
         // Intercept clinician limit capacity error and trigger sharp geometric modal
@@ -685,11 +720,13 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
         if (data.email)  mapped.email  = pick(data.email);
         if (data.phone)  mapped.phone  = pick(data.phone);
         if (data.branch_ids) mapped.general = pick(data.branch_ids);
+        if (data.duty_schedule) mapped.duty_schedule = pick(data.duty_schedule);
         if (data.detail) mapped.general = pick(data.detail);
         if (Object.keys(mapped).length > 0) {
           setErrors(mapped);
           if (mapped.email)        toast.error(mapped.email,   { id: 'staff-email-error' });
           else if (mapped.phone)   toast.error(mapped.phone,   { id: 'staff-phone-error' });
+          else if (mapped.duty_schedule) toast.error(mapped.duty_schedule, { id: 'staff-schedule-error' });
           else if (mapped.general) toast.error(mapped.general);
         } else {
           const msg = err.message || 'Failed to save. Please try again.';
@@ -702,6 +739,81 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
         toast.error(msg);
       }
       throw err; // re-throw so callers can reset loading state
+    }
+  };
+
+  // Saves the hours of an EXISTING practitioner (found by email) across all their clinics. Only the hours
+  // are sent: their name, roles, home clinic and other details are left exactly as they are.
+  const submitExistingPractitioner = async (confirmAppointmentImpact: boolean): Promise<void> => {
+    if (!existingUserMatch) return;
+    const effectiveDefaultBranch = defaultBranchId ?? availableBranches[0]?.id ?? branches[0]?.id ?? null;
+    const primaryBranch = uniqueAssignedBranchIds.length > 0
+      ? uniqueAssignedBranchIds[0]
+      : (formData.clinic_branch ? Number(formData.clinic_branch) : effectiveDefaultBranch);
+
+    if (!primaryBranch) {
+      toast.error('Please configure at least one branch in the schedule.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const schedule: DutySchedule = {};
+      for (const [day, blocks] of Object.entries(formData.duty_schedule ?? {})) {
+        schedule[day as DutyDay] = (blocks ?? []).map(b => ({ ...b, branch_id: b.branch_id ?? primaryBranch }));
+      }
+      const payload: Partial<CreateStaffData> & { confirm_appointment_impact?: boolean } = {
+        duty_schedule: schedule,
+        duty_days: Array.from(new Set([...(formData.duty_days || []), ...(Object.keys(schedule) as DutyDay[])])),
+        lunch_start_time: formData.lunch_start_time,
+        lunch_end_time: formData.lunch_end_time,
+        ...(confirmAppointmentImpact ? { confirm_appointment_impact: true } : {}),
+      };
+
+      await updateStaff(existingUserMatch.id, payload);
+      toast.success(`Updated Dr. ${existingUserMatch.name}'s schedule and branch assignments successfully!`);
+      emitPractitionerUpdated(existingUserMatch.id, existingUserMatch.practitioner_id ?? null);
+      handleClose();
+    } catch (err: any) {
+      const impact = scheduleImpactOf(err);
+      if (impact) {
+        setImpactPending({ impact, retry: () => submitExistingPractitioner(true) });
+        return;
+      }
+      const data = err?.response?.data;
+      if (data?.error === 'CLINICIAN_LIMIT_REACHED' || data?.code === 'CLINICIAN_LIMIT_REACHED') {
+        setClinicianLimitInfo({
+          current_allocations: data.current_allocations,
+          allowed_allocations: data.allowed_allocations,
+          archived_allocations: data.archived_allocations,
+          archived_practitioners: data.archived_practitioners,
+          plan_code: data.plan_code,
+          detail: data.detail,
+        });
+        setShowClinicianLimitModal(true);
+      } else {
+        const first = (v: unknown): string | undefined => (Array.isArray(v) ? first(v[0]) : typeof v === 'string' ? v : undefined);
+        const scheduleMsg = first(data?.duty_schedule);
+        if (scheduleMsg) setErrors({ duty_schedule: scheduleMsg });
+        toast.error(scheduleMsg || data?.detail || err.message || 'Failed to update practitioner schedule.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Confirmed in the "Upcoming appointments affected" dialog: save the hours anyway (no appointment changes).
+  const handleImpactConfirm = async () => {
+    if (!impactPending) return;
+    const { retry } = impactPending;
+    setImpactBusy(true);
+    try {
+      await retry();
+    } catch {
+      // The failure is already shown on the form by the submit that was retried.
+    } finally {
+      setImpactBusy(false);
+      setImpactPending(null);
     }
   };
 
@@ -721,61 +833,7 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
 
     // ── Multi-Branch Assignment: Existing Practitioner Detected ───────────────
     if (existingUserMatch) {
-      const effectiveDefaultBranch = defaultBranchId ?? availableBranches[0]?.id ?? branches[0]?.id ?? null;
-      const primaryBranch = uniqueAssignedBranchIds.length > 0
-        ? uniqueAssignedBranchIds[0]
-        : (formData.clinic_branch ? Number(formData.clinic_branch) : effectiveDefaultBranch);
-
-      if (!primaryBranch) {
-        toast.error('Please configure at least one branch in the schedule.');
-        return;
-      }
-
-      setLoading(true);
-      try {
-        let sanitizedSchedule = formData.duty_schedule;
-        if (formData.duty_schedule) {
-          sanitizedSchedule = {};
-          const fallbackBid = primaryBranch ?? effectiveDefaultBranch;
-          for (const [day, blocks] of Object.entries(formData.duty_schedule)) {
-            sanitizedSchedule[day as DutyDay] = blocks.map(b => ({
-              ...b,
-              branch_id: b.branch_id ?? fallbackBid,
-            }));
-          }
-        }
-
-        const payloadToSave: CreateStaffData & { id?: number; existing_user_id?: number } = {
-          ...formData,
-          clinic_branch: primaryBranch,
-          duty_schedule: sanitizedSchedule,
-          roles: ['PRACTITIONER'],
-          id: existingUserMatch.id,
-          existing_user_id: existingUserMatch.id,
-        };
-
-        await updateStaff(existingUserMatch.id, payloadToSave);
-        toast.success(`Updated Dr. ${existingUserMatch.name}'s schedule and branch assignments successfully!`);
-        emitPractitionerUpdated(existingUserMatch.id, existingUserMatch.practitioner_id ?? null);
-        handleClose();
-      } catch (err: any) {
-        const data = err?.response?.data;
-        if (data?.error === 'CLINICIAN_LIMIT_REACHED' || data?.code === 'CLINICIAN_LIMIT_REACHED') {
-          setClinicianLimitInfo({
-            current_allocations: data.current_allocations,
-            allowed_allocations: data.allowed_allocations,
-            archived_allocations: data.archived_allocations,
-            archived_practitioners: data.archived_practitioners,
-            plan_code: data.plan_code,
-            detail: data.detail,
-          });
-          setShowClinicianLimitModal(true);
-        } else {
-          toast.error(data?.detail || err.message || 'Failed to update practitioner schedule.');
-        }
-      } finally {
-        setLoading(false);
-      }
+      await submitExistingPractitioner(false);
       return;
     }
 
@@ -1788,37 +1846,61 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
                       </p>
                     )}
 
-                    {existingUserMatch && (
-                      <div className={`mt-2.5 p-3.5 rounded-xl border text-xs ${
-                        isAlreadyAssignedToSelectedBranch
-                          ? 'bg-amber-50 border-amber-200 text-amber-800'
-                          : 'bg-sky-50 border-sky-200 text-sky-800'
-                      }`}>
-                        <div className="flex items-start gap-2.5">
-                          <Building2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-sky-600" />
-                          <div className="space-y-1">
-                            <p className="font-semibold text-sm">
-                              {isAlreadyAssignedToSelectedBranch
-                                ? `Already Assigned: Dr. ${existingUserMatch.name}`
-                                : `Existing Practitioner Found: Dr. ${existingUserMatch.name}`}
-                            </p>
-                            <p>
-                              Account: <strong>{existingUserMatch.email}</strong> · Specialization: {existingUserMatch.specialization || 'General'}
-                            </p>
-                            {existingUserMatch.assigned_branches && existingUserMatch.assigned_branches.length > 0 && (
+                    {existingUserMatch && (() => {
+                      const clinicsNow = (existingUserMatch.assigned_branches ?? []).filter(b => b.is_active);
+                      return (
+                        <div className="mt-2.5 p-3.5 rounded-xl border text-xs bg-sky-50 border-sky-200 text-sky-800">
+                          <div className="flex items-start gap-2.5">
+                            <Building2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-sky-600" />
+                            <div className="space-y-1">
+                              <p className="font-semibold text-sm">Existing Practitioner Found: Dr. {existingUserMatch.name}</p>
                               <p>
-                                Currently assigned to: {existingUserMatch.assigned_branches.map(b => b.branch_name).join(', ')}
+                                Account: <strong>{existingUserMatch.email}</strong> · Specialization: {existingUserMatch.specialization || 'General'}
                               </p>
-                            )}
-                            {isAlreadyAssignedToSelectedBranch ? (
-                              <p className="font-semibold text-amber-700 mt-1">
-                                ⚠ This practitioner is already assigned to the selected branch. Please choose a different branch to assign them to.
-                              </p>
-                            ) : (
+                              {clinicsNow.length > 0 && (
+                                <div>
+                                  <p className="font-semibold">Already works at:</p>
+                                  <ul className="list-disc ml-4">
+                                    {clinicsNow.map(b => (
+                                      <li key={b.branch_id}><strong>{b.branch_name}</strong>: {describeSlice(sliceOf(b))}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                               <p className="text-sky-700 font-medium mt-1">
-                                ✓ Ready to assign Dr. {existingUserMatch.name} to this branch with independent duty hours. (Consumes 1 clinician allocation).
+                                Their current hours are loaded in the schedule below. Hours at another clinic must not overlap them.
+                                One person counts as 1 clinician, so no extra seat is used.
                               </p>
-                            )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {!existingUserMatch && nameMatches.length > 0 && (
+                      <div role="status" className="mt-2.5 p-3.5 rounded-xl border text-xs bg-amber-50 border-amber-200 text-amber-800">
+                        <div className="flex items-start gap-2.5">
+                          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+                          <div className="space-y-1.5">
+                            <p className="font-semibold text-sm">A practitioner with this name already has an account</p>
+                            <p>
+                              If this is the same person, use that account so their hours at every clinic are checked together.
+                              A second account would let their hours overlap between clinics.
+                            </p>
+                            <ul className="space-y-1">
+                              {nameMatches.map(m => (
+                                <li key={m.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span><strong>{m.name}</strong> · {m.email}{m.clinics.length > 0 ? ` · works at ${m.clinics.join(', ')}` : ''}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => set('email', m.email)}
+                                    className="px-2 py-0.5 rounded-md border border-amber-300 bg-white text-amber-900 font-semibold hover:bg-amber-100"
+                                  >
+                                    Use this account
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         </div>
                       </div>
@@ -1904,6 +1986,13 @@ export const CreateStaffAccountModal: React.FC<CreateStaffAccountModalProps> = (
           }
         />
       )}
+
+      <ScheduleImpactDialog
+        impact={impactPending?.impact ?? null}
+        busy={impactBusy}
+        onCancel={() => setImpactPending(null)}
+        onConfirm={() => { void handleImpactConfirm(); }}
+      />
 
       {/* ── Clinician Limit Capacity Modal (Strict Sharp Corners) ─────────── */}
       <ClinicianLimitReachedModal

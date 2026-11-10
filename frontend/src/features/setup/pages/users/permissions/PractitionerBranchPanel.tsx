@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Building2, Check, Clock, Info, Loader2, Lock, MapPin, Pencil, Plus, Stethoscope, X } from 'lucide-react';
 import type { ClinicBranch } from '@/types/clinic';
 import type { DutyDay, DutySchedule } from '@/features/clinics/clinic.api';
-import type { BranchAssignment, StaffMember } from '../../../types/staff.types';
+import type { BranchAssignment, ScheduleImpact, StaffMember } from '../../../types/staff.types';
 import {
-  DEFAULT_HOURS, WEEKDAYS, combine, describeSlice, scheduleErrorText, sliceOf, toSlice, uniformHours, type ClinicHours,
+  DEFAULT_HOURS, WEEKDAYS, combine, describeSlice, scheduleConflictMessage, scheduleErrorText, scheduleImpactOf, sliceOf, toSlice,
+  uniformHours, type ClinicHours,
 } from './practitionerSchedule';
+import { ScheduleImpactDialog } from './ScheduleImpactDialog';
 
 interface Props {
   /** Practitioners in the selected group. */
@@ -14,8 +16,11 @@ interface Props {
   /** Clinics the viewer may add / change / remove; null = every clinic (the Owner). */
   scopeIds: number[] | null;
   loading: boolean;
-  /** Saves the full combined schedule; throws on a backend refusal (the message is shown inline). */
-  onSave: (member: StaffMember, schedule: DutySchedule) => Promise<void>;
+  /**
+   * Saves the full combined schedule; throws on a backend refusal (the message is shown inline).
+   * `confirmAppointmentImpact` is true once the user accepted the "upcoming appointments affected" warning.
+   */
+  onSave: (member: StaffMember, schedule: DutySchedule, confirmAppointmentImpact?: boolean) => Promise<void>;
 }
 
 const fullName = (m: StaffMember) => `${m.first_name} ${m.last_name}`.trim() || m.email;
@@ -30,18 +35,23 @@ const HoursForm: React.FC<{
   options?: ClinicBranch[];
   fixedName?: string;
   initial: ClinicHours;
+  /** The person's hours at their OTHER clinics, shown so the new hours can be chosen around them. */
+  others: Array<{ name: string; hours: string }>;
+  /** Message when these hours overlap the other clinics, else null (same wording as the backend refusal). */
+  conflictOf: (branchId: number | null, hours: ClinicHours) => string | null;
   busy: boolean;
   error: string | null;
   submitLabel: string;
   onSubmit: (branchId: number | null, hours: ClinicHours) => void;
   onCancel: () => void;
-}> = ({ options, fixedName, initial, busy, error, submitLabel, onSubmit, onCancel }) => {
+}> = ({ options, fixedName, initial, others, conflictOf, busy, error, submitLabel, onSubmit, onCancel }) => {
   const [branchId, setBranchId] = useState<number | ''>('');
   const [hours, setHours] = useState<ClinicHours>(initial);
   const toggle = (day: DutyDay) => setHours((h) => ({
     ...h, days: h.days.includes(day) ? h.days.filter((d) => d !== day) : [...h.days, day],
   }));
-  const invalid = (options && branchId === '') || hours.days.length === 0 || !hours.start || !hours.end || hours.start >= hours.end;
+  const conflict = conflictOf(branchId === '' ? null : branchId, hours);
+  const invalid = (options && branchId === '') || hours.days.length === 0 || !hours.start || !hours.end || hours.start >= hours.end || !!conflict;
 
   return (
     <form
@@ -102,7 +112,23 @@ const HoursForm: React.FC<{
         )}
       </div>
 
-      {error && (
+      {others.length > 0 && (
+        <div className="text-[11px] text-gray-600 rounded-lg bg-white border border-gray-200 px-3 py-2">
+          <p className="font-semibold text-gray-700 mb-1">Already works at</p>
+          <ul className="space-y-0.5">
+            {others.map((o) => <li key={o.name}><strong>{o.name}</strong>: {o.hours}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {conflict && (
+        <div role="alert" className="text-xs text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
+          <p className="font-bold mb-0.5">Schedule Conflict</p>
+          <p>{conflict}</p>
+        </div>
+      )}
+
+      {error && error !== conflict && (
         <p role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
       )}
 
@@ -135,6 +161,10 @@ const PractitionerCard: React.FC<{
   const [mode, setMode] = useState<{ kind: 'add' } | { kind: 'edit'; branchId: number } | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Set when the backend warns that upcoming appointments would fall outside the new hours (nothing saved yet).
+  const [pending, setPending] = useState<{
+    impact: ScheduleImpact; key: string; next: Array<{ branchId: number; slice: DutySchedule }>; done: () => void;
+  } | null>(null);
 
   const assignments = activeAssignments(member);
   const assignedIds = assignments.map((a) => a.branch_id);
@@ -142,25 +172,47 @@ const PractitionerCard: React.FC<{
   const addable = branches.filter((b) => b.is_active && !assignedIds.includes(b.id) && inScope(b.id));
   const slices = assignments.map((a) => ({ branchId: a.branch_id, slice: sliceOf(a) }));
 
-  const save = async (key: string, next: Array<{ branchId: number; slice: DutySchedule }>): Promise<boolean> => {
+  const clinicName = (id: number | null | undefined): string | null => {
+    if (id === -1) return 'the new clinic';
+    if (!id) return null;
+    return assignments.find((a) => a.branch_id === id)?.branch_name ?? branches.find((b) => b.id === id)?.name ?? `Clinic #${id}`;
+  };
+
+  /** Live overlap check against the person's other clinics (the backend repeats it and stays the final word). */
+  const conflictFor = (branchId: number | null, hours: ClinicHours): string | null => {
+    if (hours.days.length === 0 || !hours.start || !hours.end || hours.start >= hours.end) return null;
+    const id = branchId ?? -1;
+    const others = slices.filter((s) => s.branchId !== id);
+    return scheduleConflictMessage(combine([...others, { branchId: id, slice: toSlice(hours) }]), clinicName);
+  };
+
+  const othersOf = (exceptBranchId?: number) => assignments
+    .filter((a) => a.branch_id !== exceptBranchId)
+    .map((a) => ({ name: a.branch_name || `Clinic #${a.branch_id}`, hours: describeSlice(sliceOf(a)) }));
+
+  const save = async (
+    key: string, next: Array<{ branchId: number; slice: DutySchedule }>, done: () => void, confirm = false,
+  ): Promise<void> => {
     setBusyKey(key); setError(null);
     try {
-      await onSave(member, combine(next));
-      return true;
+      await onSave(member, combine(next), confirm);
+      setPending(null);
+      done();
     } catch (err: unknown) {
-      setError(scheduleErrorText(err, 'Could not update the working clinics.'));
-      return false;
+      const impact = scheduleImpactOf(err);
+      if (impact) setPending({ impact, key, next, done });
+      else { setPending(null); setError(scheduleErrorText(err, 'Could not update the working clinics.')); }
     } finally { setBusyKey(null); }
   };
 
-  const add = async (branchId: number | null, hours: ClinicHours) => {
+  const add = (branchId: number | null, hours: ClinicHours) => {
     if (branchId === null) return;
-    if (await save('add', [...slices, { branchId, slice: toSlice(hours) }])) setMode(null);
+    void save('add', [...slices, { branchId, slice: toSlice(hours) }], () => setMode(null));
   };
-  const change = async (branchId: number, hours: ClinicHours) => {
-    if (await save(`edit-${branchId}`, slices.map((s) => (s.branchId === branchId ? { ...s, slice: toSlice(hours) } : s)))) setMode(null);
+  const change = (branchId: number, hours: ClinicHours) => {
+    void save(`edit-${branchId}`, slices.map((s) => (s.branchId === branchId ? { ...s, slice: toSlice(hours) } : s)), () => setMode(null));
   };
-  const remove = (branchId: number) => { void save(`remove-${branchId}`, slices.filter((s) => s.branchId !== branchId)); };
+  const remove = (branchId: number) => { void save(`remove-${branchId}`, slices.filter((s) => s.branchId !== branchId), () => undefined); };
 
   const editing = mode?.kind === 'edit' ? assignments.find((a) => a.branch_id === mode.branchId) : undefined;
 
@@ -245,10 +297,12 @@ const PractitionerCard: React.FC<{
           <HoursForm
             fixedName={editing.branch_name}
             initial={uniformHours(sliceOf(editing)) ?? DEFAULT_HOURS}
+            others={othersOf(editing.branch_id)}
+            conflictOf={(_, hours) => conflictFor(editing.branch_id, hours)}
             busy={busyKey === `edit-${editing.branch_id}`}
             error={error}
             submitLabel="Save hours"
-            onSubmit={(_, hours) => { void change(editing.branch_id, hours); }}
+            onSubmit={(_, hours) => change(editing.branch_id, hours)}
             onCancel={() => { setMode(null); setError(null); }}
           />
         )}
@@ -257,10 +311,12 @@ const PractitionerCard: React.FC<{
           <HoursForm
             options={addable}
             initial={DEFAULT_HOURS}
+            others={othersOf()}
+            conflictOf={conflictFor}
             busy={busyKey === 'add'}
             error={error}
             submitLabel="Add clinic"
-            onSubmit={(id, hours) => { void add(id, hours); }}
+            onSubmit={(id, hours) => add(id, hours)}
             onCancel={() => { setMode(null); setError(null); }}
           />
         ) : (
@@ -286,6 +342,13 @@ const PractitionerCard: React.FC<{
           <p role="alert" className="mt-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
         )}
       </div>
+
+      <ScheduleImpactDialog
+        impact={pending?.impact ?? null}
+        busy={!!pending && busyKey === pending.key}
+        onCancel={() => setPending(null)}
+        onConfirm={() => { if (pending) void save(pending.key, pending.next, pending.done, true); }}
+      />
     </article>
   );
 };

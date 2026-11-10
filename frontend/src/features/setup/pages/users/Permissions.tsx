@@ -241,8 +241,9 @@ export const Permissions: React.FC = () => {
   };
 
   // Practitioner clinics: saved through the user update, so the same overlap and scope rules apply.
-  const handlePractitionerSave = async (member: StaffMember, schedule: DutySchedule) => {
-    const updated = await saveStaffSchedule(member.id, schedule);   // a refusal is shown inline by the panel
+  const handlePractitionerSave = async (member: StaffMember, schedule: DutySchedule, confirmAppointmentImpact = false) => {
+    // A refusal is shown inline by the panel; a 409 (upcoming appointments affected) opens its confirmation.
+    const updated = await saveStaffSchedule(member.id, schedule, confirmAppointmentImpact);
     setStaff((prev) => prev.map((s) => (s.id === member.id ? { ...s, ...updated } : s)));
     toast.success(`${member.first_name}'s clinics updated.`);
   };
